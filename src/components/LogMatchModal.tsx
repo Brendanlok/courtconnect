@@ -1,6 +1,6 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { X, Camera, Plus, Search } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Camera, Plus, Search, MapPin, Loader2, Navigation } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -8,6 +8,119 @@ import type { Match, MatchType, UserProfile } from '@/types';
 
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  name: string;
+  address: { road?: string; suburb?: string; city?: string; state?: string };
+}
+
+function LocationSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query,    setQuery]    = useState(value);
+  const [results,  setResults]  = useState<NominatimResult[]>([]);
+  const [show,     setShow]     = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [gpsLoad,  setGpsLoad]  = useState(false);
+  const ref    = useRef<HTMLDivElement>(null);
+  const timer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShow(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const search = useCallback((q: string) => {
+    if (timer.current) clearTimeout(timer.current);
+    if (!q.trim()) { setResults([]); return; }
+    timer.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&countrycodes=my&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data: NominatimResult[] = await res.json();
+        setResults(data);
+        setShow(true);
+      } catch { /* ignore network errors */ }
+      finally { setLoading(false); }
+    }, 400);
+  }, []);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    setGpsLoad(true);
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        const res  = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data = await res.json();
+        const name = data.name || data.address?.road || '';
+        const area = data.address?.suburb || data.address?.city || '';
+        const label = [name, area].filter(Boolean).join(', ') || data.display_name;
+        setQuery(label);
+        onChange(label);
+      } catch { /* ignore */ }
+      finally { setGpsLoad(false); }
+    }, () => setGpsLoad(false));
+  };
+
+  const select = (r: NominatimResult) => {
+    const name = r.name || r.address?.road || '';
+    const area = r.address?.suburb || r.address?.city || '';
+    const label = [name, area].filter(Boolean).join(', ') || r.display_name.split(',').slice(0, 2).join(',').trim();
+    setQuery(label);
+    onChange(label);
+    setShow(false);
+  };
+
+  return (
+    <div ref={ref}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-slate-400 font-semibold">Venue / Location (optional)</span>
+        <button type="button" onClick={useMyLocation} disabled={gpsLoad}
+          className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-50">
+          {gpsLoad ? <Loader2 size={11} className="animate-spin"/> : <Navigation size={11}/>}
+          Use my location
+        </button>
+      </div>
+      <div className="relative mt-1.5">
+        <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+        {loading && <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin"/>}
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); onChange(e.target.value); search(e.target.value); }}
+          onFocus={() => { if (results.length) setShow(true); }}
+          placeholder="Search or use my location…"
+          className="w-full pl-8 pr-8 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"
+        />
+        {show && results.length > 0 && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+            {results.map(r => {
+              const name = r.name || r.address?.road || '';
+              const area = [r.address?.suburb, r.address?.city, r.address?.state].filter(Boolean).join(', ');
+              return (
+                <button key={r.place_id} onMouseDown={() => select(r)}
+                  className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-slate-700 text-left transition-colors">
+                  <MapPin size={13} className="text-emerald-400 mt-0.5 shrink-0"/>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{name || r.display_name.split(',')[0]}</p>
+                    {area && <p className="text-xs text-slate-400 truncate">{area}</p>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function PlayerSearch({
   label, value, onChange, exclude = [],
@@ -202,11 +315,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
               )}
 
               {/* Venue */}
-              <label className="block">
-                <span className="text-xs text-slate-400 font-semibold">Venue / Location (optional)</span>
-                <input value={loc} onChange={e => setLoc(e.target.value)} placeholder="e.g. Sport Planet PJ"
-                  className="mt-1.5 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors"/>
-              </label>
+              <LocationSearch value={loc} onChange={setLoc} />
 
               {/* Scores */}
               <div>
