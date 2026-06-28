@@ -26,13 +26,15 @@ export function Topbar() {
   return (
     <>
       <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-5 shrink-0">
-        {/* Left: location context */}
-        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+        {/* Left: location context — hidden on mobile */}
+        <div className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400">
           <MapPin size={13} className="text-emerald-400" />
           <span className="text-slate-300 font-medium">{user.area},</span>
           <span>{user.state}</span>
           <span className="ml-1 text-xs bg-slate-800 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">🇲🇾 Malaysia</span>
         </div>
+        {/* Mobile: app name */}
+        <span className="sm:hidden font-bold text-emerald-400 text-base">CourtConnect</span>
 
         {/* Right */}
         <div className="flex items-center gap-3">

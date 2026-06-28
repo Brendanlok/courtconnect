@@ -4,6 +4,7 @@ import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
+import { BottomNav } from '@/components/BottomNav';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -21,13 +22,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Sidebar />
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               <Topbar />
-              <main className="flex-1 overflow-y-auto p-6">
+              <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
                 <div className="max-w-5xl mx-auto">
                   {children}
                 </div>
               </main>
             </div>
           </div>
+          <BottomNav />
         </AppProvider>
       </body>
     </html>

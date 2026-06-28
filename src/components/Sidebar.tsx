@@ -20,7 +20,7 @@ export function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? 56 : 200, transition: 'width 220ms cubic-bezier(0.4,0,0.2,1)' }}
-      className="flex flex-col bg-slate-900 border-r border-slate-800 shrink-0 h-screen overflow-hidden"
+      className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 shrink-0 h-screen overflow-hidden"
     >
       {/* Logo + hamburger */}
       <div className="flex items-center h-14 border-b border-slate-800 px-2 shrink-0 overflow-hidden gap-1">
