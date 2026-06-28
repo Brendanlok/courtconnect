@@ -27,12 +27,20 @@ export interface UserProfile {
 export interface Match {
   id: string;
   type: MatchType;
+  // Singles: player1 = me, player2 = opponent
+  // Doubles: player1 = me, player1Partner = teammate, player2 = opp1, player2Partner = opp2
   player1Id: string;
   player1Name: string;
   player1Username: string;
+  player1PartnerId?: string;
+  player1PartnerName?: string;
+  player1PartnerUsername?: string;
   player2Id: string;
   player2Name: string;
   player2Username: string;
+  player2PartnerId?: string;
+  player2PartnerName?: string;
+  player2PartnerUsername?: string;
   winnerId?: string;
   games: { p1: number; p2: number }[];
   status: MatchStatus;
