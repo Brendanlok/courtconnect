@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { X, Camera, Plus } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, Camera, Plus, Search } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -8,16 +8,38 @@ import type { Match, MatchType } from '@/types';
 
 export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, addMatch } = useApp();
-  const [done,  setDone]  = useState(false);
-  const [type,  setType]  = useState<MatchType>('MS');
-  const [oppId, setOppId] = useState('');
-  const [games, setGames] = useState([{ p1:'', p2:'' }, { p1:'', p2:'' }]);
-  const [loc,   setLoc]   = useState('');
+  const [done,      setDone]      = useState(false);
+  const [type,      setType]      = useState<MatchType>('MS');
+  const [oppId,     setOppId]     = useState('');
+  const [oppSearch, setOppSearch] = useState('');
+  const [showDrop,  setShowDrop]  = useState(false);
+  const [games,     setGames]     = useState([{ p1:'', p2:'' }, { p1:'', p2:'' }]);
+  const [loc,       setLoc]       = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowDrop(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   if (!open) return null;
 
   const opp        = PLAYERS.find(p => p.uid === oppId);
   const mmrPreview = opp ? calcMMRChange(user.mmr, opp.mmr) : null;
+
+  const filtered = PLAYERS.filter(p => {
+    const q = oppSearch.toLowerCase();
+    return p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
+  });
+
+  const selectOpp = (p: typeof PLAYERS[0]) => {
+    setOppId(p.uid);
+    setOppSearch(`${p.displayName} (@${p.username})`);
+    setShowDrop(false);
+  };
 
   const setScore = (i: number, side: 'p1'|'p2', v: string) =>
     setGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
@@ -37,7 +59,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
       playedAt: new Date().toISOString(), location: loc || `${user.area}, ${user.state}`,
     });
     setDone(true);
-    setTimeout(() => { setDone(false); onClose(); setOppId(''); setGames([{p1:'',p2:''},{p1:'',p2:''}]); }, 2000);
+    setTimeout(() => { setDone(false); onClose(); setOppId(''); setOppSearch(''); setGames([{p1:'',p2:''},{p1:'',p2:''}]); }, 2000);
   };
 
   return (
@@ -70,20 +92,40 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
                 </select>
               </label>
 
-              <label className="block">
+              <div className="block" ref={searchRef}>
                 <span className="text-xs text-slate-400 font-semibold">Opponent</span>
-                <select value={oppId} onChange={e => setOppId(e.target.value)}
-                  className="mt-1.5 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors">
-                  <option value="">Select player…</option>
-                  {PLAYERS.map(p => <option key={p.uid} value={p.uid}>{p.displayName} (@{p.username}) — {p.mmr} MMR</option>)}
-                </select>
+                <div className="relative mt-1.5">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+                  <input
+                    value={oppSearch}
+                    onChange={e => { setOppSearch(e.target.value); setOppId(''); setShowDrop(true); }}
+                    onFocus={() => setShowDrop(true)}
+                    placeholder="Search name or @username…"
+                    className="w-full pl-8 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"
+                  />
+                  {showDrop && oppSearch && (
+                    <div className="absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                      {filtered.length === 0 ? (
+                        <p className="text-xs text-slate-500 px-4 py-3 text-center">No players found</p>
+                      ) : (
+                        filtered.map(p => (
+                          <button key={p.uid} onMouseDown={() => selectOpp(p)}
+                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-700 text-left transition-colors">
+                            <span className="text-sm font-medium">{p.displayName} <span className="text-slate-400 font-normal">(@{p.username})</span></span>
+                            <span className="text-xs text-amber-400 shrink-0 ml-2">{p.mmr} MMR</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 {mmrPreview && (
                   <div className="mt-1.5 flex gap-3 text-xs">
                     <span className="text-emerald-400">Win: +{mmrPreview.gain} MMR</span>
                     <span className="text-red-400">Loss: {mmrPreview.loss} MMR</span>
                   </div>
                 )}
-              </label>
+              </div>
 
               <label className="block">
                 <span className="text-xs text-slate-400 font-semibold">Venue / Location (optional)</span>
