@@ -11,7 +11,7 @@ import { TrendingUp, Flame, Radio } from 'lucide-react';
 import type { Match } from '@/types';
 
 export default function Home() {
-  const { user, matches } = useApp();
+  const { user, matches, updateUser } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
