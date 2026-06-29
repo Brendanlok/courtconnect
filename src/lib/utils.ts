@@ -87,6 +87,52 @@ export const MATCH_TYPE_LABEL: Record<string, string> = {
   MD: "Men's Doubles", WD: "Women's Doubles", MX: "Mixed Doubles",
 };
 
+export const AVAILABILITY_OPTIONS = [
+  { id: 'mon_fri_morning',  label: 'Mon–Fri Mornings'  },
+  { id: 'mon_fri_evening',  label: 'Mon–Fri Evenings'  },
+  { id: 'sat_morning',      label: 'Sat Mornings'      },
+  { id: 'sat_afternoon',    label: 'Sat Afternoons'    },
+  { id: 'sat_evening',      label: 'Sat Evenings'      },
+  { id: 'sun_morning',      label: 'Sun Mornings'      },
+  { id: 'sun_afternoon',    label: 'Sun Afternoons'    },
+  { id: 'sun_evening',      label: 'Sun Evenings'      },
+  { id: 'public_holidays',  label: 'Public Holidays'   },
+];
+
+export function formatAvailability(available: string): string {
+  if (!available) return '';
+  const ids = available.split(',').map(s => s.trim()).filter(Boolean);
+  const labels = ids.map(id => AVAILABILITY_OPTIONS.find(o => o.id === id)?.label ?? id);
+  return labels.join(', ');
+}
+
+const PC_MAP: Record<string, string> = {
+  '01':'Kangar','02':'Arau',
+  '05':'Alor Setar','06':'Pendang','07':'Langkawi','08':'Sungai Petani','09':'Kulim',
+  '10':'Georgetown','11':'Penang Island','12':'Kepala Batas','13':'Penang','14':'Bukit Mertajam',
+  '15':'Kota Bharu','16':'Pasir Mas','17':'Tanah Merah','18':'Gua Musang',
+  '20':'Kuala Terengganu','21':'Kuala Terengganu','22':'Besut','23':'Dungun','24':'Kemaman',
+  '25':'Kuantan','26':'Temerloh','27':'Jerantut','28':'Mentakab',
+  '30':'Ipoh','31':'Ipoh','32':'Teluk Intan','33':'Batu Gajah','34':'Taiping','35':'Slim River','36':'Teluk Intan',
+  '40':'Shah Alam','41':'Klang','42':'Port Klang','43':'Kajang','44':'Rawang',
+  '45':'Tanjung Karang','46':'Petaling Jaya','47':'Subang Jaya','48':'Kuala Selangor',
+  '50':'City Centre, KL','51':'Kuala Lumpur','52':'Kepong','53':'Setapak',
+  '54':'Titiwangsa','55':'Chow Kit','56':'Cheras','57':'Cheras',
+  '58':'Bangsar','59':'Bangsar South','60':'Sentul','62':'Putrajaya',
+  '63':'Ampang','68':'Ampang','69':'Semenyih',
+  '70':'Seremban','71':'Port Dickson','72':'Kuala Pilah','73':'Tampin',
+  '75':'Melaka City','76':'Alor Gajah','77':'Jasin',
+  '79':'Pontian','80':'Johor Bahru','81':'Pasir Gudang','82':'Kota Tinggi',
+  '83':'Segamat','84':'Muar','85':'Batu Pahat','86':'Kluang',
+  '87':'Labuan','88':'Kota Kinabalu','89':'Keningau','90':'Sandakan','91':'Tawau',
+  '93':'Kuching','94':'Sri Aman','95':'Sibu','96':'Miri','97':'Bintulu','98':'Limbang',
+};
+
+export function postcodeToCity(postcode: string): string | null {
+  if (!/^\d{5}$/.test(postcode.trim())) return null;
+  return PC_MAP[postcode.slice(0, 2)] ?? null;
+}
+
 export const MY_STATES = [
   'Kuala Lumpur','Selangor','Penang','Johor','Perak',
   'Kedah','Kelantan','Terengganu','Pahang','Negeri Sembilan',

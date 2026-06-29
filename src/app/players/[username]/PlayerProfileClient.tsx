@@ -65,10 +65,16 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 <span className="text-slate-400 text-base">@{player.username}</span>
                 <TierBadge tier={player.tier}/>
               </div>
-              <p className="text-slate-400 text-sm flex items-center gap-1.5">
+              <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
                 <MapPin size={12}/> {player.area}, {player.state}
                 <span className="text-slate-600">·</span>
                 <span>#{player.globalRank} National</span>
+                {player.gender && (
+                  <>
+                    <span className="text-slate-600">·</span>
+                    <span>{player.gender === 'Male' ? '♂' : '♀'} {player.gender}</span>
+                  </>
+                )}
               </p>
               {player.openToPlay && (
                 <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
@@ -91,6 +97,18 @@ export function PlayerProfileClient({ username }: { username: string }) {
                   </div>
                 ))}
               </div>
+
+              {/* Discipline MMR chips */}
+              {player.disciplineMMR && Object.keys(player.disciplineMMR).length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-3">
+                  {(Object.entries(player.disciplineMMR) as [string, number][]).filter(([,v]) => v != null).map(([type, val]) => (
+                    <div key={type} className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-center">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">{type}</p>
+                      <p className="text-sm font-bold text-amber-400 leading-tight mt-0.5">{val.toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {nextName && (
                 <div className="mt-4 max-w-xs">

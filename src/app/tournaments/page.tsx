@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
-         AlertTriangle, X, Filter } from 'lucide-react';
+         AlertTriangle, X, Filter, Info } from 'lucide-react';
 import { MATCH_TYPE_LABEL, MY_STATES } from '@/lib/utils';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 
@@ -13,8 +13,9 @@ const MATCH_TYPES: ('All' | MatchType)[] = ['All','MS','WS','MD','WD','MX'];
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Tournaments() {
-  const { user, tournaments, addTournament, registrations, registerTournament,
-          unregisterTournament, updateUser } = useApp();
+  const { user, tournaments, addTournament, registrations, pendingRequests,
+          registerTournament, unregisterTournament, requestToJoin, cancelRequest,
+          updateUser } = useApp();
 
   const [tab,           setTab]         = useState<typeof TABS[number]>('Active');
   const [visFilter,     setVisFilter]   = useState<VisFilter>('All');
@@ -110,8 +111,11 @@ export default function Tournaments() {
         {list.map(t => (
           <TournamentRow key={t.id} tournament={t} myMMR={user.mmr}
             isRegistered={!!registrations[t.id]}
+            isPending={!!pendingRequests[t.id]}
             onRegister={() => setRegTarget(t)}
-            onUnregister={() => setUnregTarget(t)}/>
+            onUnregister={() => setUnregTarget(t)}
+            onRequest={() => requestToJoin(t.id)}
+            onCancelRequest={() => cancelRequest(t.id)}/>
         ))}
       </div>
 
@@ -139,9 +143,9 @@ export default function Tournaments() {
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, isRegistered, onRegister, onUnregister }: {
-  tournament: Tournament; myMMR: number; isRegistered: boolean;
-  onRegister: () => void; onUnregister: () => void;
+function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest }: {
+  tournament: Tournament; myMMR: number; isRegistered: boolean; isPending: boolean;
+  onRegister: () => void; onUnregister: () => void; onRequest: () => void; onCancelRequest: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft = t.maxPlayers - t.currentPlayers;
@@ -245,6 +249,16 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, onRegister, onUnreg
                 <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-slate-800 text-slate-500 cursor-not-allowed">
                   Full
                 </div>
+              ) : isPending ? (
+                <button onClick={e => { e.stopPropagation(); onCancelRequest(); }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30 transition-colors">
+                  ⏳ Request Pending · Cancel
+                </button>
+              ) : t.isPrivate ? (
+                <button onClick={e => { e.stopPropagation(); onRequest(); }}
+                  className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors">
+                  <EyeOff size={13}/> Request to Join
+                </button>
               ) : (
                 <button onClick={e => { e.stopPropagation(); onRegister(); }}
                   className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
@@ -386,6 +400,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
   const [minMMR,     setMinMMR]     = useState('');
   const [maxMMR,     setMaxMMR]     = useState('');
   const [isPrivate,  setIsPrivate]  = useState(false);
+  const [visInfoOpen,setVisInfoOpen]= useState(false);
   const [desc,       setDesc]       = useState('');
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
@@ -440,8 +455,14 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
               </select>
             </label>
             <div>
-              <span className="text-[11px] text-slate-500 font-semibold">Visibility</span>
-              <div className="mt-1 flex rounded-xl overflow-hidden border border-slate-700">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[11px] text-slate-500 font-semibold">Visibility</span>
+                <button type="button" onClick={() => setVisInfoOpen(o => !o)}
+                  className="text-slate-600 hover:text-slate-400 transition-colors">
+                  <Info size={12}/>
+                </button>
+              </div>
+              <div className="flex rounded-xl overflow-hidden border border-slate-700">
                 <button onClick={() => setIsPrivate(false)}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold transition-colors
                     ${!isPrivate ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
@@ -453,6 +474,12 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
                   <EyeOff size={11}/> Private
                 </button>
               </div>
+              {visInfoOpen && (
+                <div className="mt-2 bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-1.5 text-xs text-slate-300">
+                  <p><span className="text-white font-semibold">Public</span> — Anyone who meets the MMR requirements can register directly. Spots fill on a first-come, first-served basis.</p>
+                  <p><span className="text-white font-semibold">Private</span> — Players must send a join request. You review and approve each participant before they're confirmed.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -470,9 +497,11 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
 
           {/* Venue + State */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Venue *</span>
-              <input value={venue} onChange={e => setVenue(e.target.value)} placeholder="Court / complex name" className={`mt-1 ${inp}`}/>
+            <label className="block col-span-2">
+              <span className="text-[11px] text-slate-500 font-semibold">Venue Address * <span className="text-slate-600 font-normal">(must be a valid Google Maps address)</span></span>
+              <input value={venue} onChange={e => setVenue(e.target.value)}
+                placeholder="e.g. Sport Planet, No.5 Jalan SS7/19, 47301 Petaling Jaya"
+                className={`mt-1 ${inp}`}/>
             </label>
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">State</span>

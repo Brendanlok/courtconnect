@@ -21,6 +21,11 @@ export interface UserProfile {
   bio?: string;
   available?: string;
   openToPlay?: boolean;
+  gender?: 'Male' | 'Female';
+  postcode?: string;
+  disciplineMMR?: Partial<Record<MatchType, number>>;
+  lookingForPartner?: boolean;
+  preferredFormats?: MatchType[];
   distKm?: number;
   joinedAt: string;
 }

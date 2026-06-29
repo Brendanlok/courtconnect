@@ -18,8 +18,11 @@ interface AppCtx {
   tournaments: Tournament[];
   addTournament: (t: Tournament) => void;
   registrations: Record<string, { registeredAt: string }>;
+  pendingRequests: Record<string, { requestedAt: string }>;
   registerTournament: (id: string) => void;
   unregisterTournament: (id: string) => void;
+  requestToJoin: (id: string) => void;
+  cancelRequest: (id: string) => void;
 }
 
 const Ctx = createContext<AppCtx>({} as AppCtx);
@@ -32,11 +35,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return ME;
   });
-  const [matches,       setMatches]       = useState<Match[]>(SEED_MATCHES);
-  const [conversations, setConversations] = useState<Conversation[]>(SEED_CONVS);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tournaments,   setTournaments]   = useState<Tournament[]>(SEED_TOURNAMENTS);
-  const [registrations, setRegistrations] = useState<Record<string, { registeredAt: string }>>({});
+  const [matches,         setMatches]         = useState<Match[]>(SEED_MATCHES);
+  const [conversations,   setConversations]   = useState<Conversation[]>(SEED_CONVS);
+  const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
+  const [tournaments,     setTournaments]     = useState<Tournament[]>(SEED_TOURNAMENTS);
+  const [registrations,   setRegistrations]   = useState<Record<string, { registeredAt: string }>>({});
+  const [pendingRequests, setPendingRequests] = useState<Record<string, { requestedAt: string }>>({});
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
@@ -72,9 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
   const totalUnread   = conversations.reduce((s, c) => s + c.unread, 0);
 
-  const addTournament = useCallback((t: Tournament) => {
-    setTournaments(ts => [t, ...ts]);
-  }, []);
+  const addTournament = useCallback((t: Tournament) => setTournaments(ts => [t, ...ts]), []);
 
   const registerTournament = useCallback((id: string) => {
     setRegistrations(r => ({ ...r, [id]: { registeredAt: new Date().toISOString() } }));
@@ -86,11 +88,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTournaments(ts => ts.map(t => t.id === id ? { ...t, currentPlayers: Math.max(0, t.currentPlayers - 1) } : t));
   }, []);
 
+  const requestToJoin = useCallback((id: string) => {
+    setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } }));
+  }, []);
+
+  const cancelRequest = useCallback((id: string) => {
+    setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; });
+  }, []);
+
   return (
     <Ctx.Provider value={{
       user, matches, addMatch, confirmMatch, disputeMatch, updateUser,
       conversations, setConversations, totalUnread, sidebarCollapsed, toggleSidebar,
-      tournaments, addTournament, registrations, registerTournament, unregisterTournament,
+      tournaments, addTournament,
+      registrations, pendingRequests,
+      registerTournament, unregisterTournament, requestToJoin, cancelRequest,
     }}>
       {children}
     </Ctx.Provider>

@@ -102,35 +102,62 @@ export default function Home() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">MMR</p>
-            <p className="text-3xl font-bold text-amber-400">{user.mmr.toLocaleString()}</p>
-            <p className="text-xs text-emerald-400 mt-0.5">▲ +42 this week</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">National Rank</p>
-            <p className="text-3xl font-bold">#{user.globalRank}</p>
-            <p className="text-xs text-emerald-400 mt-0.5">▲ +15 positions</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Win Rate</p>
-            <p className="text-3xl font-bold text-emerald-400">{winRate}%</p>
-            <p className="text-xs text-slate-500 mt-0.5">{user.stats.wins}W / {user.stats.losses}L</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Tier</p>
-            <TierBadge tier={user.tier} />
-            {nextName && (
-              <>
-                <p className="text-xs text-slate-500 mt-2">Next: {nextName} @ {threshold.toLocaleString()}</p>
-                <div className="mt-1.5 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full" style={{ width:`${progress}%` }} />
+        {(() => {
+          const dm = user.disciplineMMR ?? {};
+          const dmEntries = Object.entries(dm).filter(([,v]) => v != null) as [string, number][];
+          const avgMMR = dmEntries.length > 0
+            ? Math.round(dmEntries.reduce((s, [,v]) => s + v, 0) / dmEntries.length)
+            : user.mmr;
+          return (
+            <div className="space-y-3">
+              {/* MMR — wide card showing average + per-discipline */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">MMR</p>
+                <div className="flex items-center gap-4">
+                  <div className="shrink-0">
+                    <p className="text-3xl font-bold text-amber-400">{avgMMR.toLocaleString()}</p>
+                    <p className="text-xs text-emerald-400 mt-0.5">▲ +42 this week · avg</p>
+                  </div>
+                  {dmEntries.length > 0 && (
+                    <div className="flex gap-3 ml-auto">
+                      {dmEntries.map(([type, val]) => (
+                        <div key={type} className="text-center px-3 py-2 bg-slate-800 rounded-xl">
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">{type}</p>
+                          <p className="text-sm font-bold text-amber-400 mt-0.5">{val.toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">National Rank</p>
+                  <p className="text-2xl font-bold">#{user.globalRank}</p>
+                  <p className="text-xs text-emerald-400 mt-0.5">▲ +15 positions</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Win Rate</p>
+                  <p className="text-2xl font-bold text-emerald-400">{winRate}%</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{user.stats.wins}W / {user.stats.losses}L</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Tier</p>
+                  <TierBadge tier={user.tier} />
+                  {nextName && (
+                    <>
+                      <p className="text-xs text-slate-500 mt-2">→ {nextName} @ {threshold.toLocaleString()}</p>
+                      <div className="mt-1.5 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full" style={{ width:`${progress}%` }} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Chart + Recent matches */}
         <div className="grid md:grid-cols-2 gap-4">

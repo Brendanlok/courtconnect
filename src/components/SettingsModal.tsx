@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { X, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { MY_STATES } from '@/lib/utils';
+import { MY_STATES, AVAILABILITY_OPTIONS, postcodeToCity } from '@/lib/utils';
 import type { MalaysiaState } from '@/types';
 
 type DeleteStep = 'idle' | 'warn' | 'confirm';
@@ -13,8 +13,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [displayName, setDisplayName] = useState(user.displayName);
   const [bio,         setBio]         = useState(user.bio ?? '');
   const [state,       setState]       = useState<MalaysiaState>(user.state);
-  const [area,        setArea]        = useState(user.area);
-  const [available,   setAvailable]   = useState(user.available ?? '');
+  const [postcode,    setPostcode]    = useState(user.postcode ?? '');
+  const [availability,setAvailability]= useState<string[]>(
+    (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  );
   const [saved,       setSaved]       = useState(false);
   const [deleteStep,  setDeleteStep]  = useState<DeleteStep>('idle');
   const [deleteInput, setDeleteInput] = useState('');
@@ -22,9 +24,15 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
+  const city = postcodeToCity(postcode);
+
+  const toggleAvail = (id: string) =>
+    setAvailability(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const save = () => {
-    updateUser({ displayName, bio, state, area, available });
+    updateUser({ displayName, bio, state, postcode,
+      area: city ?? user.area,
+      available: availability.join(',') });
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 900);
   };
@@ -55,19 +63,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X size={18}/></button>
         </div>
 
-        <div className="p-5 space-y-3 max-h-[72vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto">
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Display Name</span>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)} className={`mt-1 ${inp}`}/>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Availability</span>
-              <input value={available} onChange={e => setAvailable(e.target.value)}
-                placeholder="e.g. Weekday evenings" className={`mt-1 ${inp}`}/>
-            </label>
-          </div>
+          {/* Name + Bio */}
+          <label className="block">
+            <span className="text-[11px] text-slate-500 font-semibold">Display Name</span>
+            <input value={displayName} onChange={e => setDisplayName(e.target.value)} className={`mt-1 ${inp}`}/>
+          </label>
 
           <label className="block">
             <span className="text-[11px] text-slate-500 font-semibold">Bio</span>
@@ -76,31 +78,67 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               className={`mt-1 ${inp} resize-none`}/>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">State</span>
-              <select value={state} onChange={e => setState(e.target.value as MalaysiaState)}
-                className={`mt-1 ${inp}`}>
-                {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Area / City</span>
-              <input value={area} onChange={e => setArea(e.target.value)}
-                placeholder="e.g. Petaling Jaya" className={`mt-1 ${inp}`}/>
-            </label>
+          {/* Location */}
+          <div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-2">Location</p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-[11px] text-slate-500">State</span>
+                <select value={state} onChange={e => setState(e.target.value as MalaysiaState)} className={`mt-1 ${inp}`}>
+                  {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-[11px] text-slate-500">Postcode</span>
+                <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
+                  placeholder="e.g. 47810" maxLength={5} className={`mt-1 ${inp} font-mono`}/>
+                {city && (
+                  <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+                    <span className="text-slate-500">→</span> {city}
+                  </p>
+                )}
+                {postcode.length === 5 && !city && (
+                  <p className="text-xs text-red-400 mt-1">Postcode not recognised</p>
+                )}
+              </label>
+            </div>
           </div>
 
+          {/* Availability checklist */}
+          <div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-2">Availability</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {AVAILABILITY_OPTIONS.map(opt => {
+                const checked = availability.includes(opt.id);
+                return (
+                  <button key={opt.id} type="button" onClick={() => toggleAvail(opt.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border text-left transition-colors
+                      ${checked
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+                        : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}>
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors
+                      ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
+                      {checked && <span className="text-[9px] text-white font-bold">✓</span>}
+                    </span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Username (read-only) */}
           <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-500">Username</span>
             <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
           </div>
 
-          <div className="border-t border-slate-800/80 pt-2">
+          {/* Delete account */}
+          <div className="border-t border-slate-800/80 pt-3">
             {deleteStep === 'idle' && (
               <button onClick={() => setDeleteStep('warn')}
-                className="flex items-center gap-1.5 text-xs text-red-500/70 hover:text-red-400 transition-colors">
-                <Trash2 size={12}/> Delete account
+                className="flex items-center gap-2 w-full px-3 py-2.5 border border-red-500/25 bg-red-500/5 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 rounded-xl text-xs font-medium transition-colors">
+                <Trash2 size={13}/> Delete account
               </button>
             )}
 
@@ -147,7 +185,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           </div>
         </div>
 
-        <div className="px-5 pb-5 flex gap-3">
+        <div className="px-5 pb-5 flex gap-3 border-t border-slate-800 pt-4">
           <button onClick={save}
             className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
             <Save size={14}/> Save
