@@ -4,33 +4,55 @@ import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { MY_STATES } from '@/lib/utils';
-import { Search, MapPin, ChevronDown } from 'lucide-react';
-import type { UserProfile, MalaysiaState } from '@/types';
+import { MY_STATES, TIER_STYLE } from '@/lib/utils';
+import { Search, MapPin, ChevronDown, ArrowUpDown } from 'lucide-react';
+import type { UserProfile, MalaysiaState, Tier } from '@/types';
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Friends'] as const;
 type Tab = typeof TABS[number];
+type SortKey = 'mmr' | 'winRate' | 'wins' | 'matches';
 
-const FRIENDS = ['p5', 'p7', 'p4']; // Wei Liang, Ahmad Rizal, Faiz
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'mmr',     label: 'MMR' },
+  { key: 'winRate', label: 'Win Rate' },
+  { key: 'wins',    label: 'Wins' },
+  { key: 'matches', label: 'Matches' },
+];
+
+const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
+
+const FRIENDS = ['p5', 'p7', 'p4'];
 
 export default function Leaderboard() {
   const { user } = useApp();
-  const [tab,      setTab]      = useState<Tab>('Nationwide');
-  const [query,    setQuery]    = useState('');
-  const [selState, setSelState] = useState<MalaysiaState>(user.state);
+  const [tab,       setTab]      = useState<Tab>('Nationwide');
+  const [query,     setQuery]    = useState('');
+  const [selState,  setSelState] = useState<MalaysiaState>(user.state);
   const [stateOpen, setStateOpen] = useState(false);
+  const [sortKey,   setSortKey]  = useState<SortKey>('mmr');
+  const [tierFilter,setTierFilter] = useState<Tier | 'All'>('All');
 
-  const all: UserProfile[] = [user, ...PLAYERS].sort((a, b) => a.globalRank - b.globalRank);
+  const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
+
+  const all: UserProfile[] = [user, ...PLAYERS];
 
   const list = all
     .filter(p => {
       if (tab === 'By State') return p.state === selState;
       if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
       if (tab === 'Friends')  return FRIENDS.includes(p.uid) || p.uid === 'me';
-      return true; // Nationwide
+      return true;
     })
+    .filter(p => tierFilter === 'All' || p.tier === tierFilter)
     .filter(p => p.displayName.toLowerCase().includes(query.toLowerCase()) || p.username.toLowerCase().includes(query.toLowerCase()))
-    .map((p, i, arr) => ({ ...p, tabRank: i + 1 }));
+    .sort((a, b) => {
+      if (sortKey === 'mmr')     return b.mmr - a.mmr;
+      if (sortKey === 'winRate') return winRate(b) - winRate(a);
+      if (sortKey === 'wins')    return b.stats.wins - a.stats.wins;
+      if (sortKey === 'matches') return b.stats.totalMatches - a.stats.totalMatches;
+      return 0;
+    })
+    .map((p, i) => ({ ...p, tabRank: i + 1 }));
 
   const top3 = list.slice(0, 3);
   const rest  = list.slice(3);
@@ -81,12 +103,45 @@ export default function Leaderboard() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-        <input value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Search player or @username…"
-          className="w-full pl-8 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+      {/* Search + Sort + Tier filter */}
+      <div className="space-y-2.5">
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+            <input value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="Search player or @username…"
+              className="w-full pl-8 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          </div>
+          {/* Sort */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ArrowUpDown size={13} className="text-slate-500"/>
+            <div className="flex gap-1">
+              {SORT_OPTIONS.map(s => (
+                <button key={s.key} onClick={() => setSortKey(s.key)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                    ${sortKey === s.key ? 'bg-slate-700 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tier filter */}
+        <div className="flex gap-1 flex-wrap">
+          {TIERS.map(t => {
+            const s = t !== 'All' ? TIER_STYLE[t] : null;
+            return (
+              <button key={t} onClick={() => setTierFilter(t)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                  ${tierFilter === t
+                    ? t === 'All' ? 'bg-slate-600 border-slate-500 text-white' : `${s!.bg} ${s!.text} ${s!.border}`
+                    : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+                {t !== 'All' && s ? `${s.icon} ` : ''}{t}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -119,7 +174,8 @@ export default function Leaderboard() {
           {/* Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[44px_1fr_auto_auto] gap-3 px-4 py-2.5 bg-slate-800/50 text-xs text-slate-500 uppercase tracking-wide border-b border-slate-800">
-              <span>#</span><span>Player</span><span>Tier</span><span className="text-right">MMR</span>
+              <span>#</span><span>Player</span><span>Tier</span>
+              <span className="text-right">{SORT_OPTIONS.find(s => s.key === sortKey)?.label ?? 'MMR'}</span>
             </div>
             <div className="divide-y divide-slate-800/60">
               {(query ? list : rest).map(p => {
@@ -143,7 +199,12 @@ export default function Leaderboard() {
                       </div>
                     </div>
                     <TierBadge tier={p.tier}/>
-                    <p className="text-sm font-bold text-emerald-400 text-right">{p.mmr.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-emerald-400 text-right">
+                      {sortKey === 'mmr'     && p.mmr.toLocaleString()}
+                      {sortKey === 'winRate' && `${Math.round(winRate(p) * 100)}%`}
+                      {sortKey === 'wins'    && `${p.stats.wins}W`}
+                      {sortKey === 'matches' && `${p.stats.totalMatches}`}
+                    </p>
                   </div>
                 );
               })}

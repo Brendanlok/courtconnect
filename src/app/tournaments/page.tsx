@@ -156,20 +156,7 @@ function TournamentRow({ tournament: t, myMMR, registered, onRegister }: {
           {t.bracket && t.status !== 'Upcoming' && (
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Live Bracket</p>
-              <div className="overflow-x-auto">
-                <div className="flex gap-5 min-w-max items-start">
-                  {[...new Set(t.bracket.map(b => b.round))].sort().map(round => {
-                    const matches = t.bracket!.filter(b => b.round === round);
-                    const labels  = ['QF', 'SF', 'Final'];
-                    return (
-                      <div key={round} className="flex flex-col gap-2.5">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wide text-center">{labels[round-1] ?? `R${round}`}</p>
-                        {matches.map(m => <BracketCard key={m.id} match={m}/>)}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <BracketView bracket={t.bracket} />
             </div>
           )}
 
@@ -199,18 +186,108 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BracketCard({ match: m }: { match: BracketMatch }) {
-  const isLive = !m.winner && m.player1 !== 'TBD' && m.player2 !== 'TBD' && !!m.player1 && !!m.player2;
+// ─── Bracket tree ──────────────────────────────────────────────────────────
+
+const CARD_H  = 72;   // px — height of one match card (two player rows)
+const CARD_W  = 180;  // px
+const BASE_GAP = 12;  // gap between matches in round 1
+const CONN_W  = 36;   // width of SVG connector strip
+
+function roundGap(ri: number): number {
+  return ri === 0 ? BASE_GAP : CARD_H + 2 * roundGap(ri - 1);
+}
+
+function roundTopPad(ri: number): number {
+  if (ri === 0) return 0;
+  const prevGap = roundGap(ri - 1);
+  const prevPad = roundTopPad(ri - 1);
+  const f1 = prevPad + CARD_H / 2;
+  const f2 = f1 + CARD_H + prevGap;
+  return (f1 + f2) / 2 - CARD_H / 2;
+}
+
+function BracketView({ bracket }: { bracket: BracketMatch[] }) {
+  const rounds      = [...new Set(bracket.map(b => b.round))].sort();
+  const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
+  const r1Count     = byRound[0]?.length ?? 1;
+  const totalH      = r1Count * CARD_H + (r1Count - 1) * BASE_GAP;
+  const ROUND_LABELS = ['QF', 'SF', 'Final', 'R4', 'R5'];
+
   return (
-    <div className={`w-44 rounded-xl overflow-hidden border text-sm
-      ${isLive ? 'border-amber-500/40' : m.winner ? 'border-slate-700' : 'border-slate-800'}`}>
+    <div className="overflow-x-auto pb-2">
+      {/* Round labels row */}
+      <div className="flex mb-2">
+        {byRound.map((_, ri) => (
+          <div key={ri} className="flex items-center">
+            <div style={{ width: CARD_W }} className="text-center">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                {ROUND_LABELS[rounds[ri] - 1] ?? `R${rounds[ri]}`}
+              </span>
+            </div>
+            {ri < byRound.length - 1 && <div style={{ width: CONN_W }} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Bracket body */}
+      <div className="flex" style={{ height: totalH }}>
+        {byRound.map((matches, ri) => {
+          const pad  = roundTopPad(ri);
+          const gap  = roundGap(ri);
+          const isLast = ri === byRound.length - 1;
+
+          return (
+            <div key={ri} className="flex items-start shrink-0">
+              {/* Match cards column */}
+              <div className="flex flex-col shrink-0" style={{ paddingTop: pad, gap }}>
+                {matches.map(m => <BracketCard key={m.id} match={m} />)}
+              </div>
+
+              {/* SVG connector to next round */}
+              {!isLast && (
+                <svg width={CONN_W} height={totalH} className="shrink-0 overflow-visible">
+                  {Array.from({ length: Math.ceil(matches.length / 2) }).map((_, i) => {
+                    const m1Y = pad + i * 2 * (CARD_H + gap) + CARD_H / 2;
+                    const m2Y = m1Y + CARD_H + gap;
+                    const midY = (m1Y + m2Y) / 2;
+                    const cx  = CONN_W / 2;
+                    const color = '#334155';
+                    return (
+                      <g key={i}>
+                        <line x1={0}   y1={m1Y}  x2={cx}  y2={m1Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={0}   y1={m2Y}  x2={cx}  y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={cx}  y1={m1Y}  x2={cx}  y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={cx}  y1={midY} x2={CONN_W} y2={midY} stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BracketCard({ match: m }: { match: BracketMatch }) {
+  const isLive = !m.winner && !!m.player1 && m.player1 !== 'TBD' && !!m.player2 && m.player2 !== 'TBD';
+  return (
+    <div style={{ width: CARD_W, height: CARD_H }}
+      className={`rounded-xl overflow-hidden border text-sm flex flex-col
+        ${isLive ? 'border-amber-500/50' : m.winner ? 'border-slate-700' : 'border-slate-800/80'}`}>
       {[m.player1, m.player2].map((name, i) => (
-        <div key={i}
-          className={`px-3 py-2 flex items-center justify-between border-b last:border-0 border-slate-800
-            ${name === m.winner ? 'bg-emerald-500/10 text-emerald-400 font-semibold' : 'text-slate-300'}
-            ${!name || name === 'TBD' ? 'text-slate-600 italic' : ''}`}>
-          <span className="truncate">{name || 'TBD'}</span>
-          {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse ml-1 shrink-0"/>}
+        <div key={i} className={`flex-1 px-3 flex items-center justify-between border-b last:border-0 border-slate-800
+          ${name === m.winner ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+            : !name || name === 'TBD' ? 'text-slate-600' : 'text-slate-300'}`}>
+          <span className="truncate text-xs">{name || 'TBD'}</span>
+          <div className="flex items-center gap-1.5 shrink-0 ml-1">
+            {m.score && name === m.winner && (
+              <span className="text-[9px] text-slate-500">{m.score.split(',')[i === 0 ? 0 : m.score.split(',').length > 1 ? 1 : 0]?.trim()}</span>
+            )}
+            {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"/>}
+          </div>
         </div>
       ))}
     </div>

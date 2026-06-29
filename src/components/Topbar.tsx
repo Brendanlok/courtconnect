@@ -33,7 +33,7 @@ export function Topbar() {
 
   return (
     <>
-      <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-5 shrink-0">
+      <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-5 shrink-0 relative z-30">
         {/* Left: location context — hidden on mobile */}
         <div className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400">
           <MapPin size={13} className="text-emerald-400" />
