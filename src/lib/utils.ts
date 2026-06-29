@@ -1,4 +1,4 @@
-import type { Tier } from '@/types';
+import type { Tier, MalaysiaState } from '@/types';
 
 export function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
@@ -87,50 +87,128 @@ export const MATCH_TYPE_LABEL: Record<string, string> = {
   MD: "Men's Doubles", WD: "Women's Doubles", MX: "Mixed Doubles",
 };
 
-export const AVAILABILITY_OPTIONS = [
-  { id: 'mon_fri_morning',  label: 'Mon–Fri Mornings'  },
-  { id: 'mon_fri_evening',  label: 'Mon–Fri Evenings'  },
-  { id: 'sat_morning',      label: 'Sat Mornings'      },
-  { id: 'sat_afternoon',    label: 'Sat Afternoons'    },
-  { id: 'sat_evening',      label: 'Sat Evenings'      },
-  { id: 'sun_morning',      label: 'Sun Mornings'      },
-  { id: 'sun_afternoon',    label: 'Sun Afternoons'    },
-  { id: 'sun_evening',      label: 'Sun Evenings'      },
-  { id: 'public_holidays',  label: 'Public Holidays'   },
-];
+// ─── Availability grid ────────────────────────────────────────────────────────
+
+export const DAY_IDS    = ['mon','tue','wed','thu','fri','sat','sun'] as const;
+export const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as const;
+export const SLOT_IDS   = ['6_9am','9am_12pm','12_3pm','3_6pm','6_9pm','9pm_12am'] as const;
+export const SLOT_LABELS = ['6–9am','9–12pm','12–3pm','3–6pm','6–9pm','9–12am'] as const;
 
 export function formatAvailability(available: string): string {
   if (!available) return '';
   const ids = available.split(',').map(s => s.trim()).filter(Boolean);
-  const labels = ids.map(id => AVAILABILITY_OPTIONS.find(o => o.id === id)?.label ?? id);
-  return labels.join(', ');
+  const byDay: Record<string, string[]> = {};
+  for (const id of ids) {
+    const day = id.split('_')[0];
+    const dayIdx = (DAY_IDS as readonly string[]).indexOf(day);
+    if (dayIdx >= 0) {
+      const slotKey = id.slice(day.length + 1);
+      const slotIdx = (SLOT_IDS as readonly string[]).indexOf(slotKey);
+      const slotLabel = slotIdx >= 0 ? SLOT_LABELS[slotIdx] : slotKey;
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(slotLabel);
+    }
+  }
+  if (Object.keys(byDay).length === 0) return ids.join(', ');
+  return Object.entries(byDay)
+    .map(([day, slots]) => `${DAY_LABELS[(DAY_IDS as readonly string[]).indexOf(day)]}: ${slots.join(', ')}`)
+    .join(' · ');
 }
 
-const PC_MAP: Record<string, string> = {
-  '01':'Kangar','02':'Arau',
-  '05':'Alor Setar','06':'Pendang','07':'Langkawi','08':'Sungai Petani','09':'Kulim',
-  '10':'Georgetown','11':'Penang Island','12':'Kepala Batas','13':'Penang','14':'Bukit Mertajam',
-  '15':'Kota Bharu','16':'Pasir Mas','17':'Tanah Merah','18':'Gua Musang',
-  '20':'Kuala Terengganu','21':'Kuala Terengganu','22':'Besut','23':'Dungun','24':'Kemaman',
-  '25':'Kuantan','26':'Temerloh','27':'Jerantut','28':'Mentakab',
-  '30':'Ipoh','31':'Ipoh','32':'Teluk Intan','33':'Batu Gajah','34':'Taiping','35':'Slim River','36':'Teluk Intan',
-  '40':'Shah Alam','41':'Klang','42':'Port Klang','43':'Kajang','44':'Rawang',
-  '45':'Tanjung Karang','46':'Petaling Jaya','47':'Subang Jaya','48':'Kuala Selangor',
-  '50':'City Centre, KL','51':'Kuala Lumpur','52':'Kepong','53':'Setapak',
-  '54':'Titiwangsa','55':'Chow Kit','56':'Cheras','57':'Cheras',
-  '58':'Bangsar','59':'Bangsar South','60':'Sentul','62':'Putrajaya',
-  '63':'Ampang','68':'Ampang','69':'Semenyih',
-  '70':'Seremban','71':'Port Dickson','72':'Kuala Pilah','73':'Tampin',
-  '75':'Melaka City','76':'Alor Gajah','77':'Jasin',
-  '79':'Pontian','80':'Johor Bahru','81':'Pasir Gudang','82':'Kota Tinggi',
-  '83':'Segamat','84':'Muar','85':'Batu Pahat','86':'Kluang',
-  '87':'Labuan','88':'Kota Kinabalu','89':'Keningau','90':'Sandakan','91':'Tawau',
-  '93':'Kuching','94':'Sri Aman','95':'Sibu','96':'Miri','97':'Bintulu','98':'Limbang',
+// ─── Postcode lookup ──────────────────────────────────────────────────────────
+
+const PC_LOC: Record<string, { city: string; state: MalaysiaState }> = {
+  '01':{ city:'Kangar',           state:'Perlis'          },
+  '02':{ city:'Arau',             state:'Perlis'          },
+  '05':{ city:'Alor Setar',       state:'Kedah'           },
+  '06':{ city:'Pendang',          state:'Kedah'           },
+  '07':{ city:'Langkawi',         state:'Kedah'           },
+  '08':{ city:'Sungai Petani',    state:'Kedah'           },
+  '09':{ city:'Kulim',            state:'Kedah'           },
+  '10':{ city:'Georgetown',       state:'Penang'          },
+  '11':{ city:'Penang Island',    state:'Penang'          },
+  '12':{ city:'Kepala Batas',     state:'Penang'          },
+  '13':{ city:'Penang',           state:'Penang'          },
+  '14':{ city:'Bukit Mertajam',   state:'Penang'          },
+  '15':{ city:'Kota Bharu',       state:'Kelantan'        },
+  '16':{ city:'Pasir Mas',        state:'Kelantan'        },
+  '17':{ city:'Tanah Merah',      state:'Kelantan'        },
+  '18':{ city:'Gua Musang',       state:'Kelantan'        },
+  '20':{ city:'Kuala Terengganu', state:'Terengganu'      },
+  '21':{ city:'Kuala Terengganu', state:'Terengganu'      },
+  '22':{ city:'Besut',            state:'Terengganu'      },
+  '23':{ city:'Dungun',           state:'Terengganu'      },
+  '24':{ city:'Kemaman',          state:'Terengganu'      },
+  '25':{ city:'Kuantan',          state:'Pahang'          },
+  '26':{ city:'Temerloh',         state:'Pahang'          },
+  '27':{ city:'Jerantut',         state:'Pahang'          },
+  '28':{ city:'Mentakab',         state:'Pahang'          },
+  '30':{ city:'Ipoh',             state:'Perak'           },
+  '31':{ city:'Ipoh',             state:'Perak'           },
+  '32':{ city:'Teluk Intan',      state:'Perak'           },
+  '33':{ city:'Batu Gajah',       state:'Perak'           },
+  '34':{ city:'Taiping',          state:'Perak'           },
+  '35':{ city:'Slim River',       state:'Perak'           },
+  '36':{ city:'Teluk Intan',      state:'Perak'           },
+  '40':{ city:'Shah Alam',        state:'Selangor'        },
+  '41':{ city:'Klang',            state:'Selangor'        },
+  '42':{ city:'Port Klang',       state:'Selangor'        },
+  '43':{ city:'Kajang',           state:'Selangor'        },
+  '44':{ city:'Rawang',           state:'Selangor'        },
+  '45':{ city:'Tanjung Karang',   state:'Selangor'        },
+  '46':{ city:'Petaling Jaya',    state:'Selangor'        },
+  '47':{ city:'Subang Jaya',      state:'Selangor'        },
+  '48':{ city:'Kuala Selangor',   state:'Selangor'        },
+  '50':{ city:'City Centre',      state:'Kuala Lumpur'    },
+  '51':{ city:'Kuala Lumpur',     state:'Kuala Lumpur'    },
+  '52':{ city:'Kepong',           state:'Kuala Lumpur'    },
+  '53':{ city:'Setapak',          state:'Kuala Lumpur'    },
+  '54':{ city:'Titiwangsa',       state:'Kuala Lumpur'    },
+  '55':{ city:'Chow Kit',         state:'Kuala Lumpur'    },
+  '56':{ city:'Cheras',           state:'Kuala Lumpur'    },
+  '57':{ city:'Cheras',           state:'Kuala Lumpur'    },
+  '58':{ city:'Bangsar',          state:'Kuala Lumpur'    },
+  '59':{ city:'Bangsar South',    state:'Kuala Lumpur'    },
+  '60':{ city:'Sentul',           state:'Kuala Lumpur'    },
+  '62':{ city:'Putrajaya',        state:'Putrajaya'       },
+  '63':{ city:'Ampang',           state:'Selangor'        },
+  '68':{ city:'Ampang',           state:'Selangor'        },
+  '69':{ city:'Semenyih',         state:'Selangor'        },
+  '70':{ city:'Seremban',         state:'Negeri Sembilan' },
+  '71':{ city:'Port Dickson',     state:'Negeri Sembilan' },
+  '72':{ city:'Kuala Pilah',      state:'Negeri Sembilan' },
+  '73':{ city:'Tampin',           state:'Negeri Sembilan' },
+  '75':{ city:'Melaka City',      state:'Melaka'          },
+  '76':{ city:'Alor Gajah',       state:'Melaka'          },
+  '77':{ city:'Jasin',            state:'Melaka'          },
+  '79':{ city:'Pontian',          state:'Johor'           },
+  '80':{ city:'Johor Bahru',      state:'Johor'           },
+  '81':{ city:'Pasir Gudang',     state:'Johor'           },
+  '82':{ city:'Kota Tinggi',      state:'Johor'           },
+  '83':{ city:'Segamat',          state:'Johor'           },
+  '84':{ city:'Muar',             state:'Johor'           },
+  '85':{ city:'Batu Pahat',       state:'Johor'           },
+  '86':{ city:'Kluang',           state:'Johor'           },
+  '87':{ city:'Labuan',           state:'Labuan'          },
+  '88':{ city:'Kota Kinabalu',    state:'Sabah'           },
+  '89':{ city:'Keningau',         state:'Sabah'           },
+  '90':{ city:'Sandakan',         state:'Sabah'           },
+  '91':{ city:'Tawau',            state:'Sabah'           },
+  '93':{ city:'Kuching',          state:'Sarawak'         },
+  '94':{ city:'Sri Aman',         state:'Sarawak'         },
+  '95':{ city:'Sibu',             state:'Sarawak'         },
+  '96':{ city:'Miri',             state:'Sarawak'         },
+  '97':{ city:'Bintulu',          state:'Sarawak'         },
+  '98':{ city:'Limbang',          state:'Sarawak'         },
 };
 
-export function postcodeToCity(postcode: string): string | null {
+export function postcodeToLocation(postcode: string): { city: string; state: MalaysiaState } | null {
   if (!/^\d{5}$/.test(postcode.trim())) return null;
-  return PC_MAP[postcode.slice(0, 2)] ?? null;
+  return PC_LOC[postcode.slice(0, 2)] ?? null;
+}
+
+export function postcodeToCity(postcode: string): string | null {
+  return postcodeToLocation(postcode)?.city ?? null;
 }
 
 export const MY_STATES = [

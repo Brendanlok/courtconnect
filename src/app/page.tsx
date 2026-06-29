@@ -5,7 +5,7 @@ import { MMR_HISTORY } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
-import { tierProgress, nextTier } from '@/lib/utils';
+import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
 import type { Match, Tournament } from '@/types';
@@ -28,33 +28,62 @@ export default function Home() {
 
   return (
     <>
-      <div className="space-y-6">
-        {/* Greeting */}
-        <div>
-          <h1 className="text-2xl font-bold">
-            Welcome back, <span className="text-emerald-400">{user.displayName.split(' ')[0]}</span> 👋
-          </h1>
-          {streak >= 2 && (
-            <p className="flex items-center gap-1.5 text-sm text-slate-400 mt-1">
-              <Flame size={14} className="text-orange-400" />
-              <span className="text-orange-400 font-semibold">{streak}-match win streak</span> — you&apos;re on fire!
-            </p>
-          )}
-        </div>
-
-        {/* Open to Play — compact toggle row */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
-          <div className="flex items-center gap-2.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-            <span className={`text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-400'}`}>
-              Open to Play{user.openToPlay ? ' — visible to nearby players' : ''}
-            </span>
+      <div className="space-y-4">
+        {/* Greeting + linked toggles */}
+        <div className="space-y-2">
+          <div>
+            <h1 className="text-2xl font-bold">
+              Welcome back, <span className="text-emerald-400">{user.displayName.split(' ')[0]}</span> 👋
+            </h1>
+            {streak >= 2 && (
+              <p className="flex items-center gap-1.5 text-sm text-slate-400 mt-1">
+                <Flame size={14} className="text-orange-400" />
+                <span className="text-orange-400 font-semibold">{streak}-match win streak</span> — you&apos;re on fire!
+              </p>
+            )}
           </div>
-          <button
-            onClick={() => updateUser({ openToPlay: !user.openToPlay })}
-            className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.openToPlay ? 'translate-x-5' : 'translate-x-0'}`} />
-          </button>
+
+          {/* Open to Play toggle */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
+            <div className="flex items-center gap-2.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+              <span className={`text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-400'}`}>
+                Open to Play{user.openToPlay ? ' — visible to nearby players' : ''}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                const next = !user.openToPlay;
+                updateUser({ openToPlay: next, ...(!next ? { lookingForPartner: false } : {}) });
+              }}
+              className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+              <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.openToPlay ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {/* Open to Partner toggle (linked) */}
+          <div className={`flex items-center justify-between px-4 py-2.5 bg-slate-900 border rounded-xl transition-opacity
+            ${user.openToPlay ? 'border-slate-800 opacity-100' : 'border-slate-800/50 opacity-40 pointer-events-none'}`}>
+            <div className="flex items-center gap-2.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${user.lookingForPartner ? 'bg-violet-400 animate-pulse' : 'bg-slate-600'}`} />
+              <div>
+                <span className={`text-sm ${user.lookingForPartner ? 'text-violet-300' : 'text-slate-400'}`}>
+                  Open to Partner
+                </span>
+                {!user.openToPlay && (
+                  <p className="text-[10px] text-slate-600">Requires Open to Play</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const next = !user.lookingForPartner;
+                updateUser({ lookingForPartner: next, ...(next ? { openToPlay: true } : {}) });
+              }}
+              className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.lookingForPartner ? 'bg-violet-500' : 'bg-slate-600'}`}>
+              <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.lookingForPartner ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
         </div>
 
         {/* Pending verification banner */}
@@ -133,25 +162,25 @@ export default function Home() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">National Rank</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium min-h-[2.5rem] leading-tight">Nat. Rank</p>
                   <p className="text-2xl font-bold">#{user.globalRank}</p>
-                  <p className="text-xs text-emerald-400 mt-0.5">▲ +15 positions</p>
+                  <p className="text-xs text-emerald-400 mt-0.5">▲ +15</p>
                 </div>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Win Rate</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium min-h-[2.5rem] leading-tight">Win Rate</p>
                   <p className="text-2xl font-bold text-emerald-400">{winRate}%</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{user.stats.wins}W / {user.stats.losses}L</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{user.stats.wins}W {user.stats.losses}L</p>
                 </div>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Tier</p>
-                  <TierBadge tier={user.tier} />
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium min-h-[2.5rem] leading-tight">Tier</p>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-base font-bold ${TIER_STYLE[user.tier].text}`}>{TIER_STYLE[user.tier].icon}</span>
+                    <span className={`text-sm font-bold ${TIER_STYLE[user.tier].text}`}>{user.tier}</span>
+                  </div>
                   {nextName && (
-                    <>
-                      <p className="text-xs text-slate-500 mt-2">→ {nextName} @ {threshold.toLocaleString()}</p>
-                      <div className="mt-1.5 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full" style={{ width:`${progress}%` }} />
-                      </div>
-                    </>
+                    <div className="mt-1.5 h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${TIER_STYLE[user.tier].bg.replace('/20','')}`} style={{ width:`${progress}%` }} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -160,7 +189,7 @@ export default function Home() {
         })()}
 
         {/* Chart + Recent matches */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-3">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold flex items-center gap-2">

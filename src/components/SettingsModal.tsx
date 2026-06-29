@@ -2,8 +2,7 @@
 import { useState } from 'react';
 import { X, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { MY_STATES, AVAILABILITY_OPTIONS, postcodeToCity } from '@/lib/utils';
-import type { MalaysiaState } from '@/types';
+import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation } from '@/lib/utils';
 
 type DeleteStep = 'idle' | 'warn' | 'confirm';
 
@@ -12,7 +11,6 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const [displayName, setDisplayName] = useState(user.displayName);
   const [bio,         setBio]         = useState(user.bio ?? '');
-  const [state,       setState]       = useState<MalaysiaState>(user.state);
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
   const [availability,setAvailability]= useState<string[]>(
     (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
@@ -24,15 +22,18 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
-  const city = postcodeToCity(postcode);
+  const location = postcodeToLocation(postcode);
 
   const toggleAvail = (id: string) =>
     setAvailability(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const save = () => {
-    updateUser({ displayName, bio, state, postcode,
-      area: city ?? user.area,
-      available: availability.join(',') });
+    updateUser({
+      displayName, bio, postcode,
+      area:  location?.city  ?? user.area,
+      state: location?.state ?? user.state,
+      available: availability.join(','),
+    });
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 900);
   };
@@ -65,12 +66,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
         <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto">
 
-          {/* Name + Bio */}
+          {/* Name */}
           <label className="block">
             <span className="text-[11px] text-slate-500 font-semibold">Display Name</span>
             <input value={displayName} onChange={e => setDisplayName(e.target.value)} className={`mt-1 ${inp}`}/>
           </label>
 
+          {/* Bio */}
           <label className="block">
             <span className="text-[11px] text-slate-500 font-semibold">Bio</span>
             <textarea value={bio} onChange={e => setBio(e.target.value)} rows={2}
@@ -78,53 +80,59 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               className={`mt-1 ${inp} resize-none`}/>
           </label>
 
-          {/* Location */}
+          {/* Postcode → auto-fills city + state */}
           <div>
-            <p className="text-[11px] text-slate-500 font-semibold mb-2">Location</p>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-[11px] text-slate-500">State</span>
-                <select value={state} onChange={e => setState(e.target.value as MalaysiaState)} className={`mt-1 ${inp}`}>
-                  {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-[11px] text-slate-500">Postcode</span>
-                <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
-                  placeholder="e.g. 47810" maxLength={5} className={`mt-1 ${inp} font-mono`}/>
-                {city && (
-                  <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
-                    <span className="text-slate-500">→</span> {city}
-                  </p>
-                )}
-                {postcode.length === 5 && !city && (
-                  <p className="text-xs text-red-400 mt-1">Postcode not recognised</p>
-                )}
-              </label>
-            </div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Location</p>
+            <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
+              placeholder="Enter 5-digit postcode, e.g. 47810" maxLength={5}
+              className={`${inp} font-mono`}/>
+            {location ? (
+              <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1.5">
+                <span className="text-slate-500">📍</span>
+                <span className="font-semibold">{location.city}</span>
+                <span className="text-slate-500">·</span>
+                <span>{location.state}</span>
+              </p>
+            ) : postcode.length === 5 ? (
+              <p className="text-xs text-red-400 mt-1.5">Postcode not recognised</p>
+            ) : postcode.length > 0 ? (
+              <p className="text-xs text-slate-600 mt-1.5">Enter all 5 digits</p>
+            ) : null}
           </div>
 
-          {/* Availability checklist */}
+          {/* Availability grid: 7 days × 6 time slots */}
           <div>
             <p className="text-[11px] text-slate-500 font-semibold mb-2">Availability</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {AVAILABILITY_OPTIONS.map(opt => {
-                const checked = availability.includes(opt.id);
-                return (
-                  <button key={opt.id} type="button" onClick={() => toggleAvail(opt.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border text-left transition-colors
-                      ${checked
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
-                        : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}>
-                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors
-                      ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600'}`}>
-                      {checked && <span className="text-[9px] text-white font-bold">✓</span>}
-                    </span>
-                    {opt.label}
-                  </button>
-                );
-              })}
+            <div className="space-y-1">
+              {/* Column headers */}
+              <div className="flex gap-0.5 ml-7">
+                {SLOT_LABELS.map(l => (
+                  <div key={l} className="flex-1 text-center text-[8px] text-slate-600 leading-tight px-0.5">{l}</div>
+                ))}
+              </div>
+              {/* Day rows */}
+              {(DAY_IDS as readonly string[]).map((day, di) => (
+                <div key={day} className="flex items-center gap-0.5">
+                  <span className="text-[10px] text-slate-500 w-6 shrink-0 font-medium">{DAY_LABELS[di]}</span>
+                  {(SLOT_IDS as readonly string[]).map(slot => {
+                    const id = `${day}_${slot}`;
+                    const on = availability.includes(id);
+                    return (
+                      <button key={slot} type="button" onClick={() => toggleAvail(id)}
+                        className={`flex-1 h-6 rounded text-[9px] font-bold transition-colors border
+                          ${on
+                            ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400'
+                            : 'bg-slate-800/50 border-slate-700/40 text-slate-700 hover:border-slate-600 hover:text-slate-500'}`}>
+                        {on ? '✓' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
+            {availability.length > 0 && (
+              <p className="text-[10px] text-slate-600 mt-1.5">{availability.length} slot{availability.length !== 1 ? 's' : ''} selected</p>
+            )}
           </div>
 
           {/* Username (read-only) */}

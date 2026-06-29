@@ -10,7 +10,6 @@ import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier, MatchType } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const PARTNER_FORMATS: ('All' | 'MD' | 'WD' | 'MX')[] = ['All','MD','WD','MX'];
 const TABS = ['Players', 'Partner Finder'] as const;
 
 export default function Players() {
@@ -168,7 +167,12 @@ function PlayerRow({ player: p, myMMR, isMe }: { player: UserProfile; myMMR: num
 // ─── Partner Finder ───────────────────────────────────────────────────────────
 
 function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p: Partial<UserProfile>) => void }) {
-  const [formatFilter, setFormatFilter] = useState<'All' | 'MD' | 'WD' | 'MX'>('All');
+  const partnerFormats: ('All' | MatchType)[] =
+    user.gender === 'Male'   ? ['All', 'MD', 'MX'] :
+    user.gender === 'Female' ? ['All', 'WD', 'MX'] :
+    ['All', 'MD', 'WD', 'MX'];
+
+  const [formatFilter, setFormatFilter] = useState<'All' | MatchType>('All');
   const [sent, setSent] = useState<string[]>([]);
 
   const allPlayers = [user, ...PLAYERS];
@@ -177,31 +181,52 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
     if (p.uid === 'me') return false;
     if (!p.lookingForPartner) return false;
     if (formatFilter === 'All') return true;
-    return (p.preferredFormats ?? []).includes(formatFilter as MatchType);
+    if (formatFilter === 'MD') return p.gender === 'Male'   && (p.preferredFormats ?? []).includes('MD');
+    if (formatFilter === 'WD') return p.gender === 'Female' && (p.preferredFormats ?? []).includes('WD');
+    return (p.preferredFormats ?? []).includes(formatFilter);
   });
 
   const sendRequest = (uid: string) => setSent(prev => [...prev, uid]);
 
   return (
     <div className="space-y-4">
-      {/* Your partner-seeking toggle */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border border-slate-800 rounded-2xl">
-        <div>
-          <p className="text-sm font-semibold">Looking for a doubles partner</p>
-          <p className="text-xs text-slate-500 mt-0.5">Let others know you're open to teaming up</p>
+      {/* Linked toggles: Open to Play + Open to Partner */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}/>
+            <span className={`text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-400'}`}>Open to Play</span>
+          </div>
+          <button onClick={() => {
+            const next = !user.openToPlay;
+            updateUser({ openToPlay: next, ...(!next ? { lookingForPartner: false } : {}) });
+          }} className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.openToPlay ? 'translate-x-5' : 'translate-x-0'}`}/>
+          </button>
         </div>
-        <button onClick={() => updateUser({ lookingForPartner: !user.lookingForPartner })}
-          className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0
-            ${user.lookingForPartner ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-          <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200
-            ${user.lookingForPartner ? 'translate-x-5' : 'translate-x-0'}`}/>
-        </button>
+
+        <div className={`flex items-center justify-between px-4 py-2.5 bg-slate-900 border rounded-xl transition-opacity
+          ${user.openToPlay ? 'border-slate-800 opacity-100' : 'border-slate-800/50 opacity-40 pointer-events-none'}`}>
+          <div className="flex items-center gap-2.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${user.lookingForPartner ? 'bg-violet-400 animate-pulse' : 'bg-slate-600'}`}/>
+            <div>
+              <span className={`text-sm ${user.lookingForPartner ? 'text-violet-300' : 'text-slate-400'}`}>Open to Partner</span>
+              {!user.openToPlay && <p className="text-[10px] text-slate-600">Requires Open to Play</p>}
+            </div>
+          </div>
+          <button onClick={() => {
+            const next = !user.lookingForPartner;
+            updateUser({ lookingForPartner: next, ...(next ? { openToPlay: true } : {}) });
+          }} className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.lookingForPartner ? 'bg-violet-500' : 'bg-slate-600'}`}>
+            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.lookingForPartner ? 'translate-x-5' : 'translate-x-0'}`}/>
+          </button>
+        </div>
       </div>
 
-      {/* Format filter */}
+      {/* Format filter — gender-aware */}
       <div className="flex items-center gap-2 flex-wrap">
         <Filter size={13} className="text-slate-500"/>
-        {PARTNER_FORMATS.map(f => (
+        {partnerFormats.map(f => (
           <button key={f} onClick={() => setFormatFilter(f)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors
               ${formatFilter === f
@@ -246,13 +271,16 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
                     </p>
                     {p.bio && <p className="text-xs text-slate-400 mt-1">{p.bio}</p>}
                   </div>
-                  <button onClick={() => sendRequest(p.uid)} disabled={isSent}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shrink-0 transition-colors
-                      ${isSent
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
-                    {isSent ? <><Check size={12}/> Sent</> : 'Connect'}
-                  </button>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <button onClick={() => sendRequest(p.uid)} disabled={isSent}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors
+                        ${isSent
+                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default'
+                          : 'bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 text-white'}`}>
+                      {isSent ? <><Check size={12}/> Request Sent</> : 'Send Request'}
+                    </button>
+                    {!isSent && <p className="text-[9px] text-slate-600">Sends a partner request</p>}
+                  </div>
                 </div>
 
                 {/* Formats + MMR */}
