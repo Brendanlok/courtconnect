@@ -28,7 +28,7 @@ export function Topbar() {
 
   const goToProfile = () => {
     setMenuOpen(false);
-    router.push(`/players/${user.username}`);
+    router.push(`/players/${user.username}/`);
   };
 
   return (

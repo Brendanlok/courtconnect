@@ -1,17 +1,15 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { CONVERSATIONS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { timeAgo } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft } from 'lucide-react';
-import type { Conversation, Message } from '@/types';
+import type { Message } from '@/types';
 
 export default function Chat() {
-  const { user } = useApp();
-  const [convs, setConvs]       = useState<Conversation[]>(CONVERSATIONS);
-  const [activeId, setActiveId] = useState<string | null>(CONVERSATIONS[0]?.id ?? null);
+  const { user, conversations: convs, setConversations: setConvs } = useApp();
+  const [activeId, setActiveId] = useState<string | null>(convs[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [input, setInput]       = useState('');
   const [query, setQuery]       = useState('');
