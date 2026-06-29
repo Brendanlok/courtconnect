@@ -7,7 +7,7 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { tierProgress, nextTier } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Flame, Radio, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { TrendingUp, Flame, CheckCircle, XCircle, Clock } from 'lucide-react';
 import type { Match } from '@/types';
 
 export default function Home() {
@@ -42,34 +42,20 @@ export default function Home() {
           )}
         </div>
 
-        {/* Open to Play toggle */}
-        <button
-          onClick={() => updateUser({ openToPlay: !user.openToPlay })}
-          className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all
-            ${user.openToPlay
-              ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.1)]'
-              : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
-          <div className={`relative flex items-center justify-center w-11 h-11 rounded-xl shrink-0
-            ${user.openToPlay ? 'bg-emerald-500/20' : 'bg-slate-800'}`}>
-            <Radio size={20} className={user.openToPlay ? 'text-emerald-400' : 'text-slate-500'} />
-            {user.openToPlay && (
-              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse" />
-            )}
+        {/* Open to Play — compact toggle row */}
+        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+            <span className={`text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-400'}`}>
+              Open to Play{user.openToPlay ? ' — visible to nearby players' : ''}
+            </span>
           </div>
-          <div className="flex-1 text-left min-w-0">
-            <p className={`font-semibold text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-300'}`}>
-              {user.openToPlay ? "Open to Play — You're visible to nearby players" : 'Open to Play'}
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {user.openToPlay ? 'Tap to go offline' : "Tap to let others know you're looking for a match today"}
-            </p>
-          </div>
-          {/* Fixed toggle — explicit left offsets so thumb never overflows */}
-          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-            <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
-              ${user.openToPlay ? 'translate-x-6' : 'translate-x-0'}`} />
-          </div>
-        </button>
+          <button
+            onClick={() => updateUser({ openToPlay: !user.openToPlay })}
+            className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.openToPlay ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
 
         {/* Pending verification banner */}
         {pending.length > 0 && (

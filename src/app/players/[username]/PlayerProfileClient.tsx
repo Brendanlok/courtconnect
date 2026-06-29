@@ -1,6 +1,6 @@
 'use client';
 import { notFound } from 'next/navigation';
-import { PLAYERS, MATCHES, MMR_HISTORY, ME } from '@/lib/data';
+import { PLAYERS, MMR_HISTORY, ME } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
@@ -9,7 +9,7 @@ import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { QRModal } from '@/components/QRModal';
 import { tierProgress, nextTier, skillMatch } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Zap } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Zap, Swords } from 'lucide-react';
 import { useState } from 'react';
 import type { Match } from '@/types';
 
@@ -28,7 +28,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch } = useApp();
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
   if (!staticPlayer) return notFound();
 
@@ -41,7 +41,16 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const { name: nextName, threshold } = nextTier(player.tier);
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
   const sm  = isMe ? 100 : skillMatch(ME.mmr, player.mmr);
-  const playerMatches = MATCHES.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+  const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+
+  // Head-to-Head: confirmed matches between me and this player
+  const h2hMatches = isMe ? [] : allMatches.filter(m =>
+    m.status === 'Confirmed' &&
+    ((m.player1Id === 'me' && m.player2Id === player.uid) ||
+     (m.player1Id === player.uid && m.player2Id === 'me'))
+  );
+  const h2hWins   = h2hMatches.filter(m => m.winnerId === 'me').length;
+  const h2hLosses = h2hMatches.filter(m => m.winnerId === player.uid).length;
 
   return (
     <>
@@ -125,6 +134,68 @@ export function PlayerProfileClient({ username }: { username: string }) {
           </div>
         </div>
 
+        {/* ── Head to Head ── */}
+        {!isMe && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Swords size={15} className="text-emerald-400"/> Head to Head
+            </h2>
+            {h2hMatches.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-slate-400 text-sm">No confirmed matches against @{player.username} yet.</p>
+                <p className="text-slate-500 text-xs mt-1">Log a match and confirm it to start tracking.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Big record */}
+                <div className="flex items-center justify-center gap-6">
+                  <div className="text-center">
+                    <p className="text-4xl font-black text-emerald-400">{h2hWins}</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">You</p>
+                  </div>
+                  <div className="text-center px-4 border-x border-slate-700">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">{h2hMatches.length} played</p>
+                    <p className="text-lg font-bold text-slate-300 mt-0.5">{h2hWins} – {h2hLosses}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-4xl font-black text-red-400">{h2hLosses}</p>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">{player.displayName.split(' ')[0]}</p>
+                  </div>
+                </div>
+
+                {/* Win bar */}
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                  <div className="bg-emerald-500 rounded-full transition-all" style={{ width: `${(h2hWins / h2hMatches.length) * 100}%` }} />
+                </div>
+
+                {/* Recent H2H matches */}
+                <div className="space-y-1 pt-1">
+                  {h2hMatches.slice(0, 4).map(m => {
+                    const iWon = m.winnerId === 'me';
+                    const scores = m.games.filter(g => g.p1 > 0 || g.p2 > 0)
+                      .map(g => m.player1Id === 'me' ? `${g.p1}-${g.p2}` : `${g.p2}-${g.p1}`)
+                      .join(', ');
+                    return (
+                      <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 text-sm">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
+                          ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                          {iWon ? 'W' : 'L'}
+                        </span>
+                        <span className="text-slate-400 text-xs flex-1">{scores || '—'}</span>
+                        {m.mmrChange !== undefined && (
+                          <span className={`text-xs font-bold ${iWon ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {iWon ? '+' : ''}{m.mmrChange}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-5">
           {/* MMR chart */}
           {isMe && (
@@ -197,7 +268,10 @@ export function PlayerProfileClient({ username }: { username: string }) {
         </div>
       </div>
 
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}/>
+      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+      />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
     </>
   );

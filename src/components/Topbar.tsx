@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -11,7 +10,6 @@ import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin } from 'lucid
 
 export function Topbar() {
   const { user } = useApp();
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [qrOpen,   setQrOpen]   = useState(false);
   const [logOpen,  setLogOpen]   = useState(false);
@@ -28,7 +26,8 @@ export function Topbar() {
 
   const goToProfile = () => {
     setMenuOpen(false);
-    router.push(`/players/${user.username}/`);
+    // Use hard navigation — router.push fails for dynamic routes in static export
+    window.location.href = `/players/${user.username}/`;
   };
 
   return (
