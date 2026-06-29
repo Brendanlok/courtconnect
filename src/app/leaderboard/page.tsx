@@ -192,9 +192,16 @@ export default function Leaderboard() {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar name={p.displayName} size="sm"/>
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isMe?'text-emerald-400':''}`}>
-                          {p.displayName}{isMe?' (You)':''}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-semibold truncate ${isMe?'text-emerald-400':''}`}>
+                            {p.displayName}{isMe?' (You)':''}
+                          </p>
+                          {p.openToPlay && (
+                            <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full shrink-0">
+                              <span className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse"/>Live
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500">@{p.username} · 📍 {p.area}, {p.state}</p>
                       </div>
                     </div>
