@@ -118,6 +118,11 @@ function PlayerRow({ player: p, myMMR, isMe }: { player: UserProfile; myMMR: num
           </p>
           <p className="text-xs text-slate-500">@{p.username}</p>
           <TierBadge tier={p.tier}/>
+          {p.openToPlay && (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Playing today
+            </span>
+          )}
         </div>
         <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
           <MapPin size={10}/> {p.area}, {p.state}
