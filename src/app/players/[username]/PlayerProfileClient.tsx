@@ -1,6 +1,7 @@
 'use client';
 import { notFound } from 'next/navigation';
 import { PLAYERS, MATCHES, MMR_HISTORY, ME } from '@/lib/data';
+import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { MatchCard } from '@/components/MatchCard';
