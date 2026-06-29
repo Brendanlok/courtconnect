@@ -7,6 +7,7 @@ export const ME: UserProfile = {
   stats: { wins: 47, losses: 22, totalMatches: 69 },
   bio: 'Competitive singles player. Always looking for a good match 🏸',
   available: 'Weekday evenings',
+  openToPlay: false,
   joinedAt: '2025-01-10',
 };
 
