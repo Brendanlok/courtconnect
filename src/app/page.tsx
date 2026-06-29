@@ -7,14 +7,15 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { tierProgress, nextTier } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Flame, Radio } from 'lucide-react';
+import { TrendingUp, Flame, Radio, CheckCircle, XCircle, Clock } from 'lucide-react';
 import type { Match } from '@/types';
 
 export default function Home() {
-  const { user, matches, updateUser } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
+  const pending    = matches.filter(m => m.status === 'Pending');
   const winRate    = Math.round((user.stats.wins / Math.max(user.stats.totalMatches, 1)) * 100);
   const progress   = tierProgress(user.mmr, user.tier);
   const { name: nextName, threshold } = nextTier(user.tier);
@@ -55,18 +56,64 @@ export default function Home() {
               <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse" />
             )}
           </div>
-          <div className="flex-1 text-left">
+          <div className="flex-1 text-left min-w-0">
             <p className={`font-semibold text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-300'}`}>
-              {user.openToPlay ? 'Open to Play — You\'re visible to nearby players' : 'Open to Play'}
+              {user.openToPlay ? "Open to Play — You're visible to nearby players" : 'Open to Play'}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              {user.openToPlay ? 'Tap to go offline' : 'Tap to let others know you\'re looking for a match today'}
+              {user.openToPlay ? 'Tap to go offline' : "Tap to let others know you're looking for a match today"}
             </p>
           </div>
-          <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${user.openToPlay ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          {/* Fixed toggle — explicit left offsets so thumb never overflows */}
+          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+            <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200
+              ${user.openToPlay ? 'translate-x-6' : 'translate-x-0'}`} />
           </div>
         </button>
+
+        {/* Pending verification banner */}
+        {pending.length > 0 && (
+          <div className="bg-amber-500/8 border border-amber-500/30 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-amber-400 shrink-0" />
+              <p className="text-sm font-semibold text-amber-300">
+                {pending.length} match{pending.length > 1 ? 'es' : ''} awaiting verification
+              </p>
+            </div>
+            {pending.map(m => {
+              const isWin   = m.winnerId === user.uid;
+              const oppName = m.player1Id === user.uid ? m.player2Name : m.player1Name;
+              const oppUser = m.player1Id === user.uid ? m.player2Username : m.player1Username;
+              return (
+                <div key={m.id} className="bg-slate-900/70 rounded-xl p-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">vs. {oppName} <span className="text-slate-500 font-normal text-xs">@{oppUser}</span></p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Reported as <span className={isWin ? 'text-emerald-400' : 'text-red-400'}>{isWin ? 'Win' : 'Loss'}</span>
+                      {m.mmrChange !== undefined && (
+                        <span className={`ml-1 font-semibold ${isWin ? 'text-emerald-400' : 'text-red-400'}`}>
+                          ({isWin ? '+' : ''}{m.mmrChange} MMR)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={e => { e.stopPropagation(); confirmMatch(m.id); }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                      <CheckCircle size={12} /> Confirm
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); disputeMatch(m.id); }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 text-xs font-semibold rounded-lg transition-colors">
+                      <XCircle size={12} /> Dispute
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -130,18 +177,27 @@ export default function Home() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Recent Matches</h2>
-              <p className="text-xs text-slate-500">Click for details</p>
+              <p className="text-xs text-slate-500">Tap for details</p>
             </div>
             <div className="space-y-1">
-              {matches.slice(0, 5).map(m => (
-                <MatchCard key={m.id} match={m} userId={user.uid} onClick={() => setSelectedMatch(m)} />
-              ))}
+              {matches.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">No matches yet — log your first one!</p>
+              ) : (
+                matches.slice(0, 5).map(m => (
+                  <MatchCard key={m.id} match={m} userId={user.uid} onClick={() => setSelectedMatch(m)} />
+                ))
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal
+        match={selectedMatch}
+        onClose={() => setSelectedMatch(null)}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+      />
     </>
   );
 }
