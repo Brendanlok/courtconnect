@@ -20,6 +20,7 @@ export interface UserProfile {
   stats: { wins: number; losses: number; totalMatches: number };
   bio?: string;
   available?: string;
+  openToPlay?: boolean;
   distKm?: number;
   joinedAt: string;
 }
