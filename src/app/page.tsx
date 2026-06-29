@@ -7,7 +7,7 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { tierProgress, nextTier } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Flame } from 'lucide-react';
+import { TrendingUp, Flame, Radio } from 'lucide-react';
 import type { Match } from '@/types';
 
 export default function Home() {
