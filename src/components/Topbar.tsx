@@ -1,18 +1,21 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { QRModal } from '@/components/QRModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
+import { SettingsModal } from '@/components/SettingsModal';
 import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin } from 'lucide-react';
-import Link from 'next/link';
 
 export function Topbar() {
   const { user } = useApp();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [qrOpen,   setQrOpen]   = useState(false);
   const [logOpen,  setLogOpen]   = useState(false);
+  const [settOpen, setSettOpen]  = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,6 +25,11 @@ export function Topbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const goToProfile = () => {
+    setMenuOpen(false);
+    router.push(`/players/${user.username}`);
+  };
 
   return (
     <>
@@ -74,15 +82,15 @@ export function Topbar() {
 
                 {/* Menu items */}
                 <div className="p-2">
-                  <Link href={`/players/${user.username}`} onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
+                  <button onClick={goToProfile}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm text-left">
                     <User size={15} className="text-slate-400" /> View Profile
-                  </Link>
+                  </button>
                   <button onClick={() => { setQrOpen(true); setMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
                     <QrCode size={15} className="text-slate-400" /> My QR Code
                   </button>
-                  <button
+                  <button onClick={() => { setSettOpen(true); setMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
                     <Settings size={15} className="text-slate-400" /> Settings
                   </button>
@@ -99,8 +107,9 @@ export function Topbar() {
         </div>
       </header>
 
-      <QRModal    open={qrOpen}  onClose={() => setQrOpen(false)} />
-      <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)} />
+      <QRModal       open={qrOpen}   onClose={() => setQrOpen(false)} />
+      <LogMatchModal open={logOpen}  onClose={() => setLogOpen(false)} />
+      <SettingsModal open={settOpen} onClose={() => setSettOpen(false)} />
     </>
   );
 }

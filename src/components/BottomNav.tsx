@@ -12,14 +12,15 @@ const LINKS = [
   { href: '/chat',        label: 'Messages',    icon: MessageCircle, badge: true },
 ];
 
+const norm = (p: string) => p.replace(/\/$/, '') || '/';
+
 export function BottomNav() {
   const path = usePathname();
-  const { } = useApp();
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex">
       {LINKS.map(({ href, label, icon: Icon, badge }) => {
-        const active = path === href;
+        const active = norm(path) === norm(href);
         return (
           <Link key={href} href={href}
             className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 relative transition-colors

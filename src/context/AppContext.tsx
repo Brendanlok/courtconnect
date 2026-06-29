@@ -7,6 +7,7 @@ interface AppCtx {
   user: UserProfile;
   matches: Match[];
   addMatch: (m: Match) => void;
+  updateUser: (patch: Partial<UserProfile>) => void;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 }
@@ -14,15 +15,16 @@ interface AppCtx {
 const Ctx = createContext<AppCtx>({} as AppCtx);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user]              = useState<UserProfile>(ME);
-  const [matches, setMatches] = useState<Match[]>(SEED_MATCHES);
+  const [user, setUser]         = useState<UserProfile>(ME);
+  const [matches, setMatches]   = useState<Match[]>(SEED_MATCHES);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const addMatch    = useCallback((m: Match) => setMatches(p => [m, ...p]), []);
+  const addMatch      = useCallback((m: Match) => setMatches(p => [m, ...p]), []);
+  const updateUser    = useCallback((patch: Partial<UserProfile>) => setUser(u => ({ ...u, ...patch })), []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
 
   return (
-    <Ctx.Provider value={{ user, matches, addMatch, sidebarCollapsed, toggleSidebar }}>
+    <Ctx.Provider value={{ user, matches, addMatch, updateUser, sidebarCollapsed, toggleSidebar }}>
       {children}
     </Ctx.Provider>
   );
