@@ -1,29 +1,56 @@
 'use client';
 import { useState } from 'react';
-import { TOURNAMENTS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
-import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy } from 'lucide-react';
-import { MATCH_TYPE_LABEL } from '@/lib/utils';
-import type { Tournament, BracketMatch } from '@/types';
+import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
+         AlertTriangle, X, Filter } from 'lucide-react';
+import { MATCH_TYPE_LABEL, MY_STATES } from '@/lib/utils';
+import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 
 const TABS = ['Active','Upcoming','Completed'] as const;
+type VisFilter = 'All' | 'Public' | 'Private';
+const MATCH_TYPES: ('All' | MatchType)[] = ['All','MS','WS','MD','WD','MX'];
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Tournaments() {
-  const { user } = useApp();
-  const [tab, setTab] = useState<typeof TABS[number]>('Active');
-  const [registered, setRegistered] = useState<string[]>([]);
+  const { user, tournaments, addTournament, registrations, registerTournament,
+          unregisterTournament, updateUser } = useApp();
 
-  const list = TOURNAMENTS.filter(t => t.status === tab);
+  const [tab,           setTab]         = useState<typeof TABS[number]>('Active');
+  const [visFilter,     setVisFilter]   = useState<VisFilter>('All');
+  const [typeFilter,    setTypeFilter]  = useState<'All' | MatchType>('All');
+  const [eligibleOnly,  setEligibleOnly]= useState(false);
+  const [hostOpen,      setHostOpen]    = useState(false);
+  const [regTarget,     setRegTarget]   = useState<Tournament | null>(null);
+  const [unregTarget,   setUnregTarget] = useState<Tournament | null>(null);
+
+  const isPenalty = (t: Tournament) => {
+    const msUntil = new Date(t.date).getTime() - Date.now();
+    return t.status === 'Active' || msUntil < 12 * 3600 * 1000;
+  };
+
+  const list = tournaments
+    .filter(t => t.status === tab)
+    .filter(t => visFilter === 'All' ? true : visFilter === 'Private' ? t.isPrivate : !t.isPrivate)
+    .filter(t => typeFilter === 'All' || t.type === typeFilter)
+    .filter(t => {
+      if (!eligibleOnly) return true;
+      if (t.minMMR && user.mmr < t.minMMR) return false;
+      if (t.maxMMR && user.mmr > t.maxMMR) return false;
+      return true;
+    });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tournaments</h1>
-          <p className="text-slate-400 text-sm mt-1">🇲🇾 Malaysia</p>
+          <h1 className="text-2xl font-bold">Events</h1>
+          <p className="text-slate-400 text-sm mt-0.5">🇲🇾 Malaysia</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition-colors">
-          <Trophy size={14}/> Host
+        <button onClick={() => setHostOpen(true)}
+          className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition-colors">
+          <Plus size={14}/> Host
         </button>
       </div>
 
@@ -34,98 +61,149 @@ export default function Tournaments() {
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
             {t}
-            <span className="ml-1.5 text-xs opacity-50">({TOURNAMENTS.filter(x => x.status === t).length})</span>
+            <span className="ml-1.5 text-xs opacity-50">({tournaments.filter(x => x.status === t).length})</span>
           </button>
         ))}
       </div>
 
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter size={13} className="text-slate-500 shrink-0"/>
+
+        {/* Visibility */}
+        <div className="flex gap-1">
+          {(['All','Public','Private'] as VisFilter[]).map(v => (
+            <button key={v} onClick={() => setVisFilter(v)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                ${visFilter === v ? 'bg-slate-700 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+              {v === 'Public' && <Globe size={10}/>}
+              {v === 'Private' && <EyeOff size={10}/>}
+              {v}
+            </button>
+          ))}
+        </div>
+
+        {/* Match type */}
+        <div className="flex gap-1">
+          {MATCH_TYPES.map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                ${typeFilter === t ? 'bg-slate-700 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+              {t === 'All' ? 'All types' : t}
+            </button>
+          ))}
+        </div>
+
+        {/* Eligible only */}
+        <button onClick={() => setEligibleOnly(e => !e)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+            ${eligibleOnly ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+          Eligible only
+        </button>
+      </div>
+
       {list.length === 0 && (
-        <div className="text-center py-20 text-slate-500">No {tab.toLowerCase()} tournaments.</div>
+        <div className="text-center py-16 text-slate-500">No {tab.toLowerCase()} events match your filter.</div>
       )}
 
       <div className="space-y-3">
         {list.map(t => (
           <TournamentRow key={t.id} tournament={t} myMMR={user.mmr}
-            registered={registered.includes(t.id)}
-            onRegister={() => setRegistered(r => [...r, t.id])} />
+            isRegistered={!!registrations[t.id]}
+            onRegister={() => setRegTarget(t)}
+            onUnregister={() => setUnregTarget(t)}/>
         ))}
       </div>
+
+      {/* Modals */}
+      {hostOpen && (
+        <HostModal onClose={() => setHostOpen(false)} onSubmit={t => { addTournament(t); setHostOpen(false); }}/>
+      )}
+      {regTarget && (
+        <RegisterWarningModal tournament={regTarget}
+          onClose={() => setRegTarget(null)}
+          onConfirm={() => { registerTournament(regTarget.id); setRegTarget(null); }}/>
+      )}
+      {unregTarget && (
+        <UnregisterModal tournament={unregTarget} isPenalty={isPenalty(unregTarget)}
+          onClose={() => setUnregTarget(null)}
+          onConfirm={() => {
+            if (isPenalty(unregTarget)) updateUser({ mmr: Math.max(0, user.mmr - 25) });
+            unregisterTournament(unregTarget.id);
+            setUnregTarget(null);
+          }}/>
+      )}
     </div>
   );
 }
 
-function TournamentRow({ tournament: t, myMMR, registered, onRegister }: {
-  tournament: Tournament; myMMR: number; registered: boolean; onRegister: () => void;
+// ─── Tournament row ────────────────────────────────────────────────────────────
+
+function TournamentRow({ tournament: t, myMMR, isRegistered, onRegister, onUnregister }: {
+  tournament: Tournament; myMMR: number; isRegistered: boolean;
+  onRegister: () => void; onUnregister: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft = t.maxPlayers - t.currentPlayers;
-  const locked    = !!(t.minMMR && myMMR < t.minMMR);
-  const isFull    = spotsLeft <= 0;
+  const locked    = !!(t.minMMR && myMMR < t.minMMR) || !!(t.maxMMR && myMMR > t.maxMMR);
+  const isFull    = spotsLeft <= 0 && !isRegistered;
   const fillPct   = Math.round((t.currentPlayers / t.maxPlayers) * 100);
 
   return (
     <div className={`bg-slate-900 border rounded-2xl overflow-hidden transition-all
       ${t.status === 'Active' ? 'border-emerald-500/30' : 'border-slate-800'}`}>
 
-      {/* Compact row — always visible, whole row is clickable */}
       <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none hover:bg-slate-800/40 transition-colors" onClick={() => setExpanded(e => !e)}>
-        {/* Status dot */}
         <div className="shrink-0">
-          {t.status === 'Active' && <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full block animate-pulse"/>}
-          {t.status === 'Upcoming' && <span className="w-2.5 h-2.5 bg-amber-400 rounded-full block"/>}
+          {t.status === 'Active'    && <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full block animate-pulse"/>}
+          {t.status === 'Upcoming'  && <span className="w-2.5 h-2.5 bg-amber-400 rounded-full block"/>}
           {t.status === 'Completed' && <span className="w-2.5 h-2.5 bg-slate-500 rounded-full block"/>}
         </div>
 
-        {/* Main info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm truncate">{t.name}</p>
-            {t.tags.slice(0,2).map(tag => (
+            {t.isPrivate
+              ? <span className="flex items-center gap-1 text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md shrink-0"><EyeOff size={8}/> Private</span>
+              : <span className="flex items-center gap-1 text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md shrink-0"><Globe size={8}/> Public</span>}
+            {t.tags.slice(0,1).map(tag => (
               <span key={tag} className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md shrink-0">{tag}</span>
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-0.5"><MapPin size={10}/> {t.venue}, {t.state}</span>
             <span>·</span>
-            <span>{new Date(t.date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'})}</span>
+            <span>{new Date(t.date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'})}{t.time ? ` · ${t.time}` : ''}</span>
             <span>·</span>
             <span className="flex items-center gap-0.5"><Users size={10}/> {t.currentPlayers}/{t.maxPlayers}</span>
           </p>
         </div>
 
-        {/* Prize / entry */}
         <div className="text-right shrink-0">
-          {t.prizePool > 0 ? (
-            <p className="text-sm font-bold text-amber-400">RM {t.prizePool.toLocaleString()}</p>
-          ) : (
-            <p className="text-sm font-bold text-emerald-400">Free</p>
-          )}
+          {t.prizePool > 0
+            ? <p className="text-sm font-bold text-amber-400">RM {t.prizePool.toLocaleString()}</p>
+            : <p className="text-sm font-bold text-emerald-400">Free</p>}
           {t.entryFee > 0 && <p className="text-[10px] text-slate-500">Entry: RM {t.entryFee}</p>}
         </div>
 
-        {/* Expand indicator */}
         <span className="text-slate-500 shrink-0">
           {expanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
         </span>
       </div>
 
-      {/* Expanded details */}
       {expanded && (
         <div className="border-t border-slate-800 px-5 py-4 space-y-4">
-          {/* Description */}
-          {t.description && (
-            <p className="text-sm text-slate-300 leading-relaxed">{t.description}</p>
-          )}
+          {t.description && <p className="text-sm text-slate-300 leading-relaxed">{t.description}</p>}
 
-          {/* Key details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Detail label="Format" value={MATCH_TYPE_LABEL[t.type]}/>
-            <Detail label="Players" value={`${t.currentPlayers}/${t.maxPlayers}`}/>
-            <Detail label="Min MMR" value={t.minMMR ? t.minMMR.toLocaleString() : 'Open'}/>
+            <Detail label="Format"    value={MATCH_TYPE_LABEL[t.type]}/>
+            <Detail label="Players"   value={`${t.currentPlayers}/${t.maxPlayers}`}/>
+            <Detail label="MMR Range" value={t.minMMR || t.maxMMR
+              ? `${t.minMMR?.toLocaleString() ?? '0'} – ${t.maxMMR?.toLocaleString() ?? '∞'}`
+              : 'Open'}/>
             <Detail label="Organiser" value={t.organiser ?? '—'}/>
           </div>
 
-          {/* Fill bar */}
           <div>
             <div className="flex justify-between text-xs text-slate-500 mb-1">
               <span>Capacity</span>
@@ -136,40 +214,44 @@ function TournamentRow({ tournament: t, myMMR, registered, onRegister }: {
             </div>
           </div>
 
-          {/* Prize breakdown */}
           {t.prizePool > 0 && (
             <div className="flex gap-2 flex-wrap">
-              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1.5 rounded-xl">
-                🥇 RM {Math.round(t.prizePool * 0.6)}
-              </span>
-              <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1.5 rounded-xl">
-                🥈 RM {Math.round(t.prizePool * 0.3)}
-              </span>
-              <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1.5 rounded-xl">
-                🥉 RM {Math.round(t.prizePool * 0.1)}
-              </span>
-              <span className="text-xs text-slate-500 self-center ml-1">Auto-distributed after final</span>
+              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1.5 rounded-xl">🥇 RM {Math.round(t.prizePool * 0.6)}</span>
+              <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1.5 rounded-xl">🥈 RM {Math.round(t.prizePool * 0.3)}</span>
+              <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1.5 rounded-xl">🥉 RM {Math.round(t.prizePool * 0.1)}</span>
             </div>
           )}
 
-          {/* Bracket */}
           {t.bracket && t.status !== 'Upcoming' && (
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Live Bracket</p>
-              <BracketView bracket={t.bracket} />
+              <BracketView bracket={t.bracket}/>
             </div>
           )}
 
-          {/* Action */}
           {t.status === 'Upcoming' && (
-            <button onClick={e => { e.stopPropagation(); onRegister(); }} disabled={registered || isFull || locked}
-              className={`flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors
-                ${locked  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : registered ? 'bg-slate-700 text-slate-400 cursor-default'
-                : isFull  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
-              {locked ? <><Lock size={13}/> Need {t.minMMR?.toLocaleString()} MMR</> : registered ? '✓ Registered' : 'Register Now'}
-            </button>
+            <div className="flex gap-2">
+              {isRegistered ? (
+                <button onClick={e => { e.stopPropagation(); onUnregister(); }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-red-500/15 hover:text-red-400 transition-colors">
+                  ✓ Registered · Withdraw
+                </button>
+              ) : locked ? (
+                <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-slate-800 text-slate-500 cursor-not-allowed">
+                  <Lock size={13}/>
+                  {t.minMMR && myMMR < t.minMMR ? `Need ${t.minMMR.toLocaleString()} MMR min` : `Exceed ${t.maxMMR?.toLocaleString()} MMR max`}
+                </div>
+              ) : isFull ? (
+                <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-slate-800 text-slate-500 cursor-not-allowed">
+                  Full
+                </div>
+              ) : (
+                <button onClick={e => { e.stopPropagation(); onRegister(); }}
+                  className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                  Register Now
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -186,12 +268,280 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Bracket tree ──────────────────────────────────────────────────────────
+// ─── Register Warning Modal ────────────────────────────────────────────────────
 
-const CARD_H  = 72;   // px — height of one match card (two player rows)
-const CARD_W  = 180;  // px
-const BASE_GAP = 12;  // gap between matches in round 1
-const CONN_W  = 36;   // width of SVG connector strip
+function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
+  tournament: Tournament; onClose: () => void; onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h3 className="font-bold">Confirm Registration</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-slate-800 rounded-xl p-3">
+            <p className="font-semibold text-sm">{t.name}</p>
+            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+              <MapPin size={10}/>{t.venue} · {new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}
+            </p>
+            {t.entryFee > 0 && <p className="text-xs text-amber-400 mt-1 font-semibold">Entry fee: RM {t.entryFee}</p>}
+          </div>
+
+          <div className="bg-amber-500/8 border border-amber-500/25 rounded-xl p-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5"/>
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-amber-300">Commitment required</p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  By registering, you commit to attending this event. You may withdraw at any time up until <span className="font-semibold text-white">12 hours before the event starts</span> with no penalty.
+                </p>
+                <p className="text-xs text-red-400 font-semibold leading-relaxed">
+                  Withdrawing within 12 hours of the event start will result in a <span className="font-bold">−25 MMR penalty</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+              Cancel
+            </button>
+            <button onClick={onConfirm}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors">
+              I Understand — Register
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Unregister / Penalty Modal ────────────────────────────────────────────────
+
+function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
+  tournament: Tournament; isPenalty: boolean; onClose: () => void; onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h3 className="font-bold">Withdraw from Event</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="bg-slate-800 rounded-xl p-3">
+            <p className="font-semibold text-sm">{t.name}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}</p>
+          </div>
+
+          {isPenalty ? (
+            <div className="bg-red-500/8 border border-red-500/25 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5"/>
+                <div>
+                  <p className="text-sm font-semibold text-red-300">Late withdrawal penalty</p>
+                  <p className="text-xs text-slate-300 leading-relaxed mt-1">
+                    This event starts within 12 hours (or is already active). Withdrawing now will deduct <span className="font-bold text-red-400">25 MMR</span> from your rating.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">Are you sure you want to withdraw? Your spot will be freed up for other players.</p>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+              Keep my spot
+            </button>
+            <button onClick={onConfirm}
+              className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors ${isPenalty ? 'bg-red-600 hover:bg-red-500' : 'bg-slate-700 hover:bg-slate-600'}`}>
+              {isPenalty ? 'Withdraw (−25 MMR)' : 'Withdraw'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Host Event Modal ─────────────────────────────────────────────────────────
+
+function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: Tournament) => void }) {
+  const { user } = useApp();
+  const [name,       setName]       = useState('');
+  const [type,       setType]       = useState<MatchType>('MS');
+  const [date,       setDate]       = useState('');
+  const [time,       setTime]       = useState('');
+  const [venue,      setVenue]      = useState('');
+  const [state,      setState]      = useState<MalaysiaState>(user.state);
+  const [maxPlayers, setMaxPlayers] = useState<8|16|32>(16);
+  const [entryFee,   setEntryFee]   = useState('');
+  const [prize,      setPrize]      = useState('');
+  const [minMMR,     setMinMMR]     = useState('');
+  const [maxMMR,     setMaxMMR]     = useState('');
+  const [isPrivate,  setIsPrivate]  = useState(false);
+  const [desc,       setDesc]       = useState('');
+
+  const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
+
+  const submit = () => {
+    if (!name.trim() || !date || !venue.trim()) return;
+    const t: Tournament = {
+      id: `t_${Date.now()}`,
+      name: name.trim(),
+      type, date, time: time || undefined,
+      venue: venue.trim(), state,
+      status: 'Upcoming',
+      prizePool:      prize      ? Number(prize)      : 0,
+      entryFee:       entryFee   ? Number(entryFee)   : 0,
+      minMMR:         minMMR     ? Number(minMMR)      : undefined,
+      maxMMR:         maxMMR     ? Number(maxMMR)      : undefined,
+      maxPlayers,     currentPlayers: 0,
+      isPrivate,
+      organiser:      user.displayName,
+      description:    desc.trim() || undefined,
+      tags: [MATCH_TYPE_LABEL[type], isPrivate ? 'Private' : 'Open'],
+    };
+    onSubmit(t);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2">
+            <Trophy size={16} className="text-amber-400"/>
+            <h2 className="font-bold">Host an Event</h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+
+        <div className="p-5 space-y-3 overflow-y-auto">
+          {/* Name */}
+          <label className="block">
+            <span className="text-[11px] text-slate-500 font-semibold">Event Name *</span>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. PJ Open 2025" className={`mt-1 ${inp}`}/>
+          </label>
+
+          {/* Type + Visibility */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Format *</span>
+              <select value={type} onChange={e => setType(e.target.value as MatchType)} className={`mt-1 ${inp}`}>
+                {(['MS','WS','MD','WD','MX'] as MatchType[]).map(t => (
+                  <option key={t} value={t}>{MATCH_TYPE_LABEL[t]}</option>
+                ))}
+              </select>
+            </label>
+            <div>
+              <span className="text-[11px] text-slate-500 font-semibold">Visibility</span>
+              <div className="mt-1 flex rounded-xl overflow-hidden border border-slate-700">
+                <button onClick={() => setIsPrivate(false)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold transition-colors
+                    ${!isPrivate ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <Globe size={11}/> Public
+                </button>
+                <button onClick={() => setIsPrivate(true)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold transition-colors
+                    ${isPrivate ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <EyeOff size={11}/> Private
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Date *</span>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Start Time</span>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)} className={`mt-1 ${inp}`}/>
+            </label>
+          </div>
+
+          {/* Venue + State */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Venue *</span>
+              <input value={venue} onChange={e => setVenue(e.target.value)} placeholder="Court / complex name" className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">State</span>
+              <select value={state} onChange={e => setState(e.target.value as MalaysiaState)} className={`mt-1 ${inp}`}>
+                {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+          </div>
+
+          {/* Capacity + Entry fee + Prize */}
+          <div className="grid grid-cols-3 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Max Players</span>
+              <select value={maxPlayers} onChange={e => setMaxPlayers(Number(e.target.value) as 8|16|32)} className={`mt-1 ${inp}`}>
+                {[8,16,32].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Entry (RM)</span>
+              <input type="number" min={0} value={entryFee} onChange={e => setEntryFee(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Prize Pool (RM)</span>
+              <input type="number" min={0} value={prize} onChange={e => setPrize(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
+            </label>
+          </div>
+
+          {/* MMR limits */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Min MMR (optional)</span>
+              <input type="number" min={0} value={minMMR} onChange={e => setMinMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Max MMR (optional)</span>
+              <input type="number" min={0} value={maxMMR} onChange={e => setMaxMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
+            </label>
+          </div>
+
+          {/* Description */}
+          <label className="block">
+            <span className="text-[11px] text-slate-500 font-semibold">Description (optional)</span>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
+              placeholder="Format, rules, notes for participants…"
+              className={`mt-1 ${inp} resize-none`}/>
+          </label>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-3 shrink-0 border-t border-slate-800 pt-4">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={!name.trim() || !date || !venue.trim()}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-black rounded-xl text-sm font-bold transition-colors">
+            <Trophy size={14}/> Create Event
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Bracket tree (preserved) ──────────────────────────────────────────────────
+
+const CARD_H   = 72;
+const CARD_W   = 180;
+const BASE_GAP = 12;
+const CONN_W   = 36;
 
 function roundGap(ri: number): number {
   return ri === 0 ? BASE_GAP : CARD_H + 2 * roundGap(ri - 1);
@@ -215,7 +565,6 @@ function BracketView({ bracket }: { bracket: BracketMatch[] }) {
 
   return (
     <div className="overflow-x-auto pb-2">
-      {/* Round labels row */}
       <div className="flex mb-2">
         {byRound.map((_, ri) => (
           <div key={ri} className="flex items-center">
@@ -224,40 +573,35 @@ function BracketView({ bracket }: { bracket: BracketMatch[] }) {
                 {ROUND_LABELS[rounds[ri] - 1] ?? `R${rounds[ri]}`}
               </span>
             </div>
-            {ri < byRound.length - 1 && <div style={{ width: CONN_W }} />}
+            {ri < byRound.length - 1 && <div style={{ width: CONN_W }}/>}
           </div>
         ))}
       </div>
 
-      {/* Bracket body */}
       <div className="flex" style={{ height: totalH }}>
         {byRound.map((matches, ri) => {
           const pad  = roundTopPad(ri);
           const gap  = roundGap(ri);
           const isLast = ri === byRound.length - 1;
-
           return (
             <div key={ri} className="flex items-start shrink-0">
-              {/* Match cards column */}
               <div className="flex flex-col shrink-0" style={{ paddingTop: pad, gap }}>
-                {matches.map(m => <BracketCard key={m.id} match={m} />)}
+                {matches.map(m => <BracketCard key={m.id} match={m}/>)}
               </div>
-
-              {/* SVG connector to next round */}
               {!isLast && (
                 <svg width={CONN_W} height={totalH} className="shrink-0 overflow-visible">
                   {Array.from({ length: Math.ceil(matches.length / 2) }).map((_, i) => {
                     const m1Y = pad + i * 2 * (CARD_H + gap) + CARD_H / 2;
                     const m2Y = m1Y + CARD_H + gap;
                     const midY = (m1Y + m2Y) / 2;
-                    const cx  = CONN_W / 2;
+                    const cx = CONN_W / 2;
                     const color = '#334155';
                     return (
                       <g key={i}>
-                        <line x1={0}   y1={m1Y}  x2={cx}  y2={m1Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
-                        <line x1={0}   y1={m2Y}  x2={cx}  y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
-                        <line x1={cx}  y1={m1Y}  x2={cx}  y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
-                        <line x1={cx}  y1={midY} x2={CONN_W} y2={midY} stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={0}  y1={m1Y}  x2={cx}     y2={m1Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={0}  y1={m2Y}  x2={cx}     y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={cx} y1={m1Y}  x2={cx}     y2={m2Y}  stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
+                        <line x1={cx} y1={midY} x2={CONN_W} y2={midY} stroke={color} strokeWidth={1.5} strokeLinecap="round"/>
                       </g>
                     );
                   })}

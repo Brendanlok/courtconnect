@@ -59,11 +59,14 @@ export interface Tournament {
   prizePool: number;
   entryFee: number;
   minMMR?: number;
+  maxMMR?: number;
   maxPlayers: number;
   currentPlayers: number;
   state: MalaysiaState;
   venue: string;
   date: string;
+  time?: string;
+  isPrivate?: boolean;
   bracket?: BracketMatch[];
   tags: string[];
   description?: string;

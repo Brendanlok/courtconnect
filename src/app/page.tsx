@@ -7,11 +7,11 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { tierProgress, nextTier } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Flame, CheckCircle, XCircle, Clock } from 'lucide-react';
-import type { Match } from '@/types';
+import { TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
+import type { Match, Tournament } from '@/types';
 
 export default function Home() {
-  const { user, matches, updateUser, confirmMatch, disputeMatch } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
@@ -176,6 +176,9 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Activity Feed */}
+        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} userId={user.uid}/>
       </div>
 
       <MatchDetailModal
@@ -185,5 +188,82 @@ export default function Home() {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
     </>
+  );
+}
+
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+type FeedItem =
+  | { kind: 'match'; match: Match; ts: number }
+  | { kind: 'tournament'; name: string; ts: number };
+
+function ActivityFeed({ matches, registrations, tournaments, userId }: {
+  matches: Match[];
+  registrations: Record<string, { registeredAt: string }>;
+  tournaments: Tournament[];
+  userId: string;
+}) {
+  const items: FeedItem[] = [
+    ...matches
+      .filter(m => m.status === 'Confirmed')
+      .map(m => ({ kind: 'match' as const, match: m, ts: new Date(m.playedAt).getTime() })),
+    ...Object.entries(registrations).map(([id, r]) => {
+      const t = tournaments.find(x => x.id === id);
+      return { kind: 'tournament' as const, name: t?.name ?? 'an event', ts: new Date(r.registeredAt).getTime() };
+    }),
+  ].sort((a, b) => b.ts - a.ts).slice(0, 8);
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+      <h2 className="font-semibold flex items-center gap-2 mb-4">
+        <Activity size={15} className="text-emerald-400"/> Activity
+      </h2>
+      {items.length === 0 ? (
+        <div className="text-center py-6">
+          <p className="text-slate-500 text-sm">No recent activity.</p>
+          <p className="text-slate-600 text-xs mt-1">Log matches and join events to build your feed.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item, i) => {
+            if (item.kind === 'match') {
+              const m = item.match;
+              const iWon = m.winnerId === userId;
+              const opp  = m.player1Id === userId ? m.player2Name : m.player1Name;
+              return (
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
+                    ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                    {iWon ? 'W' : 'L'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-300 truncate">
+                      {iWon ? 'Beat' : 'Lost to'} <span className="font-semibold">{opp}</span>
+                    </p>
+                    <p className="text-xs text-slate-500">{new Date(m.playedAt).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                  </div>
+                  {m.mmrChange !== undefined && (
+                    <span className={`text-xs font-bold shrink-0 ${iWon ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {iWon ? '+' : ''}{m.mmrChange} MMR
+                    </span>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400 text-sm">
+                  🏸
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-300 truncate">Registered for <span className="font-semibold">{item.name}</span></p>
+                  <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
