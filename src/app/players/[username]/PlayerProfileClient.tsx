@@ -28,11 +28,12 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const allPlayers = [ME, ...PLAYERS];
-  const player = allPlayers.find(p => p.username === username);
-  if (!player) return notFound();
+  const { user: ctxUser } = useApp();
+  const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
+  if (!staticPlayer) return notFound();
 
-  const isMe  = player.uid === 'me';
+  const isMe   = staticPlayer.uid === 'me';
+  const player = isMe ? ctxUser : staticPlayer;
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [qrOpen, setQrOpen]               = useState(false);
 
