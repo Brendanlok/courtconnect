@@ -6,16 +6,18 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { QRModal } from '@/components/QRModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin } from 'lucide-react';
+import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin, Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { NotificationPanel } from '@/components/NotificationPanel';
 
 export function Topbar() {
-  const { user } = useApp();
+  const { user, unreadNotifCount } = useApp();
   const { logout } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [qrOpen,   setQrOpen]   = useState(false);
-  const [logOpen,  setLogOpen]   = useState(false);
-  const [settOpen, setSettOpen]  = useState(false);
+  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [qrOpen,    setQrOpen]    = useState(false);
+  const [logOpen,   setLogOpen]   = useState(false);
+  const [settOpen,  setSettOpen]  = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +53,20 @@ export function Topbar() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition-colors">
             <Plus size={15} /> Log Match
           </button>
+
+          {/* Notification bell */}
+          <div className="relative">
+            <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }}
+              className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-800 transition-colors">
+              <Bell size={17} className="text-slate-400"/>
+              {unreadNotifCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white px-0.5 leading-none">
+                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                </span>
+              )}
+            </button>
+            {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)}/>}
+          </div>
 
           {/* User menu */}
           <div className="relative" ref={menuRef}>

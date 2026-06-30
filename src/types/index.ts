@@ -110,21 +110,39 @@ export interface Challenge {
   createdAt: string;
 }
 
+export type ClubPurpose = 'Competitive' | 'Recreational' | 'Training' | 'Social' | 'Youth';
+
 export interface Club {
   id: string;
   name: string;
-  shortName: string;       // e.g. "TTBA"
+  shortName: string;
   description: string;
+  purpose: ClubPurpose;
   state: MalaysiaState;
   area: string;
   logoInitials: string;
-  color: string;           // tailwind bg class
-  memberCount: number;
+  color: string;
+  maxMembers: number;
+  minMMR?: number;
+  isPrivate: boolean;
+  adminId: string;          // uid of creator/admin
+  memberIds: string[];      // uids of accepted members
+  pendingIds: string[];     // uids of pending join requests
   avgMMR: number;
-  topPlayers: string[];    // display names
-  tags: string[];          // e.g. ["Competitive", "Friendly"]
-  openToJoin: boolean;
+  topPlayers: string[];
+  tags: string[];
   foundedYear: number;
+  announcement?: string;
+}
+
+export interface Notification {
+  id: string;
+  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_accepted' | 'club_declined' | 'match_pending';
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+  linkTo?: string;
 }
 
 export interface AuthUser {

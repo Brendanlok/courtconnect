@@ -5,15 +5,16 @@ import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, ChevronDown, Users, Check, Shield, Trophy, UserPlus, LogOut as Leave } from 'lucide-react';
+import { Search, MapPin, Filter, ChevronDown, Users, Check, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { CreateClubModal } from '@/components/CreateClubModal';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
 
 export default function Players() {
-  const { user, updateUser, clubs, myClubId, joinClub, leaveClub } = useApp();
+  const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();
   const [tab, setTab] = useState<typeof TABS[number]>('Players');
 
   return (
@@ -37,7 +38,7 @@ export default function Players() {
 
       {tab === 'Players'        && <PlayersList user={user}/>}
       {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser}/>}
-      {tab === 'Clubs'          && <ClubsTab clubs={clubs} myClubId={myClubId} joinClub={joinClub} leaveClub={leaveClub}/>}
+      {tab === 'Clubs'          && <ClubsTab clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds} joinClub={joinClub} requestJoinClub={requestJoinClub} cancelClubRequest={cancelClubRequest} leaveClub={leaveClub} acceptClubMember={acceptClubMember} declineClubMember={declineClubMember} updateClub={updateClub} userId={user.uid}/>}
     </div>
   );
 }
@@ -315,17 +316,29 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubId, joinClub, leaveClub }: {
+function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, userId }: {
   clubs: Club[];
   myClubId: string | null;
+  myClubPendingIds: string[];
+  userId: string;
   joinClub: (id: string) => void;
+  requestJoinClub: (id: string) => void;
+  cancelClubRequest: (id: string) => void;
   leaveClub: () => void;
+  acceptClubMember: (clubId: string, uid: string) => void;
+  declineClubMember: (clubId: string, uid: string) => void;
+  updateClub: (id: string, patch: Partial<Club>) => void;
 }) {
-  const [stateFilter, setStateFilter] = useState<string>('All');
-  const [search, setSearch] = useState('');
+  const [stateFilter,   setStateFilter]   = useState<string>('All');
+  const [search,        setSearch]        = useState('');
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const [expandedId,    setExpandedId]    = useState<string | null>(null);
+  const [copiedId,      setCopiedId]      = useState<string | null>(null);
+  const [announceDraft, setAnnounceDraft] = useState('');
+  const [announceEdit,  setAnnounceEdit]  = useState<string | null>(null);
 
-  const states = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
-  const myClub = clubs.find(c => c.id === myClubId);
+  const states  = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
+  const myClub  = clubs.find(c => c.id === myClubId);
 
   const filtered = clubs.filter(c => {
     const q = search.toLowerCase();
@@ -333,13 +346,36 @@ function ClubsTab({ clubs, myClubId, joinClub, leaveClub }: {
       (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q));
   });
 
+  const copyLink = (clubId: string) => {
+    const url = `${window.location.origin}/players/?tab=clubs&id=${clubId}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setCopiedId(clubId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const saveAnnouncement = (clubId: string) => {
+    updateClub(clubId, { announcement: announceDraft.trim() || undefined });
+    setAnnounceEdit(null);
+    setAnnounceDraft('');
+  };
+
   return (
     <div className="space-y-4">
-      {/* My Club banner */}
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">{clubs.length} club{clubs.length !== 1 ? 's' : ''} in Malaysia</p>
+        {!myClubId && (
+          <button onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
+            <Plus size={13}/> Create Club
+          </button>
+        )}
+      </div>
+
+      {/* My Club summary card */}
       {myClub && (
-        <div className={`relative overflow-hidden rounded-2xl p-4 border border-white/10`}
-          style={{ background: `linear-gradient(135deg, #0f172a 0%, #1e293b 100%)` }}>
-          <div className="flex items-center gap-4">
+        <div className="rounded-2xl border border-emerald-500/25 bg-slate-900 overflow-hidden">
+          <div className="p-4 flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl ${myClub.color} flex items-center justify-center font-bold text-white text-lg shrink-0`}>
               {myClub.logoInitials}
             </div>
@@ -347,18 +383,81 @@ function ClubsTab({ clubs, myClubId, joinClub, leaveClub }: {
               <div className="flex items-center gap-2">
                 <p className="font-bold text-sm">{myClub.name}</p>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-semibold">My Club</span>
+                {myClub.isPrivate ? <Lock size={10} className="text-violet-400"/> : <Globe size={10} className="text-slate-500"/>}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">{myClub.area}, {myClub.state} · {myClub.memberCount} members · Avg {myClub.avgMMR.toLocaleString()} MMR</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {myClub.memberIds.length}/{myClub.maxMembers} members · Avg {myClub.avgMMR.toLocaleString()} MMR
+                {myClub.minMMR && ` · Min ${myClub.minMMR.toLocaleString()} MMR`}
+              </p>
             </div>
-            <button onClick={leaveClub}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-xs font-medium transition-colors shrink-0">
-              <Leave size={12}/> Leave
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button onClick={() => copyLink(myClub.id)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] font-medium transition-colors">
+                {copiedId === myClub.id ? <><CheckCheck size={11} className="text-emerald-400"/> Copied</> : <><Copy size={11}/> Share</>}
+              </button>
+              {myClub.adminId !== userId && (
+                <button onClick={leaveClub}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
+                  <Leave size={11}/> Leave
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Admin panel — pending requests */}
+          {myClub.adminId === userId && myClub.pendingIds.length > 0 && (
+            <div className="border-t border-slate-800 px-4 py-3 space-y-2">
+              <p className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+                <Clock size={11}/> {myClub.pendingIds.length} join request{myClub.pendingIds.length !== 1 ? 's' : ''}
+              </p>
+              {myClub.pendingIds.map(uid => (
+                <div key={uid} className="flex items-center justify-between gap-2 bg-slate-800 rounded-xl px-3 py-2">
+                  <p className="text-xs text-slate-300 font-medium">@{uid}</p>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => acceptClubMember(myClub.id, uid)}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-colors">Accept</button>
+                    <button onClick={() => declineClubMember(myClub.id, uid)}
+                      className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-medium transition-colors">Decline</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Announcement */}
+          <div className="border-t border-slate-800 px-4 py-3">
+            {announceEdit === myClub.id ? (
+              <div className="space-y-2">
+                <textarea value={announceDraft} onChange={e => setAnnounceDraft(e.target.value)} rows={2}
+                  placeholder="Post an announcement to your club members…"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-500 transition-colors resize-none"/>
+                <div className="flex gap-2">
+                  <button onClick={() => saveAnnouncement(myClub.id)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors">Post</button>
+                  <button onClick={() => setAnnounceEdit(null)}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs transition-colors">Cancel</button>
+                </div>
+              </div>
+            ) : myClub.announcement ? (
+              <div className="flex items-start gap-2">
+                <Megaphone size={12} className="text-amber-400 shrink-0 mt-0.5"/>
+                <p className="text-xs text-slate-300 flex-1 leading-relaxed">{myClub.announcement}</p>
+                {myClub.adminId === userId && (
+                  <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(myClub.announcement ?? ''); }}
+                    className="text-slate-500 hover:text-slate-300 shrink-0"><Settings size={12}/></button>
+                )}
+              </div>
+            ) : myClub.adminId === userId ? (
+              <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(''); }}
+                className="text-[11px] text-slate-500 hover:text-emerald-400 flex items-center gap-1 transition-colors">
+                <Megaphone size={11}/> Post an announcement
+              </button>
+            ) : null}
           </div>
         </div>
       )}
 
-      {/* Search + filter */}
+      {/* Search + state filter */}
       <div className="space-y-2">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
@@ -377,73 +476,137 @@ function ClubsTab({ clubs, myClubId, joinClub, leaveClub }: {
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">{filtered.length} club{filtered.length !== 1 ? 's' : ''}</p>
-
+      {/* Club cards */}
       <div className="space-y-3">
         {filtered.map(club => {
-          const isMine = club.id === myClubId;
-          const hasClub = myClubId !== null;
+          const isMine     = club.id === myClubId;
+          const isPending  = myClubPendingIds.includes(club.id);
+          const hasClub    = myClubId !== null;
+          const isExpanded = expandedId === club.id;
+          const isAdmin    = club.adminId === userId;
+          const full       = club.memberIds.length >= club.maxMembers;
+          const meetsMMR   = !club.minMMR; // in real app would check user MMR
+
           return (
-            <div key={club.id} className={`bg-slate-900 border rounded-2xl p-4 space-y-3 transition-colors
+            <div key={club.id} className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors
               ${isMine ? 'border-emerald-500/30' : 'border-slate-800'}`}>
-              <div className="flex items-start gap-3">
-                <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
-                  {club.logoInitials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-bold text-sm">{club.name}</p>
-                    {!club.openToJoin && (
-                      <span className="text-[9px] font-semibold text-slate-500 border border-slate-700 px-1.5 py-0.5 rounded-full">Invite Only</span>
-                    )}
+              {/* Main row */}
+              <div className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
+                    {club.logoInitials}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                    <MapPin size={10}/> {club.area}, {club.state}
-                    <span className="mx-1">·</span>
-                    Est. {club.foundedYear}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-sm">{club.name}</p>
+                      {club.isPrivate
+                        ? <Lock size={10} className="text-violet-400"/>
+                        : <Globe size={10} className="text-slate-500"/>}
+                      <span className="text-[9px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">{club.purpose}</span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <MapPin size={10}/> {club.area}, {club.state} · Est. {club.foundedYear}
+                    </p>
+                  </div>
+
+                  {/* Action button */}
+                  {isMine ? null : isPending ? (
+                    <button onClick={() => cancelClubRequest(club.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500/10 border border-violet-500/30 text-violet-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
+                      <Clock size={11}/> Pending · Cancel
+                    </button>
+                  ) : full ? (
+                    <span className="text-[10px] text-slate-600 shrink-0 pt-1">Club Full</span>
+                  ) : hasClub ? (
+                    <span className="text-[10px] text-slate-600 shrink-0 pt-1">Already in a club</span>
+                  ) : club.isPrivate ? (
+                    <button onClick={() => requestJoinClub(club.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
+                      <UserPlus size={11}/> Request
+                    </button>
+                  ) : (
+                    <button onClick={() => joinClub(club.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
+                      <UserPlus size={11}/> Join
+                    </button>
+                  )}
                 </div>
-                {isMine ? (
-                  <span className="text-[10px] text-emerald-400 font-semibold shrink-0">✓ Joined</span>
-                ) : club.openToJoin ? (
-                  <button onClick={() => joinClub(club.id)} disabled={hasClub && !isMine}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0
-                      ${hasClub && !isMine
-                        ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
-                    <UserPlus size={12}/> Join
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-slate-600 shrink-0">Closed</span>
+
+                <p className="text-xs text-slate-400 leading-relaxed">{club.description}</p>
+
+                {club.announcement && (
+                  <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3 py-2">
+                    <Megaphone size={11} className="text-amber-400 shrink-0 mt-0.5"/>
+                    <p className="text-[11px] text-amber-200/80 leading-relaxed">{club.announcement}</p>
+                  </div>
                 )}
+
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Users size={11}/>
+                      {club.memberIds.length}/{club.maxMembers}
+                      {full && <span className="text-red-400 font-semibold ml-1">Full</span>}
+                    </span>
+                    <span className="flex items-center gap-1"><Trophy size={11}/> {club.avgMMR.toLocaleString()} MMR avg</span>
+                    {club.minMMR && <span className="flex items-center gap-1 text-amber-400/80">Min {club.minMMR.toLocaleString()}</span>}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => copyLink(club.id)}
+                      className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] text-slate-400 transition-colors">
+                      {copiedId === club.id ? <><CheckCheck size={10} className="text-emerald-400"/> Copied</> : <><Copy size={10}/> Share</>}
+                    </button>
+                    <button onClick={() => setExpandedId(isExpanded ? null : club.id)}
+                      className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+                      {isExpanded ? 'Less ▲' : 'More ▼'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {club.tags.map(t => (
+                    <span key={t} className="text-[10px] font-medium px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-400">{t}</span>
+                  ))}
+                </div>
               </div>
 
-              <p className="text-xs text-slate-400 leading-relaxed">{club.description}</p>
-
-              <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500">
-                <span className="flex items-center gap-1"><Users size={11}/> {club.memberCount} members</span>
-                <span className="flex items-center gap-1"><Trophy size={11}/> Avg {club.avgMMR.toLocaleString()} MMR</span>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {club.tags.map(t => (
-                  <span key={t} className="text-[10px] font-medium px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-400">{t}</span>
-                ))}
-              </div>
-
-              {club.topPlayers.length > 0 && (
-                <p className="text-[10px] text-slate-600">
-                  Top players: <span className="text-slate-400">{club.topPlayers.join(' · ')}</span>
-                </p>
+              {/* Expanded detail */}
+              {isExpanded && (
+                <div className="border-t border-slate-800 px-4 py-3 space-y-3">
+                  {club.topPlayers.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-semibold mb-1.5">Top Players</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {club.topPlayers.map(p => (
+                          <span key={p} className="text-[11px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-lg text-slate-300">{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <span>🏠 {club.area}, {club.state}</span>
+                    <span>📅 Est. {club.foundedYear}</span>
+                    <span>🎯 {club.purpose}</span>
+                    <span>{club.isPrivate ? '🔒 Private' : '🌐 Public'}</span>
+                  </div>
+                </div>
               )}
             </div>
           );
         })}
       </div>
 
-      {!myClubId && (
-        <p className="text-center text-xs text-slate-600 pb-2">You can only be a member of one club at a time.</p>
+      {!myClubId && !createOpen && (
+        <div className="text-center py-4 space-y-2">
+          <p className="text-xs text-slate-500">Don't see your club? Create one.</p>
+          <button onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+            <Plus size={14}/> Create Club
+          </button>
+        </div>
       )}
+
+      {createOpen && <CreateClubModal onClose={() => setCreateOpen(false)}/>}
     </div>
   );
 }
