@@ -1,4 +1,4 @@
-import type { UserProfile, Match, Tournament, Conversation } from '@/types';
+import type { UserProfile, Match, Tournament, Conversation, Club } from '@/types';
 
 export const ME: UserProfile = {
   uid: 'me', username: 'lokkai', displayName: 'Lok Kai', email: 'lok@example.com',
@@ -116,3 +116,36 @@ export const TOURNAMENTS: Tournament[] = [
 ];
 
 export const CONVERSATIONS: Conversation[] = [];
+
+export const CLUBS: Club[] = [
+  {
+    id: 'c1', name: 'KL Smashers', shortName: 'KLS', description: 'Premier competitive club in Kuala Lumpur. We train 4x a week and compete in national circuits.',
+    state: 'Kuala Lumpur', area: 'Cheras', logoInitials: 'KLS', color: 'bg-emerald-600',
+    memberCount: 24, avgMMR: 1820, topPlayers: ['Zack Azhar', 'Lok Kai', 'Lee Ming Xuan'],
+    tags: ['Competitive', 'Training', 'Nationals'], openToJoin: true, foundedYear: 2019,
+  },
+  {
+    id: 'c2', name: 'Petaling Jaya Aces', shortName: 'PJA', description: 'Community club for all levels in PJ. Friendly sessions every weekend with coaching available.',
+    state: 'Selangor', area: 'Petaling Jaya', logoInitials: 'PJA', color: 'bg-blue-600',
+    memberCount: 41, avgMMR: 1380, topPlayers: ['Faiz Hamdan', 'Nur Hanim'],
+    tags: ['Friendly', 'Coaching', 'All Levels'], openToJoin: true, foundedYear: 2016,
+  },
+  {
+    id: 'c3', name: 'Penang Eagles', shortName: 'PEG', description: 'Northern Malaysia\'s top doubles club. Specialists in men\'s and mixed doubles.',
+    state: 'Penang', area: 'Georgetown', logoInitials: 'PEG', color: 'bg-amber-600',
+    memberCount: 18, avgMMR: 2050, topPlayers: ['Khoo Hui Jin'],
+    tags: ['Doubles', 'Elite', 'Competitive'], openToJoin: false, foundedYear: 2014,
+  },
+  {
+    id: 'c4', name: 'Subang United', shortName: 'SUB', description: 'Mixed-gender club focused on doubles and mixed doubles play. Regular inter-club tournaments.',
+    state: 'Selangor', area: 'Subang Jaya', logoInitials: 'SUB', color: 'bg-violet-600',
+    memberCount: 32, avgMMR: 1560, topPlayers: ['Sarina Azmi', 'Faiz Hamdan'],
+    tags: ['Mixed', 'Doubles', 'Social'], openToJoin: true, foundedYear: 2020,
+  },
+  {
+    id: 'c5', name: 'Johor Blazers', shortName: 'JBL', description: 'Southern pride. Fast-growing club with strong singles tradition and active youth programme.',
+    state: 'Johor', area: 'Johor Bahru', logoInitials: 'JBL', color: 'bg-red-600',
+    memberCount: 29, avgMMR: 1670, topPlayers: ['Lee Ming Xuan'],
+    tags: ['Singles', 'Youth', 'Active'], openToJoin: true, foundedYear: 2018,
+  },
+];

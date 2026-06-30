@@ -9,12 +9,12 @@ const LINKS = [
   { href: '/leaderboard', label: 'Leaderboard', icon: TrendingUp },
   { href: '/tournaments', label: 'Tournaments', icon: Trophy },
   { href: '/players',     label: 'Players',     icon: Users },
-  { href: '/chat',        label: 'Messages',    icon: MessageCircle, badge: 3 },
+  { href: '/chat',        label: 'Messages',    icon: MessageCircle },
 ];
 
 export function Sidebar() {
   const path = usePathname();
-  const { sidebarCollapsed, toggleSidebar } = useApp();
+  const { sidebarCollapsed, toggleSidebar, totalUnread } = useApp();
   const collapsed = sidebarCollapsed;
 
   return (
@@ -48,7 +48,7 @@ export function Sidebar() {
 
       {/* Nav links */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-hidden">
-        {LINKS.map(({ href, label, icon: Icon, badge }) => {
+        {LINKS.map(({ href, label, icon: Icon }) => {
           const active = path === href || path === href + '/';
           return (
             <Link
@@ -63,12 +63,12 @@ export function Sidebar() {
                   : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent',
               ].join(' ')}
             >
-              {/* Icon + optional badge */}
+              {/* Icon + unread badge */}
               <span className="relative shrink-0">
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                {badge && !active && (
-                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white leading-none">
-                    {badge}
+                {href === '/chat' && totalUnread > 0 && !active && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white leading-none px-0.5">
+                    {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
               </span>

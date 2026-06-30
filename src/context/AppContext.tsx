@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament, Challenge } from '@/types';
-import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS } from '@/lib/data';
+import type { UserProfile, Match, Conversation, Tournament, Challenge, Club } from '@/types';
+import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 
 interface AppCtx {
   user: UserProfile;
@@ -27,6 +27,10 @@ interface AppCtx {
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
   declineChallenge: (id: string) => void;
+  clubs: Club[];
+  myClubId: string | null;
+  joinClub: (id: string) => void;
+  leaveClub: () => void;
 }
 
 const Ctx = createContext<AppCtx>({} as AppCtx);
@@ -46,6 +50,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [registrations,   setRegistrations]   = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests, setPendingRequests] = useState<Record<string, { requestedAt: string }>>({});
   const [challenges,      setChallenges]      = useState<Challenge[]>([]);
+  const [clubs,           setClubs]           = useState<Club[]>(SEED_CLUBS);
+  const [myClubId,        setMyClubId]        = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
@@ -97,6 +103,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } }));
   }, []);
 
+  const joinClub  = useCallback((id: string) => {
+    setMyClubId(prev => {
+      if (prev) setClubs(cs => cs.map(c => c.id === prev ? { ...c, memberCount: c.memberCount - 1 } : c));
+      setClubs(cs => cs.map(c => c.id === id ? { ...c, memberCount: c.memberCount + 1 } : c));
+      return id;
+    });
+  }, []);
+  const leaveClub = useCallback(() => {
+    setMyClubId(prev => {
+      if (prev) setClubs(cs => cs.map(c => c.id === prev ? { ...c, memberCount: c.memberCount - 1 } : c));
+      return null;
+    });
+  }, []);
+
   const sendChallenge    = useCallback((c: Challenge) => setChallenges(p => [c, ...p]), []);
   const acceptChallenge  = useCallback((id: string) => setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'accepted' as const } : c)), []);
   const declineChallenge = useCallback((id: string) => setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c)), []);
@@ -113,6 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge,
+      clubs, myClubId, joinClub, leaveClub,
     }}>
       {children}
     </Ctx.Provider>

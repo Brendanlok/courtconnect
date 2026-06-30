@@ -5,15 +5,15 @@ import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, ChevronDown, Users, Check } from 'lucide-react';
+import { Search, MapPin, Filter, ChevronDown, Users, Check, Shield, Trophy, UserPlus, LogOut as Leave } from 'lucide-react';
 import Link from 'next/link';
-import type { UserProfile, MalaysiaState, Tier, MatchType } from '@/types';
+import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Players', 'Partner Finder'] as const;
+const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
 
 export default function Players() {
-  const { user, updateUser } = useApp();
+  const { user, updateUser, clubs, myClubId, joinClub, leaveClub } = useApp();
   const [tab, setTab] = useState<typeof TABS[number]>('Players');
 
   return (
@@ -29,13 +29,15 @@ export default function Players() {
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
             {t === 'Partner Finder' && <Users size={13}/>}
+            {t === 'Clubs'          && <Shield size={13}/>}
             {t}
           </button>
         ))}
       </div>
 
-      {tab === 'Players' && <PlayersList user={user}/>}
+      {tab === 'Players'        && <PlayersList user={user}/>}
       {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser}/>}
+      {tab === 'Clubs'          && <ClubsTab clubs={clubs} myClubId={myClubId} joinClub={joinClub} leaveClub={leaveClub}/>}
     </div>
   );
 }
@@ -306,6 +308,141 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Clubs ────────────────────────────────────────────────────────────────────
+
+function ClubsTab({ clubs, myClubId, joinClub, leaveClub }: {
+  clubs: Club[];
+  myClubId: string | null;
+  joinClub: (id: string) => void;
+  leaveClub: () => void;
+}) {
+  const [stateFilter, setStateFilter] = useState<string>('All');
+  const [search, setSearch] = useState('');
+
+  const states = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
+  const myClub = clubs.find(c => c.id === myClubId);
+
+  const filtered = clubs.filter(c => {
+    const q = search.toLowerCase();
+    return (stateFilter === 'All' || c.state === stateFilter) &&
+      (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q));
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* My Club banner */}
+      {myClub && (
+        <div className={`relative overflow-hidden rounded-2xl p-4 border border-white/10`}
+          style={{ background: `linear-gradient(135deg, #0f172a 0%, #1e293b 100%)` }}>
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl ${myClub.color} flex items-center justify-center font-bold text-white text-lg shrink-0`}>
+              {myClub.logoInitials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-sm">{myClub.name}</p>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-semibold">My Club</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">{myClub.area}, {myClub.state} · {myClub.memberCount} members · Avg {myClub.avgMMR.toLocaleString()} MMR</p>
+            </div>
+            <button onClick={leaveClub}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-xs font-medium transition-colors shrink-0">
+              <Leave size={12}/> Leave
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search + filter */}
+      <div className="space-y-2">
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search clubs…"
+            className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {states.map(s => (
+            <button key={s} onClick={() => setStateFilter(s)}
+              className={`px-3 py-1 rounded-xl text-xs font-medium border transition-colors
+                ${stateFilter === s ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-500">{filtered.length} club{filtered.length !== 1 ? 's' : ''}</p>
+
+      <div className="space-y-3">
+        {filtered.map(club => {
+          const isMine = club.id === myClubId;
+          const hasClub = myClubId !== null;
+          return (
+            <div key={club.id} className={`bg-slate-900 border rounded-2xl p-4 space-y-3 transition-colors
+              ${isMine ? 'border-emerald-500/30' : 'border-slate-800'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
+                  {club.logoInitials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-sm">{club.name}</p>
+                    {!club.openToJoin && (
+                      <span className="text-[9px] font-semibold text-slate-500 border border-slate-700 px-1.5 py-0.5 rounded-full">Invite Only</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                    <MapPin size={10}/> {club.area}, {club.state}
+                    <span className="mx-1">·</span>
+                    Est. {club.foundedYear}
+                  </p>
+                </div>
+                {isMine ? (
+                  <span className="text-[10px] text-emerald-400 font-semibold shrink-0">✓ Joined</span>
+                ) : club.openToJoin ? (
+                  <button onClick={() => joinClub(club.id)} disabled={hasClub && !isMine}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0
+                      ${hasClub && !isMine
+                        ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>
+                    <UserPlus size={12}/> Join
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-600 shrink-0">Closed</span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-400 leading-relaxed">{club.description}</p>
+
+              <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500">
+                <span className="flex items-center gap-1"><Users size={11}/> {club.memberCount} members</span>
+                <span className="flex items-center gap-1"><Trophy size={11}/> Avg {club.avgMMR.toLocaleString()} MMR</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {club.tags.map(t => (
+                  <span key={t} className="text-[10px] font-medium px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-400">{t}</span>
+                ))}
+              </div>
+
+              {club.topPlayers.length > 0 && (
+                <p className="text-[10px] text-slate-600">
+                  Top players: <span className="text-slate-400">{club.topPlayers.join(' · ')}</span>
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {!myClubId && (
+        <p className="text-center text-xs text-slate-600 pb-2">You can only be a member of one club at a time.</p>
       )}
     </div>
   );

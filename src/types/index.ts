@@ -110,6 +110,23 @@ export interface Challenge {
   createdAt: string;
 }
 
+export interface Club {
+  id: string;
+  name: string;
+  shortName: string;       // e.g. "TTBA"
+  description: string;
+  state: MalaysiaState;
+  area: string;
+  logoInitials: string;
+  color: string;           // tailwind bg class
+  memberCount: number;
+  avgMMR: number;
+  topPlayers: string[];    // display names
+  tags: string[];          // e.g. ["Competitive", "Friendly"]
+  openToJoin: boolean;
+  foundedYear: number;
+}
+
 export interface AuthUser {
   uid: string;
   displayName: string;
