@@ -59,8 +59,8 @@ export function Sidebar() {
                 'flex items-center rounded-xl text-sm font-medium transition-colors relative overflow-hidden',
                 collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
                 active
-                  ? 'bg-emerald-600/20 text-emerald-400'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800',
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-[0_0_0_0] shadow-emerald-500/10'
+                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent',
               ].join(' ')}
             >
               {/* Icon + optional badge */}
