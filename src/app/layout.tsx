@@ -17,9 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geist.variable} font-[var(--font-geist)] bg-[#020817] text-slate-100 min-h-screen`}>
         <AuthProvider>
           <AuthGate>
-            <AppProvider>
-              {children}
-            </AppProvider>
+            {children}
           </AuthGate>
         </AuthProvider>
       </body>
