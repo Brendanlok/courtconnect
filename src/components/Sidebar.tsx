@@ -49,7 +49,7 @@ export function Sidebar() {
       {/* Nav links */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-hidden">
         {LINKS.map(({ href, label, icon: Icon, badge }) => {
-          const active = path === href;
+          const active = path === href || path === href + '/';
           return (
             <Link
               key={href}
