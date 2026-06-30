@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament } from '@/types';
+import type { UserProfile, Match, Conversation, Tournament, Challenge } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS } from '@/lib/data';
 
 interface AppCtx {
@@ -23,6 +23,10 @@ interface AppCtx {
   unregisterTournament: (id: string) => void;
   requestToJoin: (id: string) => void;
   cancelRequest: (id: string) => void;
+  challenges: Challenge[];
+  sendChallenge: (c: Challenge) => void;
+  acceptChallenge: (id: string) => void;
+  declineChallenge: (id: string) => void;
 }
 
 const Ctx = createContext<AppCtx>({} as AppCtx);
@@ -41,6 +45,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tournaments,     setTournaments]     = useState<Tournament[]>(SEED_TOURNAMENTS);
   const [registrations,   setRegistrations]   = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests, setPendingRequests] = useState<Record<string, { requestedAt: string }>>({});
+  const [challenges,      setChallenges]      = useState<Challenge[]>([]);
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
@@ -92,6 +97,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } }));
   }, []);
 
+  const sendChallenge    = useCallback((c: Challenge) => setChallenges(p => [c, ...p]), []);
+  const acceptChallenge  = useCallback((id: string) => setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'accepted' as const } : c)), []);
+  const declineChallenge = useCallback((id: string) => setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c)), []);
+
   const cancelRequest = useCallback((id: string) => {
     setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; });
   }, []);
@@ -103,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tournaments, addTournament,
       registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
+      challenges, sendChallenge, acceptChallenge, declineChallenge,
     }}>
       {children}
     </Ctx.Provider>

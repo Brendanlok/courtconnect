@@ -94,6 +94,31 @@ export interface Message {
   sentAt: string;
 }
 
+export interface Challenge {
+  id: string;
+  fromId: string;
+  fromName: string;
+  fromUsername: string;
+  toId: string;
+  toName: string;
+  toUsername: string;
+  format: MatchType;
+  venue: string;
+  date: string;       // ISO date string for proposed date/time
+  message?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+export interface AuthUser {
+  uid: string;
+  displayName: string;
+  username: string;
+  email: string;
+  provider: 'email' | 'google';
+  passwordHash?: string; // stored as-is for demo (not real hashing)
+}
+
 export interface Conversation {
   id: string;
   participant: UserProfile;

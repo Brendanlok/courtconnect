@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { QRModal } from '@/components/QRModal';
+import { ChallengeModal } from '@/components/ChallengeModal';
 import { tierProgress, nextTier, skillMatch } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Zap, Swords } from 'lucide-react';
@@ -34,8 +35,9 @@ export function PlayerProfileClient({ username }: { username: string }) {
 
   const isMe   = staticPlayer.uid === 'me';
   const player = isMe ? ctxUser : staticPlayer;
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [qrOpen, setQrOpen]               = useState(false);
+  const [selectedMatch,  setSelectedMatch]  = useState<Match | null>(null);
+  const [qrOpen,         setQrOpen]         = useState(false);
+  const [challengeOpen,  setChallengeOpen]  = useState(false);
 
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
@@ -137,8 +139,9 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 </>
               ) : (
                 <>
-                  <button className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition-colors">
-                    <Zap size={14}/> Challenge
+                  <button onClick={() => setChallengeOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
+                    <Swords size={14}/> Challenge
                   </button>
                   <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                     <MessageCircle size={14}/> Message
@@ -291,6 +294,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
+      {!isMe && challengeOpen && <ChallengeModal opponent={player} onClose={() => setChallengeOpen(false)}/>}
     </>
   );
 }

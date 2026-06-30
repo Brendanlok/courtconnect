@@ -7,11 +7,12 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity } from 'lucide-react';
-import type { Match, Tournament } from '@/types';
+import { TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords } from 'lucide-react';
+import type { Match, Tournament, Challenge } from '@/types';
+import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
 
 export default function Home() {
-  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
@@ -130,6 +131,9 @@ export default function Home() {
           </div>
         )}
 
+        {/* Challenges */}
+        <ChallengesSection challenges={challenges} userId={user.uid} onAccept={acceptChallenge} onDecline={declineChallenge}/>
+
         {/* Stats */}
         {(() => {
           const dm = user.disciplineMMR ?? {};
@@ -244,6 +248,86 @@ export default function Home() {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
     </>
+  );
+}
+
+// ─── Challenges Section ───────────────────────────────────────────────────────
+
+function ChallengesSection({ challenges, userId, onAccept, onDecline }: {
+  challenges: Challenge[];
+  userId: string;
+  onAccept: (id: string) => void;
+  onDecline: (id: string) => void;
+}) {
+  const incoming = challenges.filter(c => c.toId === userId && c.status === 'pending');
+  const outgoing = challenges.filter(c => c.fromId === userId && c.status === 'pending');
+  const recent   = challenges.filter(c => (c.toId === userId || c.fromId === userId) && c.status !== 'pending');
+
+  if (!incoming.length && !outgoing.length && !recent.length) return null;
+
+  return (
+    <div className="bg-slate-900 border border-amber-500/20 rounded-2xl p-4 space-y-3">
+      <h2 className="font-semibold flex items-center gap-2 text-amber-400">
+        <Swords size={15}/> Challenges
+        {incoming.length > 0 && (
+          <span className="text-[10px] bg-amber-500 text-black font-bold px-1.5 py-0.5 rounded-full">{incoming.length}</span>
+        )}
+      </h2>
+
+      {incoming.map(c => (
+        <div key={c.id} className="bg-slate-800 rounded-xl p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold">
+                <span className="text-amber-400">⚔️ {c.fromName}</span> challenged you
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {MATCH_TYPE_LABEL[c.format]} · {formatDate(c.date)} at {formatTime(c.date)}
+              </p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">📍 {c.venue}</p>
+              {c.message && <p className="text-xs text-slate-400 italic mt-1">"{c.message}"</p>}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onAccept(c.id)}
+              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+              <CheckCircle size={12}/> Accept
+            </button>
+            <button onClick={() => onDecline(c.id)}
+              className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+              <XCircle size={12}/> Decline
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {outgoing.map(c => (
+        <div key={c.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+          <Clock size={14} className="text-amber-400 shrink-0"/>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-slate-300 truncate">
+              Challenge sent to <span className="font-semibold">{c.toName}</span>
+            </p>
+            <p className="text-xs text-slate-500">{MATCH_TYPE_LABEL[c.format]} · {formatDate(c.date)}</p>
+          </div>
+          <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full shrink-0">Pending</span>
+        </div>
+      ))}
+
+      {recent.map(c => {
+        const isIncoming = c.toId === userId;
+        return (
+          <div key={c.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg shrink-0 ${c.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+              {c.status === 'accepted' ? '✓ Accepted' : '✗ Declined'}
+            </span>
+            <p className="text-sm text-slate-400 truncate flex-1">
+              {isIncoming ? c.fromName : c.toName} · {MATCH_TYPE_LABEL[c.format]}
+            </p>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

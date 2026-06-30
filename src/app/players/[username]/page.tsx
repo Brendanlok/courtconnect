@@ -5,6 +5,7 @@ export function generateStaticParams() {
   return [ME, ...PLAYERS].map(p => ({ username: p.username }));
 }
 
-export default function PlayerProfilePage({ params }: { params: { username: string } }) {
-  return <PlayerProfileClient username={params.username} />;
+export default async function PlayerProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  return <PlayerProfileClient username={username} />;
 }

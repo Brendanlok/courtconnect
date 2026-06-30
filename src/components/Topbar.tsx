@@ -7,9 +7,11 @@ import { QRModal } from '@/components/QRModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export function Topbar() {
   const { user } = useApp();
+  const { logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [qrOpen,   setQrOpen]   = useState(false);
   const [logOpen,  setLogOpen]   = useState(false);
@@ -96,7 +98,8 @@ export function Topbar() {
                 </div>
 
                 <div className="p-2 border-t border-slate-800">
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 text-red-400 transition-colors text-sm">
+                  <button onClick={() => { setMenuOpen(false); logout(); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 text-red-400 transition-colors text-sm">
                     <LogOut size={15} /> Log Out
                   </button>
                 </div>
