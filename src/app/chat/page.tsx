@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { timeAgo } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft } from 'lucide-react';
+import { ME, PLAYERS } from '@/lib/data';
 import type { Message } from '@/types';
 
 export default function Chat() {
@@ -15,17 +16,31 @@ export default function Chat() {
   const [query,      setQuery]      = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Open conversation for a specific player uid passed via ?uid= query param
+  // Open or create a conversation for a player uid passed via ?uid= query param
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const uid = params.get('uid');
+    const uid = new URLSearchParams(window.location.search).get('uid');
     if (!uid) return;
-    const conv = convs.find(c => c.participant.uid === uid);
-    if (conv) {
-      setActiveId(conv.id);
+
+    const existing = convs.find(c => c.participant.uid === uid);
+    if (existing) {
+      setActiveId(existing.id);
       setMobileView('chat');
-      setConvs(cs => cs.map(c => c.id === conv.id ? { ...c, unread: 0 } : c));
+      setConvs(cs => cs.map(c => c.id === existing.id ? { ...c, unread: 0 } : c));
+    } else {
+      const participant = [ME, ...PLAYERS].find(p => p.uid === uid);
+      if (!participant) return;
+      const newConv = {
+        id: `conv_${uid}_${Date.now()}`,
+        participant,
+        lastMessage: '',
+        lastAt: new Date().toISOString(),
+        unread: 0,
+        messages: [],
+      };
+      setConvs(cs => [newConv, ...cs]);
+      setActiveId(newConv.id);
+      setMobileView('chat');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

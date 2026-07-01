@@ -156,8 +156,16 @@ export function PlayerProfileClient({ username }: { username: string }) {
                     className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                     <MessageCircle size={14}/> Message
                   </button>
-                  <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-slate-400">
-                    Skill match: <span className={`font-bold ml-1 ${sm>=80?'text-emerald-400':sm>=60?'text-amber-400':'text-red-400'}`}>{sm}%</span>
+                  <div className="group relative flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-slate-400 cursor-help">
+                    Skill match:
+                    <span className={`font-bold ${sm>=80?'text-emerald-400':sm>=60?'text-amber-400':'text-red-400'}`}>{sm}%</span>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
+                      <p className="font-semibold text-white mb-1">Skill Match</p>
+                      How closely your MMR matches theirs. Higher % = more competitive match. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
+                      <p className="mt-1 text-slate-400">
+                        {sm>=80?'⚡ Very even match':sm>=60?'🟡 Moderate gap — still competitive':'🔴 Large gap — may feel one-sided'}
+                      </p>
+                    </div>
                   </div>
                 </>
               )}
