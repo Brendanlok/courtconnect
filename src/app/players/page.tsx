@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -12,6 +12,50 @@ import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types'
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
+
+// ─── Reusable filter dropdown ─────────────────────────────────────────────────
+function FilterDropdown<T extends string>({
+  icon, label, value, options, onChange,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: T;
+  options: { value: T; label: string; prefix?: React.ReactNode }[];
+  onChange: (v: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  const selected = options.find(o => o.value === value);
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border rounded-xl text-xs transition-colors
+          ${value !== options[0].value ? 'border-emerald-500/50 text-emerald-300' : 'border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}>
+        {icon}
+        <span>{value === options[0].value ? label : (selected?.label ?? value)}</span>
+        <ChevronDown size={11} className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`}/>
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+          {options.map(o => (
+            <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors
+                ${o.value === value ? 'bg-emerald-600/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+              {o.prefix}
+              {o.label}
+              {o.value === value && <Check size={11} className="ml-auto text-emerald-400"/>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Players() {
   const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();
@@ -49,7 +93,6 @@ function PlayersList({ user }: { user: UserProfile }) {
   const [query,      setQuery]       = useState('');
   const [stateFilter,setStateFilter] = useState<MalaysiaState | 'All'>('All');
   const [tierFilter, setTierFilter]  = useState<Tier | 'All'>('All');
-  const [stateOpen,  setStateOpen]   = useState(false);
 
   const allPlayers = [user, ...PLAYERS];
 
@@ -73,42 +116,22 @@ function PlayersList({ user }: { user: UserProfile }) {
 
         <div className="flex gap-2 flex-wrap items-center">
           <Filter size={13} className="text-slate-500"/>
-          <div className="relative">
-            <button onClick={() => setStateOpen(o => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs hover:border-emerald-500 transition-colors">
-              <MapPin size={11} className="text-emerald-400"/>
-              {stateFilter === 'All' ? 'All States' : stateFilter}
-              <ChevronDown size={11} className="text-slate-400"/>
-            </button>
-            {stateOpen && (
-              <div className="absolute top-full mt-1 left-0 z-20 bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-1 grid grid-cols-2 gap-0.5 w-60">
-                <button onClick={() => { setStateFilter('All'); setStateOpen(false); }}
-                  className={`text-left px-3 py-1.5 rounded-lg text-xs col-span-2 transition-colors ${stateFilter==='All'?'bg-emerald-600 text-white':'text-slate-300 hover:bg-slate-800'}`}>
-                  All States
-                </button>
-                {MY_STATES.map(s => (
-                  <button key={s} onClick={() => { setStateFilter(s as MalaysiaState); setStateOpen(false); }}
-                    className={`text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${stateFilter===s?'bg-emerald-600 text-white':'text-slate-300 hover:bg-slate-800'}`}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {TIERS.map(t => {
-              const s = t !== 'All' ? TIER_STYLE[t] : null;
-              return (
-                <button key={t} onClick={() => setTierFilter(t)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
-                    ${tierFilter === t
-                      ? t === 'All' ? 'bg-slate-600 border-slate-500 text-white' : `${s!.bg} ${s!.text} ${s!.border}`
-                      : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-                  {t !== 'All' && s ? `${s.icon} ` : ''}{t}
-                </button>
-              );
-            })}
-          </div>
+          <FilterDropdown<MalaysiaState | 'All'>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label="All States" value={stateFilter}
+            options={[{ value: 'All', label: 'All States' }, ...MY_STATES.map(s => ({ value: s as MalaysiaState, label: s }))]}
+            onChange={setStateFilter}
+          />
+          <FilterDropdown<Tier | 'All'>
+            icon={<span className="text-[11px]">{tierFilter !== 'All' ? TIER_STYLE[tierFilter].icon : '🏅'}</span>}
+            label="All Tiers" value={tierFilter}
+            options={TIERS.map(t => ({
+              value: t,
+              label: t === 'All' ? 'All Tiers' : t,
+              prefix: t !== 'All' ? <span className="text-sm">{TIER_STYLE[t].icon}</span> : undefined,
+            }))}
+            onChange={setTierFilter}
+          />
         </div>
       </div>
 
@@ -227,17 +250,13 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
       </div>
 
       {/* Format filter — gender-aware */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
         <Filter size={13} className="text-slate-500"/>
-        {partnerFormats.map(f => (
-          <button key={f} onClick={() => setFormatFilter(f)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors
-              ${formatFilter === f
-                ? 'bg-slate-700 border-slate-600 text-white'
-                : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-            {f === 'All' ? 'All formats' : `${f} · ${MATCH_TYPE_LABEL[f]}`}
-          </button>
-        ))}
+        <FilterDropdown<'All' | MatchType>
+          label="All Formats" value={formatFilter}
+          options={partnerFormats.map(f => ({ value: f, label: f === 'All' ? 'All Formats' : `${f} · ${MATCH_TYPE_LABEL[f]}` }))}
+          onChange={setFormatFilter}
+        />
       </div>
 
       <p className="text-xs text-slate-500">{candidates.length} player{candidates.length !== 1 ? 's' : ''} looking for a partner</p>
@@ -465,14 +484,14 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
             placeholder="Search clubs…"
             className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {states.map(s => (
-            <button key={s} onClick={() => setStateFilter(s)}
-              className={`px-3 py-1 rounded-xl text-xs font-medium border transition-colors
-                ${stateFilter === s ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-              {s}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Filter size={13} className="text-slate-500"/>
+          <FilterDropdown<string>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label="All States" value={stateFilter}
+            options={states.map(s => ({ value: s, label: s === 'All' ? 'All States' : s }))}
+            onChange={setStateFilter}
+          />
         </div>
       </div>
 

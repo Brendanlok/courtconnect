@@ -260,14 +260,15 @@ export function PlayerProfileClient({ username }: { username: string }) {
                     {ENDORSE_SKILLS.map(skill => {
                       const given = myGiven.includes(skill);
                       return (
-                        <button key={skill} onClick={() => !given && endorsePlayer(player.uid, skill)}
+                        <button key={skill} onClick={() => endorsePlayer(player.uid, skill)}
+                          title={given ? 'Click to remove endorsement' : 'Click to endorse'}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors
                             ${given
-                              ? 'bg-violet-500/20 border-violet-500/40 text-violet-300 cursor-default'
+                              ? 'bg-violet-500/20 border-violet-500/40 text-violet-300 hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-400'
                               : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-violet-500/50 hover:text-violet-300'}`}>
                           <ThumbsUp size={11} className={given ? 'text-violet-400' : ''}/>
                           {skill}
-                          {given && <span className="text-violet-400">✓</span>}
+                          {given && <span className="text-[10px] opacity-60">✓</span>}
                         </button>
                       );
                     })}

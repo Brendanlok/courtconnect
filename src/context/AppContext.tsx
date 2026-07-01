@@ -171,16 +171,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, []);
 
-  // Endorsements
+  // Endorsements — toggle: endorse if not given, remove if already given
   const endorsePlayer = useCallback((targetUid: string, skill: string) => {
     setMyEndorsements(prev => {
       const already = prev[targetUid] ?? [];
-      if (already.includes(skill)) return prev;
-      return { ...prev, [targetUid]: [...already, skill] };
-    });
-    setPlayerEndorsements(prev => {
-      const existing = prev[targetUid] ?? {};
-      return { ...prev, [targetUid]: { ...existing, [skill]: (existing[skill] ?? 0) + 1 } };
+      const isGiven = already.includes(skill);
+      const next = isGiven ? already.filter(s => s !== skill) : [...already, skill];
+      setPlayerEndorsements(pe => {
+        const existing = pe[targetUid] ?? {};
+        const newCount = Math.max(0, (existing[skill] ?? 0) + (isGiven ? -1 : 1));
+        return { ...pe, [targetUid]: { ...existing, [skill]: newCount } };
+      });
+      return { ...prev, [targetUid]: next };
     });
   }, []);
 
