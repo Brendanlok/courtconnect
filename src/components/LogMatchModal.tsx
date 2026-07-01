@@ -424,10 +424,16 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
             </div>
 
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-              <button className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
-                <Camera size={17}/> Scan Opponent QR Code
-              </button>
-              <p className="text-center text-xs text-slate-500">— or fill in manually —</p>
+              {/* QR scan */}
+              <div>
+                <p className="text-xs text-slate-400 font-semibold mb-2">Scan Opponent QR Code</p>
+                <QRScanner onFound={p => { setOpp1(p); }} />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-800"/>
+                <span className="text-xs text-slate-500 shrink-0">or fill in manually</span>
+                <div className="flex-1 h-px bg-slate-800"/>
+              </div>
 
               {/* Match type */}
               <label className="block">
