@@ -1,61 +1,18 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, ChevronDown, Users, Check, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
+import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
-
-// ─── Reusable filter dropdown ─────────────────────────────────────────────────
-function FilterDropdown<T extends string>({
-  icon, label, value, options, onChange,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  value: T;
-  options: { value: T; label: string; prefix?: React.ReactNode }[];
-  onChange: (v: T) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-  const selected = options.find(o => o.value === value);
-  return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border rounded-xl text-xs transition-colors
-          ${value !== options[0].value ? 'border-emerald-500/50 text-emerald-300' : 'border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}>
-        {icon}
-        <span>{value === options[0].value ? label : (selected?.label ?? value)}</span>
-        <ChevronDown size={11} className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`}/>
-      </button>
-      {open && (
-        <div className="absolute top-full mt-1 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
-          {options.map(o => (
-            <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors
-                ${o.value === value ? 'bg-emerald-600/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
-              {o.prefix}
-              {o.label}
-              {o.value === value && <Check size={11} className="ml-auto text-emerald-400"/>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Players() {
   const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();

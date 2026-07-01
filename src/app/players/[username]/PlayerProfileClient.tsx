@@ -145,7 +145,9 @@ export function PlayerProfileClient({ username }: { username: string }) {
                     className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
                     <Swords size={14}/> Challenge
                   </button>
-                  <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                     <MessageCircle size={14}/> Message
                   </button>
                   <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-slate-400">

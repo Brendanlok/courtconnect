@@ -9,11 +9,26 @@ import type { Message } from '@/types';
 
 export default function Chat() {
   const { user, conversations: convs, setConversations: setConvs } = useApp();
-  const [activeId, setActiveId] = useState<string | null>(convs[0]?.id ?? null);
+  const [activeId,   setActiveId]   = useState<string | null>(convs[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
-  const [input, setInput]       = useState('');
-  const [query, setQuery]       = useState('');
-  const bottomRef               = useRef<HTMLDivElement>(null);
+  const [input,      setInput]      = useState('');
+  const [query,      setQuery]      = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Open conversation for a specific player uid passed via ?uid= query param
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('uid');
+    if (!uid) return;
+    const conv = convs.find(c => c.participant.uid === uid);
+    if (conv) {
+      setActiveId(conv.id);
+      setMobileView('chat');
+      setConvs(cs => cs.map(c => c.id === conv.id ? { ...c, unread: 0 } : c));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const active = convs.find(c => c.id === activeId) ?? null;
 
