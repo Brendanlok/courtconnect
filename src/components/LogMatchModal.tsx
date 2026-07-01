@@ -8,6 +8,160 @@ import type { Match, MatchType, UserProfile } from '@/types';
 
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
+const ALL_PLAYERS = [ME, ...PLAYERS];
+
+// ─── QR scanner (photo / camera) ─────────────────────────────────────────────
+
+type ScanState = 'idle' | 'scanning' | 'success' | 'error';
+
+function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
+  const [state,    setState]    = useState<ScanState>('idle');
+  const [message,  setMessage]  = useState('');
+  const [preview,  setPreview]  = useState<string | null>(null);
+  const fileRef  = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  const decodeImageData = useCallback(async (file: File) => {
+    setState('scanning');
+    setMessage('');
+    setPreview(URL.createObjectURL(file));
+
+    try {
+      // Draw image to canvas and extract pixel data
+      const img = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      // Dynamically import jsqr (avoids SSR issues)
+      const jsQR = (await import('jsqr')).default;
+      const result = jsQR(data, width, height, { inversionAttempts: 'dontInvert' });
+
+      if (!result) {
+        setState('error');
+        setMessage('No QR code found in this image. Try a clearer photo.');
+        return;
+      }
+
+      // Parse the QR payload — expects {"uid":"...","username":"...","displayName":"..."}
+      let payload: { uid?: string; username?: string; displayName?: string } = {};
+      try { payload = JSON.parse(result.data); } catch { payload = {}; }
+
+      const player = ALL_PLAYERS.find(p =>
+        (payload.uid && p.uid === payload.uid) ||
+        (payload.username && p.username === payload.username)
+      );
+
+      if (!player) {
+        setState('error');
+        setMessage(`QR decoded but player "${payload.displayName ?? payload.username ?? result.data}" is not in the system.`);
+        return;
+      }
+
+      setState('success');
+      setMessage(`Found: ${player.displayName} (@${player.username})`);
+      onFound(player);
+    } catch {
+      setState('error');
+      setMessage('Could not read the image. Please try again.');
+    }
+  }, [onFound]);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) decodeImageData(file);
+    // reset so same file can re-trigger
+    e.target.value = '';
+  };
+
+  const reset = () => { setState('idle'); setMessage(''); setPreview(null); };
+
+  return (
+    <div className="space-y-2">
+      {/* Hidden file inputs */}
+      <input ref={fileRef}    type="file" accept="image/*"                    className="hidden" onChange={handleFile}/>
+      <input ref={cameraRef}  type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile}/>
+
+      {state === 'idle' && (
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="flex flex-col items-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/40 rounded-xl text-sm font-medium transition-all group">
+            <Camera size={20} className="text-emerald-400 group-hover:scale-110 transition-transform"/>
+            <span className="text-xs text-slate-300">Take Photo</span>
+          </button>
+          <button type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex flex-col items-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/40 rounded-xl text-sm font-medium transition-all group">
+            <Upload size={20} className="text-emerald-400 group-hover:scale-110 transition-transform"/>
+            <span className="text-xs text-slate-300">Upload Photo</span>
+          </button>
+        </div>
+      )}
+
+      {state === 'scanning' && (
+        <div className="flex items-center gap-3 py-4 px-4 bg-slate-800 border border-slate-700 rounded-xl">
+          {preview && (
+            <img src={preview} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0 opacity-60"/>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Loader2 size={14} className="text-emerald-400 animate-spin shrink-0"/>
+              <span className="text-sm font-medium text-slate-300">Reading QR code…</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {state === 'success' && (
+        <div className="flex items-center gap-3 py-3 px-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+          {preview && (
+            <img src={preview} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0"/>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-emerald-400 shrink-0"/>
+              <span className="text-sm font-semibold text-emerald-300">Opponent found!</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">{message}</p>
+          </div>
+          <button type="button" onClick={reset} className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
+        </div>
+      )}
+
+      {state === 'error' && (
+        <div className="space-y-2">
+          <div className="flex items-start gap-3 py-3 px-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+            {preview && (
+              <img src={preview} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 opacity-60"/>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={14} className="text-red-400 shrink-0"/>
+                <span className="text-sm font-semibold text-red-300">Scan failed</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{message}</p>
+            </div>
+            <button type="button" onClick={reset} className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => { reset(); setTimeout(() => cameraRef.current?.click(), 50); }}
+              className="flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
+              <Camera size={13} className="text-emerald-400"/> Try Camera
+            </button>
+            <button type="button" onClick={() => { reset(); setTimeout(() => fileRef.current?.click(), 50); }}
+              className="flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
+              <ImageIcon size={13} className="text-emerald-400"/> Try Another
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface NominatimResult {
   place_id: number;
