@@ -1,8 +1,8 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Camera, Plus, Search, MapPin, Loader2, Navigation } from 'lucide-react';
+import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { PLAYERS } from '@/lib/data';
+import { PLAYERS, ME } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { Match, MatchType, UserProfile } from '@/types';
 
