@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
+import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
