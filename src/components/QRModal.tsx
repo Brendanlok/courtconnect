@@ -2,11 +2,39 @@
 import { useApp } from '@/context/AppContext';
 import { TIER_STYLE } from '@/lib/utils';
 import { X, Share2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   if (!open) return null;
   const s = TIER_STYLE[user.tier];
+
+  // Encode uid + username + displayName as a compact JSON string
+  const qrPayload = JSON.stringify({ uid: user.uid, username: user.username, displayName: user.displayName });
+
+  return (
+    <QRModalInner user={user} s={s} qrPayload={qrPayload} onClose={onClose}/>
+  );
+}
+
+function QRModalInner({ user, s, qrPayload, onClose }: {
+  user: { displayName: string; username: string; tier: string; mmr: number; globalRank: number; area: string; state: string };
+  s: { bg: string; text: string; border: string; icon: string };
+  qrPayload: string;
+  onClose: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, qrPayload, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#111827', light: '#ffffff' },
+    }).catch(() => {});
+  }, [qrPayload]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
@@ -16,34 +44,8 @@ export function QRModal({ open, onClose }: { open: boolean; onClose: () => void 
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
         </div>
 
-        <div className="w-52 h-52 mx-auto bg-white rounded-2xl flex items-center justify-center mb-5 shadow-lg">
-          <svg width="190" height="190" viewBox="0 0 190 190">
-            <rect width="190" height="190" fill="white"/>
-            <rect x="10" y="10" width="50" height="50" rx="5" fill="#111"/>
-            <rect x="16" y="16" width="38" height="38" rx="3" fill="white"/>
-            <rect x="22" y="22" width="26" height="26" rx="2" fill="#111"/>
-            <rect x="130" y="10" width="50" height="50" rx="5" fill="#111"/>
-            <rect x="136" y="16" width="38" height="38" rx="3" fill="white"/>
-            <rect x="142" y="22" width="26" height="26" rx="2" fill="#111"/>
-            <rect x="10" y="130" width="50" height="50" rx="5" fill="#111"/>
-            <rect x="16" y="136" width="38" height="38" rx="3" fill="white"/>
-            <rect x="22" y="142" width="26" height="26" rx="2" fill="#111"/>
-            {[[72,10],[84,10],[96,10],[72,22],[96,22],[84,34],[72,46],
-              [10,72],[22,72],[10,84],[34,84],[22,96],[10,108],
-              [72,72],[84,72],[96,72],[108,72],[120,72],[72,84],[108,84],
-              [72,96],[84,96],[120,96],[72,108],[96,108],[108,108],
-              [130,72],[142,72],[154,72],[166,72],[130,84],[166,84],
-              [130,96],[142,96],[154,96],[130,108],[154,108],[166,108],
-              [130,130],[154,130],[166,130],[130,142],[142,142],[166,142],
-              [130,154],[142,154],[154,154],[130,166],[154,166],[166,166],
-              [72,130],[96,130],[108,130],[72,142],[84,142],[108,142],
-              [72,154],[84,154],[96,154],[108,166]
-            ].map(([x,y],i) => (
-              <rect key={i} x={x} y={y} width="8" height="8" rx="1.5" fill="#111" opacity={i%5===0?0.4:1}/>
-            ))}
-            <circle cx="95" cy="95" r="18" fill="#059669"/>
-            <text x="95" y="100" textAnchor="middle" fill="white" fontSize="18">🏸</text>
-          </svg>
+        <div className="w-52 h-52 mx-auto bg-white rounded-2xl flex items-center justify-center mb-5 shadow-lg overflow-hidden">
+          <canvas ref={canvasRef} style={{ borderRadius: 12 }}/>
         </div>
 
         <p className="font-bold text-xl">{user.displayName}</p>
