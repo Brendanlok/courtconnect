@@ -77,6 +77,8 @@ export interface Tournament {
   tags: string[];
   description?: string;
   organiser?: string;
+  hostUid?: string;         // uid of the user who created this tournament
+  participants?: string[];  // display names of registered players
 }
 
 export interface BracketMatch {

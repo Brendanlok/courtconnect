@@ -1,14 +1,77 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
-         AlertTriangle, X, Filter, Info } from 'lucide-react';
+         AlertTriangle, X, Filter, Info, Eye } from 'lucide-react';
 import { MATCH_TYPE_LABEL, MY_STATES } from '@/lib/utils';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 
-const TABS = ['Active','Upcoming','Completed'] as const;
 type VisFilter = 'All' | 'Public' | 'Private';
-const MATCH_TYPES: ('All' | MatchType)[] = ['All','MS','WS','MD','WD','MX'];
+type EligFilter = 'All' | 'Eligible';
+
+// Mock Malaysian badminton venue suggestions for autocomplete
+const VENUE_SUGGESTIONS = [
+  'Sport Planet PJ, No.5 Jalan SS7/19, 47301 Petaling Jaya, Selangor',
+  'Sport Planet Sunway, Jalan PJS 11/28A, 47500 Subang Jaya, Selangor',
+  'Sport Planet Ampang, Jalan Ampang Utama 2/2, 68000 Ampang, Selangor',
+  'Stadium Putra, Jalan Stadium, 57000 Bukit Jalil, Kuala Lumpur',
+  'Bukit Jalil Sports Complex, Jalan Stadium, 57000 Bukit Jalil, Kuala Lumpur',
+  'Stadium Badminton Cheras, Jalan Manis 6, 56000 Cheras, Kuala Lumpur',
+  'Axiata Arena, Jalan Stadium, 57000 Bukit Jalil, Kuala Lumpur',
+  'Stadium Shah Alam, Persiaran Majlis, 40150 Shah Alam, Selangor',
+  'Penang Sports Arena, Jalan Batu Uban, 11700 Georgetown, Penang',
+  'Komtar Jbcc, Jalan Wong Ah Fook, 80000 Johor Bahru, Johor',
+  'Dewan Badminton Kepong, Jalan Kepong, 52100 Kepong, Kuala Lumpur',
+  'Stadium Juara, Jalan 3/27B, 40150 Shah Alam, Selangor',
+  'Multi Sports Hall USJ, Jalan USJ 10/1A, 47620 Subang Jaya, Selangor',
+  'KL Sports City, Jalan Hang Tuah, 55200 Kuala Lumpur',
+  'Ipoh Badminton Hall, Jalan Raja Musa Aziz, 30450 Ipoh, Perak',
+  'Alor Setar Sports Complex, Jalan Darul Aman, 05100 Alor Setar, Kedah',
+  'Kuching Sports Complex, Jalan Stadium, 93350 Kuching, Sarawak',
+  'Kota Kinabalu Sports School, Jalan Universititi, 88400 Kota Kinabalu, Sabah',
+];
+
+// ─── Participants Modal ────────────────────────────────────────────────────────
+
+function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament; onClose: () => void }) {
+  const names = t.participants ?? [];
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <div>
+            <h3 className="font-bold text-sm">{t.name}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">{names.length} / {t.maxPlayers} players signed up</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="p-4 max-h-[60vh] overflow-y-auto">
+          {names.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-6">No players signed up yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {names.map((name, i) => (
+                <div key={i} className="flex items-center gap-3 bg-slate-800 rounded-xl px-3 py-2.5">
+                  <div className="w-6 h-6 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-[10px] font-bold text-emerald-400 shrink-0">
+                    {i + 1}
+                  </div>
+                  <span className="text-sm font-medium">{name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="px-4 pb-4">
+          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width:`${Math.round((names.length / t.maxPlayers) * 100)}%` }}/>
+          </div>
+          <p className="text-xs text-slate-500 mt-1.5 text-right">{t.maxPlayers - names.length} spots remaining</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -17,13 +80,14 @@ export default function Tournaments() {
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
           updateUser } = useApp();
 
-  const [tab,           setTab]         = useState<typeof TABS[number]>('Active');
+  const [tab,           setTab]         = useState<'Active'|'Upcoming'|'Completed'>('Active');
   const [visFilter,     setVisFilter]   = useState<VisFilter>('All');
   const [typeFilter,    setTypeFilter]  = useState<'All' | MatchType>('All');
-  const [eligibleOnly,  setEligibleOnly]= useState(false);
+  const [eligFilter,    setEligFilter]  = useState<EligFilter>('All');
   const [hostOpen,      setHostOpen]    = useState(false);
   const [regTarget,     setRegTarget]   = useState<Tournament | null>(null);
   const [unregTarget,   setUnregTarget] = useState<Tournament | null>(null);
+  const [viewParticipants, setViewParticipants] = useState<Tournament | null>(null);
 
   const isPenalty = (t: Tournament) => {
     const msUntil = new Date(t.date).getTime() - Date.now();
@@ -35,11 +99,19 @@ export default function Tournaments() {
     .filter(t => visFilter === 'All' ? true : visFilter === 'Private' ? t.isPrivate : !t.isPrivate)
     .filter(t => typeFilter === 'All' || t.type === typeFilter)
     .filter(t => {
-      if (!eligibleOnly) return true;
+      if (eligFilter === 'All') return true;
       if (t.minMMR && user.mmr < t.minMMR) return false;
       if (t.maxMMR && user.mmr > t.maxMMR) return false;
       return true;
+    })
+    // hosted by user floats to top
+    .sort((a, b) => {
+      const aHost = a.hostUid === 'me' || a.organiser === user.displayName;
+      const bHost = b.hostUid === 'me' || b.organiser === user.displayName;
+      return (bHost ? 1 : 0) - (aHost ? 1 : 0);
     });
+
+  const TABS = ['Active', 'Upcoming', 'Completed'] as const;
 
   return (
     <div className="space-y-4">
@@ -67,40 +139,42 @@ export default function Tournaments() {
         ))}
       </div>
 
-      {/* Filter bar */}
+      {/* Filter bar — categorized dropdowns */}
       <div className="flex flex-wrap items-center gap-2">
         <Filter size={13} className="text-slate-500 shrink-0"/>
-
-        {/* Visibility */}
-        <div className="flex gap-1">
-          {(['All','Public','Private'] as VisFilter[]).map(v => (
-            <button key={v} onClick={() => setVisFilter(v)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
-                ${visFilter === v ? 'bg-slate-700 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-              {v === 'Public' && <Globe size={10}/>}
-              {v === 'Private' && <EyeOff size={10}/>}
-              {v}
-            </button>
-          ))}
-        </div>
-
-        {/* Match type */}
-        <div className="flex gap-1">
-          {MATCH_TYPES.map(t => (
-            <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
-                ${typeFilter === t ? 'bg-slate-700 border-slate-600 text-white' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-              {t === 'All' ? 'All types' : t}
-            </button>
-          ))}
-        </div>
-
-        {/* Eligible only */}
-        <button onClick={() => setEligibleOnly(e => !e)}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
-            ${eligibleOnly ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-transparent border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}>
-          Eligible only
-        </button>
+        <FilterDropdown<VisFilter>
+          icon={<Globe size={11}/>}
+          label="Visibility"
+          value={visFilter}
+          options={[
+            { value: 'All',     label: 'All Events' },
+            { value: 'Public',  label: 'Public',  prefix: <Globe size={11}/> },
+            { value: 'Private', label: 'Private', prefix: <EyeOff size={11}/> },
+          ]}
+          onChange={setVisFilter}
+        />
+        <FilterDropdown<'All' | MatchType>
+          label="Format"
+          value={typeFilter}
+          options={[
+            { value: 'All', label: 'All Formats' },
+            { value: 'MS',  label: "Men's Singles (MS)" },
+            { value: 'WS',  label: "Women's Singles (WS)" },
+            { value: 'MD',  label: "Men's Doubles (MD)" },
+            { value: 'WD',  label: "Women's Doubles (WD)" },
+            { value: 'MX',  label: 'Mixed Doubles (MX)' },
+          ]}
+          onChange={setTypeFilter}
+        />
+        <FilterDropdown<EligFilter>
+          label="Eligibility"
+          value={eligFilter}
+          options={[
+            { value: 'All',      label: 'All MMR Levels' },
+            { value: 'Eligible', label: 'Eligible for Me' },
+          ]}
+          onChange={setEligFilter}
+        />
       </div>
 
       {list.length === 0 && (
@@ -110,12 +184,14 @@ export default function Tournaments() {
       <div className="space-y-3">
         {list.map(t => (
           <TournamentRow key={t.id} tournament={t} myMMR={user.mmr}
+            myDisplayName={user.displayName}
             isRegistered={!!registrations[t.id]}
             isPending={!!pendingRequests[t.id]}
             onRegister={() => setRegTarget(t)}
             onUnregister={() => setUnregTarget(t)}
             onRequest={() => requestToJoin(t.id)}
-            onCancelRequest={() => cancelRequest(t.id)}/>
+            onCancelRequest={() => cancelRequest(t.id)}
+            onViewParticipants={() => setViewParticipants(t)}/>
         ))}
       </div>
 
@@ -137,25 +213,36 @@ export default function Tournaments() {
             setUnregTarget(null);
           }}/>
       )}
+      {viewParticipants && (
+        <ParticipantsModal tournament={viewParticipants} onClose={() => setViewParticipants(null)}/>
+      )}
     </div>
   );
 }
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest }: {
-  tournament: Tournament; myMMR: number; isRegistered: boolean; isPending: boolean;
-  onRegister: () => void; onUnregister: () => void; onRequest: () => void; onCancelRequest: () => void;
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants }: {
+  tournament: Tournament; myMMR: number; myDisplayName: string;
+  isRegistered: boolean; isPending: boolean;
+  onRegister: () => void; onUnregister: () => void;
+  onRequest: () => void; onCancelRequest: () => void;
+  onViewParticipants: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const spotsLeft = t.maxPlayers - t.currentPlayers;
-  const locked    = !!(t.minMMR && myMMR < t.minMMR) || !!(t.maxMMR && myMMR > t.maxMMR);
-  const isFull    = spotsLeft <= 0 && !isRegistered;
-  const fillPct   = Math.round((t.currentPlayers / t.maxPlayers) * 100);
+  const spotsLeft   = t.maxPlayers - t.currentPlayers;
+  const locked      = !!(t.minMMR && myMMR < t.minMMR) || !!(t.maxMMR && myMMR > t.maxMMR);
+  const isFull      = spotsLeft <= 0 && !isRegistered;
+  const fillPct     = Math.round((t.currentPlayers / t.maxPlayers) * 100);
+  const isMyTourney = t.hostUid === 'me' || t.organiser === myDisplayName;
 
   return (
-    <div className={`bg-slate-900 border rounded-2xl overflow-hidden transition-all
-      ${t.status === 'Active' ? 'border-emerald-500/30' : 'border-slate-800'}`}>
+    <div className={`border rounded-2xl overflow-hidden transition-all
+      ${isMyTourney
+        ? 'bg-amber-500/5 border-amber-500/40'
+        : t.status === 'Active'
+          ? 'bg-slate-900 border-emerald-500/30'
+          : 'bg-slate-900 border-slate-800'}`}>
 
       <div className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none hover:bg-slate-800/40 transition-colors" onClick={() => setExpanded(e => !e)}>
         <div className="shrink-0">
@@ -167,6 +254,9 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegist
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm truncate">{t.name}</p>
+            {isMyTourney && (
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-md shrink-0 font-semibold">You're hosting</span>
+            )}
             {t.isPrivate
               ? <span className="flex items-center gap-1 text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md shrink-0"><EyeOff size={8}/> Private</span>
               : <span className="flex items-center gap-1 text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md shrink-0"><Globe size={8}/> Public</span>}
@@ -175,7 +265,7 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegist
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-0.5"><MapPin size={10}/> {t.venue}, {t.state}</span>
+            <span className="flex items-center gap-0.5"><MapPin size={10}/> {t.venue.split(',')[0]}, {t.state}</span>
             <span>·</span>
             <span>{new Date(t.date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'})}{t.time ? ` · ${t.time}` : ''}</span>
             <span>·</span>
@@ -218,6 +308,25 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegist
             </div>
           </div>
 
+          {/* Upcoming: show who signed up */}
+          {t.status === 'Upcoming' && (
+            <div className="flex items-center justify-between bg-slate-800 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Users size={14} className="text-slate-400"/>
+                <span><span className="font-semibold text-white">{t.currentPlayers}</span> player{t.currentPlayers !== 1 ? 's' : ''} signed up</span>
+              </div>
+              {!t.isPrivate && t.currentPlayers > 0 && (
+                <button onClick={e => { e.stopPropagation(); onViewParticipants(); }}
+                  className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+                  <Eye size={13}/> View
+                </button>
+              )}
+              {t.isPrivate && (
+                <span className="text-[11px] text-slate-500 flex items-center gap-1"><EyeOff size={11}/> Names hidden</span>
+              )}
+            </div>
+          )}
+
           {t.prizePool > 0 && (
             <div className="flex gap-2 flex-wrap">
               <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1.5 rounded-xl">🥇 RM {Math.round(t.prizePool * 0.6)}</span>
@@ -226,7 +335,8 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegist
             </div>
           )}
 
-          {t.bracket && t.status !== 'Upcoming' && (
+          {/* Bracket — only when Active (live) */}
+          {t.bracket && t.status === 'Active' && (
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Live Bracket</p>
               <BracketView bracket={t.bracket}/>
@@ -257,7 +367,7 @@ function TournamentRow({ tournament: t, myMMR, isRegistered, isPending, onRegist
               ) : t.isPrivate ? (
                 <button onClick={e => { e.stopPropagation(); onRequest(); }}
                   className="flex items-center gap-1.5 px-6 py-2 rounded-xl text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors">
-                  <EyeOff size={13}/> Request to Join
+                  <Plus size={13}/> Request to Join
                 </button>
               ) : (
                 <button onClick={e => { e.stopPropagation(); onRegister(); }}
@@ -298,7 +408,7 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
           <div className="bg-slate-800 rounded-xl p-3">
             <p className="font-semibold text-sm">{t.name}</p>
             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-              <MapPin size={10}/>{t.venue} · {new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}
+              <MapPin size={10}/>{t.venue.split(',')[0]} · {new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}
             </p>
             {t.entryFee > 0 && <p className="text-xs text-amber-400 mt-1 font-semibold">Entry fee: RM {t.entryFee}</p>}
           </div>
@@ -384,6 +494,60 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
   );
 }
 
+// ─── Venue autocomplete ────────────────────────────────────────────────────────
+
+function VenueInput({ value, onChange, className }: { value: string; onChange: (v: string) => void; className: string }) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSugg, setShowSugg]       = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShowSugg(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const handleChange = (v: string) => {
+    onChange(v);
+    if (v.length >= 2) {
+      const q = v.toLowerCase();
+      const matches = VENUE_SUGGESTIONS.filter(s => s.toLowerCase().includes(q)).slice(0, 5);
+      setSuggestions(matches);
+      setShowSugg(matches.length > 0);
+    } else {
+      setShowSugg(false);
+    }
+  };
+
+  const pick = (s: string) => { onChange(s); setShowSugg(false); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <input
+        value={value}
+        onChange={e => handleChange(e.target.value)}
+        onFocus={() => { if (suggestions.length > 0 && value.length >= 2) setShowSugg(true); }}
+        placeholder="e.g. Sport Planet, No.5 Jalan SS7/19, 47301 Petaling Jaya"
+        className={className}
+      />
+      {showSugg && (
+        <div className="absolute top-full mt-1 left-0 right-0 z-40 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+          <p className="text-[10px] text-slate-500 px-3 pt-2 pb-1 font-semibold uppercase tracking-wide flex items-center gap-1">
+            <MapPin size={9}/> Suggested venues
+          </p>
+          {suggestions.map((s, i) => (
+            <button key={i} type="button" onMouseDown={() => pick(s)}
+              className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
+              <span className="font-medium text-white">{s.split(',')[0]}</span>
+              <span className="text-slate-400">{s.substring(s.indexOf(','))}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Host Event Modal ─────────────────────────────────────────────────────────
 
 function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: Tournament) => void }) {
@@ -420,8 +584,10 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
       maxPlayers,     currentPlayers: 0,
       isPrivate,
       organiser:      user.displayName,
+      hostUid:        'me',
       description:    desc.trim() || undefined,
       tags: [MATCH_TYPE_LABEL[type], isPrivate ? 'Private' : 'Open'],
+      participants: [],
     };
     onSubmit(t);
   };
@@ -444,7 +610,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. PJ Open 2025" className={`mt-1 ${inp}`}/>
           </label>
 
-          {/* Type + Visibility */}
+          {/* Format + Visibility — side by side */}
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Format *</span>
@@ -476,8 +642,8 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
               </div>
               {visInfoOpen && (
                 <div className="mt-2 bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-1.5 text-xs text-slate-300">
-                  <p><span className="text-white font-semibold">Public</span> — Anyone who meets the MMR requirements can register directly. Spots fill on a first-come, first-served basis.</p>
-                  <p><span className="text-white font-semibold">Private</span> — Players must send a join request. You review and approve each participant before they're confirmed.</p>
+                  <p><span className="text-white font-semibold">Public</span> — Anyone who meets the MMR requirements can register directly.</p>
+                  <p><span className="text-white font-semibold">Private</span> — Players must send a join request. You review and approve each one.</p>
                 </div>
               )}
             </div>
@@ -495,13 +661,13 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
             </label>
           </div>
 
-          {/* Venue + State */}
+          {/* Venue with autocomplete + State */}
           <div className="grid grid-cols-2 gap-3">
             <label className="block col-span-2">
-              <span className="text-[11px] text-slate-500 font-semibold">Venue Address * <span className="text-slate-600 font-normal">(must be a valid Google Maps address)</span></span>
-              <input value={venue} onChange={e => setVenue(e.target.value)}
-                placeholder="e.g. Sport Planet, No.5 Jalan SS7/19, 47301 Petaling Jaya"
-                className={`mt-1 ${inp}`}/>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Venue Address * <span className="text-slate-600 font-normal">— start typing for suggestions</span>
+              </span>
+              <VenueInput value={venue} onChange={setVenue} className={`mt-1 ${inp}`}/>
             </label>
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">State</span>
@@ -565,7 +731,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
   );
 }
 
-// ─── Bracket tree (preserved) ──────────────────────────────────────────────────
+// ─── Bracket tree (Active / live only) ────────────────────────────────────────
 
 const CARD_H   = 72;
 const CARD_W   = 180;

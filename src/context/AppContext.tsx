@@ -100,12 +100,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addTournament       = useCallback((t: Tournament) => setTournaments(ts => [t, ...ts]), []);
   const registerTournament  = useCallback((id: string) => {
     setRegistrations(r => ({ ...r, [id]: { registeredAt: new Date().toISOString() } }));
-    setTournaments(ts => ts.map(t => t.id === id ? { ...t, currentPlayers: t.currentPlayers + 1 } : t));
-  }, []);
+    setTournaments(ts => ts.map(t => t.id === id ? {
+      ...t,
+      currentPlayers: t.currentPlayers + 1,
+      participants: [...(t.participants ?? []), user.displayName],
+    } : t));
+  }, [user.displayName]);
   const unregisterTournament = useCallback((id: string) => {
     setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
-    setTournaments(ts => ts.map(t => t.id === id ? { ...t, currentPlayers: Math.max(0, t.currentPlayers - 1) } : t));
-  }, []);
+    setTournaments(ts => ts.map(t => t.id === id ? {
+      ...t,
+      currentPlayers: Math.max(0, t.currentPlayers - 1),
+      participants: (t.participants ?? []).filter(p => p !== user.displayName),
+    } : t));
+  }, [user.displayName]);
   const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
   const cancelRequest = useCallback((id: string) => setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; }), []);
 
