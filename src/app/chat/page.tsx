@@ -109,7 +109,9 @@ export default function Chat() {
             <span className="text-xs text-slate-500">{active.participant.mmr} MMR</span>
           </div>
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
+        <button
+          onClick={() => { window.location.href = `/players/${active.participant.username}/?challenge=1`; }}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
           <Zap size={12}/> Challenge
         </button>
       </div>

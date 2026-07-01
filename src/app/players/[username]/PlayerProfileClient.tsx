@@ -8,9 +8,10 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
+import { SettingsModal } from '@/components/SettingsModal';
 import { tierProgress, nextTier, skillMatch } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings } from 'lucide-react';
 import { useState } from 'react';
 import type { Match } from '@/types';
 
@@ -39,7 +40,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const player = isMe ? ctxUser : staticPlayer;
   const [selectedMatch,  setSelectedMatch]  = useState<Match | null>(null);
   const [qrOpen,         setQrOpen]         = useState(false);
-  const [challengeOpen,  setChallengeOpen]  = useState(false);
+  const [challengeOpen,  setChallengeOpen]  = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('challenge') === '1';
+  });
+  const [settOpen,       setSettOpen]       = useState(false);
 
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
@@ -135,8 +140,9 @@ export function PlayerProfileClient({ username }: { username: string }) {
                     className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                     <QrCode size={14}/> QR Code
                   </button>
-                  <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    Edit Profile
+                  <button onClick={() => setSettOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                    <Settings size={14}/> Edit Profile
                   </button>
                 </>
               ) : (
@@ -361,6 +367,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
+      {isMe && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
       {!isMe && challengeOpen && <ChallengeModal opponent={player} onClose={() => setChallengeOpen(false)}/>}
     </>
   );
