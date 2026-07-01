@@ -132,11 +132,14 @@ function PlayerRow({ player: p, myMMR, isMe }: { player: UserProfile; myMMR: num
         </p>
       </div>
       {!isMe && (
-        <div className="hidden sm:flex items-center gap-2 w-28 shrink-0">
-          <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div className={`h-full ${smBar} rounded-full`} style={{ width:`${sm}%` }}/>
+        <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
+          <span className="text-[10px] text-slate-500 font-medium">Skill Match</span>
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div className={`h-full ${smBar} rounded-full`} style={{ width:`${sm}%` }}/>
+            </div>
+            <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
           </div>
-          <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
         </div>
       )}
       <div className="text-right shrink-0">
@@ -234,10 +237,13 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
             return (
               <div key={p.uid} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                  <Avatar name={p.displayName} className={p.openToPlay ? 'ring-2 ring-emerald-400' : ''}/>
+                  <button onClick={() => { window.location.href = `/players/${p.username}/`; }} className="shrink-0">
+                    <Avatar name={p.displayName} className={`${p.openToPlay ? 'ring-2 ring-emerald-400' : ''} hover:opacity-80 transition-opacity`}/>
+                  </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-sm">{p.displayName}</p>
+                      <button onClick={() => { window.location.href = `/players/${p.username}/`; }}
+                        className="font-semibold text-sm hover:text-emerald-400 transition-colors">{p.displayName}</button>
                       <p className="text-xs text-slate-500">@{p.username}</p>
                       <TierBadge tier={p.tier}/>
                       {p.gender && (
