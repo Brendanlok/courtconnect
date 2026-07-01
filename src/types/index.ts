@@ -28,6 +28,7 @@ export interface UserProfile {
   preferredFormats?: MatchType[];
   distKm?: number;
   joinedAt: string;
+  endorsements?: Record<string, number>; // skill → count
 }
 
 export interface Match {

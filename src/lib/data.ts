@@ -26,6 +26,7 @@ export const PLAYERS: UserProfile[] = [
     available: 'sat_6_9am,sat_9am_12pm,sat_12_3pm,sun_6_9am,sun_9am_12pm',
     openToPlay: true, lookingForPartner: true, preferredFormats: ['MD', 'MX'],
     distKm: 3.2, joinedAt: '2024-06-12',
+    endorsements: { 'Powerful Smash': 24, 'Great Footwork': 18, 'Sharp Net Play': 12, 'Smart Placement': 9, 'Good Sportsmanship': 7 },
   },
   {
     uid: 'p2', username: 'faizhamdan', displayName: 'Faiz Hamdan', email: 'faiz@example.com',
@@ -58,6 +59,7 @@ export const PLAYERS: UserProfile[] = [
     available: 'mon_6_9pm,tue_6_9pm,wed_6_9pm,thu_6_9pm,fri_6_9pm,sat_6_9am,sun_6_9am',
     openToPlay: true, lookingForPartner: true, preferredFormats: ['WD', 'MX'],
     distKm: 1.8, joinedAt: '2024-11-05',
+    endorsements: { 'Sharp Net Play': 17, 'Strong Defense': 14, 'Good Sportsmanship': 11, 'Smart Placement': 8 },
   },
   {
     uid: 'p5', username: 'nurhanim', displayName: 'Nur Hanim Rashid', email: 'nurhanim@example.com',
@@ -79,7 +81,20 @@ export const PLAYERS: UserProfile[] = [
     available: 'mon_6_9am,tue_6_9am,wed_6_9am,thu_6_9am,fri_6_9am,sat_6_9am,sat_9am_12pm,sat_12_3pm',
     openToPlay: false, lookingForPartner: false, preferredFormats: ['MD'],
     distKm: 9.1, joinedAt: '2024-03-01',
+    endorsements: { 'Sharp Net Play': 31, 'Powerful Smash': 28, 'Great Footwork': 19, 'Smart Placement': 15 },
   },
+];
+
+// Community feed seed — recent matches between players
+export const COMMUNITY_FEED: Array<{
+  p1: string; p2: string; score: string; type: string; venue: string; ts: string;
+}> = [
+  { p1:'Khoo Hui Jin', p2:'Zack Azhar',     score:'21-15, 21-18', type:'MS', venue:'Sport Planet PJ',        ts:'2026-06-30T08:30:00Z' },
+  { p1:'Faiz Hamdan',  p2:'Lee Ming Xuan',  score:'18-21, 21-19, 21-17', type:'MS', venue:'Subang Badminton Hall', ts:'2026-06-29T19:00:00Z' },
+  { p1:'Sarina Azmi',  p2:'Nur Hanim Rashid', score:'21-12, 21-16', type:'WS', venue:'Bangsar Sports Centre', ts:'2026-06-29T10:00:00Z' },
+  { p1:'Zack Azhar',   p2:'Faiz Hamdan',    score:'21-17, 16-21, 21-14', type:'MD', venue:'PJ Badminton Club',    ts:'2026-06-28T20:00:00Z' },
+  { p1:'Lee Ming Xuan',p2:'Khoo Hui Jin',   score:'10-21, 14-21', type:'MS', venue:'Cheras Racket Club',      ts:'2026-06-27T17:30:00Z' },
+  { p1:'Sarina Azmi',  p2:'Zack Azhar',     score:'21-19, 19-21, 21-18', type:'MX', venue:'Sport Planet Subang',  ts:'2026-06-26T09:00:00Z' },
 ];
 
 export const MATCHES: Match[] = [];

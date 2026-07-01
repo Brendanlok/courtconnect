@@ -10,7 +10,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { tierProgress, nextTier, skillMatch } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Zap, Swords } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
 import type { Match } from '@/types';
 
@@ -29,7 +29,9 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer } = useApp();
+
+  const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
   if (!staticPlayer) return notFound();
 
@@ -216,6 +218,68 @@ export function PlayerProfileClient({ username }: { username: string }) {
             )}
           </div>
         )}
+
+        {/* ── Endorsements ── */}
+        {(() => {
+          // Merge seed endorsements with any I've added this session
+          const seedEndo = player.endorsements ?? {};
+          const sessionEndo = playerEndorsements[player.uid] ?? {};
+          const merged: Record<string, number> = { ...seedEndo };
+          for (const [skill, cnt] of Object.entries(sessionEndo)) {
+            merged[skill] = (merged[skill] ?? 0) + cnt;
+          }
+          const myGiven = myEndorsements[player.uid] ?? [];
+          const topSkills = Object.entries(merged).sort((a, b) => b[1] - a[1]);
+          return (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <ThumbsUp size={15} className="text-violet-400"/> Endorsements
+              </h2>
+              {/* Top endorsed skills */}
+              {topSkills.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {topSkills.map(([skill, count]) => (
+                    <div key={skill} className="flex items-center gap-3">
+                      <span className="text-xs text-slate-300 w-36 shrink-0">{skill}</span>
+                      <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-500 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (count / (topSkills[0][1] || 1)) * 100)}%` }}/>
+                      </div>
+                      <span className="text-xs font-bold text-violet-400 w-6 text-right">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Endorse buttons (only for other players) */}
+              {!isMe && (
+                <div>
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    {myGiven.length > 0 ? 'Your endorsements:' : 'Endorse this player:'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {ENDORSE_SKILLS.map(skill => {
+                      const given = myGiven.includes(skill);
+                      return (
+                        <button key={skill} onClick={() => !given && endorsePlayer(player.uid, skill)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors
+                            ${given
+                              ? 'bg-violet-500/20 border-violet-500/40 text-violet-300 cursor-default'
+                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-violet-500/50 hover:text-violet-300'}`}>
+                          <ThumbsUp size={11} className={given ? 'text-violet-400' : ''}/>
+                          {skill}
+                          {given && <span className="text-violet-400">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {topSkills.length === 0 && isMe && (
+                <p className="text-sm text-slate-500 text-center py-2">No endorsements yet. Play matches to earn some!</p>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="grid md:grid-cols-2 gap-5">
           {/* MMR chart */}

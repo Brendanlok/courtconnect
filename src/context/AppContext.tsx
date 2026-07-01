@@ -39,6 +39,10 @@ interface AppCtx {
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
+  // Endorsements
+  myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
+  playerEndorsements: Record<string, Record<string, number>>; // targetUid → skill → count
+  endorsePlayer: (targetUid: string, skill: string) => void;
   // Notifications
   notifications: Notification[];
   unreadNotifCount: number;
@@ -68,6 +72,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [myClubId,         setMyClubId]         = useState<string | null>(null);
   const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>([]);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
+  const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
+  const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
@@ -165,6 +171,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, []);
 
+  // Endorsements
+  const endorsePlayer = useCallback((targetUid: string, skill: string) => {
+    setMyEndorsements(prev => {
+      const already = prev[targetUid] ?? [];
+      if (already.includes(skill)) return prev;
+      return { ...prev, [targetUid]: [...already, skill] };
+    });
+    setPlayerEndorsements(prev => {
+      const existing = prev[targetUid] ?? {};
+      return { ...prev, [targetUid]: { ...existing, [skill]: (existing[skill] ?? 0) + 1 } };
+    });
+  }, []);
+
   // Notifications
   const addNotif = (n: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
     setNotifications(p => [{
@@ -185,6 +204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge,
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, myClubPendingIds,
+      myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>
       {children}

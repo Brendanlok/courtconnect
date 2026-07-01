@@ -534,7 +534,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
 
                 <p className="text-xs text-slate-400 leading-relaxed">{club.description}</p>
 
-                {club.announcement && (
+                {isMine && club.announcement && (
                   <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/20 rounded-xl px-3 py-2">
                     <Megaphone size={11} className="text-amber-400 shrink-0 mt-0.5"/>
                     <p className="text-[11px] text-amber-200/80 leading-relaxed">{club.announcement}</p>

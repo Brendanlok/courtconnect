@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { MMR_HISTORY } from '@/lib/data';
+import { MMR_HISTORY, COMMUNITY_FEED } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
@@ -238,7 +238,7 @@ export default function Home() {
         </div>
 
         {/* Activity Feed */}
-        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} userId={user.uid}/>
+        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} userId={user.uid} communityFeed={COMMUNITY_FEED}/>
       </div>
 
       <MatchDetailModal
@@ -337,13 +337,18 @@ type FeedItem =
   | { kind: 'match'; match: Match; ts: number }
   | { kind: 'tournament'; name: string; ts: number };
 
-function ActivityFeed({ matches, registrations, tournaments, userId }: {
+type CommunityItem = { p1: string; p2: string; score: string; type: string; venue: string; ts: string };
+
+function ActivityFeed({ matches, registrations, tournaments, userId, communityFeed }: {
   matches: Match[];
   registrations: Record<string, { registeredAt: string }>;
   tournaments: Tournament[];
   userId: string;
+  communityFeed: CommunityItem[];
 }) {
-  const items: FeedItem[] = [
+  const [tab, setTab] = useState<'mine' | 'community'>('mine');
+
+  const myItems: FeedItem[] = [
     ...matches
       .filter(m => m.status === 'Confirmed')
       .map(m => ({ kind: 'match' as const, match: m, ts: new Date(m.playedAt).getTime() })),
@@ -355,53 +360,86 @@ function ActivityFeed({ matches, registrations, tournaments, userId }: {
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-      <h2 className="font-semibold flex items-center gap-2 mb-4">
-        <Activity size={15} className="text-emerald-400"/> Activity
-      </h2>
-      {items.length === 0 ? (
-        <div className="text-center py-6">
-          <p className="text-slate-500 text-sm">No recent activity.</p>
-          <p className="text-slate-600 text-xs mt-1">Log matches and join events to build your feed.</p>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Activity size={15} className="text-emerald-400"/> Activity
+        </h2>
+        <div className="flex gap-1 bg-slate-800 rounded-lg p-0.5">
+          {(['mine', 'community'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize
+                ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              {t === 'mine' ? 'Mine' : '🌐 Community'}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item, i) => {
-            if (item.kind === 'match') {
-              const m = item.match;
-              const iWon = m.winnerId === userId;
-              const opp  = m.player1Id === userId ? m.player2Name : m.player1Name;
+      </div>
+
+      {tab === 'mine' ? (
+        myItems.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-slate-500 text-sm">No recent activity.</p>
+            <p className="text-slate-600 text-xs mt-1">Log matches and join events to build your feed.</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {myItems.map((item, i) => {
+              if (item.kind === 'match') {
+                const m = item.match;
+                const iWon = m.winnerId === userId;
+                const opp  = m.player1Id === userId ? m.player2Name : m.player1Name;
+                return (
+                  <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
+                      ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {iWon ? 'W' : 'L'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-300 truncate">
+                        {iWon ? 'Beat' : 'Lost to'} <span className="font-semibold">{opp}</span>
+                      </p>
+                      <p className="text-xs text-slate-500">{new Date(m.playedAt).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                    </div>
+                    {m.mmrChange !== undefined && (
+                      <span className={`text-xs font-bold shrink-0 ${iWon ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {iWon ? '+' : ''}{m.mmrChange} MMR
+                      </span>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0
-                    ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {iWon ? 'W' : 'L'}
-                  </span>
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400 text-sm">🏸</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-300 truncate">
-                      {iWon ? 'Beat' : 'Lost to'} <span className="font-semibold">{opp}</span>
-                    </p>
-                    <p className="text-xs text-slate-500">{new Date(m.playedAt).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                    <p className="text-sm text-slate-300 truncate">Registered for <span className="font-semibold">{item.name}</span></p>
+                    <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
                   </div>
-                  {m.mmrChange !== undefined && (
-                    <span className={`text-xs font-bold shrink-0 ${iWon ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {iWon ? '+' : ''}{m.mmrChange} MMR
-                    </span>
-                  )}
                 </div>
               );
-            }
-            return (
-              <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
-                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400 text-sm">
-                  🏸
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-300 truncate">Registered for <span className="font-semibold">{item.name}</span></p>
-                  <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
-                </div>
+            })}
+          </div>
+        )
+      ) : (
+        <div className="space-y-1">
+          {communityFeed.map((item, i) => (
+            <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-800/60 last:border-0">
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-slate-800 text-xs font-bold text-slate-400">
+                {item.type}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-slate-300 truncate">
+                  <span className="font-semibold">{item.p1}</span>
+                  <span className="text-slate-500 mx-1">def.</span>
+                  <span className="font-semibold">{item.p2}</span>
+                </p>
+                <p className="text-xs text-slate-500 truncate">{item.score} · {item.venue}</p>
               </div>
-            );
-          })}
+              <span className="text-[10px] text-slate-600 shrink-0">
+                {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
