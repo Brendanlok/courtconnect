@@ -416,7 +416,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
   };
 
   const submit = () => {
-    if (!opp1) return;
+    if (!opp1 || !mmrPreview) return;
     const parsed  = games.map(g => ({ p1: Number(g.p1) || 0, p2: Number(g.p2) || 0 }));
     const myWins  = parsed.filter(g => g.p1 > g.p2).length;
     const iWon    = myWins > parsed.filter(g => g.p2 > g.p1).length;

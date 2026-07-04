@@ -34,10 +34,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
-  if (!staticPlayer) return notFound();
 
-  const isMe   = staticPlayer.uid === 'me';
-  const player = isMe ? ctxUser : staticPlayer;
   const [selectedMatch,  setSelectedMatch]  = useState<Match | null>(null);
   const [qrOpen,         setQrOpen]         = useState(false);
   const [challengeOpen,  setChallengeOpen]  = useState(() => {
@@ -45,6 +42,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
     return new URLSearchParams(window.location.search).get('challenge') === '1';
   });
   const [settOpen,       setSettOpen]       = useState(false);
+
+  if (!staticPlayer) return notFound();
+
+  const isMe   = staticPlayer.uid === 'me';
+  const player = isMe ? ctxUser : staticPlayer;
 
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
