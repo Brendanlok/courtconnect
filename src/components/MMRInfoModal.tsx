@@ -88,10 +88,12 @@ export function MMRInfoModal({ open, onClose }: Props) {
               {TIERS.map(({ tier, range, desc }) => {
                 const s = TIER_STYLE[tier];
                 return (
-                  <div key={tier} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
-                    <span className={`text-sm font-bold w-16 shrink-0 ${s.text}`}>{s.icon} {tier}</span>
-                    <span className="text-xs font-mono text-slate-400 w-24 shrink-0">{range}</span>
-                    <span className="text-xs text-slate-400 truncate">{desc}</span>
+                  <div key={tier} className={`flex flex-col gap-1 px-3 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold w-18 shrink-0 ${s.text}`}>{s.icon} {tier}</span>
+                      <span className="text-xs font-mono text-slate-400 shrink-0">{range}</span>
+                    </div>
+                    <span className="text-xs text-slate-400 leading-relaxed">{desc}</span>
                   </div>
                 );
               })}

@@ -129,7 +129,8 @@ export interface Club {
   maxMembers: number;
   minMMR?: number;
   isPrivate: boolean;
-  adminId: string;          // uid of creator/admin
+  adminId: string;          // uid of creator/owner (only one who can disband)
+  moderatorIds?: string[];  // member uids assigned moderator rights by owner
   memberIds: string[];      // uids of accepted members
   pendingIds: string[];     // uids of pending join requests
   avgMMR: number;

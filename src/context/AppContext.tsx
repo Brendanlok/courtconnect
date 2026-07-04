@@ -38,6 +38,9 @@ interface AppCtx {
   updateClub: (id: string, patch: Partial<Club>) => void;
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
+  disbandClub: (id: string) => void;
+  assignModerator: (clubId: string, uid: string) => void;
+  removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
   // Endorsements
   myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
@@ -166,6 +169,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClubs(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
   }, []);
 
+  const disbandClub = useCallback((id: string) => {
+    setClubs(cs => cs.filter(c => c.id !== id));
+    setMyClubId(null);
+  }, []);
+
+  const assignModerator = useCallback((clubId: string, uid: string) => {
+    setClubs(cs => cs.map(c => c.id === clubId
+      ? { ...c, moderatorIds: [...(c.moderatorIds ?? []).filter(x => x !== uid), uid] }
+      : c));
+  }, []);
+
+  const removeModerator = useCallback((clubId: string, uid: string) => {
+    setClubs(cs => cs.map(c => c.id === clubId
+      ? { ...c, moderatorIds: (c.moderatorIds ?? []).filter(x => x !== uid) }
+      : c));
+  }, []);
+
   const acceptClubMember = useCallback((clubId: string, uid: string) => {
     setClubs(cs => cs.map(c => c.id === clubId
       ? { ...c, memberIds: [...c.memberIds, uid], pendingIds: c.pendingIds.filter(x => x !== uid) }
@@ -213,7 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge,
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
-      acceptClubMember, declineClubMember, myClubPendingIds,
+      acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>

@@ -5,7 +5,12 @@ import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock, X, AlertTriangle, TrendingUp } from 'lucide-react';
+import {
+  Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
+  Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
+  X, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, Crown, ShieldCheck,
+  UserMinus, Trash2, UserCheck,
+} from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
@@ -14,9 +19,10 @@ import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types'
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
+const PLAYER_SUBTABS = ['All Players', 'Friends'] as const;
 
 export default function Players() {
-  const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();
+  const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Players';
@@ -52,29 +58,83 @@ export default function Players() {
         ))}
       </div>
 
-      {tab === 'Players'        && <PlayersList user={user}/>}
+      {tab === 'Players'        && <PlayersSection user={user}/>}
       {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser}/>}
-      {tab === 'Clubs'          && <ClubsTab clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds} joinClub={joinClub} requestJoinClub={requestJoinClub} cancelClubRequest={cancelClubRequest} leaveClub={leaveClub} acceptClubMember={acceptClubMember} declineClubMember={declineClubMember} updateClub={updateClub} userId={user.uid}/>}
+      {tab === 'Clubs'          && (
+        <ClubsTab
+          clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
+          joinClub={joinClub} requestJoinClub={requestJoinClub}
+          cancelClubRequest={cancelClubRequest} leaveClub={leaveClub}
+          acceptClubMember={acceptClubMember} declineClubMember={declineClubMember}
+          updateClub={updateClub} disbandClub={disbandClub}
+          assignModerator={assignModerator} removeModerator={removeModerator}
+          userId={user.uid}
+        />
+      )}
     </div>
   );
 }
 
-// ─── Players list ─────────────────────────────────────────────────────────────
+// ─── Players section (All + Friends subtabs) ──────────────────────────────────
 
-function PlayersList({ user }: { user: UserProfile }) {
-  const [query,      setQuery]       = useState('');
-  const [stateFilter,setStateFilter] = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter, setTierFilter]  = useState<Tier | 'All'>('All');
+function PlayersSection({ user }: { user: UserProfile }) {
+  const [subtab, setSubtab] = useState<typeof PLAYER_SUBTABS[number]>('All Players');
+  const [friends, setFriends] = useState<string[]>([]); // friend uids
 
-  const allPlayers = PLAYERS; // exclude self — user sees their own profile via Topbar
+  const toggleFriend = (uid: string) =>
+    setFriends(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
 
-  const filtered = allPlayers.filter(p => {
-    const q = query.toLowerCase();
-    const nameMatch  = p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
-    const stateMatch = stateFilter === 'All' || p.state === stateFilter;
-    const tierMatch  = tierFilter  === 'All' || p.tier  === tierFilter;
-    return nameMatch && stateMatch && tierMatch;
-  });
+  return (
+    <div className="space-y-4">
+      {/* Subtabs */}
+      <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 rounded-lg p-0.5 w-fit">
+        {PLAYER_SUBTABS.map(st => (
+          <button key={st} onClick={() => setSubtab(st)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors
+              ${subtab === st ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+            {st === 'Friends' && <UserCheck size={11}/>}
+            {st}
+            {st === 'Friends' && friends.length > 0 && (
+              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{friends.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {subtab === 'All Players' && (
+        <PlayersList user={user} friends={friends} onToggleFriend={toggleFriend}/>
+      )}
+      {subtab === 'Friends' && (
+        <FriendsList user={user} friends={friends} onRemoveFriend={toggleFriend}/>
+      )}
+    </div>
+  );
+}
+
+// ─── All Players list ─────────────────────────────────────────────────────────
+
+type SortDir = 'desc' | 'asc';
+
+function PlayersList({ user, friends, onToggleFriend }: {
+  user: UserProfile;
+  friends: string[];
+  onToggleFriend: (uid: string) => void;
+}) {
+  const [query,       setQuery]      = useState('');
+  const [stateFilter, setStateFilter] = useState<MalaysiaState | 'All'>('All');
+  const [tierFilter,  setTierFilter]  = useState<Tier | 'All'>('All');
+  const [sortDir,     setSortDir]    = useState<SortDir>('desc');
+
+  const allPlayers = PLAYERS;
+
+  const filtered = allPlayers
+    .filter(p => {
+      const q = query.toLowerCase();
+      return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
+        && (stateFilter === 'All' || p.state === stateFilter)
+        && (tierFilter  === 'All' || p.tier  === tierFilter);
+    })
+    .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
 
   return (
     <div className="space-y-4">
@@ -104,49 +164,56 @@ function PlayersList({ user }: { user: UserProfile }) {
             }))}
             onChange={setTierFilter}
           />
+          {/* MMR sort toggle */}
+          <button
+            onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors">
+            {sortDir === 'desc' ? <ArrowDown size={11} className="text-amber-400"/> : <ArrowUp size={11} className="text-amber-400"/>}
+            MMR {sortDir === 'desc' ? 'High → Low' : 'Low → High'}
+          </button>
         </div>
       </div>
 
       <p className="text-xs text-slate-500">{filtered.length} player{filtered.length !== 1 ? 's' : ''} found</p>
 
       <div className="space-y-2">
-        {filtered.map(p => <PlayerRow key={p.uid} player={p} myMMR={user.mmr} isMe={p.uid === 'me'} />)}
+        {filtered.map(p => (
+          <PlayerRow key={p.uid} player={p} myMMR={user.mmr}
+            isFriend={friends.includes(p.uid)} onToggleFriend={onToggleFriend}/>
+        ))}
       </div>
     </div>
   );
 }
 
-function PlayerRow({ player: p, myMMR, isMe }: { player: UserProfile; myMMR: number; isMe: boolean }) {
+function PlayerRow({ player: p, myMMR, isFriend, onToggleFriend }: {
+  player: UserProfile; myMMR: number; isFriend: boolean; onToggleFriend: (uid: string) => void;
+}) {
   const sm = skillMatch(myMMR, p.mmr);
   const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
   const smBar   = sm >= 80 ? 'bg-emerald-500'   : sm >= 60 ? 'bg-amber-500'   : 'bg-red-500';
   const wr      = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
 
   return (
-    <Link href={`/players/${p.username}`}
-      className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl border transition-all hover:-translate-y-0.5 hover:shadow-md group
-        ${isMe ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
-      <Avatar name={p.displayName} className={isMe ? 'ring-2 ring-emerald-500/40' : ''}/>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className={`font-semibold text-sm ${isMe ? 'text-emerald-400' : ''}`}>
-            {p.displayName}{isMe ? ' (You)' : ''}
+    <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md group">
+      <Link href={`/players/${p.username}`} className="flex items-center gap-4 flex-1 min-w-0">
+        <Avatar name={p.displayName}/>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-sm">{p.displayName}</p>
+            <p className="text-xs text-slate-500">@{p.username}</p>
+            <TierBadge tier={p.tier}/>
+            {p.openToPlay && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Playing today
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+            <MapPin size={10}/> {p.area}, {p.state}
+            <span className="mx-1">·</span>#{p.globalRank} National
           </p>
-          <p className="text-xs text-slate-500">@{p.username}</p>
-          <TierBadge tier={p.tier}/>
-          {p.openToPlay && (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Playing today
-            </span>
-          )}
         </div>
-        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-          <MapPin size={10}/> {p.area}, {p.state}
-          <span className="mx-1">·</span>
-          #{p.globalRank} National
-        </p>
-      </div>
-      {!isMe && (
         <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
           <span className="text-[10px] text-slate-500 font-medium">Skill Match</span>
           <div className="flex items-center gap-2 w-full">
@@ -156,12 +223,90 @@ function PlayerRow({ player: p, myMMR, isMe }: { player: UserProfile; myMMR: num
             <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
           </div>
         </div>
-      )}
-      <div className="text-right shrink-0">
-        <p className="text-base font-bold text-amber-400">{p.mmr.toLocaleString()}</p>
-        <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
+        <div className="text-right shrink-0">
+          <p className="text-base font-bold text-amber-400">{p.mmr.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
+        </div>
+      </Link>
+      {/* Friend toggle */}
+      <button
+        onClick={() => onToggleFriend(p.uid)}
+        title={isFriend ? 'Remove friend' : 'Add friend'}
+        className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border transition-colors
+          ${isFriend
+            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
+            : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-emerald-400 hover:border-emerald-500/30'}`}>
+        {isFriend ? <UserCheck size={13}/> : <UserPlus size={13}/>}
+      </button>
+    </div>
+  );
+}
+
+// ─── Friends list ─────────────────────────────────────────────────────────────
+
+function FriendsList({ user, friends, onRemoveFriend }: {
+  user: UserProfile; friends: string[]; onRemoveFriend: (uid: string) => void;
+}) {
+  const allPlayers = PLAYERS;
+  const friendPlayers = allPlayers.filter(p => friends.includes(p.uid));
+
+  if (friends.length === 0) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <UserCheck size={32} className="mx-auto text-slate-700"/>
+        <p className="text-sm text-slate-400 font-medium">No friends added yet</p>
+        <p className="text-xs text-slate-600">Go to All Players and tap the <UserPlus size={10} className="inline"/> icon to add friends.</p>
       </div>
-    </Link>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
+      <div className="space-y-2">
+        {friendPlayers.map(p => {
+          const sm = skillMatch(user.mmr, p.mmr);
+          const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
+          const smBar   = sm >= 80 ? 'bg-emerald-500'   : sm >= 60 ? 'bg-amber-500'   : 'bg-red-500';
+          const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
+          return (
+            <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-emerald-500/20 rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5">
+              <Link href={`/players/${p.username}`} className="flex items-center gap-4 flex-1 min-w-0">
+                <Avatar name={p.displayName}/>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-sm">{p.displayName}</p>
+                    <p className="text-xs text-slate-500">@{p.username}</p>
+                    <TierBadge tier={p.tier}/>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                    <MapPin size={10}/> {p.area}, {p.state}
+                  </p>
+                </div>
+                <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
+                  <span className="text-[10px] text-slate-500 font-medium">Skill Match</span>
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full ${smBar} rounded-full`} style={{ width:`${sm}%` }}/>
+                    </div>
+                    <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-base font-bold text-amber-400">{p.mmr.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
+                </div>
+              </Link>
+              <button onClick={() => onRemoveFriend(p.uid)}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
+                title="Remove friend">
+                <UserMinus size={13}/>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -175,8 +320,8 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
   const [formatFilter, setFormatFilter] = useState<'All' | MatchType>('All');
   const [sent, setSent] = useState<string[]>([]);
-  const [confirmSend,    setConfirmSend]    = useState<string | null>(null); // uid pending send confirm
-  const [confirmRetract, setConfirmRetract] = useState<string | null>(null); // uid pending retract confirm
+  const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
+  const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
 
   const allPlayers = [user, ...PLAYERS];
 
@@ -194,7 +339,6 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
   return (
     <div className="space-y-4">
-      {/* Linked toggles: Open to Play + Open to Partner */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
           <div className="flex items-center gap-2.5">
@@ -227,7 +371,6 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
         </div>
       </div>
 
-      {/* Format filter — gender-aware */}
       <div className="flex items-center gap-2">
         <Filter size={13} className="text-slate-500"/>
         <FilterDropdown<'All' | MatchType>
@@ -239,7 +382,6 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
       <p className="text-xs text-slate-500">{candidates.length} player{candidates.length !== 1 ? 's' : ''} looking for a partner</p>
 
-      {/* Send confirmation */}
       {confirmSend && (() => {
         const p = allPlayers.find(x => x.uid === confirmSend);
         if (!p) return null;
@@ -269,7 +411,6 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
         );
       })()}
 
-      {/* Retract confirmation */}
       {confirmRetract && (() => {
         const p = allPlayers.find(x => x.uid === confirmRetract);
         if (!p) return null;
@@ -324,9 +465,7 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
                         className="font-semibold text-sm hover:text-emerald-400 transition-colors">{p.displayName}</button>
                       <p className="text-xs text-slate-500">@{p.username}</p>
                       <TierBadge tier={p.tier}/>
-                      {p.gender && (
-                        <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>
-                      )}
+                      {p.gender && <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                       <MapPin size={10}/> {p.area}, {p.state}
@@ -350,12 +489,9 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
                   </div>
                 </div>
 
-                {/* Formats + MMR */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {(p.preferredFormats ?? []).map(f => (
-                    <span key={f} className="text-[10px] font-semibold px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-slate-300">
-                      {f}
-                    </span>
+                    <span key={f} className="text-[10px] font-semibold px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-slate-300">{f}</span>
                   ))}
                   {dmEntries.map(([type, val]) => (
                     <span key={type} className="text-[10px] font-semibold px-2 py-1 bg-amber-500/8 border border-amber-500/20 rounded-lg text-amber-400">
@@ -380,7 +516,7 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, userId }: {
+function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId }: {
   clubs: Club[];
   myClubId: string | null;
   myClubPendingIds: string[];
@@ -392,14 +528,19 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
   updateClub: (id: string, patch: Partial<Club>) => void;
+  disbandClub: (id: string) => void;
+  assignModerator: (clubId: string, uid: string) => void;
+  removeModerator: (clubId: string, uid: string) => void;
 }) {
-  const [stateFilter,   setStateFilter]   = useState<string>('All');
-  const [search,        setSearch]        = useState('');
-  const [createOpen,    setCreateOpen]    = useState(false);
-  const [expandedId,    setExpandedId]    = useState<string | null>(null);
-  const [copiedId,      setCopiedId]      = useState<string | null>(null);
-  const [announceDraft, setAnnounceDraft] = useState('');
-  const [announceEdit,  setAnnounceEdit]  = useState<string | null>(null);
+  const [stateFilter,    setStateFilter]    = useState<string>('All');
+  const [search,         setSearch]         = useState('');
+  const [createOpen,     setCreateOpen]     = useState(false);
+  const [expandedId,     setExpandedId]     = useState<string | null>(null);
+  const [copiedId,       setCopiedId]       = useState<string | null>(null);
+  const [announceDraft,  setAnnounceDraft]  = useState('');
+  const [announceEdit,   setAnnounceEdit]   = useState<string | null>(null);
+  const [disbandConfirm, setDisbandConfirm] = useState(false);
+  const [rolesOpen,      setRolesOpen]      = useState(false);
 
   const states  = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
   const myClub  = clubs.find(c => c.id === myClubId);
@@ -423,8 +564,35 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
     setAnnounceDraft('');
   };
 
+  const isOwner = myClub?.adminId === userId;
+  const isMod   = myClub ? (myClub.moderatorIds ?? []).includes(userId) : false;
+  const canManage = isOwner || isMod;
+
   return (
     <div className="space-y-4">
+      {/* Disband confirmation */}
+      {disbandConfirm && myClub && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandConfirm(false)}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-400"/>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Disband {myClub.name}?</p>
+                <p className="text-xs text-slate-400 mt-1">This permanently closes the club and removes all {myClub.memberIds.length} members. This cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setDisbandConfirm(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+              <button onClick={() => { disbandClub(myClub.id); setDisbandConfirm(false); }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Disband Club</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header row */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-500">{clubs.length} club{clubs.length !== 1 ? 's' : ''} in Malaysia</p>
@@ -444,9 +612,19 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
               {myClub.logoInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-sm">{myClub.name}</p>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-semibold">My Club</span>
+                {isOwner && (
+                  <span className="flex items-center gap-1 text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full font-semibold">
+                    <Crown size={9}/> Owner
+                  </span>
+                )}
+                {!isOwner && isMod && (
+                  <span className="flex items-center gap-1 text-[10px] bg-violet-500/15 text-violet-400 border border-violet-500/25 px-1.5 py-0.5 rounded-full font-semibold">
+                    <ShieldCheck size={9}/> Moderator
+                  </span>
+                )}
                 {myClub.isPrivate ? <Lock size={10} className="text-violet-400"/> : <Globe size={10} className="text-slate-500"/>}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -454,12 +632,24 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                 {myClub.minMMR && ` · Min ${myClub.minMMR.toLocaleString()} MMR`}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
               <button onClick={() => copyLink(myClub.id)}
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] font-medium transition-colors">
                 {copiedId === myClub.id ? <><CheckCheck size={11} className="text-emerald-400"/> Copied</> : <><Copy size={11}/> Share</>}
               </button>
-              {myClub.adminId !== userId && (
+              {isOwner && (
+                <>
+                  <button onClick={() => setRolesOpen(o => !o)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/25 text-violet-400 rounded-xl text-[11px] font-medium transition-colors">
+                    <ShieldCheck size={11}/> Roles
+                  </button>
+                  <button onClick={() => setDisbandConfirm(true)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
+                    <Trash2 size={11}/> Disband
+                  </button>
+                </>
+              )}
+              {!isOwner && (
                 <button onClick={leaveClub}
                   className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
                   <Leave size={11}/> Leave
@@ -468,8 +658,46 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
             </div>
           </div>
 
-          {/* Admin panel — pending requests */}
-          {myClub.adminId === userId && myClub.pendingIds.length > 0 && (
+          {/* Role management panel — owner only */}
+          {isOwner && rolesOpen && (
+            <div className="border-t border-slate-800 px-4 py-3 space-y-2">
+              <p className="text-[11px] text-slate-400 font-semibold flex items-center gap-1 mb-2">
+                <ShieldCheck size={11} className="text-violet-400"/> Assign Moderator Rights
+              </p>
+              <p className="text-[10px] text-slate-500 mb-2">Moderators can accept/decline join requests and post announcements.</p>
+              {myClub.memberIds.filter(uid => uid !== userId).length === 0 ? (
+                <p className="text-xs text-slate-600 italic">No other members yet.</p>
+              ) : (
+                myClub.memberIds.filter(uid => uid !== userId).map(uid => {
+                  const isModerator = (myClub.moderatorIds ?? []).includes(uid);
+                  return (
+                    <div key={uid} className="flex items-center justify-between bg-slate-800 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-slate-300 font-medium">@{uid}</p>
+                        {isModerator && (
+                          <span className="text-[9px] bg-violet-500/15 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-0.5">
+                            <ShieldCheck size={8}/> Mod
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => isModerator ? removeModerator(myClub.id, uid) : assignModerator(myClub.id, uid)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                          isModerator
+                            ? 'bg-slate-700 hover:bg-red-500/20 text-slate-400 hover:text-red-400'
+                            : 'bg-violet-600 hover:bg-violet-500 text-white'
+                        }`}>
+                        {isModerator ? 'Remove Mod' : 'Make Mod'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Admin/mod panel — pending requests */}
+          {canManage && myClub.pendingIds.length > 0 && (
             <div className="border-t border-slate-800 px-4 py-3 space-y-2">
               <p className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
                 <Clock size={11}/> {myClub.pendingIds.length} join request{myClub.pendingIds.length !== 1 ? 's' : ''}
@@ -488,7 +716,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
             </div>
           )}
 
-          {/* Announcement */}
+          {/* Announcement — owner or mod */}
           <div className="border-t border-slate-800 px-4 py-3">
             {announceEdit === myClub.id ? (
               <div className="space-y-2">
@@ -506,12 +734,12 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
               <div className="flex items-start gap-2">
                 <Megaphone size={12} className="text-amber-400 shrink-0 mt-0.5"/>
                 <p className="text-xs text-slate-300 flex-1 leading-relaxed">{myClub.announcement}</p>
-                {myClub.adminId === userId && (
+                {canManage && (
                   <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(myClub.announcement ?? ''); }}
                     className="text-slate-500 hover:text-slate-300 shrink-0"><Settings size={12}/></button>
                 )}
               </div>
-            ) : myClub.adminId === userId ? (
+            ) : canManage ? (
               <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(''); }}
                 className="text-[11px] text-slate-500 hover:text-emerald-400 flex items-center gap-1 transition-colors">
                 <Megaphone size={11}/> Post an announcement
@@ -543,18 +771,15 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
       {/* Club cards */}
       <div className="space-y-3">
         {filtered.map(club => {
-          const isMine     = club.id === myClubId;
-          const isPending  = myClubPendingIds.includes(club.id);
-          const hasClub    = myClubId !== null;
-          const isExpanded = expandedId === club.id;
-          const isAdmin    = club.adminId === userId;
-          const full       = club.memberIds.length >= club.maxMembers;
-          const meetsMMR   = !club.minMMR; // in real app would check user MMR
+          const isMine    = club.id === myClubId;
+          const isPending = myClubPendingIds.includes(club.id);
+          const hasClub   = myClubId !== null;
+          const isExpanded= expandedId === club.id;
+          const full      = club.memberIds.length >= club.maxMembers;
 
           return (
             <div key={club.id} className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors
               ${isMine ? 'border-emerald-500/30' : 'border-slate-800'}`}>
-              {/* Main row */}
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
@@ -573,7 +798,6 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                     </p>
                   </div>
 
-                  {/* Action button */}
                   {isMine ? null : isPending ? (
                     <button onClick={() => cancelClubRequest(club.id)}
                       className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500/10 border border-violet-500/30 text-violet-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
@@ -634,7 +858,6 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                 </div>
               </div>
 
-              {/* Expanded detail */}
               {isExpanded && (
                 <div className="border-t border-slate-800 px-4 py-3 space-y-3">
                   {club.topPlayers.length > 0 && (
