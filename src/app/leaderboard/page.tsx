@@ -21,10 +21,9 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const FRIENDS = ['p5', 'p7', 'p4'];
 
 export default function Leaderboard() {
-  const { user } = useApp();
+  const { user, friends } = useApp();
   const [tab,        setTab]       = useState<Tab>('Nationwide');
   const [query,      setQuery]     = useState('');
   const [selState,   setSelState]  = useState<MalaysiaState>(user.state);
