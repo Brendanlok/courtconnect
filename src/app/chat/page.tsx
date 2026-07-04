@@ -4,9 +4,10 @@ import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { timeAgo } from '@/lib/utils';
-import { Send, Zap, Search, ArrowLeft } from 'lucide-react';
+import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message } from '@/types';
+import Link from 'next/link';
 
 export default function Chat() {
   const { user, conversations: convs, setConversations: setConvs } = useApp();
