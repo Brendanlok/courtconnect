@@ -326,7 +326,7 @@ export default function Home() {
                   <p className="text-sm font-semibold text-slate-400">No matches yet</p>
                   <p className="text-xs text-slate-600 mt-0.5">Log your first match to start tracking</p>
                 </div>
-                <button onClick={() => {}} className="text-xs text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
+                <button onClick={() => setLogOpen(true)} className="text-xs text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
                   + Log a Match
                 </button>
               </div>
