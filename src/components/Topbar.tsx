@@ -197,7 +197,7 @@ export function Topbar() {
                       <p className="font-bold text-sm">{user.displayName}</p>
                       <p className="text-xs text-slate-400">@{user.username}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <TierBadge tier={user.tier} />
+                        <TierBadge tier={user.tier} placementMatchesPlayed={user.placementMatchesPlayed}/>
                         <span className="text-xs text-amber-400 font-bold">{user.mmr.toLocaleString()} MMR</span>
                       </div>
                     </div>

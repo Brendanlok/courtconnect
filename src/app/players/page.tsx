@@ -5,10 +5,11 @@ import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
-import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock } from 'lucide-react';
+import { Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave, Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock, X, AlertTriangle, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { MMRInfoModal } from '@/components/MMRInfoModal';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
@@ -16,6 +17,7 @@ const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
 
 export default function Players() {
   const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();
+  const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Players';
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -26,10 +28,17 @@ export default function Players() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Players</h1>
-        <p className="text-slate-400 text-sm mt-0.5">Find players across 🇲🇾 Malaysia</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Players</h1>
+          <p className="text-slate-400 text-sm mt-0.5">Find players across 🇲🇾 Malaysia</p>
+        </div>
+        <button onClick={() => setMmrInfoOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium transition-colors shrink-0 mt-1">
+          <TrendingUp size={12}/> How MMR works
+        </button>
       </div>
+      <MMRInfoModal open={mmrInfoOpen} onClose={() => setMmrInfoOpen(false)}/>
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
         {TABS.map(t => (
@@ -57,7 +66,7 @@ function PlayersList({ user }: { user: UserProfile }) {
   const [stateFilter,setStateFilter] = useState<MalaysiaState | 'All'>('All');
   const [tierFilter, setTierFilter]  = useState<Tier | 'All'>('All');
 
-  const allPlayers = [user, ...PLAYERS];
+  const allPlayers = PLAYERS; // exclude self — user sees their own profile via Topbar
 
   const filtered = allPlayers.filter(p => {
     const q = query.toLowerCase();
@@ -166,6 +175,8 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
   const [formatFilter, setFormatFilter] = useState<'All' | MatchType>('All');
   const [sent, setSent] = useState<string[]>([]);
+  const [confirmSend,    setConfirmSend]    = useState<string | null>(null); // uid pending send confirm
+  const [confirmRetract, setConfirmRetract] = useState<string | null>(null); // uid pending retract confirm
 
   const allPlayers = [user, ...PLAYERS];
 
@@ -178,7 +189,8 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
     return (p.preferredFormats ?? []).includes(formatFilter);
   });
 
-  const sendRequest = (uid: string) => setSent(prev => [...prev, uid]);
+  const sendRequest    = (uid: string) => setSent(prev => [...prev, uid]);
+  const retractRequest = (uid: string) => setSent(prev => prev.filter(id => id !== uid));
 
   return (
     <div className="space-y-4">
@@ -227,6 +239,66 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
 
       <p className="text-xs text-slate-500">{candidates.length} player{candidates.length !== 1 ? 's' : ''} looking for a partner</p>
 
+      {/* Send confirmation */}
+      {confirmSend && (() => {
+        const p = allPlayers.find(x => x.uid === confirmSend);
+        if (!p) return null;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmSend(null)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                  <UserPlus size={18} className="text-emerald-400"/>
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Send Partner Request?</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    You're sending a doubles partner request to <span className="text-white font-semibold">{p.displayName}</span>. They'll be notified and can accept or decline.
+                  </p>
+                </div>
+                <button onClick={() => setConfirmSend(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmSend(null)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+                <button onClick={() => { sendRequest(confirmSend); setConfirmSend(null); }}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-colors">Send Request</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Retract confirmation */}
+      {confirmRetract && (() => {
+        const p = allPlayers.find(x => x.uid === confirmRetract);
+        if (!p) return null;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmRetract(null)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={18} className="text-amber-400"/>
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Retract Request?</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    This will cancel your partner request to <span className="text-white font-semibold">{p.displayName}</span>.
+                  </p>
+                </div>
+                <button onClick={() => setConfirmRetract(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmRetract(null)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep It</button>
+                <button onClick={() => { retractRequest(confirmRetract); setConfirmRetract(null); }}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Retract</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {candidates.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <Users size={32} className="mx-auto mb-3 opacity-30"/>
@@ -263,14 +335,18 @@ function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p
                     {p.bio && <p className="text-xs text-slate-400 mt-1">{p.bio}</p>}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <button onClick={() => sendRequest(p.uid)} disabled={isSent}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors
-                        ${isSent
-                          ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default'
-                          : 'bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 text-white'}`}>
-                      {isSent ? <><Check size={12}/> Request Sent</> : 'Send Request'}
-                    </button>
-                    {!isSent && <p className="text-[9px] text-slate-600">Sends a partner request</p>}
+                    {isSent ? (
+                      <button onClick={() => setConfirmRetract(p.uid)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400">
+                        <Check size={12}/> Request Sent
+                      </button>
+                    ) : (
+                      <button onClick={() => setConfirmSend(p.uid)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 text-white">
+                        <UserPlus size={12}/> Send Request
+                      </button>
+                    )}
+                    {isSent && <p className="text-[9px] text-slate-500">Tap to retract</p>}
                   </div>
                 </div>
 

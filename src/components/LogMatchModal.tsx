@@ -340,8 +340,45 @@ function PlayerSearch({
   );
 }
 
+// ─── Anti-cheat checks ───────────────────────────────────────────────────────
+
+function antiCheatCheck(matches: import('@/types').Match[], userId: string, oppUid: string): string | null {
+  const now = Date.now();
+  const day  = 24 * 3600 * 1000;
+  const week = 7 * day;
+
+  // Rule 1: max 3 matches vs same opponent in 7 days
+  const recentVsOpp = matches.filter(m => {
+    const involves = (m.player1Id === userId && m.player2Id === oppUid) ||
+                     (m.player1Id === oppUid && m.player2Id === userId);
+    return involves && (now - new Date(m.playedAt).getTime()) < week;
+  });
+  if (recentVsOpp.length >= 3) {
+    return `You've already logged ${recentVsOpp.length} matches against this opponent in the past 7 days. Maximum is 3 per week to prevent MMR farming.`;
+  }
+
+  // Rule 2: max 2 matches vs same opponent today
+  const todayVsOpp = recentVsOpp.filter(m => (now - new Date(m.playedAt).getTime()) < day);
+  if (todayVsOpp.length >= 2) {
+    return `You've already logged 2 matches against this opponent today. Come back tomorrow to log more.`;
+  }
+
+  // Rule 3: daily MMR gain cap — check confirmed wins today
+  const todayWins = matches.filter(m =>
+    m.player1Id === userId && m.winnerId === userId &&
+    m.status === 'Confirmed' &&
+    (now - new Date(m.playedAt).getTime()) < day
+  );
+  const todayGain = todayWins.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+  if (todayGain >= 150) {
+    return `You've already gained ${todayGain} MMR today. The daily cap is +150 MMR to keep ratings fair. Come back tomorrow!`;
+  }
+
+  return null; // all clear
+}
+
 export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user, addMatch } = useApp();
+  const { user, addMatch, matches, updateUser } = useApp();
   const [done,     setDone]     = useState(false);
   const [type,     setType]     = useState<MatchType>('MS');
   const [opp1,     setOpp1]     = useState<UserProfile | null>(null);
@@ -354,15 +391,20 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const isDoubles = DOUBLES.includes(type);
 
+  // Calibration: first 10 matches use 1.5× K
+  const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
+  const kFactor = placementDone ? 32 : 48;
+
   // MMR preview: for doubles average team MMR vs enemy team MMR
   const myTeamMMR   = isDoubles && teammate ? Math.round((user.mmr + teammate.mmr) / 2) : user.mmr;
   const oppTeamMMR  = isDoubles && opp1 && opp2 ? Math.round((opp1.mmr + opp2.mmr) / 2) : opp1?.mmr ?? 0;
   const mmrPreview  = (isDoubles ? opp1 && opp2 && teammate : opp1)
-    ? calcMMRChange(myTeamMMR, oppTeamMMR)
+    ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor)
     : null;
 
-  const hasScores = games.some(g => Number(g.p1) > 0 || Number(g.p2) > 0);
-  const canSubmit = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores;
+  const hasScores   = games.some(g => Number(g.p1) > 0 || Number(g.p2) > 0);
+  const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, opp1.uid) : null;
+  const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !cheatBlock;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>
     setGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
@@ -399,6 +441,10 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
       playedAt: new Date().toISOString(),
       location: loc || `${user.area}, ${user.state}`,
     } as Match);
+
+    if (!placementDone) {
+      updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
+    }
 
     setDone(true);
     setTimeout(() => { setDone(false); onClose(); reset(); }, 2000);
@@ -466,8 +512,16 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
                 </>
               )}
 
+              {/* Anti-cheat warning */}
+              {cheatBlock && (
+                <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+                  <AlertCircle size={15} className="text-red-400 shrink-0 mt-0.5"/>
+                  <p className="text-xs text-red-300 leading-relaxed">{cheatBlock}</p>
+                </div>
+              )}
+
               {/* MMR preview */}
-              {mmrPreview && (
+              {mmrPreview && !cheatBlock && (
                 <div className="flex gap-3 text-xs">
                   <span className="text-emerald-400">Win: +{mmrPreview.gain} MMR</span>
                   <span className="text-red-400">Loss: {mmrPreview.loss} MMR</span>

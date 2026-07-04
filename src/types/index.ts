@@ -14,6 +14,7 @@ export interface UserProfile {
   email: string;
   mmr: number;
   tier: Tier;
+  placementMatchesPlayed?: number; // undefined or <10 = still in calibration
   globalRank: number;
   state: MalaysiaState;
   area: string;              // e.g. "Petaling Jaya"
