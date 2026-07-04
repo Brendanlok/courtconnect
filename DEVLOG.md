@@ -8,7 +8,30 @@
 
 <!-- ENTRIES BELOW — newest first -->
 
-## [2026-07-04] — Session Bootstrap Entry
+## [2026-07-04 22:15] — Auto-Dev Session
+
+**Trigger:** Scheduled (23:00)
+**Daily Summary:** No Telegram commands pending. Build was clean. Found and fixed one broken button on the Home page.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean, no errors |
+| 2 | 🔴 | Code audit — broken functionality | ✅ | Home page "+ Log a Match" empty-state button had `onClick={() => {}}` — did nothing |
+| 3 | 🟢 | Scan for other no-op handlers / TODOs | ✅ | None found elsewhere in `src/` |
+
+### Issues Found
+- 🔴 [src/app/page.tsx:327](src/app/page.tsx) — "+ Log a Match" button in the empty Recent Matches state was a no-op. Users clicking it got no feedback or modal.
+
+### Improvements Made
+- Wired the Home page's "+ Log a Match" button to open `LogMatchModal` (same modal already used by the Topbar's "Log Match" button), with local `logOpen` state. Verified in browser: clicking now opens the full match-logging flow (QR scan, opponent search, scores).
+
+### Critical Alerts
+None.
+
 
 **Daily Summary:** First log entry — bootstrapping the logbook. No automated session has run yet. This entry documents the app's current state as a baseline for future daily checks.
 
