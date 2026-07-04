@@ -5,6 +5,7 @@ import { MMR_HISTORY, COMMUNITY_FEED } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
+import { LogMatchModal } from '@/components/LogMatchModal';
 import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
