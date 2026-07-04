@@ -242,6 +242,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge,
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
+      friends, toggleFriend,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>
