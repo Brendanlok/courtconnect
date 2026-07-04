@@ -9,6 +9,41 @@ body {
   background: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── Light mode overrides ────────────────────────────────────────────────────── */
+html.light {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+
+  /* Remap slate so all bg-slate-* / border-slate-* / text-slate-* invert */
+  --color-slate-950: #f8fafc;
+  --color-slate-900: #f1f5f9;
+  --color-slate-800: #e2e8f0;
+  --color-slate-700: #cbd5e1;
+  --color-slate-600: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-400: #475569;
+  --color-slate-300: #334155;
+  --color-slate-200: #1e293b;
+  --color-slate-100: #0f172a;
+  --color-slate-50:  #020817;
+
+  /* Keep accent colours vivid on light bg */
+  --color-emerald-400: #059669;
+  --color-emerald-300: #047857;
+  --color-amber-400:   #d97706;
+  --color-amber-300:   #b45309;
+  --color-violet-400:  #7c3aed;
+  --color-violet-300:  #6d28d9;
+  --color-red-400:     #dc2626;
+  --color-orange-400:  #ea580c;
+}
+
+html.light body {
+  background: var(--background);
+  color: var(--foreground);
 }
 
 /* Custom scrollbar */

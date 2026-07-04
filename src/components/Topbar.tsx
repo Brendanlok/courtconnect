@@ -6,7 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { QRModal } from '@/components/QRModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin, Bell, Navigation, X } from 'lucide-react';
+import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin, Bell, Navigation, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
 import { MY_STATES } from '@/lib/utils';
@@ -115,6 +115,16 @@ export function Topbar() {
   const [qrOpen,      setQrOpen]      = useState(false);
   const [logOpen,     setLogOpen]     = useState(false);
   const [settOpen,    setSettOpen]    = useState(false);
+  const [isDark,      setIsDark]      = useState(() =>
+    typeof window !== 'undefined' ? !document.documentElement.classList.contains('light') : true
+  );
+
+  const toggleTheme = () => {
+    const goLight = isDark;
+    document.documentElement.classList.toggle('light', goLight);
+    localStorage.setItem('cc_theme', goLight ? 'light' : 'dark');
+    setIsDark(!goLight);
+  };
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -206,6 +216,16 @@ export function Topbar() {
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
                     <Settings size={15} className="text-slate-400" /> Settings
                   </button>
+                  {/* Theme toggle */}
+                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer" onClick={toggleTheme}>
+                    <div className="flex items-center gap-3 text-sm">
+                      {isDark ? <Moon size={15} className="text-slate-400"/> : <Sun size={15} className="text-amber-400"/>}
+                      <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
+                    </div>
+                    <div className={`relative w-8 h-4 rounded-full transition-colors ${isDark ? 'bg-slate-600' : 'bg-amber-400'}`}>
+                      <span className={`absolute top-[2px] left-[2px] w-3 h-3 bg-white rounded-full shadow transition-transform ${isDark ? '' : 'translate-x-4'}`}/>
+                    </div>
+                  </div>
                 </div>
                 <div className="p-2 border-t border-slate-800">
                   <button onClick={() => { setMenuOpen(false); logout(); }}

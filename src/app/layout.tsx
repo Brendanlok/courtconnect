@@ -46,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* SW registration — must be inline script, not next/script, for static export */}
         <script dangerouslySetInnerHTML={{ __html: `
+          (function(){try{if(localStorage.getItem('cc_theme')==='light')document.documentElement.classList.add('light');}catch(e){}}());
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
               navigator.serviceWorker.register('/sw.js');
