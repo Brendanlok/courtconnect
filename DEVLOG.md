@@ -33,6 +33,12 @@
 - [x] Create DEVLOG.md (this file)
 - [ ] Set up daily automated schedule
 
+### 📊 Daily Summary (18:00)
+- Sessions run: 1 (Session 4 — Tournament Overhaul, Home Redesign, QR Scan, PWA; see CHANGELOG.md)
+- Total fixes deployed: 4
+- Build status: ✅ Healthy
+- Telegram summary: ✅ Sent
+
 ---
 
 <!-- Template for future daily entries:
