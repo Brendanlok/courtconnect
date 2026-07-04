@@ -351,6 +351,7 @@ export default function Home() {
         onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
+      <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)}/>
     </>
   );
 }
