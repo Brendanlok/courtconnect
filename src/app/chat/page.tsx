@@ -161,8 +161,13 @@ export default function Chat() {
       </div>
     </div>
   ) : (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500 text-sm h-full">
-      No conversations yet. Challenge a player to get started!
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 text-sm h-full">
+      <MessageCircle size={28} className="opacity-30"/>
+      <p>No conversations yet. Challenge a player to get started!</p>
+      <Link href="/players/"
+        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition-colors">
+        Browse Players
+      </Link>
     </div>
   );
 
