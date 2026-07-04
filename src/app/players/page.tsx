@@ -9,7 +9,7 @@ import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
   X, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, Crown, ShieldCheck,
-  UserMinus, Trash2, UserCheck,
+  UserMinus, Trash2, UserCheck, UserX, Bell,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
@@ -22,7 +22,14 @@ const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
 const PLAYER_SUBTABS = ['All Players', 'Friends'] as const;
 
 export default function Players() {
-  const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator } = useApp();
+  const {
+    user, updateUser,
+    clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub,
+    myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub,
+    assignModerator, removeModerator,
+    friends, outgoingFriendRequests, incomingFriendRequests,
+    sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
+  } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Players';
@@ -58,7 +65,19 @@ export default function Players() {
         ))}
       </div>
 
-      {tab === 'Players'        && <PlayersSection user={user}/>}
+      {tab === 'Players' && (
+        <PlayersSection
+          user={user}
+          friends={friends}
+          outgoing={outgoingFriendRequests}
+          incoming={incomingFriendRequests}
+          onSend={sendFriendRequest}
+          onCancel={cancelFriendRequest}
+          onAccept={acceptFriendRequest}
+          onDecline={declineFriendRequest}
+          onRemove={removeFriend}
+        />
+      )}
       {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser}/>}
       {tab === 'Clubs'          && (
         <ClubsTab
@@ -77,16 +96,24 @@ export default function Players() {
 
 // ─── Players section (All + Friends subtabs) ──────────────────────────────────
 
-function PlayersSection({ user }: { user: UserProfile }) {
-  const [subtab, setSubtab] = useState<typeof PLAYER_SUBTABS[number]>('All Players');
-  const [friends, setFriends] = useState<string[]>([]); // friend uids
+interface FriendProps {
+  user: UserProfile;
+  friends: string[];
+  outgoing: string[];
+  incoming: string[];
+  onSend: (uid: string) => void;
+  onCancel: (uid: string) => void;
+  onAccept: (uid: string) => void;
+  onDecline: (uid: string) => void;
+  onRemove: (uid: string) => void;
+}
 
-  const toggleFriend = (uid: string) =>
-    setFriends(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+function PlayersSection(props: FriendProps) {
+  const [subtab, setSubtab] = useState<typeof PLAYER_SUBTABS[number]>('All Players');
+  const { friends, incoming } = props;
 
   return (
     <div className="space-y-4">
-      {/* Subtabs */}
       <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 rounded-lg p-0.5 w-fit">
         {PLAYER_SUBTABS.map(st => (
           <button key={st} onClick={() => setSubtab(st)}
@@ -97,16 +124,15 @@ function PlayersSection({ user }: { user: UserProfile }) {
             {st === 'Friends' && friends.length > 0 && (
               <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{friends.length}</span>
             )}
+            {st === 'Friends' && incoming.length > 0 && (
+              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{incoming.length}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {subtab === 'All Players' && (
-        <PlayersList user={user} friends={friends} onToggleFriend={toggleFriend}/>
-      )}
-      {subtab === 'Friends' && (
-        <FriendsList user={user} friends={friends} onRemoveFriend={toggleFriend}/>
-      )}
+      {subtab === 'All Players' && <PlayersList {...props}/>}
+      {subtab === 'Friends'     && <FriendsList {...props}/>}
     </div>
   );
 }
@@ -115,19 +141,13 @@ function PlayersSection({ user }: { user: UserProfile }) {
 
 type SortDir = 'desc' | 'asc';
 
-function PlayersList({ user, friends, onToggleFriend }: {
-  user: UserProfile;
-  friends: string[];
-  onToggleFriend: (uid: string) => void;
-}) {
+function PlayersList({ user, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove }: FriendProps) {
   const [query,       setQuery]      = useState('');
   const [stateFilter, setStateFilter] = useState<MalaysiaState | 'All'>('All');
   const [tierFilter,  setTierFilter]  = useState<Tier | 'All'>('All');
   const [sortDir,     setSortDir]    = useState<SortDir>('desc');
 
-  const allPlayers = PLAYERS;
-
-  const filtered = allPlayers
+  const filtered = PLAYERS
     .filter(p => {
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
@@ -145,7 +165,6 @@ function PlayersList({ user, friends, onToggleFriend }: {
             placeholder="Search by name or @username…"
             className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
         </div>
-
         <div className="flex gap-2 flex-wrap items-center">
           <Filter size={13} className="text-slate-500"/>
           <FilterDropdown<MalaysiaState | 'All'>
@@ -164,9 +183,7 @@ function PlayersList({ user, friends, onToggleFriend }: {
             }))}
             onChange={setTierFilter}
           />
-          {/* MMR sort toggle */}
-          <button
-            onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+          <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
             className="flex items-center gap-1 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors">
             {sortDir === 'desc' ? <ArrowDown size={11} className="text-amber-400"/> : <ArrowUp size={11} className="text-amber-400"/>}
             MMR {sortDir === 'desc' ? 'High → Low' : 'Low → High'}
@@ -179,23 +196,32 @@ function PlayersList({ user, friends, onToggleFriend }: {
       <div className="space-y-2">
         {filtered.map(p => (
           <PlayerRow key={p.uid} player={p} myMMR={user.mmr}
-            isFriend={friends.includes(p.uid)} onToggleFriend={onToggleFriend}/>
+            isFriend={friends.includes(p.uid)}
+            isOutgoing={outgoing.includes(p.uid)}
+            isIncoming={incoming.includes(p.uid)}
+            onSend={onSend} onCancel={onCancel}
+            onAccept={onAccept} onDecline={onDecline} onRemove={onRemove}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function PlayerRow({ player: p, myMMR, isFriend, onToggleFriend }: {
-  player: UserProfile; myMMR: number; isFriend: boolean; onToggleFriend: (uid: string) => void;
+function PlayerRow({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend, onCancel, onAccept, onDecline, onRemove }: {
+  player: UserProfile; myMMR: number;
+  isFriend: boolean; isOutgoing: boolean; isIncoming: boolean;
+  onSend: (uid: string) => void; onCancel: (uid: string) => void;
+  onAccept: (uid: string) => void; onDecline: (uid: string) => void; onRemove: (uid: string) => void;
 }) {
   const sm = skillMatch(myMMR, p.mmr);
   const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
   const smBar   = sm >= 80 ? 'bg-emerald-500'   : sm >= 60 ? 'bg-amber-500'   : 'bg-red-500';
-  const wr      = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
+  const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
 
   return (
-    <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md group">
+    <div className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md
+      ${isIncoming ? 'border-amber-500/30' : isFriend ? 'border-emerald-500/20' : 'border-slate-800 hover:border-slate-700'}`}>
       <Link href={`/players/${p.username}`} className="flex items-center gap-4 flex-1 min-w-0">
         <Avatar name={p.displayName}/>
         <div className="flex-1 min-w-0">
@@ -228,84 +254,137 @@ function PlayerRow({ player: p, myMMR, isFriend, onToggleFriend }: {
           <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
         </div>
       </Link>
-      {/* Friend toggle */}
-      <button
-        onClick={() => onToggleFriend(p.uid)}
-        title={isFriend ? 'Remove friend' : 'Add friend'}
-        className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border transition-colors
-          ${isFriend
-            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
-            : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-emerald-400 hover:border-emerald-500/30'}`}>
-        {isFriend ? <UserCheck size={13}/> : <UserPlus size={13}/>}
-      </button>
+
+      {/* Friend action area */}
+      <div className="shrink-0 flex flex-col items-end gap-1">
+        {isIncoming ? (
+          <>
+            <p className="text-[10px] text-amber-400 font-semibold flex items-center gap-1"><Bell size={9}/> Sent you a request</p>
+            <div className="flex gap-1">
+              <button onClick={() => onAccept(p.uid)}
+                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-colors">
+                <Check size={10}/> Accept
+              </button>
+              <button onClick={() => onDecline(p.uid)}
+                className="flex items-center gap-1 px-2.5 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-medium transition-colors">
+                <X size={10}/> Decline
+              </button>
+            </div>
+          </>
+        ) : isFriend ? (
+          <button onClick={() => onRemove(p.uid)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 rounded-xl text-[11px] font-semibold transition-colors">
+            <UserCheck size={12}/> Friends
+          </button>
+        ) : isOutgoing ? (
+          <button onClick={() => onCancel(p.uid)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-700/50 border border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 rounded-xl text-[11px] font-semibold transition-colors">
+            <Clock size={12}/> Requested
+          </button>
+        ) : (
+          <button onClick={() => onSend(p.uid)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 hover:border-emerald-500/30 hover:text-emerald-400 text-slate-400 rounded-xl text-[11px] font-semibold transition-colors">
+            <UserPlus size={12}/> Add Friend
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Friends list ─────────────────────────────────────────────────────────────
 
-function FriendsList({ user, friends, onRemoveFriend }: {
-  user: UserProfile; friends: string[]; onRemoveFriend: (uid: string) => void;
-}) {
+function FriendsList({ user, friends, incoming, onAccept, onDecline, onRemove }: FriendProps) {
   const allPlayers = PLAYERS;
   const friendPlayers = allPlayers.filter(p => friends.includes(p.uid));
-
-  if (friends.length === 0) {
-    return (
-      <div className="text-center py-16 space-y-3">
-        <UserCheck size={32} className="mx-auto text-slate-700"/>
-        <p className="text-sm text-slate-400 font-medium">No friends added yet</p>
-        <p className="text-xs text-slate-600">Go to All Players and tap the <UserPlus size={10} className="inline"/> icon to add friends.</p>
-      </div>
-    );
-  }
+  const incomingPlayers = allPlayers.filter(p => incoming.includes(p.uid));
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
-      <div className="space-y-2">
-        {friendPlayers.map(p => {
-          const sm = skillMatch(user.mmr, p.mmr);
-          const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
-          const smBar   = sm >= 80 ? 'bg-emerald-500'   : sm >= 60 ? 'bg-amber-500'   : 'bg-red-500';
-          const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
-          return (
-            <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-emerald-500/20 rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5">
-              <Link href={`/players/${p.username}`} className="flex items-center gap-4 flex-1 min-w-0">
+    <div className="space-y-5">
+      {/* Incoming requests section */}
+      {incomingPlayers.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+            <Bell size={11}/> {incomingPlayers.length} Friend Request{incomingPlayers.length !== 1 ? 's' : ''}
+          </p>
+          {incomingPlayers.map(p => (
+            <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-amber-500/25 rounded-2xl px-4 py-3">
+              <Link href={`/players/${p.username}`} className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar name={p.displayName}/>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-sm">{p.displayName}</p>
-                    <p className="text-xs text-slate-500">@{p.username}</p>
-                    <TierBadge tier={p.tier}/>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                    <MapPin size={10}/> {p.area}, {p.state}
-                  </p>
+                  <p className="font-semibold text-sm">{p.displayName}</p>
+                  <p className="text-xs text-slate-500">@{p.username} · <TierBadge tier={p.tier} className="inline-flex text-[10px]"/></p>
                 </div>
-                <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
-                  <span className="text-[10px] text-slate-500 font-medium">Skill Match</span>
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                      <div className={`h-full ${smBar} rounded-full`} style={{ width:`${sm}%` }}/>
-                    </div>
-                    <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-base font-bold text-amber-400">{p.mmr.toLocaleString()}</p>
-                  <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
-                </div>
+                <p className="text-sm font-bold text-amber-400 shrink-0">{p.mmr.toLocaleString()}</p>
               </Link>
-              <button onClick={() => onRemoveFriend(p.uid)}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors"
-                title="Remove friend">
-                <UserMinus size={13}/>
-              </button>
+              <div className="flex gap-1.5 shrink-0">
+                <button onClick={() => onAccept(p.uid)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
+                  <Check size={11}/> Accept
+                </button>
+                <button onClick={() => onDecline(p.uid)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-medium transition-colors">
+                  <X size={11}/> Decline
+                </button>
+              </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* Accepted friends */}
+      {friendPlayers.length === 0 && incomingPlayers.length === 0 ? (
+        <div className="text-center py-16 space-y-3">
+          <UserCheck size={32} className="mx-auto text-slate-700"/>
+          <p className="text-sm text-slate-400 font-medium">No friends yet</p>
+          <p className="text-xs text-slate-600">Go to All Players and tap Add Friend to send a request.</p>
+        </div>
+      ) : friendPlayers.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
+          {friendPlayers.map(p => {
+            const sm = skillMatch(user.mmr, p.mmr);
+            const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
+            const smBar   = sm >= 80 ? 'bg-emerald-500'   : sm >= 60 ? 'bg-amber-500'   : 'bg-red-500';
+            const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
+            return (
+              <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-emerald-500/20 rounded-2xl px-4 py-3.5 transition-all hover:-translate-y-0.5">
+                <Link href={`/players/${p.username}`} className="flex items-center gap-4 flex-1 min-w-0">
+                  <Avatar name={p.displayName}/>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm">{p.displayName}</p>
+                      <p className="text-xs text-slate-500">@{p.username}</p>
+                      <TierBadge tier={p.tier}/>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <MapPin size={10}/> {p.area}, {p.state}
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
+                    <span className="text-[10px] text-slate-500 font-medium">Skill Match</span>
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                        <div className={`h-full ${smBar} rounded-full`} style={{ width:`${sm}%` }}/>
+                      </div>
+                      <span className={`text-xs font-bold shrink-0 ${smColor}`}>{sm}%</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-base font-bold text-amber-400">{p.mmr.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500">{p.stats.wins}W · {wr}% WR</p>
+                  </div>
+                </Link>
+                <button onClick={() => onRemove(p.uid)}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl border bg-slate-800 border-slate-700 text-slate-500 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 transition-colors"
+                  title="Remove friend">
+                  <UserMinus size={13}/>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

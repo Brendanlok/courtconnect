@@ -43,8 +43,14 @@ interface AppCtx {
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
   // Friends
-  friends: string[];                     // uids of players I've added as friends
-  toggleFriend: (uid: string) => void;
+  friends: string[];                     // accepted friend uids
+  outgoingFriendRequests: string[];      // uids I've sent a request to
+  incomingFriendRequests: string[];      // uids who sent me a request
+  sendFriendRequest: (uid: string) => void;
+  cancelFriendRequest: (uid: string) => void;
+  acceptFriendRequest: (uid: string) => void;
+  declineFriendRequest: (uid: string) => void;
+  removeFriend: (uid: string) => void;
   // Endorsements
   myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
   playerEndorsements: Record<string, Record<string, number>>; // targetUid → skill → count
@@ -78,7 +84,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [myClubId,         setMyClubId]         = useState<string | null>(null);
   const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>([]);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
-  const [friends,          setFriends]          = useState<string[]>([]);
+  const [friends,                setFriends]               = useState<string[]>([]);
+  const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
+  const [incomingFriendRequests, setIncomingFriendRequests] = useState<string[]>(['p2', 'p4']); // seed: two players already sent requests
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
 
@@ -203,8 +211,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, []);
 
-  const toggleFriend = useCallback((uid: string) => {
-    setFriends(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  const sendFriendRequest = useCallback((uid: string) => {
+    setOutgoingFriendRequests(p => [...p, uid]);
+  }, []);
+
+  const cancelFriendRequest = useCallback((uid: string) => {
+    setOutgoingFriendRequests(p => p.filter(id => id !== uid));
+  }, []);
+
+  const acceptFriendRequest = useCallback((uid: string) => {
+    setIncomingFriendRequests(p => p.filter(id => id !== uid));
+    setFriends(p => [...p, uid]);
+  }, []);
+
+  const declineFriendRequest = useCallback((uid: string) => {
+    setIncomingFriendRequests(p => p.filter(id => id !== uid));
+  }, []);
+
+  const removeFriend = useCallback((uid: string) => {
+    setFriends(p => p.filter(id => id !== uid));
   }, []);
 
   // Endorsements — toggle: endorse if not given, remove if already given
@@ -242,7 +267,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge,
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
-      friends, toggleFriend,
+      friends, outgoingFriendRequests, incomingFriendRequests,
+      sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>
