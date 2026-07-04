@@ -203,6 +203,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, []);
 
+  const toggleFriend = useCallback((uid: string) => {
+    setFriends(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  }, []);
+
   // Endorsements — toggle: endorse if not given, remove if already given
   const endorsePlayer = useCallback((targetUid: string, skill: string) => {
     setMyEndorsements(prev => {
