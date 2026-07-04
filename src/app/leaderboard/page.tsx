@@ -37,7 +37,7 @@ export default function Leaderboard() {
     .filter(p => {
       if (tab === 'By State') return p.state === selState;
       if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
-      if (tab === 'Friends')  return FRIENDS.includes(p.uid) || p.uid === 'me';
+      if (tab === 'Friends')  return friends.includes(p.uid) || p.uid === 'me';
       return true;
     })
     .filter(p => tierFilter === 'All' || p.tier === tierFilter)
