@@ -16,7 +16,13 @@ const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
 
 export default function Players() {
   const { user, updateUser, clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, myClubPendingIds, acceptClubMember, declineClubMember, updateClub } = useApp();
-  const [tab, setTab] = useState<typeof TABS[number]>('Players');
+  const [tab, setTab] = useState<typeof TABS[number]>(() => {
+    if (typeof window === 'undefined') return 'Players';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t === 'partner') return 'Partner Finder';
+    if (t === 'clubs')   return 'Clubs';
+    return 'Players';
+  });
 
   return (
     <div className="space-y-5">

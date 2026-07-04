@@ -361,7 +361,8 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
     ? calcMMRChange(myTeamMMR, oppTeamMMR)
     : null;
 
-  const canSubmit = isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1;
+  const hasScores = games.some(g => Number(g.p1) > 0 || Number(g.p2) > 0);
+  const canSubmit = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>
     setGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
@@ -479,7 +480,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
 
               {/* Scores */}
               <div>
-                <span className="text-xs text-slate-400 font-semibold">Scores</span>
+                <span className="text-xs text-slate-400 font-semibold">Scores <span className="text-red-400">*</span></span>
                 <div className="mt-2 space-y-2">
                   {games.map((g, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -506,6 +507,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
 
             <div className="p-5 pt-0 flex gap-3">
               <button onClick={submit} disabled={!canSubmit}
+                title={!opp1 ? 'Select an opponent first' : !hasScores ? 'Enter at least one game score' : undefined}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-semibold text-sm transition-colors">
                 Submit Match
               </button>
