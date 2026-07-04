@@ -78,6 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [myClubId,         setMyClubId]         = useState<string | null>(null);
   const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>([]);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
+  const [friends,          setFriends]          = useState<string[]>([]);
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
 
