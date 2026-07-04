@@ -42,6 +42,9 @@ interface AppCtx {
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
+  // Friends
+  friends: string[];                     // uids of players I've added as friends
+  toggleFriend: (uid: string) => void;
   // Endorsements
   myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
   playerEndorsements: Record<string, Record<string, number>>; // targetUid → skill → count
