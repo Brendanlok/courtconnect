@@ -38,6 +38,28 @@ export default function PlayersPage() {
     return 'Players';
   });
 
+  // Shared filter state — applies to both Players and Friends tabs
+  const userCountry = user.country ?? 'Malaysia';
+  const userRegion  = user.region ?? user.state ?? '';
+  const [query,         setQuery]         = useState('');
+  const [countryFilter, setCountryFilter] = useState<string>(userCountry);
+  const [regionFilter,  setRegionFilter]  = useState<string>('All');
+  const [tierFilter,    setTierFilter]    = useState<Tier | 'All'>('All');
+  const [sortKey,       setSortKey]       = useState<SortKey>('mmr');
+  const [openToPlay,    setOpenToPlay]    = useState(false);
+  const [openToPartner, setOpenToPartner] = useState(false);
+
+  const sharedFilters: PlayerFilters = {
+    query, setQuery,
+    countryFilter, setCountryFilter,
+    regionFilter, setRegionFilter,
+    tierFilter, setTierFilter,
+    sortKey, setSortKey,
+    openToPlay, setOpenToPlay,
+    openToPartner, setOpenToPartner,
+    userCountry, userRegion,
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
@@ -69,14 +91,20 @@ export default function PlayersPage() {
         ))}
       </div>
 
-      {tab === 'Players' && (
+      {/* Shared filters — shown for Players + Friends tabs only */}
+      <div className={tab === 'Clubs' ? 'hidden' : ''}>
+        <SharedPlayerFilters f={sharedFilters}/>
+      </div>
+
+      <div className={tab !== 'Players' ? 'hidden' : ''}>
         <PlayersList
           user={user}
           friends={friends}
           incoming={incomingFriendRequests}
+          filters={sharedFilters}
         />
-      )}
-      {tab === 'Friends' && (
+      </div>
+      <div className={tab !== 'Friends' ? 'hidden' : ''}>
         <FriendsTab
           user={user} updateUser={updateUser}
           friends={friends}
@@ -87,8 +115,9 @@ export default function PlayersPage() {
           onAccept={acceptFriendRequest}
           onDecline={declineFriendRequest}
           onRemove={removeFriend}
+          filters={sharedFilters}
         />
-      )}
+      </div>
       {tab === 'Clubs' && (
         <ClubsTab
           clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
@@ -273,9 +302,20 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
       <Avatar name={p.displayName}/>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           <p className="font-bold text-sm truncate">{p.displayName}</p>
           {isMe && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">You</span>}
+          {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1 py-0.5 rounded shrink-0">DEMO</span>}
+          {p.openToPlay && (
+            <span title="Open to Play" className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded shrink-0">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Play
+            </span>
+          )}
+          {p.lookingForPartner && (
+            <span title="Looking for Partner" className="flex items-center gap-0.5 text-[9px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1 py-0.5 rounded shrink-0">
+              <Users size={8}/>Partner
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <TierBadge tier={p.tier}/>
@@ -290,21 +330,99 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
   );
 }
 
-// ─── Players list (ranks-style with full filters) ─────────────────────────────
+// ─── Shared filter state type ─────────────────────────────────────────────────
 
-function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'friends' | 'incoming'>) {
-  const userCountry = user.country ?? 'Malaysia';
-  const userRegion  = user.region ?? user.state ?? '';
-  const [query,         setQuery]        = useState('');
-  const [countryFilter, setCountryFilter]= useState<string>(userCountry);
-  const [regionFilter,  setRegionFilter] = useState<string>('All');
-  const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
-  const [sortKey,       setSortKey]      = useState<SortKey>('mmr');
-  const [openToPlay,    setOpenToPlay]   = useState(false);
-  const [openToPartner, setOpenToPartner]= useState(false);
+interface PlayerFilters {
+  query: string; setQuery: (v: string) => void;
+  countryFilter: string; setCountryFilter: (v: string) => void;
+  regionFilter: string; setRegionFilter: (v: string) => void;
+  tierFilter: Tier | 'All'; setTierFilter: (v: Tier | 'All') => void;
+  sortKey: SortKey; setSortKey: (v: SortKey) => void;
+  openToPlay: boolean; setOpenToPlay: (v: boolean) => void;
+  openToPartner: boolean; setOpenToPartner: (v: boolean) => void;
+  userCountry: string; userRegion: string;
+}
 
-  const selectedCountryData = getCountryByName(countryFilter);
+function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
+  const selectedCountryData = getCountryByName(f.countryFilter);
   const regionOptions = selectedCountryData.regions;
+  return (
+    <div className="space-y-2">
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+        <input value={f.query} onChange={e => f.setQuery(e.target.value)}
+          placeholder="Search by name or @username…"
+          className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+      </div>
+      {/* Row 1: Filter icon + Country, Region, Tier */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <Filter size={13} className="text-slate-500 shrink-0"/>
+        <FilterDropdown<string>
+          label={`${getCountryByName(f.countryFilter).flag} ${f.countryFilter}`}
+          value={f.countryFilter}
+          options={[
+            { value: f.userCountry, label: `${getCountryByName(f.userCountry).flag} ${f.userCountry}` },
+            ...COUNTRIES.filter(c => c.name !== f.userCountry).sort((a,b) => a.name.localeCompare(b.name)).map(c => ({ value: c.name, label: `${c.flag} ${c.name}` })),
+          ]}
+          onChange={v => { f.setCountryFilter(v); f.setRegionFilter('All'); }}
+        />
+        {regionOptions.length > 0 && (
+          <FilterDropdown<string>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label={f.regionFilter === 'All' ? `All ${selectedCountryData.regionLabel}s` : f.regionFilter}
+            value={f.regionFilter}
+            options={[
+              { value: 'All', label: `All ${selectedCountryData.regionLabel}s` },
+              ...(f.countryFilter === f.userCountry && f.userRegion
+                ? [{ value: f.userRegion, label: f.userRegion }, ...regionOptions.filter(r => r !== f.userRegion).sort().map(r => ({ value: r, label: r }))]
+                : regionOptions.slice().sort().map(r => ({ value: r, label: r }))
+              ),
+            ]}
+            onChange={f.setRegionFilter}
+          />
+        )}
+        <FilterDropdown<Tier | 'All'>
+          icon={<span className="text-[11px]">{f.tierFilter !== 'All' ? TIER_STYLE[f.tierFilter].icon : '🏅'}</span>}
+          label={f.tierFilter === 'All' ? 'All Tiers' : f.tierFilter}
+          value={f.tierFilter}
+          options={TIERS.map(t => ({
+            value: t, label: t === 'All' ? 'All Tiers' : t,
+            prefix: t !== 'All' ? <span className="text-sm">{TIER_STYLE[t].icon}</span> : undefined,
+          }))}
+          onChange={f.setTierFilter}
+        />
+      </div>
+      {/* Row 2: MMR, Open to Play, Open to Partner */}
+      <div className="flex flex-wrap gap-1.5 items-center pl-5">
+        <FilterDropdown<SortKey>
+          icon={<BarChart2 size={11} className="text-amber-400"/>}
+          label={SORT_OPTIONS.find(o => o.key === f.sortKey)?.label ?? 'MMR'}
+          value={f.sortKey}
+          options={SORT_OPTIONS.map(o => ({ value: o.key, label: o.label }))}
+          onChange={f.setSortKey}
+        />
+        <button onClick={() => f.setOpenToPlay(!f.openToPlay)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
+            ${f.openToPlay ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${f.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}/>
+          Open to Play
+        </button>
+        <button onClick={() => f.setOpenToPartner(!f.openToPartner)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
+            ${f.openToPartner ? 'bg-violet-500/15 border-violet-500/30 text-violet-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
+          <Users size={10} className={f.openToPartner ? 'text-violet-400' : 'text-slate-600'}/>
+          Open to Partner
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Players list ─────────────────────────────────────────────────────────────
+
+function PlayersList({ user, friends, incoming, filters }: Pick<FriendProps, 'user' | 'friends' | 'incoming'> & { filters: PlayerFilters }) {
+  const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
 
   const all = [user, ...PLAYERS];
@@ -326,79 +444,8 @@ function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'fr
     });
 
   const meIdx = ranked.findIndex(p => p.uid === 'me');
-
   return (
-    <div className="space-y-3">
-      {/* Search */}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-        <input value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Search by name or @username…"
-          className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
-      </div>
-
-      {/* Country + Region */}
-      <div className="flex flex-wrap gap-2">
-        <FilterDropdown<string>
-          icon={<span className="text-xs">{getCountryByName(countryFilter).flag}</span>}
-          label={countryFilter}
-          value={countryFilter}
-          options={[
-            { value: userCountry, label: `${getCountryByName(userCountry).flag} ${userCountry}` },
-            ...COUNTRIES.filter(c => c.name !== userCountry).sort((a,b) => a.name.localeCompare(b.name)).map(c => ({ value: c.name, label: `${c.flag} ${c.name}` })),
-          ]}
-          onChange={v => { setCountryFilter(v); setRegionFilter('All'); }}
-        />
-        {regionOptions.length > 0 && (
-          <FilterDropdown<string>
-            icon={<MapPin size={11} className="text-emerald-400"/>}
-            label={regionFilter === 'All' ? `All ${selectedCountryData.regionLabel}s` : regionFilter}
-            value={regionFilter}
-            options={[
-              { value: 'All', label: `All ${selectedCountryData.regionLabel}s` },
-              ...(countryFilter === userCountry && userRegion
-                ? [{ value: userRegion, label: userRegion }, ...regionOptions.filter(r => r !== userRegion).sort().map(r => ({ value: r, label: r }))]
-                : regionOptions.slice().sort().map(r => ({ value: r, label: r }))
-              ),
-            ]}
-            onChange={setRegionFilter}
-          />
-        )}
-      </div>
-
-      {/* Tier + Sort + toggles */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <FilterDropdown<Tier | 'All'>
-          icon={<span className="text-[11px]">{tierFilter !== 'All' ? TIER_STYLE[tierFilter].icon : '🏅'}</span>}
-          label={tierFilter === 'All' ? 'All Tiers' : tierFilter}
-          value={tierFilter}
-          options={TIERS.map(t => ({
-            value: t, label: t === 'All' ? 'All Tiers' : t,
-            prefix: t !== 'All' ? <span className="text-sm">{TIER_STYLE[t].icon}</span> : undefined,
-          }))}
-          onChange={setTierFilter}
-        />
-        <FilterDropdown<SortKey>
-          icon={<BarChart2 size={11} className="text-amber-400"/>}
-          label={SORT_OPTIONS.find(o => o.key === sortKey)?.label ?? 'MMR'}
-          value={sortKey}
-          options={SORT_OPTIONS.map(o => ({ value: o.key, label: o.label }))}
-          onChange={setSortKey}
-        />
-        <button onClick={() => setOpenToPlay(o => !o)}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
-            ${openToPlay ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${openToPlay ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
-          Open to Play
-        </button>
-        <button onClick={() => setOpenToPartner(o => !o)}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
-            ${openToPartner ? 'bg-violet-500/15 border-violet-500/30 text-violet-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${openToPartner ? 'bg-violet-400' : 'bg-slate-600'}`}/>
-          Open to Partner
-        </button>
-      </div>
-
+    <div className="space-y-2">
       {meIdx >= 0 && (
         <div className="flex items-center gap-2 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 py-2">
           <span className="text-xs font-bold text-emerald-400">#{meIdx + 1}</span>
@@ -417,14 +464,8 @@ function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'fr
 
 // ─── Friends tab ─────────────────────────────────────────────────────────────
 
-function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove }: FriendProps & { updateUser: (p: Partial<UserProfile>) => void }) {
+function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove, filters }: FriendProps & { updateUser: (p: Partial<UserProfile>) => void; filters: PlayerFilters }) {
   const [requestsOpen, setRequestsOpen] = useState(false);
-  const [query,        setQuery]        = useState('');
-  const [stateFilter,  setStateFilter]  = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter,   setTierFilter]   = useState<Tier | 'All'>('All');
-  const [sortDir,      setSortDir]      = useState<SortDir>('desc');
-  const [openToPlay,     setOpenToPlay]     = useState(false);
-  const [openToPartner,  setOpenToPartner]  = useState(false);
   const requestsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -438,6 +479,9 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
     return () => document.removeEventListener('mousedown', handler);
   }, [requestsOpen]);
 
+  const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
+  const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
+
   const incomingPlayers = PLAYERS.filter(p => incoming.includes(p.uid));
   const outgoingPlayers = PLAYERS.filter(p => outgoing.includes(p.uid));
   const totalRequests = incoming.length + outgoing.length;
@@ -447,12 +491,18 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
       if (!friends.includes(p.uid)) return false;
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
-        && (stateFilter === 'All' || p.state === stateFilter)
+        && ((p.country ?? 'Malaysia') === countryFilter)
+        && (regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
         && (tierFilter  === 'All' || p.tier  === tierFilter)
         && (!openToPlay    || p.openToPlay)
         && (!openToPartner || p.lookingForPartner);
     })
-    .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
+    .sort((a, b) => {
+      if (sortKey === 'winRate') return winRate(b) - winRate(a);
+      if (sortKey === 'wins')    return b.stats.wins - a.stats.wins;
+      if (sortKey === 'matches') return b.stats.totalMatches - a.stats.totalMatches;
+      return b.mmr - a.mmr;
+    });
 
   const allPlayers = [user, ...PLAYERS];
 
@@ -533,39 +583,30 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
   );
 
   return (
-    <div className="space-y-4">
-
-      {/* Search + filters + requests bell */}
-      <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
-        tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}
-        openToPlay={openToPlay} setOpenToPlay={setOpenToPlay}
-        openToPartner={openToPartner} setOpenToPartner={setOpenToPartner}
-        endSlot={requestsBell}/>
-
+    <div className="space-y-3">
       {/* Friends list */}
-      <div className="space-y-3">
+      <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-slate-400">
           Friends <span className="text-slate-600 font-normal">({friends.length})</span>
         </p>
-        {friends.length === 0 ? (
-          <div className="text-center py-10 space-y-2">
-            <UserCheck size={28} className="mx-auto text-slate-700"/>
-            <p className="text-sm text-slate-400 font-medium">No friends yet</p>
-            <p className="text-xs text-slate-600">Go to the Players tab and tap a player to add them.</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
-            <div className="space-y-2">
-              {friendPlayers.map(p => (
-                <PlayerCard key={p.uid} player={p} myMMR={user.mmr} isFriend={true}/>
-              ))}
-            </div>
-          </>
-        )}
+        {requestsBell}
       </div>
-
-
+      {friends.length === 0 ? (
+        <div className="text-center py-10 space-y-2">
+          <UserCheck size={28} className="mx-auto text-slate-700"/>
+          <p className="text-sm text-slate-400 font-medium">No friends yet</p>
+          <p className="text-xs text-slate-600">Go to the Players tab and tap a player to add them.</p>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
+          <div className="space-y-2">
+            {friendPlayers.map((p, i) => (
+              <RankRow key={p.uid} player={p} rank={i + 1} isMe={false} isFriend={true} sortKey={filters.sortKey}/>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

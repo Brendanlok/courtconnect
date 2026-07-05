@@ -13,9 +13,9 @@ interface AuthCtx {
   // null = no pending onboarding; User = google user awaiting username/name
   pendingGoogleUser: User | null;
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (displayName: string, username: string, email: string, password: string) => Promise<string | null>;
+  signUp: (displayName: string, username: string, email: string, password: string, country: string, region: string) => Promise<string | null>;
   loginWithGoogle: () => Promise<string | null>;
-  completeGoogleOnboarding: (displayName: string, username: string) => Promise<string | null>;
+  completeGoogleOnboarding: (displayName: string, username: string, country: string, region: string) => Promise<string | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
 }
@@ -27,7 +27,7 @@ async function userDocExists(uid: string): Promise<boolean> {
   return snap.exists();
 }
 
-async function createUserDoc(user: User, extra: { username: string; displayName: string }) {
+async function createUserDoc(user: User, extra: { username: string; displayName: string; country?: string; region?: string }) {
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
     email: user.email,
@@ -35,6 +35,8 @@ async function createUserDoc(user: User, extra: { username: string; displayName:
     username: extra.username,
     photoURL: user.photoURL ?? null,
     mmr: 1200,
+    country: extra.country ?? 'Malaysia',
+    region: extra.region ?? '',
     stats: { wins: 0, losses: 0, totalMatches: 0 },
     openToPlay: false,
     createdAt: serverTimestamp(),
@@ -77,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (displayName: string, username: string, email: string, password: string): Promise<string | null> => {
+  const signUp = async (displayName: string, username: string, email: string, password: string, country: string, region: string): Promise<string | null> => {
     if (!displayName.trim()) return 'Name is required.';
     if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(user, { displayName: displayName.trim() });
-      await createUserDoc(user, { username, displayName: displayName.trim() });
+      await createUserDoc(user, { username, displayName: displayName.trim(), country, region });
       return null;
     } catch (e: unknown) {
       return friendlyError((e as { code?: string }).code ?? '');
@@ -108,15 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeGoogleOnboarding = async (displayName: string, username: string): Promise<string | null> => {
+  const completeGoogleOnboarding = async (displayName: string, username: string, country: string, region: string): Promise<string | null> => {
     if (!pendingGoogleUser) return 'Session expired. Please try signing in again.';
     if (!displayName.trim()) return 'Name is required.';
     if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
     try {
-      // Re-sign in with Google to restore the session
       const { user } = await signInWithPopup(auth, googleProvider);
       await updateProfile(user, { displayName: displayName.trim() });
-      await createUserDoc(user, { username, displayName: displayName.trim() });
+      await createUserDoc(user, { username, displayName: displayName.trim(), country, region });
       setPendingGoogleUser(null);
       return null;
     } catch (e: unknown) {

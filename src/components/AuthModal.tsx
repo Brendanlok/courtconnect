@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowLeft, Globe, MapPin } from 'lucide-react';
+import { COUNTRIES, getCountryByName } from '@/lib/utils';
 
 type Tab = 'login' | 'signup';
 type View = 'main' | 'forgot' | 'google-onboarding';
@@ -24,6 +25,8 @@ export function AuthModal() {
   const [username, setUsername] = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
+  const [signupCountry, setSignupCountry] = useState('Malaysia');
+  const [signupRegion,  setSignupRegion]  = useState('');
 
   // forgot password
   const [forgotEmail, setForgotEmail] = useState('');
@@ -31,10 +34,16 @@ export function AuthModal() {
   // google onboarding
   const [googleName,     setGoogleName]     = useState(pendingGoogleUser?.displayName ?? '');
   const [googleUsername, setGoogleUsername] = useState('');
+  const [googleCountry,  setGoogleCountry]  = useState('Malaysia');
+  const [googleRegion,   setGoogleRegion]   = useState('');
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600';
+  const sel = `${inp} appearance-none cursor-pointer`;
 
   const clear = () => { setError(''); setSuccess(''); };
+
+  const signupCountryData = getCountryByName(signupCountry);
+  const googleCountryData = getCountryByName(googleCountry);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); clear(); setLoading(true);
@@ -45,7 +54,7 @@ export function AuthModal() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault(); clear(); setLoading(true);
-    const err = await signUp(name, username, email, password);
+    const err = await signUp(name, username, email, password, signupCountry, signupRegion);
     setLoading(false);
     if (err) setError(err);
   };
@@ -55,7 +64,6 @@ export function AuthModal() {
     const err = await loginWithGoogle();
     setLoading(false);
     if (err) { setError(err); return; }
-    // If there's a pending google user, switch to onboarding view
     if (pendingGoogleUser) setView('google-onboarding');
   };
 
@@ -69,20 +77,56 @@ export function AuthModal() {
 
   const handleGoogleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault(); clear(); setLoading(true);
-    const err = await completeGoogleOnboarding(googleName, googleUsername);
+    const err = await completeGoogleOnboarding(googleName, googleUsername, googleCountry, googleRegion);
     setLoading(false);
     if (err) setError(err);
   };
 
+  function CountryRegionFields({
+    country, setCountry, region, setRegion,
+  }: { country: string; setCountry: (v: string) => void; region: string; setRegion: (v: string) => void }) {
+    const cd = getCountryByName(country);
+    return (
+      <>
+        <div className="relative">
+          <Globe size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none z-10"/>
+          <select value={country} onChange={e => { setCountry(e.target.value); setRegion(''); }}
+            className={`${sel} pl-10`}>
+            {COUNTRIES.map(c => (
+              <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
+            ))}
+          </select>
+        </div>
+        {cd.regions.length > 0 ? (
+          <div className="relative">
+            <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none z-10"/>
+            <select value={region} onChange={e => setRegion(e.target.value)}
+              className={`${sel} pl-10`}>
+              <option value="">Select {cd.regionLabel}…</option>
+              {cd.regions.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div className="relative">
+            <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"/>
+            <input value={region} onChange={e => setRegion(e.target.value)}
+              placeholder={`${cd.regionLabel} (optional)`}
+              className={`${inp} pl-10`}/>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-[100] bg-[#020817] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="fixed inset-0 z-[100] bg-[#020817] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full max-w-sm py-8">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏸</div>
           <h1 className="text-2xl font-bold">CourtConnect</h1>
-          <p className="text-slate-400 text-sm mt-1">Malaysia Badminton Ranking Platform</p>
+          <p className="text-slate-400 text-sm mt-1">Badminton Ranking Platform</p>
         </div>
 
         {/* ── GOOGLE ONBOARDING ── */}
@@ -90,7 +134,7 @@ export function AuthModal() {
           <>
             <div className="mb-6">
               <h2 className="text-lg font-bold mb-1">Almost there!</h2>
-              <p className="text-slate-400 text-sm">Choose a display name and username to finish setting up your account.</p>
+              <p className="text-slate-400 text-sm">Set up your profile to finish creating your account.</p>
             </div>
             {error && <div className="mb-4 px-4 py-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
             <form onSubmit={handleGoogleOnboarding} className="space-y-3">
@@ -108,6 +152,15 @@ export function AuthModal() {
               </div>
               <div className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-400">
                 📧 {pendingGoogleUser?.email}
+              </div>
+              <div className="pt-1">
+                <p className="text-xs text-slate-500 mb-2 font-medium">📍 Your location</p>
+                <div className="space-y-3">
+                  <CountryRegionFields
+                    country={googleCountry} setCountry={setGoogleCountry}
+                    region={googleRegion}  setRegion={setGoogleRegion}
+                  />
+                </div>
               </div>
               <button type="submit" disabled={loading}
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
@@ -233,6 +286,15 @@ export function AuthModal() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
                   </button>
+                </div>
+                <div className="pt-1">
+                  <p className="text-xs text-slate-500 mb-2 font-medium">📍 Your location</p>
+                  <div className="space-y-3">
+                    <CountryRegionFields
+                      country={signupCountry} setCountry={setSignupCountry}
+                      region={signupRegion}  setRegion={setSignupRegion}
+                    />
+                  </div>
                 </div>
                 <button type="submit" disabled={loading}
                   className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
