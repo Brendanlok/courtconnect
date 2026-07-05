@@ -570,6 +570,11 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
                       <p className="text-xs text-slate-500">@{p.username}</p>
                       <TierBadge tier={p.tier}/>
                       {p.gender && <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>}
+                      {friends.includes(p.uid) && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <Users size={9}/> Friend
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                       <MapPin size={10}/> {p.area}, {p.state}
