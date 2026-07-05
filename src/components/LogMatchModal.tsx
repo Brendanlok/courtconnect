@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { Match, MatchType, UserProfile } from '@/types';
+import { lookupUserByUid, lookupUserByUsername } from '@/lib/firestoreService';
 
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
