@@ -79,7 +79,7 @@ export interface Tournament {
   description?: string;
   organiser?: string;
   hostUid?: string;         // uid of the user who created this tournament
-  participants?: string[];  // display names of registered players
+  participants?: { displayName: string; username: string }[];
 }
 
 export interface BracketMatch {
