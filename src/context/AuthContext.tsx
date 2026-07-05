@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signInWithRedirect(auth, googleProvider);
         return null;
       }
-      return friendlyError(code);
+      return `${friendlyError(code)} (${code})`;
     }
   };
 
