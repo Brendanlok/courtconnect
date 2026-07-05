@@ -506,7 +506,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
             ) : (
               <div className="space-y-2">
                 {partnerCandidates.map(p => {
-                  const isSent = partnerSent.includes(p.uid);
+                  const isSent = outgoing.includes(p.uid);
                   const avail = formatAvailability(p.available ?? '');
                   return (
                     <div key={p.uid} className="bg-slate-800 rounded-xl p-3 space-y-2">
