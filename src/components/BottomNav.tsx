@@ -1,15 +1,15 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, TrendingUp, Trophy, Users, MessageCircle } from 'lucide-react';
+import { Home, CalendarDays, Trophy, Users, MessageCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 const LINKS = [
-  { href: '/',            label: 'Home',     icon: Home },
-  { href: '/leaderboard', label: 'Ranks',    icon: TrendingUp },
-  { href: '/tournaments', label: 'Events',   icon: Trophy },
-  { href: '/players',     label: 'Players',  icon: Users },
-  { href: '/chat',        label: 'Messages', icon: MessageCircle },
+  { href: '/',          label: 'Home',     icon: Home },
+  { href: '/matches',   label: 'Matches',  icon: CalendarDays },
+  { href: '/tournaments', label: 'Events', icon: Trophy },
+  { href: '/players',   label: 'Players',  icon: Users },
+  { href: '/chat',      label: 'Messages', icon: MessageCircle },
 ];
 
 const norm = (p: string) => p.replace(/\/$/, '') || '/';
