@@ -157,13 +157,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTournament       = useCallback((t: Tournament) => setTournaments(ts => [t, ...ts]), []);
   const registerTournament  = useCallback((id: string) => {
-    setRegistrations(r => ({ ...r, [id]: { registeredAt: new Date().toISOString() } }));
+    const reg = { registeredAt: new Date().toISOString() };
+    setRegistrations(r => ({ ...r, [id]: reg }));
     setTournaments(ts => ts.map(t => t.id === id ? {
       ...t,
       currentPlayers: t.currentPlayers + 1,
       participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
     } : t));
-  }, [user.displayName]);
+    const uid = auth.currentUser?.uid;
+    if (uid) saveTournamentReg(uid, id, reg).catch(() => {});
+  }, [user.displayName, user.username]);
   const unregisterTournament = useCallback((id: string) => {
     setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
     setTournaments(ts => ts.map(t => t.id === id ? {
@@ -171,7 +174,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentPlayers: Math.max(0, t.currentPlayers - 1),
       participants: (t.participants ?? []).filter(p => p.username !== user.username),
     } : t));
-  }, [user.displayName]);
+    const uid = auth.currentUser?.uid;
+    if (uid) deleteTournamentReg(uid, id).catch(() => {});
+  }, [user.username]);
   const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
   const cancelRequest = useCallback((id: string) => setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; }), []);
 
