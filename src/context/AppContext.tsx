@@ -126,7 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTournaments(ts => ts.map(t => t.id === id ? {
       ...t,
       currentPlayers: Math.max(0, t.currentPlayers - 1),
-      participants: (t.participants ?? []).filter(p => p !== user.displayName),
+      participants: (t.participants ?? []).filter(p => p.username !== user.username),
     } : t));
   }, [user.displayName]);
   const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
