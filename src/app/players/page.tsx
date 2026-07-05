@@ -73,13 +73,7 @@ export default function PlayersPage() {
         <PlayersList
           user={user}
           friends={friends}
-          outgoing={outgoingFriendRequests}
           incoming={incomingFriendRequests}
-          onSend={sendFriendRequest}
-          onCancel={cancelFriendRequest}
-          onAccept={acceptFriendRequest}
-          onDecline={declineFriendRequest}
-          onRemove={removeFriend}
         />
       )}
       {tab === 'Friends' && (
@@ -129,11 +123,13 @@ interface FriendProps {
 
 type SortDir = 'desc' | 'asc';
 
-function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, setTierFilter, sortDir, setSortDir }: {
+function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, setTierFilter, sortDir, setSortDir, openToPlay, setOpenToPlay, openToPartner, setOpenToPartner }: {
   query: string; setQuery: (v: string) => void;
   stateFilter: MalaysiaState | 'All'; setStateFilter: (v: MalaysiaState | 'All') => void;
   tierFilter: Tier | 'All'; setTierFilter: (v: Tier | 'All') => void;
   sortDir: SortDir; setSortDir: (v: SortDir) => void;
+  openToPlay?: boolean; setOpenToPlay?: (v: boolean) => void;
+  openToPartner?: boolean; setOpenToPartner?: (v: boolean) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -164,6 +160,20 @@ function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, s
           {sortDir === 'desc' ? <ArrowDown size={10} className="text-amber-400"/> : <ArrowUp size={10} className="text-amber-400"/>}
           {sortDir === 'desc' ? 'High → Low' : 'Low → High'}
         </button>
+        {setOpenToPlay && (
+          <button onClick={() => setOpenToPlay(!openToPlay)}
+            className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors " + (openToPlay ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700')}>
+            <span className={"w-1.5 h-1.5 rounded-full " + (openToPlay ? 'bg-emerald-400' : 'bg-slate-600')}/>
+            Open to Play
+          </button>
+        )}
+        {setOpenToPartner && (
+          <button onClick={() => setOpenToPartner(!openToPartner)}
+            className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors " + (openToPartner ? 'bg-violet-500/15 border-violet-500/30 text-violet-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700')}>
+            <span className={"w-1.5 h-1.5 rounded-full " + (openToPartner ? 'bg-violet-400' : 'bg-slate-600')}/>
+            Open to Partner
+          </button>
+        )}
       </div>
     </div>
   );
@@ -171,34 +181,37 @@ function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, s
 
 // ─── All Players list ─────────────────────────────────────────────────────────
 
-function PlayersList({ user, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove }: FriendProps) {
-  const [query,       setQuery]      = useState('');
-  const [stateFilter, setStateFilter] = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter,  setTierFilter]  = useState<Tier | 'All'>('All');
-  const [sortDir,     setSortDir]    = useState<SortDir>('desc');
+function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'friends' | 'incoming'>) {
+  const [query,          setQuery]          = useState('');
+  const [stateFilter,    setStateFilter]    = useState<MalaysiaState | 'All'>('All');
+  const [tierFilter,     setTierFilter]     = useState<Tier | 'All'>('All');
+  const [sortDir,        setSortDir]        = useState<SortDir>('desc');
+  const [openToPlay,     setOpenToPlay]     = useState(false);
+  const [openToPartner,  setOpenToPartner]  = useState(false);
 
   const filtered = PLAYERS
     .filter(p => {
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
         && (stateFilter === 'All' || p.state === stateFilter)
-        && (tierFilter  === 'All' || p.tier  === tierFilter);
+        && (tierFilter  === 'All' || p.tier  === tierFilter)
+        && (!openToPlay    || p.openToPlay)
+        && (!openToPartner || p.lookingForPartner);
     })
     .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
 
   return (
     <div className="space-y-3">
       <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
-        tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}/>
+        tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}
+        openToPlay={openToPlay} setOpenToPlay={setOpenToPlay}
+        openToPartner={openToPartner} setOpenToPartner={setOpenToPartner}/>
       <p className="text-xs text-slate-500">{filtered.length} player{filtered.length !== 1 ? 's' : ''}</p>
       <div className="space-y-2">
         {filtered.map(p => (
           <PlayerCard key={p.uid} player={p} myMMR={user.mmr}
             isFriend={friends.includes(p.uid)}
-            isOutgoing={outgoing.includes(p.uid)}
             isIncoming={incoming.includes(p.uid)}
-            onSend={onSend} onCancel={onCancel}
-            onAccept={onAccept} onDecline={onDecline} onRemove={onRemove}
           />
         ))}
       </div>
@@ -206,13 +219,12 @@ function PlayersList({ user, friends, outgoing, incoming, onSend, onCancel, onAc
   );
 }
 
+
 // ─── Consistent player card ───────────────────────────────────────────────────
 
-function PlayerCard({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend, onCancel, onAccept, onDecline, onRemove }: {
+function PlayerCard({ player: p, myMMR, isFriend, isIncoming }: {
   player: UserProfile; myMMR: number;
-  isFriend: boolean; isOutgoing: boolean; isIncoming: boolean;
-  onSend: (uid: string) => void; onCancel: (uid: string) => void;
-  onAccept: (uid: string) => void; onDecline: (uid: string) => void; onRemove: (uid: string) => void;
+  isFriend?: boolean; isIncoming?: boolean;
 }) {
   const sm = skillMatch(myMMR, p.mmr);
   const smColor = sm >= 80 ? 'text-emerald-400' : sm >= 60 ? 'text-amber-400' : 'text-red-400';
@@ -220,21 +232,18 @@ function PlayerCard({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend
   const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
 
   const borderClass = isIncoming
-    ? 'border-amber-500/40 bg-amber-500/3'
-    : isFriend ? 'border-emerald-500/25 bg-emerald-500/3'
+    ? 'border-amber-500/30'
+    : isFriend ? 'border-emerald-500/20'
     : 'border-slate-800 hover:border-slate-700';
 
   return (
-    <div className={`bg-slate-900 border rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${borderClass}`}>
+    <Link href={`/players/${p.username}`}
+      className={`block bg-slate-900 border rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md ${borderClass}`}>
       <div className="flex gap-3 px-3.5 py-3">
-        {/* Avatar — links to profile */}
-        <Link href={`/players/${p.username}`} className="shrink-0 mt-0.5">
+        <div className="shrink-0 mt-0.5">
           <Avatar name={p.displayName}/>
-        </Link>
-
-        {/* Info block */}
-        <Link href={`/players/${p.username}`} className="flex-1 min-w-0 space-y-1">
-          {/* Row 1: Name + username | MMR */}
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <p className="font-bold text-sm leading-tight truncate">{p.displayName}</p>
@@ -242,25 +251,34 @@ function PlayerCard({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend
             </div>
             <p className="text-base font-bold text-amber-400 shrink-0 leading-tight">{p.mmr.toLocaleString()}</p>
           </div>
-
-          {/* Row 2: Tier | Wins + WR% */}
           <div className="flex items-center justify-between gap-2">
             <TierBadge tier={p.tier}/>
             <p className="text-xs text-slate-400 shrink-0">{p.stats.wins}W · {wr}% WR</p>
           </div>
-
-          {/* Row 3: Location + rank */}
           <p className="text-[11px] text-slate-500 flex items-center gap-1">
             <MapPin size={9}/> {p.area}, {p.state}
             <span className="mx-0.5">·</span>#{p.globalRank}
           </p>
-
-          {/* Row 4: Playing today + skill match */}
           <div className="flex items-center justify-between gap-2">
-            <div>
+            <div className="flex items-center gap-1.5 flex-wrap">
               {p.openToPlay && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full w-fit">
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Playing today
+                </span>
+              )}
+              {p.lookingForPartner && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/25 px-1.5 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"/>Open to partner
+                </span>
+              )}
+              {isFriend && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
+                  <UserCheck size={9}/> Friend
+                </span>
+              )}
+              {isIncoming && !isFriend && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded-full">
+                  <Bell size={9}/> Wants to connect
                 </span>
               )}
             </div>
@@ -271,41 +289,9 @@ function PlayerCard({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend
               <span className={`text-[10px] font-bold ${smColor}`}>{sm}%</span>
             </div>
           </div>
-        </Link>
-
-        {/* Friend action — right column */}
-        <div className="shrink-0 flex flex-col items-end justify-center gap-1.5 min-w-[80px]">
-          {isIncoming ? (
-            <>
-              <p className="text-[9px] text-amber-400 font-semibold text-right leading-tight">Wants to<br/>be friends</p>
-              <button onClick={() => onAccept(p.uid)}
-                className="w-full flex items-center justify-center gap-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-colors">
-                <Check size={10}/> Accept
-              </button>
-              <button onClick={() => onDecline(p.uid)}
-                className="w-full flex items-center justify-center gap-1 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] font-medium transition-colors text-slate-400">
-                Decline
-              </button>
-            </>
-          ) : isFriend ? (
-            <button onClick={() => onRemove(p.uid)}
-              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-500/12 border border-emerald-500/25 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 rounded-xl text-[11px] font-semibold transition-colors">
-              <UserCheck size={11}/> Friends
-            </button>
-          ) : isOutgoing ? (
-            <button onClick={() => onCancel(p.uid)}
-              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-700/40 border border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/25 hover:text-red-400 rounded-xl text-[11px] font-semibold transition-colors">
-              <Clock size={10}/> Requested
-            </button>
-          ) : (
-            <button onClick={() => onSend(p.uid)}
-              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-bold transition-colors shadow-sm shadow-emerald-900/50">
-              <UserPlus size={11}/> Add Friend
-            </button>
-          )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -319,6 +305,8 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
   const [tierFilter,   setTierFilter]   = useState<Tier | 'All'>('All');
   const [sortDir,      setSortDir]      = useState<SortDir>('desc');
   const [formatFilter,   setFormatFilter]   = useState<'All' | MatchType>('All');
+  const [openToPlay,     setOpenToPlay]     = useState(false);
+  const [openToPartner,  setOpenToPartner]  = useState(false);
   const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
   const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
   const requestsRef = useRef<HTMLDivElement>(null);
@@ -344,7 +332,9 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
         && (stateFilter === 'All' || p.state === stateFilter)
-        && (tierFilter  === 'All' || p.tier  === tierFilter);
+        && (tierFilter  === 'All' || p.tier  === tierFilter)
+        && (!openToPlay    || p.openToPlay)
+        && (!openToPartner || p.lookingForPartner);
     })
     .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
 
@@ -583,14 +573,13 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
         ) : (
           <>
             <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
-              tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}/>
+              tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}
+              openToPlay={openToPlay} setOpenToPlay={setOpenToPlay}
+              openToPartner={openToPartner} setOpenToPartner={setOpenToPartner}/>
             <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
             <div className="space-y-2">
               {friendPlayers.map(p => (
-                <PlayerCard key={p.uid} player={p} myMMR={user.mmr}
-                  isFriend={true} isOutgoing={outgoing.includes(p.uid)} isIncoming={false}
-                  onSend={onSend} onCancel={onCancel} onAccept={onAccept} onDecline={onDecline} onRemove={onRemove}
-                />
+                <PlayerCard key={p.uid} player={p} myMMR={user.mmr} isFriend={true}/>
               ))}
             </div>
           </>
