@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, signInWithRedirect, getRedirectResult, signOut, updateProfile, User,
+  signInWithRedirect, getRedirectResult, signOut, updateProfile, User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
@@ -92,16 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async (): Promise<string | null> => {
     try {
-      // Try popup first; fall back to redirect if blocked
-      const { user } = await signInWithPopup(auth, googleProvider);
-      await createUserDoc(user);
+      await signInWithRedirect(auth, googleProvider);
       return null;
     } catch (e: unknown) {
       const code = (e as { code?: string }).code ?? '';
-      if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request') {
-        await signInWithRedirect(auth, googleProvider);
-        return null;
-      }
       return `${friendlyError(code)} (${code})`;
     }
   };
