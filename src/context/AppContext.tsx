@@ -220,6 +220,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (prev) setClubs(cs => cs.map(c => c.id === prev ? { ...c, memberIds: c.memberIds.filter(m => m !== 'me') } : c));
       return null;
     });
+    const uid = auth.currentUser?.uid;
+    if (uid) saveClubMembership(uid, null).catch(() => {});
   }, []);
 
   const createClub = useCallback((c: Club) => {
