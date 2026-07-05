@@ -271,9 +271,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOutgoingFriendRequests(p => p.filter(id => id !== uid));
   }, []);
 
-  const acceptFriendRequest = useCallback((uid: string) => {
-    setIncomingFriendRequests(p => p.filter(id => id !== uid));
-    setFriends(p => [...p, uid]);
+  const acceptFriendRequest = useCallback((friendUid: string) => {
+    setIncomingFriendRequests(p => p.filter(id => id !== friendUid));
+    setFriends(p => [...p, friendUid]);
+    const uid = auth.currentUser?.uid;
+    if (uid) saveFriend(uid, friendUid).catch(() => {});
   }, []);
 
   const declineFriendRequest = useCallback((uid: string) => {
