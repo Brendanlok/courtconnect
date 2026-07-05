@@ -8,6 +8,12 @@
 
 <!-- ENTRIES BELOW — newest first -->
 
+### 📊 Daily Summary (18:00)
+- Sessions run: 5 (00:20–00:38, 10:37–11:14 auto-dev, 11:23 quick pass, 12:08–12:41, 17:00 Events/Clubs overhaul)
+- Total fixes deployed: 8+ (friend request system, new Matches page, Players page rework, Partner Finder bug fixes x2, Bo3 bracket score fix, Events/Clubs overhaul)
+- Build status: ✅ Healthy (`npx next build` clean at 18:00 check)
+- Telegram summary: ✅ Sent
+
 ## [2026-07-05 11:10] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
