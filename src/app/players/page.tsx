@@ -83,8 +83,8 @@ export default function PlayersPage() {
         />
       )}
       {tab === 'Friends' && (
-        <FriendsList
-          user={user}
+        <FriendsTab
+          user={user} updateUser={updateUser}
           friends={friends}
           outgoing={outgoingFriendRequests}
           incoming={incomingFriendRequests}
@@ -309,17 +309,37 @@ function PlayerCard({ player: p, myMMR, isFriend, isOutgoing, isIncoming, onSend
   );
 }
 
-// ─── Friends list ─────────────────────────────────────────────────────────────
+// ─── Friends tab (requests popup + partner finder + friends list) ─────────────
 
-function FriendsList({ user, friends, incoming, outgoing, onAccept, onDecline, onRemove, onSend, onCancel }: FriendProps) {
-  const [query,       setQuery]      = useState('');
-  const [stateFilter, setStateFilter] = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter,  setTierFilter]  = useState<Tier | 'All'>('All');
-  const [sortDir,     setSortDir]    = useState<SortDir>('desc');
+function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove }: FriendProps & { updateUser: (p: Partial<UserProfile>) => void }) {
+  const [requestsOpen, setRequestsOpen] = useState(false);
+  const [partnerOpen,  setPartnerOpen]  = useState(false);
+  const [query,        setQuery]        = useState('');
+  const [stateFilter,  setStateFilter]  = useState<MalaysiaState | 'All'>('All');
+  const [tierFilter,   setTierFilter]   = useState<Tier | 'All'>('All');
+  const [sortDir,      setSortDir]      = useState<SortDir>('desc');
+  const [formatFilter,   setFormatFilter]   = useState<'All' | MatchType>('All');
+  const [partnerSent,    setPartnerSent]    = useState<string[]>([]);
+  const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
+  const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
+  const requestsRef = useRef<HTMLDivElement>(null);
 
-  const allPlayers = PLAYERS;
-  const incomingPlayers = allPlayers.filter(p => incoming.includes(p.uid));
-  const friendPlayers = allPlayers
+  useEffect(() => {
+    if (!requestsOpen) return;
+    function handler(e: MouseEvent) {
+      if (requestsRef.current && !requestsRef.current.contains(e.target as Node)) {
+        setRequestsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [requestsOpen]);
+
+  const incomingPlayers = PLAYERS.filter(p => incoming.includes(p.uid));
+  const outgoingPlayers = PLAYERS.filter(p => outgoing.includes(p.uid));
+  const totalRequests = incoming.length + outgoing.length;
+
+  const friendPlayers = PLAYERS
     .filter(p => {
       if (!friends.includes(p.uid)) return false;
       const q = query.toLowerCase();
@@ -329,95 +349,13 @@ function FriendsList({ user, friends, incoming, outgoing, onAccept, onDecline, o
     })
     .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
 
-  return (
-    <div className="space-y-4">
-      {/* Incoming requests */}
-      {incomingPlayers.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
-            <Bell size={11}/> {incomingPlayers.length} pending friend request{incomingPlayers.length !== 1 ? 's' : ''}
-          </p>
-          {incomingPlayers.map(p => {
-            const wr = Math.round((p.stats.wins / Math.max(p.stats.totalMatches, 1)) * 100);
-            return (
-              <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-amber-500/30 rounded-2xl px-3.5 py-2.5">
-                <Link href={`/players/${p.username}`} className="flex items-center gap-3 flex-1 min-w-0">
-                  <Avatar name={p.displayName}/>
-                  <div className="flex-1 min-w-0">
-                    {/* Row 1 */}
-                    <div className="flex items-baseline justify-between gap-2">
-                      <div className="flex items-baseline gap-1.5 min-w-0">
-                        <p className="font-bold text-sm truncate">{p.displayName}</p>
-                        <p className="text-[11px] text-slate-500 shrink-0">@{p.username}</p>
-                      </div>
-                      <p className="text-sm font-bold text-amber-400 shrink-0">{p.mmr.toLocaleString()}</p>
-                    </div>
-                    {/* Row 2 */}
-                    <div className="flex items-center justify-between mt-1">
-                      <TierBadge tier={p.tier}/>
-                      <p className="text-xs text-slate-400">{p.stats.wins}W · {wr}% WR</p>
-                    </div>
-                  </div>
-                </Link>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <button onClick={() => onAccept(p.uid)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
-                    <Check size={11}/> Accept
-                  </button>
-                  <button onClick={() => onDecline(p.uid)}
-                    className="flex items-center justify-center gap-1 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-medium transition-colors text-slate-400">
-                    Decline
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Friends section */}
-      {friends.length === 0 && incomingPlayers.length === 0 ? (
-        <div className="text-center py-14 space-y-3">
-          <UserCheck size={30} className="mx-auto text-slate-700"/>
-          <p className="text-sm text-slate-400 font-medium">No friends yet</p>
-          <p className="text-xs text-slate-600">Go to All Players and tap Add Friend.</p>
-        </div>
-      ) : friends.length > 0 && (
-        <div className="space-y-3">
-          {/* Friends search + filter in one row */}
-          <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
-            tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}/>
-          <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
-          <div className="space-y-2">
-            {friendPlayers.map(p => (
-              <PlayerCard key={p.uid} player={p} myMMR={user.mmr}
-                isFriend={true} isOutgoing={outgoing.includes(p.uid)} isIncoming={false}
-                onSend={onSend} onCancel={onCancel} onAccept={onAccept} onDecline={onDecline} onRemove={onRemove}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Partner Finder ───────────────────────────────────────────────────────────
-
-function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updateUser: (p: Partial<UserProfile>) => void; friends: string[] }) {
   const partnerFormats: ('All' | MatchType)[] =
     user.gender === 'Male'   ? ['All', 'MD', 'MX'] :
     user.gender === 'Female' ? ['All', 'WD', 'MX'] :
     ['All', 'MD', 'WD', 'MX'];
 
-  const [formatFilter, setFormatFilter] = useState<'All' | MatchType>('All');
-  const [sent, setSent] = useState<string[]>([]);
-  const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
-  const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
-
   const allPlayers = [user, ...PLAYERS];
-
-  const candidates = allPlayers.filter(p => {
+  const partnerCandidates = allPlayers.filter(p => {
     if (p.uid === 'me') return false;
     if (!p.lookingForPartner) return false;
     if (formatFilter === 'All') return true;
@@ -426,54 +364,241 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
     return (p.preferredFormats ?? []).includes(formatFilter);
   }).sort((a, b) => Number(friends.includes(b.uid)) - Number(friends.includes(a.uid)));
 
-  const sendRequest    = (uid: string) => setSent(prev => [...prev, uid]);
-  const retractRequest = (uid: string) => setSent(prev => prev.filter(id => id !== uid));
-
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
-          <div className="flex items-center gap-2.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}/>
-            <span className={`text-sm ${user.openToPlay ? 'text-emerald-300' : 'text-slate-400'}`}>Open to Play</span>
-          </div>
-          <button onClick={() => {
-            const next = !user.openToPlay;
-            updateUser({ openToPlay: next, ...(!next ? { lookingForPartner: false } : {}) });
-          }} className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
-            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.openToPlay ? 'translate-x-5' : 'translate-x-0'}`}/>
-          </button>
-        </div>
 
-        <div className={`flex items-center justify-between px-4 py-2.5 bg-slate-900 border rounded-xl transition-opacity
-          ${user.openToPlay ? 'border-slate-800 opacity-100' : 'border-slate-800/50 opacity-40 pointer-events-none'}`}>
-          <div className="flex items-center gap-2.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${user.lookingForPartner ? 'bg-violet-400 animate-pulse' : 'bg-slate-600'}`}/>
-            <div>
-              <span className={`text-sm ${user.lookingForPartner ? 'text-violet-300' : 'text-slate-400'}`}>Open to Partner</span>
-              {!user.openToPlay && <p className="text-[10px] text-slate-600">Requires Open to Play</p>}
+      {/* Top bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={() => {
+          const next = !user.openToPlay;
+          updateUser({ openToPlay: next, ...(!next ? { lookingForPartner: false } : {}) });
+        }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors ${
+          user.openToPlay
+            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${user.openToPlay ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`}/>
+          Open to Play
+        </button>
+
+        <button onClick={() => {
+          const next = !user.lookingForPartner;
+          updateUser({ lookingForPartner: next, ...(next ? { openToPlay: true } : {}) });
+        }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors ${
+          user.lookingForPartner
+            ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${user.lookingForPartner ? 'bg-violet-400 animate-pulse' : 'bg-slate-600'}`}/>
+          Looking for Partner
+        </button>
+
+        <div className="relative ml-auto" ref={requestsRef}>
+          <button onClick={() => setRequestsOpen(o => !o)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors ${
+              incoming.length > 0
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+            }`}>
+            <Bell size={12}/>
+            Requests
+            {totalRequests > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${incoming.length > 0 ? 'bg-amber-500/30 text-amber-300' : 'bg-slate-700 text-slate-400'}`}>
+                {totalRequests}
+              </span>
+            )}
+            <ChevronDown size={11} className={`transition-transform ${requestsOpen ? 'rotate-180' : ''}`}/>
+          </button>
+
+          {requestsOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-80 overflow-y-auto">
+              {incomingPlayers.length > 0 && (
+                <div className="p-3 space-y-2">
+                  <p className="text-[11px] text-amber-400 font-semibold px-1 flex items-center gap-1">
+                    <Bell size={10}/> {incomingPlayers.length} incoming
+                  </p>
+                  {incomingPlayers.map(p => (
+                    <div key={p.uid} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
+                      <Avatar name={p.displayName} className="!w-7 !h-7 !text-xs shrink-0"/>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{p.displayName}</p>
+                        <p className="text-[10px] text-slate-500">@{p.username} · {p.mmr} MMR</p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => onAccept(p.uid)}
+                          className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors">
+                          <Check size={11}/>
+                        </button>
+                        <button onClick={() => onDecline(p.uid)}
+                          className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                          <X size={11} className="text-slate-400"/>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {incomingPlayers.length > 0 && outgoingPlayers.length > 0 && (
+                <div className="border-t border-slate-800"/>
+              )}
+              {outgoingPlayers.length > 0 && (
+                <div className="p-3 space-y-2">
+                  <p className="text-[11px] text-slate-400 font-semibold px-1">{outgoingPlayers.length} sent</p>
+                  {outgoingPlayers.map(p => (
+                    <div key={p.uid} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
+                      <Avatar name={p.displayName} className="!w-7 !h-7 !text-xs shrink-0"/>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{p.displayName}</p>
+                        <p className="text-[10px] text-slate-500">@{p.username}</p>
+                      </div>
+                      <button onClick={() => onCancel(p.uid)}
+                        className="text-[10px] text-slate-500 hover:text-red-400 px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0">
+                        Cancel
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {totalRequests === 0 && (
+                <div className="p-5 text-center">
+                  <p className="text-xs text-slate-500">No pending requests</p>
+                </div>
+              )}
             </div>
-          </div>
-          <button onClick={() => {
-            const next = !user.lookingForPartner;
-            updateUser({ lookingForPartner: next, ...(next ? { openToPlay: true } : {}) });
-          }} className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${user.lookingForPartner ? 'bg-violet-500' : 'bg-slate-600'}`}>
-            <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${user.lookingForPartner ? 'translate-x-5' : 'translate-x-0'}`}/>
-          </button>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Filter size={13} className="text-slate-500"/>
-        <FilterDropdown<'All' | MatchType>
-          label="All Formats" value={formatFilter}
-          options={partnerFormats.map(f => ({ value: f, label: f === 'All' ? 'All Formats' : `${f} · ${MATCH_TYPE_LABEL[f]}` }))}
-          onChange={setFormatFilter}
-        />
+      {/* Partner Finder (collapsible) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <button onClick={() => setPartnerOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors">
+          <div className="flex items-center gap-2">
+            <Users size={14} className="text-violet-400"/>
+            <span className="text-sm font-semibold">Partner Finder</span>
+            <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">
+              {partnerCandidates.length} available
+            </span>
+            {user.lookingForPartner && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25">
+                <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"/> Listed
+              </span>
+            )}
+          </div>
+          <ChevronDown size={14} className={`text-slate-400 transition-transform ${partnerOpen ? 'rotate-180' : ''}`}/>
+        </button>
+
+        {partnerOpen && (
+          <div className="border-t border-slate-800 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Filter size={12} className="text-slate-500"/>
+              <FilterDropdown<'All' | MatchType>
+                label="All Formats" value={formatFilter}
+                options={partnerFormats.map(f => ({ value: f, label: f === 'All' ? 'All Formats' : `${f} · ${MATCH_TYPE_LABEL[f]}` }))}
+                onChange={setFormatFilter}
+              />
+            </div>
+            {partnerCandidates.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                <Users size={28} className="mx-auto mb-2 opacity-30"/>
+                <p className="text-sm">No players found for this format.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {partnerCandidates.map(p => {
+                  const isSent = partnerSent.includes(p.uid);
+                  const avail = formatAvailability(p.available ?? '');
+                  return (
+                    <div key={p.uid} className="bg-slate-800 rounded-xl p-3 space-y-2">
+                      <div className="flex items-start gap-3">
+                        <button onClick={() => { window.location.href = `/players/${p.username}/`; }} className="shrink-0">
+                          <Avatar name={p.displayName} className={p.openToPlay ? 'ring-2 ring-emerald-400' : ''}/>
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button onClick={() => { window.location.href = `/players/${p.username}/`; }}
+                              className="font-semibold text-sm hover:text-emerald-400 transition-colors">{p.displayName}</button>
+                            <p className="text-xs text-slate-500">@{p.username}</p>
+                            <TierBadge tier={p.tier}/>
+                            {p.gender && <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>}
+                            {friends.includes(p.uid) && (
+                              <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                <UserCheck size={9}/> Friend
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <MapPin size={10}/> {p.area}, {p.state}
+                            {p.distKm !== undefined && <><span className="mx-1">·</span>{p.distKm} km away</>}
+                          </p>
+                          {avail && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><span>\U0001f550</span>{avail}</p>}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {isSent ? (
+                            <button onClick={() => setConfirmRetract(p.uid)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400">
+                              <Check size={11}/> Sent
+                            </button>
+                          ) : friends.includes(p.uid) ? (
+                            <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-400">
+                              <UserCheck size={11}/> Friend
+                            </span>
+                          ) : (
+                            <button onClick={() => setConfirmSend(p.uid)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white">
+                              <UserPlus size={11}/> Add Friend
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(p.preferredFormats ?? []).map(f => (
+                          <span key={f} className="text-[10px] font-semibold px-2 py-0.5 bg-slate-700 border border-slate-600 rounded-lg text-slate-300">{f}</span>
+                        ))}
+                        {p.mmr && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 bg-amber-500/8 border border-amber-500/20 rounded-lg text-amber-400">
+                            {p.mmr.toLocaleString()} MMR
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <p className="text-xs text-slate-500">{candidates.length} player{candidates.length !== 1 ? 's' : ''} looking for a partner</p>
+      {/* Friends list */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-slate-400">
+          Friends <span className="text-slate-600 font-normal">({friends.length})</span>
+        </p>
+        {friends.length === 0 ? (
+          <div className="text-center py-10 space-y-2">
+            <UserCheck size={28} className="mx-auto text-slate-700"/>
+            <p className="text-sm text-slate-400 font-medium">No friends yet</p>
+            <p className="text-xs text-slate-600">Go to the Players tab and tap Add Friend.</p>
+          </div>
+        ) : (
+          <>
+            <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
+              tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}/>
+            <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
+            <div className="space-y-2">
+              {friendPlayers.map(p => (
+                <PlayerCard key={p.uid} player={p} myMMR={user.mmr}
+                  isFriend={true} isOutgoing={outgoing.includes(p.uid)} isIncoming={false}
+                  onSend={onSend} onCancel={onCancel} onAccept={onAccept} onDecline={onDecline} onRemove={onRemove}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
+      {/* Confirm dialogs */}
       {confirmSend && (() => {
         const p = allPlayers.find(x => x.uid === confirmSend);
         if (!p) return null;
@@ -485,24 +610,21 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
                   <UserPlus size={18} className="text-emerald-400"/>
                 </div>
                 <div>
-                  <p className="font-bold text-sm">Send Partner Request?</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    You're sending a doubles partner request to <span className="text-white font-semibold">{p.displayName}</span>. They'll be notified and can accept or decline.
-                  </p>
+                  <p className="font-bold text-sm">Send Friend Request?</p>
+                  <p className="text-xs text-slate-400 mt-1">Sending a friend request to <span className="text-white font-semibold">{p.displayName}</span>.</p>
                 </div>
                 <button onClick={() => setConfirmSend(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmSend(null)}
                   className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-                <button onClick={() => { sendRequest(confirmSend); setConfirmSend(null); }}
+                <button onClick={() => { onSend(confirmSend); setConfirmSend(null); }}
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-colors">Send Request</button>
               </div>
             </div>
           </div>
         );
       })()}
-
       {confirmRetract && (() => {
         const p = allPlayers.find(x => x.uid === confirmRetract);
         if (!p) return null;
@@ -514,102 +636,25 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
                   <AlertTriangle size={18} className="text-amber-400"/>
                 </div>
                 <div>
-                  <p className="font-bold text-sm">Retract Request?</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    This will cancel your partner request to <span className="text-white font-semibold">{p.displayName}</span>.
-                  </p>
+                  <p className="font-bold text-sm">Cancel Partner Request?</p>
+                  <p className="text-xs text-slate-400 mt-1">This will cancel your request to <span className="text-white font-semibold">{p.displayName}</span>.</p>
                 </div>
                 <button onClick={() => setConfirmRetract(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmRetract(null)}
                   className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep It</button>
-                <button onClick={() => { retractRequest(confirmRetract); setConfirmRetract(null); }}
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Retract</button>
+                <button onClick={() => { setPartnerSent(prev => prev.filter(id => id !== confirmRetract)); setConfirmRetract(null); }}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Cancel Request</button>
               </div>
             </div>
           </div>
         );
       })()}
-
-      {candidates.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
-          <Users size={32} className="mx-auto mb-3 opacity-30"/>
-          <p className="text-sm">No players found for this format.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {candidates.map(p => {
-            const dm = p.disciplineMMR ?? {};
-            const dmEntries = (Object.entries(dm) as [string,number][]).filter(([,v]) => v != null);
-            const isSent = sent.includes(p.uid);
-            const avail = formatAvailability(p.available ?? '');
-
-            return (
-              <div key={p.uid} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <button onClick={() => { window.location.href = `/players/${p.username}/`; }} className="shrink-0">
-                    <Avatar name={p.displayName} className={`${p.openToPlay ? 'ring-2 ring-emerald-400' : ''} hover:opacity-80 transition-opacity`}/>
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button onClick={() => { window.location.href = `/players/${p.username}/`; }}
-                        className="font-semibold text-sm hover:text-emerald-400 transition-colors">{p.displayName}</button>
-                      <p className="text-xs text-slate-500">@{p.username}</p>
-                      <TierBadge tier={p.tier}/>
-                      {p.gender && <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>}
-                      {friends.includes(p.uid) && (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                          <Users size={9}/> Friend
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                      <MapPin size={10}/> {p.area}, {p.state}
-                      {p.distKm !== undefined && <><span className="mx-1">·</span>{p.distKm} km away</>}
-                    </p>
-                    {p.bio && <p className="text-xs text-slate-400 mt-1">{p.bio}</p>}
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {isSent ? (
-                      <button onClick={() => setConfirmRetract(p.uid)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400">
-                        <Check size={12}/> Request Sent
-                      </button>
-                    ) : (
-                      <button onClick={() => setConfirmSend(p.uid)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-slate-700 hover:bg-slate-600 border border-slate-600 hover:border-slate-500 text-white">
-                        <UserPlus size={12}/> Send Request
-                      </button>
-                    )}
-                    {isSent && <p className="text-[9px] text-slate-500">Tap to retract</p>}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(p.preferredFormats ?? []).map(f => (
-                    <span key={f} className="text-[10px] font-semibold px-2 py-1 bg-slate-800 border border-slate-700 rounded-lg text-slate-300">{f}</span>
-                  ))}
-                  {dmEntries.map(([type, val]) => (
-                    <span key={type} className="text-[10px] font-semibold px-2 py-1 bg-amber-500/8 border border-amber-500/20 rounded-lg text-amber-400">
-                      {type} {val.toLocaleString()}
-                    </span>
-                  ))}
-                </div>
-
-                {avail && (
-                  <p className="text-xs text-slate-500 flex items-start gap-1.5">
-                    <span className="shrink-0 mt-0.5">🕐</span> {avail}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
+
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
