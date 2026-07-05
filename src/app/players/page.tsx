@@ -644,7 +644,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
               <div className="flex gap-2">
                 <button onClick={() => setConfirmRetract(null)}
                   className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep It</button>
-                <button onClick={() => { setPartnerSent(prev => prev.filter(id => id !== confirmRetract)); setConfirmRetract(null); }}
+                <button onClick={() => { onCancel(confirmRetract); setConfirmRetract(null); }}
                   className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Cancel Request</button>
               </div>
             </div>
