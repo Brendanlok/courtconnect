@@ -823,7 +823,7 @@ function BracketCard({ match: m }: { match: BracketMatch }) {
           <span className="truncate text-xs">{name || 'TBD'}</span>
           <div className="flex items-center gap-1.5 shrink-0 ml-1">
             {m.score && name === m.winner && (
-              <span className="text-[9px] text-slate-500">{m.score.split(',')[i === 0 ? 0 : m.score.split(',').length > 1 ? 1 : 0]?.trim()}</span>
+              <span className="text-[9px] text-slate-500 truncate max-w-[80px]">{m.score}</span>
             )}
             {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"/>}
           </div>
