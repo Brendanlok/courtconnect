@@ -117,7 +117,6 @@ const SEED_PLANNED: PlannedMatch[] = [
 export default function MatchesPage() {
   const { user, matches } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
-  const [planned,  setPlanned]  = useState<PlannedMatch[]>(SEED_PLANNED);
   const [logOpen,  setLogOpen]  = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [editId,   setEditId]   = useState<string | null>(null);
