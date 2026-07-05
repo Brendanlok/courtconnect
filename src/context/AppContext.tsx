@@ -282,8 +282,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIncomingFriendRequests(p => p.filter(id => id !== uid));
   }, []);
 
-  const removeFriend = useCallback((uid: string) => {
-    setFriends(p => p.filter(id => id !== uid));
+  const removeFriend = useCallback((friendUid: string) => {
+    setFriends(p => p.filter(id => id !== friendUid));
+    const uid = auth.currentUser?.uid;
+    if (uid) removeFriendRecord(uid, friendUid).catch(() => {});
   }, []);
 
   // Endorsements — toggle: endorse if not given, remove if already given
