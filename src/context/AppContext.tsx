@@ -127,7 +127,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('cc_myClubPendingIds', JSON.stringify(myClubPendingIds));
   }, [myClubPendingIds]);
 
-  const addMatch      = useCallback((m: Match) => setMatches(p => [m, ...p]), []);
+  const addMatch      = useCallback((m: Match) => {
+    setMatches(p => [m, ...p]);
+    const uid = auth.currentUser?.uid;
+    if (uid) saveMatch(uid, m).catch(() => {});
+  }, []);
   const confirmMatch  = useCallback((id: string) => {
     setMatches(prev => prev.map(m => {
       if (m.id !== id || m.status !== 'Pending') return m;
