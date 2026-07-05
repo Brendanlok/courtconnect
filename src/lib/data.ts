@@ -1,7 +1,7 @@
 import type { UserProfile, Match, Tournament, Conversation, Club } from '@/types';
 
 export const ME: UserProfile = {
-  uid: 'me', username: 'lokkai', displayName: 'Lok Kai', email: 'lok@example.com',
+  uid: 'me', username: 'brendanlok', displayName: 'Lok', email: 'chanlokk97@gmail.com',
   gender: 'Male',
   mmr: 1847, tier: 'Platinum', globalRank: 128,
   state: 'Selangor', area: 'Petaling Jaya', postcode: '47810',
@@ -17,7 +17,7 @@ export const ME: UserProfile = {
 
 export const PLAYERS: UserProfile[] = [
   {
-    uid: 'p1', username: 'zackaz', displayName: 'Zack Azhar', email: 'zack@example.com',
+    isDummy: true, uid: 'p1', username: 'zackaz', displayName: 'Zack Azhar', email: 'zack@example.com',
     gender: 'Male', mmr: 2156, tier: 'Diamond', globalRank: 42,
     state: 'Selangor', area: 'Subang Jaya', postcode: '47500',
     disciplineMMR: { MS: 2156, MD: 2089, MX: 2201 },
@@ -29,7 +29,7 @@ export const PLAYERS: UserProfile[] = [
     endorsements: { 'Powerful Smash': 24, 'Great Footwork': 18, 'Sharp Net Play': 12, 'Smart Placement': 9, 'Good Sportsmanship': 7 },
   },
   {
-    uid: 'p2', username: 'faizhamdan', displayName: 'Faiz Hamdan', email: 'faiz@example.com',
+    isDummy: true, uid: 'p2', username: 'faizhamdan', displayName: 'Faiz Hamdan', email: 'faiz@example.com',
     gender: 'Male', mmr: 1923, tier: 'Platinum', globalRank: 89,
     state: 'Selangor', area: 'Shah Alam', postcode: '40450',
     disciplineMMR: { MS: 1923, MD: 1891, MX: 1867 },
@@ -40,7 +40,7 @@ export const PLAYERS: UserProfile[] = [
     joinedAt: '2024-09-03',
   },
   {
-    uid: 'p3', username: 'leeming', displayName: 'Lee Ming Xuan', email: 'lmx@example.com',
+    isDummy: true, uid: 'p3', username: 'leeming', displayName: 'Lee Ming Xuan', email: 'lmx@example.com',
     gender: 'Male', mmr: 1654, tier: 'Platinum', globalRank: 156,
     state: 'Kuala Lumpur', area: 'Cheras', postcode: '56000',
     disciplineMMR: { MS: 1654, MD: 1712, MX: 1633 },
@@ -50,7 +50,7 @@ export const PLAYERS: UserProfile[] = [
     joinedAt: '2025-01-22',
   },
   {
-    uid: 'p4', username: 'sarinaazmi', displayName: 'Sarina Azmi', email: 'sarina@example.com',
+    isDummy: true, uid: 'p4', username: 'sarinaazmi', displayName: 'Sarina Azmi', email: 'sarina@example.com',
     gender: 'Female', mmr: 1789, tier: 'Platinum', globalRank: 112,
     state: 'Selangor', area: 'Petaling Jaya', postcode: '46100',
     disciplineMMR: { WS: 1789, WD: 1742, MX: 1801 },
@@ -62,7 +62,7 @@ export const PLAYERS: UserProfile[] = [
     endorsements: { 'Sharp Net Play': 17, 'Strong Defense': 14, 'Good Sportsmanship': 11, 'Smart Placement': 8 },
   },
   {
-    uid: 'p5', username: 'nurhanim', displayName: 'Nur Hanim Rashid', email: 'nurhanim@example.com',
+    isDummy: true, uid: 'p5', username: 'nurhanim', displayName: 'Nur Hanim Rashid', email: 'nurhanim@example.com',
     gender: 'Female', mmr: 1512, tier: 'Gold', globalRank: 234,
     state: 'Kuala Lumpur', area: 'Bangsar', postcode: '59000',
     disciplineMMR: { WS: 1512, WD: 1489, MX: 1553 },
@@ -72,7 +72,7 @@ export const PLAYERS: UserProfile[] = [
     joinedAt: '2025-02-18',
   },
   {
-    uid: 'p6', username: 'khoohuijin', displayName: 'Khoo Hui Jin', email: 'khoo@example.com',
+    isDummy: true, uid: 'p6', username: 'khoohuijin', displayName: 'Khoo Hui Jin', email: 'khoo@example.com',
     gender: 'Male', mmr: 2312, tier: 'Diamond', globalRank: 19,
     state: 'Selangor', area: 'Puchong', postcode: '47100',
     disciplineMMR: { MS: 2312, MD: 2287, MX: 2341 },
@@ -108,7 +108,7 @@ export const MMR_HISTORY = [
 
 export const TOURNAMENTS: Tournament[] = [
   {
-    id:'t1', name:'PJ Badminton Open 2025', type:'MS', status:'Active',
+    isDummy:true, id:'t1', name:'PJ Badminton Open 2025', type:'MS', status:'Active',
     prizePool:500, entryFee:20, minMMR:1500, maxPlayers:16, currentPlayers:16,
     state:'Selangor', venue:'Sport Planet PJ, No. 5 Jalan SS 7/19, 47301 Petaling Jaya',
     date:'2025-06-05', time:'09:00', organiser:'PJ Badminton Club',
@@ -124,14 +124,14 @@ export const TOURNAMENTS: Tournament[] = [
       {id:'b7',round:3,player1:'Zack Azhar',  player2:'TBD',         winner:undefined,     score:undefined},
     ],
   },
-  { id:'t2', name:'Weekend Warriors Cup', type:'MX', status:'Upcoming', prizePool:0, entryFee:0, maxPlayers:16, currentPlayers:8, state:'Kuala Lumpur', venue:'Bukit Jalil Sports Complex, Jalan Lembah Pantai, 57000 Kuala Lumpur', date:'2025-06-21', time:'09:00', organiser:'KL Smashers', isPrivate:true, description:'Casual mixed doubles fun tournament. Open to all skill levels. Free entry, bring your own partner!', tags:['Mixed','Free','Casual'],
+  { isDummy:true, id:'t2', name:'Weekend Warriors Cup', type:'MX', status:'Upcoming', prizePool:0, entryFee:0, maxPlayers:16, currentPlayers:8, state:'Kuala Lumpur', venue:'Bukit Jalil Sports Complex, Jalan Lembah Pantai, 57000 Kuala Lumpur', date:'2025-06-21', time:'09:00', organiser:'KL Smashers', isPrivate:true, description:'Casual mixed doubles fun tournament. Open to all skill levels. Free entry, bring your own partner!', tags:['Mixed','Free','Casual'],
     participants:[
       {displayName:'Faiz Hamdan',username:'faizhamdan'},{displayName:'Lee Ming Xuan',username:'leemingxuan'},
       {displayName:'Sarina Azmi',username:'sarinaazmi'},{displayName:'Ahmad Rizal',username:'ahmadrizal'},
       {displayName:'Wei Liang',username:'weiliang'},{displayName:'Reza Malik',username:'rezamalik'},
       {displayName:'Nur Hanim',username:'nurhanim'},{displayName:'Chen Wei',username:'chenwei'},
     ] },
-  { id:'t3', name:'Diamond League Round 3', type:'MS', status:'Upcoming', prizePool:1200, entryFee:50, minMMR:2000, maxPlayers:32, currentPlayers:20, state:'Selangor', venue:'Stadium Shah Alam, Persiaran Majlis, 40150 Shah Alam', date:'2025-07-05', time:'08:00', organiser:'Malaysia Badminton Federation', description:'Premier elite singles league. Top ranked players only. Prize money auto-distributed after final.', tags:['Singles','Elite','Prize'],
+  { isDummy:true, id:'t3', name:'Diamond League Round 3', type:'MS', status:'Upcoming', prizePool:1200, entryFee:50, minMMR:2000, maxPlayers:32, currentPlayers:20, state:'Selangor', venue:'Stadium Shah Alam, Persiaran Majlis, 40150 Shah Alam', date:'2025-07-05', time:'08:00', organiser:'Malaysia Badminton Federation', description:'Premier elite singles league. Top ranked players only. Prize money auto-distributed after final.', tags:['Singles','Elite','Prize'],
     participants:[
       {displayName:'Zack Azhar',username:'zackaz'},{displayName:'Khoo Hui Jin',username:'khoohj'},
       {displayName:'Faiz Hamdan',username:'faizhamdan'},{displayName:'Ahmad Rizal',username:'ahmadrizal'},
@@ -144,19 +144,19 @@ export const TOURNAMENTS: Tournament[] = [
       {displayName:'Jalani Sidek',username:'jalanis'},{displayName:'Razif Sidek',username:'razifs'},
       {displayName:'Beh Jiann Liang',username:'behjl'},{displayName:'Ong Soon Hock',username:'ongsh'},
     ] },
-  { id:'t4', name:'Penang Open Championship', type:'MD', status:'Upcoming', prizePool:800, entryFee:30, maxPlayers:8, currentPlayers:4, state:'Penang', venue:'Penang Sports Arena, Jalan Batu Uban, 11700 Penang', date:'2025-07-12', time:'10:00', organiser:'Penang BA', description:'Annual doubles championship for northern Malaysia. Register as a pair.', tags:['Doubles','Prize'],
+  { isDummy:true, id:'t4', name:'Penang Open Championship', type:'MD', status:'Upcoming', prizePool:800, entryFee:30, maxPlayers:8, currentPlayers:4, state:'Penang', venue:'Penang Sports Arena, Jalan Batu Uban, 11700 Penang', date:'2025-07-12', time:'10:00', organiser:'Penang BA', description:'Annual doubles championship for northern Malaysia. Register as a pair.', tags:['Doubles','Prize'],
     participants:[
       {displayName:'Khoo Hui Jin',username:'khoohj'},{displayName:'Zack Azhar',username:'zackaz'},
       {displayName:'Lee Ming Xuan',username:'leemingxuan'},{displayName:'Sarina Azmi',username:'sarinaazmi'},
     ] },
-  { id:'t5', name:'KL Club Championship', type:'MD', status:'Completed', prizePool:300, entryFee:15, maxPlayers:8, currentPlayers:8, state:'Kuala Lumpur', venue:'Stadium Putra, Jalan Stadium, 57000 Kuala Lumpur', date:'2025-05-15', organiser:'KL Smashers', description:'Monthly club doubles tournament. Results finalised.', tags:['Doubles','Completed'] },
+  { isDummy:true, id:'t5', name:'KL Club Championship', type:'MD', status:'Completed', prizePool:300, entryFee:15, maxPlayers:8, currentPlayers:8, state:'Kuala Lumpur', venue:'Stadium Putra, Jalan Stadium, 57000 Kuala Lumpur', date:'2025-05-15', organiser:'KL Smashers', description:'Monthly club doubles tournament. Results finalised.', tags:['Doubles','Completed'] },
 ];
 
 export const CONVERSATIONS: Conversation[] = [];
 
 export const CLUBS: Club[] = [
   {
-    id: 'c1', name: 'KL Smashers', shortName: 'KLS',
+    isDummy: true, id: 'c1', name: 'KL Smashers', shortName: 'KLS',
     description: 'Premier competitive club in Kuala Lumpur. We train 4× a week and compete in national circuits. Members receive structured coaching from ex-national players.',
     purpose: 'Competitive', state: 'Kuala Lumpur', area: 'Cheras',
     logoInitials: 'KLS', color: 'bg-emerald-600',
@@ -167,7 +167,7 @@ export const CLUBS: Club[] = [
     announcement: 'Inter-club tournament vs PJ Aces on 12 July — all members must confirm attendance by Friday.',
   },
   {
-    id: 'c2', name: 'Petaling Jaya Aces', shortName: 'PJA',
+    isDummy: true, id: 'c2', name: 'Petaling Jaya Aces', shortName: 'PJA',
     description: 'Community club for all levels in PJ. Friendly sessions every weekend with coaching available. No MMR requirement — just bring your racket and enthusiasm!',
     purpose: 'Social', state: 'Selangor', area: 'Petaling Jaya',
     logoInitials: 'PJA', color: 'bg-blue-600',
@@ -177,7 +177,7 @@ export const CLUBS: Club[] = [
     tags: ['Friendly', 'Coaching', 'All Levels'], foundedYear: 2016,
   },
   {
-    id: 'c3', name: 'Penang Eagles', shortName: 'PEG',
+    isDummy: true, id: 'c3', name: 'Penang Eagles', shortName: 'PEG',
     description: "Northern Malaysia's top doubles club. Specialists in men's and mixed doubles. Invite-only — we select members based on skill, attitude, and commitment.",
     purpose: 'Competitive', state: 'Penang', area: 'Georgetown',
     logoInitials: 'PEG', color: 'bg-amber-600',
@@ -188,7 +188,7 @@ export const CLUBS: Club[] = [
     announcement: 'Next training camp: 19–21 July, Batu Ferringhi. Accommodation covered.',
   },
   {
-    id: 'c4', name: 'Subang United', shortName: 'SUB',
+    isDummy: true, id: 'c4', name: 'Subang United', shortName: 'SUB',
     description: 'Mixed-gender club focused on doubles and mixed doubles. Regular inter-club tournaments, monthly fun days, and a strong social calendar.',
     purpose: 'Recreational', state: 'Selangor', area: 'Subang Jaya',
     logoInitials: 'SUB', color: 'bg-violet-600',
@@ -198,7 +198,7 @@ export const CLUBS: Club[] = [
     tags: ['Mixed', 'Doubles', 'Social'], foundedYear: 2020,
   },
   {
-    id: 'c5', name: 'Johor Blazers', shortName: 'JBL',
+    isDummy: true, id: 'c5', name: 'Johor Blazers', shortName: 'JBL',
     description: 'Southern pride. Fast-growing club with a strong singles tradition and an active youth programme. We run coaching clinics every Saturday morning.',
     purpose: 'Training', state: 'Johor', area: 'Johor Bahru',
     logoInitials: 'JBL', color: 'bg-red-600',

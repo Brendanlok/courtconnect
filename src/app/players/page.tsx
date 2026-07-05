@@ -219,6 +219,7 @@ function PlayerCard({ player: p, myMMR, isFriend, isIncoming }: {
             <div className="flex items-center gap-1 min-w-0">
               <p className="font-bold text-sm truncate">{p.displayName}</p>
               <p className="text-[11px] text-slate-500 shrink-0">@{p.username}</p>
+              {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-400 px-1 py-0.5 rounded shrink-0">DEMO</span>}
               {p.openToPlay && (
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0"/>
               )}
@@ -864,6 +865,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-bold text-sm">{club.name}</p>
+                      {club.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-400 px-1 py-0.5 rounded">DEMO</span>}
                       {club.isPrivate
                         ? <Lock size={10} className="text-violet-400"/>
                         : <Globe size={10} className="text-slate-500"/>}

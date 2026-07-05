@@ -276,6 +276,7 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
           {/* Row 1: name + visibility + format */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="font-semibold text-sm">{t.name}</p>
+            {t.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-400 px-1 py-0.5 rounded">DEMO</span>}
             {isMyTourney && (
               <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-md shrink-0 font-semibold">Hosting</span>
             )}

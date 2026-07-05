@@ -10,6 +10,7 @@ export type MalaysiaState =
 export interface UserProfile {
   uid: string;
   username: string;          // e.g. @lokkai
+  isDummy?: boolean;         // seed/demo profile
   displayName: string;
   email: string;
   mmr: number;
@@ -60,6 +61,7 @@ export interface Match {
 
 export interface Tournament {
   id: string;
+  isDummy?: boolean;
   name: string;
   type: MatchType;
   status: 'Upcoming' | 'Active' | 'Completed';
@@ -118,6 +120,7 @@ export type ClubPurpose = 'Competitive' | 'Recreational' | 'Training' | 'Social'
 
 export interface Club {
   id: string;
+  isDummy?: boolean;
   name: string;
   shortName: string;
   description: string;
