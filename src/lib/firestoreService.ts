@@ -130,6 +130,35 @@ export async function saveOpenToPlay(uid: string, value: boolean) {
   await updateDoc(doc(db, 'users', uid), { openToPlay: value, updatedAt: serverTimestamp() });
 }
 
+// ── Live matches ──────────────────────────────────────────────────────────────
+
+import { onSnapshot } from 'firebase/firestore';
+import type { LiveMatch } from '@/types';
+
+export async function createLiveMatch(match: LiveMatch): Promise<void> {
+  await setDoc(doc(db, 'liveMatches', match.id), {
+    ...match,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateLiveMatch(id: string, patch: Partial<LiveMatch>): Promise<void> {
+  await updateDoc(doc(db, 'liveMatches', id), patch as Record<string, unknown>);
+}
+
+export async function getLiveMatchByCode(code: string): Promise<LiveMatch | null> {
+  const q = query(collection(db, 'liveMatches'), where('joinCode', '==', code.toUpperCase()), where('status', '==', 'active'));
+  const snaps = await getDocs(q);
+  if (snaps.empty) return null;
+  return snaps.docs[0].data() as LiveMatch;
+}
+
+export function subscribeLiveMatch(id: string, cb: (m: LiveMatch | null) => void): () => void {
+  return onSnapshot(doc(db, 'liveMatches', id), snap => {
+    cb(snap.exists() ? (snap.data() as LiveMatch) : null);
+  });
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 export function toISOString(ts: unknown): string {

@@ -5,9 +5,10 @@ import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { LogMatchModal } from '@/components/LogMatchModal';
+import { LiveMatchModal } from '@/components/LiveMatchModal';
 import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
-  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle,
+  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
@@ -120,6 +121,7 @@ export default function MatchesPage() {
   const { user, matches, addNotification } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [logOpen,  setLogOpen]  = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [editId,   setEditId]   = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
@@ -196,10 +198,16 @@ export default function MatchesPage() {
           <h1 className="text-2xl font-bold">Matches</h1>
           <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
         </div>
-        <button onClick={() => openPlan()}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0 mt-1">
-          <Plus size={13}/> Plan Match
-        </button>
+        <div className="flex items-center gap-2 mt-1">
+          <button onClick={() => setLiveOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Live
+          </button>
+          <button onClick={() => openPlan()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+            <Plus size={13}/> Plan Match
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
@@ -261,7 +269,8 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {logOpen && <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>}
+      {logOpen  && <LogMatchModal  open={true} onClose={() => setLogOpen(false)}/>}
+      {liveOpen && <LiveMatchModal open={true} onClose={() => setLiveOpen(false)}/>}
 
       {planOpen && (
         <PlanMatchModal

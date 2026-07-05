@@ -162,6 +162,39 @@ export interface AuthUser {
   passwordHash?: string; // stored as-is for demo (not real hashing)
 }
 
+export interface LiveMatchPlayer {
+  uid: string;
+  displayName: string;
+  username: string;
+}
+
+export interface LiveGame {
+  a: number;
+  b: number;
+  done: boolean;
+  winningSide?: 'A' | 'B';
+}
+
+export interface LiveMatch {
+  id: string;
+  joinCode: string;           // 6-char uppercase code for others to join
+  format: MatchType;
+  teamA: LiveMatchPlayer[];
+  teamB: LiveMatchPlayer[];
+  teamAName: string;          // e.g. "Lok & Ahmad" or just "Lok"
+  teamBName: string;
+  venue: string;
+  hostUid: string;
+  bestOf: 1 | 3 | 5;
+  status: 'active' | 'completed';
+  currentGame: number;        // 0-indexed
+  games: LiveGame[];          // scores per game
+  gameWins: { a: number; b: number };
+  winningSide?: 'A' | 'B';
+  createdAt: string;
+  completedAt?: string;
+}
+
 export interface Conversation {
   id: string;
   participant: UserProfile;

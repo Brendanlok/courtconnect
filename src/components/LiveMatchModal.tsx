@@ -1,0 +1,592 @@
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { useApp } from '@/context/AppContext';
+import { PLAYERS } from '@/lib/data';
+import { Avatar } from '@/components/ui/Avatar';
+import { auth } from '@/lib/firebase';
+import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCode } from '@/lib/firestoreService';
+import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer } from '@/types';
+import {
+  X, ChevronRight, Users, RotateCcw, Share2, Trophy,
+  Wifi, WifiOff, Radio, Search, Check,
+} from 'lucide-react';
+
+const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
+const FORMAT_LABELS: Record<MatchType, string> = {
+  MS: "Men's Singles", WS: "Women's Singles", MD: "Men's Doubles",
+  WD: "Women's Doubles", MX: "Mixed Doubles",
+};
+
+function genCode(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+function genId(): string {
+  return `lm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+}
+
+function teamSize(f: MatchType) { return f === 'MS' || f === 'WS' ? 1 : 2; }
+
+// ── Player picker ─────────────────────────────────────────────────────────────
+
+function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
+  label: string; selected: LiveMatchPlayer | null;
+  onSelect: (p: LiveMatchPlayer) => void; onClear: () => void;
+  excludeUids: string[];
+}) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const results = PLAYERS
+    .filter(p => !excludeUids.includes(p.uid))
+    .filter(p => !q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
+    .slice(0, 5);
+
+  if (selected) return (
+    <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-h-[44px]">
+      <Avatar name={selected.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold truncate">{selected.displayName}</p>
+        <p className="text-[10px] text-slate-500">@{selected.username}</p>
+      </div>
+      <button onClick={onClear} className="text-slate-500 hover:text-red-400"><X size={12}/></button>
+    </div>
+  );
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 border border-dashed border-slate-600 hover:border-emerald-500/50 rounded-xl px-3 py-2 min-h-[44px] text-left transition-colors">
+        <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+          <Users size={10} className="text-slate-500"/>
+        </div>
+        <p className="text-[11px] text-slate-400">{label}</p>
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+          <div className="p-2 border-b border-slate-700">
+            <div className="relative">
+              <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+              <input autoFocus value={q} onChange={e => setQ(e.target.value.toLowerCase())}
+                placeholder="Search player…"
+                className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs outline-none focus:border-emerald-500"/>
+            </div>
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            {results.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-4">No players found</p>
+            ) : results.map(p => (
+              <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username }); setOpen(false); setQ(''); }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
+                <Avatar name={p.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
+                <div>
+                  <p className="text-xs font-semibold">{p.displayName}</p>
+                  <p className="text-[10px] text-slate-500">@{p.username}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Setup view ────────────────────────────────────────────────────────────────
+
+function SetupView({ me, onStart, onJoin }: {
+  me: LiveMatchPlayer;
+  onStart: (match: LiveMatch) => void;
+  onJoin: (match: LiveMatch) => void;
+}) {
+  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [format, setFormat] = useState<MatchType>('MS');
+  const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
+  const [venue, setVenue] = useState('');
+  const [teamA, setTeamA] = useState<(LiveMatchPlayer | null)[]>([me, null]);
+  const [teamB, setTeamB] = useState<(LiveMatchPlayer | null)[]>([null, null]);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  const ts = teamSize(format);
+  const teamASlots = teamA.slice(0, ts);
+  const teamBSlots = teamB.slice(0, ts);
+  const filledUids = [...teamASlots, ...teamBSlots].filter(Boolean).map(p => p!.uid);
+
+  const setSlot = (team: 'A' | 'B', idx: number, p: LiveMatchPlayer | null) => {
+    if (team === 'A') setTeamA(prev => { const n = [...prev]; n[idx] = p; return n; });
+    else setTeamB(prev => { const n = [...prev]; n[idx] = p; return n; });
+  };
+
+  const buildTeamName = (slots: (LiveMatchPlayer | null)[]) =>
+    slots.filter(Boolean).map(p => p!.displayName.split(' ')[0]).join(' & ') || '—';
+
+  const canStart = venue.trim() && teamBSlots.some(Boolean);
+
+  const handleStart = () => {
+    if (!canStart) return;
+    const aPlayers = teamASlots.map(p => p ?? me);
+    const bPlayers = teamBSlots.filter(Boolean) as LiveMatchPlayer[];
+    const id = genId();
+    const match: LiveMatch = {
+      id, joinCode: genCode(), format, bestOf, venue: venue.trim(),
+      hostUid: auth.currentUser?.uid ?? 'me',
+      teamA: aPlayers, teamB: bPlayers,
+      teamAName: buildTeamName(aPlayers),
+      teamBName: buildTeamName(bPlayers),
+      status: 'active', currentGame: 0,
+      games: [{ a: 0, b: 0, done: false }],
+      gameWins: { a: 0, b: 0 },
+      createdAt: new Date().toISOString(),
+    };
+    createLiveMatch(match).catch(() => {});
+    onStart(match);
+  };
+
+  const handleJoin = async () => {
+    if (!joinCode.trim()) return;
+    setJoinLoading(true); setJoinError('');
+    const m = await getLiveMatchByCode(joinCode.trim()).catch(() => null);
+    setJoinLoading(false);
+    if (!m) { setJoinError('Match not found. Check the code and try again.'); return; }
+    onJoin(m);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Mode toggle */}
+      <div className="flex bg-slate-800 border border-slate-700 rounded-xl p-1">
+        <button onClick={() => setMode('create')}
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'create' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>
+          🏸 Start Match
+        </button>
+        <button onClick={() => setMode('join')}
+          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'join' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>
+          👁 Watch Live
+        </button>
+      </div>
+
+      {mode === 'join' ? (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-400">Enter the 6-character code from the scorer's screen.</p>
+          <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+            maxLength={6} placeholder="e.g. BX72KA"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-center text-xl font-mono font-bold tracking-[0.3em] outline-none focus:border-emerald-500 uppercase"/>
+          {joinError && <p className="text-xs text-red-400">{joinError}</p>}
+          <button onClick={handleJoin} disabled={joinLoading || joinCode.length < 4}
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors">
+            {joinLoading ? 'Searching…' : 'Watch Match'}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Format */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Format</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {FORMATS.map(f => (
+                <button key={f} onClick={() => { setFormat(f); setTeamA([me, null]); setTeamB([null, null]); }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${format === f ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                  {f}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500">{FORMAT_LABELS[format]}</p>
+          </div>
+
+          {/* Best of */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Best of</label>
+            <div className="flex gap-2">
+              {([1, 3, 5] as const).map(n => (
+                <button key={n} onClick={() => setBestOf(n)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${bestOf === n ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Players */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-400">Players</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Team A</p>
+                {/* Slot 0 = me, fixed */}
+                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2 min-h-[44px]">
+                  <Avatar name={me.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{me.displayName}</p>
+                    <p className="text-[10px] text-slate-500">You</p>
+                  </div>
+                </div>
+                {ts === 2 && (
+                  <PlayerPicker label="Your partner" selected={teamASlots[1] ?? null}
+                    onSelect={p => setSlot('A', 1, p)} onClear={() => setSlot('A', 1, null)}
+                    excludeUids={filledUids}/>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Team B</p>
+                {Array.from({ length: ts }).map((_, i) => (
+                  <PlayerPicker key={i} label={ts === 1 ? 'Opponent' : `Opponent ${i + 1}`}
+                    selected={teamBSlots[i] ?? null}
+                    onSelect={p => setSlot('B', i, p)} onClear={() => setSlot('B', i, null)}
+                    excludeUids={filledUids}/>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Venue */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Venue</label>
+            <input value={venue} onChange={e => setVenue(e.target.value)}
+              placeholder="e.g. Sport Planet PJ"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500"/>
+          </div>
+
+          <button onClick={handleStart} disabled={!canStart}
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+            <Radio size={14}/> Start Live Scoring
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Scorer view ───────────────────────────────────────────────────────────────
+
+const TARGET = 21;
+const MAX = 30;
+
+function checkGameEnd(game: LiveGame, bestOf: number): { done: boolean; winner?: 'A' | 'B' } {
+  const { a, b } = game;
+  const lead = Math.max(a, b);
+  const trail = Math.min(a, b);
+  if (lead >= TARGET && lead - trail >= 2) {
+    return { done: true, winner: a > b ? 'A' : 'B' };
+  }
+  if (lead >= MAX) {
+    return { done: true, winner: a > b ? 'A' : 'B' };
+  }
+  return { done: false };
+}
+
+function checkMatchEnd(gameWins: { a: number; b: number }, bestOf: number): 'A' | 'B' | null {
+  const needed = Math.ceil(bestOf / 2);
+  if (gameWins.a >= needed) return 'A';
+  if (gameWins.b >= needed) return 'B';
+  return null;
+}
+
+function ScorerView({ initialMatch, isHost, onComplete }: {
+  initialMatch: LiveMatch;
+  isHost: boolean;
+  onComplete: (match: LiveMatch) => void;
+}) {
+  const [match, setMatch] = useState<LiveMatch>(initialMatch);
+  const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number }[]>([]);
+  const [connected, setConnected] = useState(true);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  // Subscribe to live updates
+  useEffect(() => {
+    const unsub = subscribeLiveMatch(match.id, updated => {
+      setConnected(true);
+      if (updated && !isHost) setMatch(updated);
+    });
+    return unsub;
+  }, [match.id, isHost]);
+
+  const currentGame = match.games[match.currentGame] ?? { a: 0, b: 0, done: false };
+
+  const addPoint = useCallback((side: 'a' | 'b') => {
+    if (!isHost || currentGame.done || match.status === 'completed') return;
+
+    setHistory(prev => [...prev, {
+      games: match.games.map(g => ({ ...g })),
+      gameWins: { ...match.gameWins },
+      currentGame: match.currentGame,
+    }]);
+
+    setMatch(prev => {
+      const games = prev.games.map(g => ({ ...g }));
+      const g = { ...games[prev.currentGame] };
+      g[side] += 1;
+
+      const { done, winner } = checkGameEnd(g, prev.bestOf);
+      g.done = done;
+      if (winner) g.winningSide = winner;
+      games[prev.currentGame] = g;
+
+      const gameWins = { ...prev.gameWins };
+      let nextGame = prev.currentGame;
+      let winningSide = prev.winningSide;
+      let status = prev.status;
+
+      if (done && winner) {
+        gameWins[winner.toLowerCase() as 'a' | 'b'] += 1;
+        const matchWinner = checkMatchEnd(gameWins, prev.bestOf);
+        if (matchWinner) {
+          winningSide = matchWinner;
+          status = 'completed';
+        } else {
+          nextGame = prev.currentGame + 1;
+          games.push({ a: 0, b: 0, done: false });
+        }
+      }
+
+      const next: LiveMatch = { ...prev, games, gameWins, currentGame: nextGame, winningSide, status };
+      updateLiveMatch(prev.id, { games, gameWins, currentGame: nextGame, winningSide, status }).catch(() => {});
+      if (status === 'completed') setTimeout(() => onComplete(next), 800);
+      return next;
+    });
+  }, [isHost, currentGame, match, onComplete]);
+
+  const undoLast = () => {
+    if (!isHost || history.length === 0) return;
+    const prev = history[history.length - 1];
+    setHistory(h => h.slice(0, -1));
+    setMatch(m => {
+      const next = { ...m, games: prev.games, gameWins: prev.gameWins, currentGame: prev.currentGame, status: 'active' as const, winningSide: undefined };
+      updateLiveMatch(m.id, { games: prev.games, gameWins: prev.gameWins, currentGame: prev.currentGame, status: 'active' } as Partial<LiveMatch>).catch(() => {});
+      return next;
+    });
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(match.joinCode).catch(() => {});
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
+
+  const gameWinsNeeded = Math.ceil(match.bestOf / 2);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Join code + connection */}
+      <div className="flex items-center justify-between">
+        <button onClick={copyCode}
+          className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs transition-colors hover:bg-slate-700">
+          <Radio size={11} className="text-emerald-400 animate-pulse"/>
+          <span className="font-mono font-bold tracking-widest">{match.joinCode}</span>
+          {codeCopied ? <Check size={11} className="text-emerald-400"/> : <Share2 size={11} className="text-slate-400"/>}
+        </button>
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          {connected ? <Wifi size={12} className="text-emerald-400"/> : <WifiOff size={12} className="text-red-400"/>}
+          {isHost ? 'Scoring' : 'Watching live'}
+        </div>
+      </div>
+
+      {/* Game wins strip */}
+      {match.bestOf > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          {Array.from({ length: match.bestOf }).map((_, i) => {
+            const g = match.games[i];
+            const won = g?.done ? (g.winningSide === 'A' ? 'a' : 'b') : null;
+            return (
+              <div key={i} className={`text-center px-3 py-1.5 rounded-lg text-xs border transition-colors
+                ${i === match.currentGame && !g?.done ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                <p className="font-bold text-[10px] uppercase tracking-wide">G{i+1}</p>
+                {g ? <p className="font-mono text-xs">{g.a}–{g.b}</p> : <p className="text-slate-700">—</p>}
+                {won && <p className={`text-[9px] font-bold mt-0.5 ${won === 'a' ? 'text-emerald-400' : 'text-rose-400'}`}>{won === 'a' ? match.teamAName : match.teamBName}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Live score */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-2">
+          {/* Team A */}
+          <button onClick={() => addPoint('a')} disabled={!isHost || currentGame.done || match.status === 'completed'}
+            className={`group flex flex-col items-center justify-center py-8 px-4 transition-all active:scale-95
+              ${isHost && !currentGame.done ? 'hover:bg-emerald-500/10 active:bg-emerald-500/20 cursor-pointer' : 'cursor-default'}
+              border-r border-slate-700`}>
+            <p className="text-[11px] font-semibold text-slate-400 truncate w-full text-center mb-1">{match.teamAName}</p>
+            <p className={`font-black tabular-nums transition-all ${currentGame.a > currentGame.b ? 'text-6xl text-emerald-400' : 'text-5xl text-slate-200'}`}>
+              {currentGame.a}
+            </p>
+            <div className="flex gap-1 mt-3">
+              {Array.from({ length: gameWinsNeeded }).map((_, i) => (
+                <div key={i} className={`w-2 h-2 rounded-full ${i < match.gameWins.a ? 'bg-emerald-400' : 'bg-slate-700'}`}/>
+              ))}
+            </div>
+            {isHost && !currentGame.done && match.status === 'active' && (
+              <p className="text-[10px] text-emerald-400/60 mt-2 group-hover:text-emerald-400 transition-colors">Tap to score</p>
+            )}
+          </button>
+
+          {/* Team B */}
+          <button onClick={() => addPoint('b')} disabled={!isHost || currentGame.done || match.status === 'completed'}
+            className={`group flex flex-col items-center justify-center py-8 px-4 transition-all active:scale-95
+              ${isHost && !currentGame.done ? 'hover:bg-rose-500/10 active:bg-rose-500/20 cursor-pointer' : 'cursor-default'}`}>
+            <p className="text-[11px] font-semibold text-slate-400 truncate w-full text-center mb-1">{match.teamBName}</p>
+            <p className={`font-black tabular-nums transition-all ${currentGame.b > currentGame.a ? 'text-6xl text-rose-400' : 'text-5xl text-slate-200'}`}>
+              {currentGame.b}
+            </p>
+            <div className="flex gap-1 mt-3">
+              {Array.from({ length: gameWinsNeeded }).map((_, i) => (
+                <div key={i} className={`w-2 h-2 rounded-full ${i < match.gameWins.b ? 'bg-rose-400' : 'bg-slate-700'}`}/>
+              ))}
+            </div>
+            {isHost && !currentGame.done && match.status === 'active' && (
+              <p className="text-[10px] text-rose-400/60 mt-2 group-hover:text-rose-400 transition-colors">Tap to score</p>
+            )}
+          </button>
+        </div>
+
+        {/* Game over banner */}
+        {currentGame.done && match.status === 'active' && (
+          <div className="bg-amber-500/10 border-t border-amber-500/20 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-amber-300">
+              Game {match.currentGame + 1} won by {currentGame.winningSide === 'A' ? match.teamAName : match.teamBName}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Next game starting…</p>
+          </div>
+        )}
+
+        {/* Match complete banner */}
+        {match.status === 'completed' && (
+          <div className="bg-emerald-500/10 border-t border-emerald-500/20 px-4 py-4 text-center">
+            <Trophy size={20} className="mx-auto text-amber-400 mb-2"/>
+            <p className="text-sm font-bold text-emerald-300">
+              {match.winningSide === 'A' ? match.teamAName : match.teamBName} wins!
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      {isHost && (
+        <div className="flex gap-2">
+          <button onClick={undoLast} disabled={history.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
+            <RotateCcw size={12}/> Undo
+          </button>
+          <div className="flex-1"/>
+          {match.status === 'completed' && (
+            <button onClick={() => onComplete(match)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white transition-colors">
+              <ChevronRight size={13}/> Log Result
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Completion view ───────────────────────────────────────────────────────────
+
+function CompletionView({ match, onLogMatch, onClose }: {
+  match: LiveMatch; onLogMatch: (m: LiveMatch) => void; onClose: () => void;
+}) {
+  const winner = match.winningSide === 'A' ? match.teamAName : match.teamBName;
+  const totalGames = match.games.filter(g => g.done).length;
+  return (
+    <div className="space-y-4 text-center">
+      <div className="text-4xl">🏆</div>
+      <div>
+        <p className="font-black text-xl text-emerald-400">{winner}</p>
+        <p className="text-slate-400 text-sm">wins the match!</p>
+      </div>
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2 text-left">
+        <p className="text-xs font-semibold text-slate-400 text-center mb-3">Final Score</p>
+        {match.games.filter(g => g.done).map((g, i) => (
+          <div key={i} className="flex items-center justify-between text-sm">
+            <span className="text-slate-400 text-xs">Game {i + 1}</span>
+            <span className={`font-bold tabular-nums ${g.winningSide === 'A' ? 'text-emerald-400' : 'text-slate-300'}`}>{g.a}</span>
+            <span className="text-slate-600 text-xs">—</span>
+            <span className={`font-bold tabular-nums ${g.winningSide === 'B' ? 'text-emerald-400' : 'text-slate-300'}`}>{g.b}</span>
+          </div>
+        ))}
+        <div className="border-t border-slate-700 pt-2 flex items-center justify-between">
+          <span className="text-xs text-slate-500">{totalGames} game{totalGames !== 1 ? 's' : ''} · {match.venue}</span>
+          <span className="text-xs font-bold text-slate-300">{match.gameWins.a} – {match.gameWins.b}</span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onClose}
+          className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+          Close
+        </button>
+        <button onClick={() => onLogMatch(match)}
+          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-bold transition-colors">
+          Log to Profile
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main modal ────────────────────────────────────────────────────────────────
+
+type ModalView = 'setup' | 'scoring' | 'complete';
+
+export function LiveMatchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, addMatch } = useApp();
+  const [view, setView] = useState<ModalView>('setup');
+  const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
+  const [isHost, setIsHost] = useState(true);
+
+  if (!open) return null;
+
+  const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
+
+  const handleStart = (m: LiveMatch) => { setLiveMatch(m); setIsHost(true); setView('scoring'); };
+  const handleJoin  = (m: LiveMatch) => { setLiveMatch(m); setIsHost(false); setView('scoring'); };
+  const handleComplete = (m: LiveMatch) => { setLiveMatch(m); setView('complete'); };
+
+  const handleLogMatch = (m: LiveMatch) => {
+    if (!m.winningSide) return;
+    const iWon = m.winningSide === 'A'; // team A is always host's team
+    const gameScores = m.games.filter(g => g.done).map(g => ({ p1: g.a, p2: g.b }));
+    const opp = m.teamB[0];
+    const newMatch = {
+      id: `m_${Date.now()}`,
+      type: m.format,
+      player1Id: me.uid, player1Name: me.displayName, player1Username: me.username,
+      player2Id: opp?.uid ?? 'opp', player2Name: opp?.displayName ?? 'Opponent', player2Username: opp?.username ?? 'opponent',
+      winnerId: iWon ? me.uid : opp?.uid ?? 'opp',
+      games: gameScores,
+      status: 'Confirmed' as const,
+      playedAt: new Date().toISOString(),
+      venue: m.venue,
+      mmrChange: iWon ? 18 : -15,
+    };
+    addMatch(newMatch as import('@/types').Match);
+    onClose();
+  };
+
+  const titles: Record<ModalView, string> = {
+    setup: 'Live Match',
+    scoring: liveMatch ? `${liveMatch.teamAName} vs ${liveMatch.teamBName}` : 'Live Scoring',
+    complete: 'Match Complete',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={() => view === 'setup' && onClose()}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2">
+            {view !== 'setup' && (
+              <button onClick={() => setView('setup')} className="text-slate-400 hover:text-white p-1"><X size={14}/></button>
+            )}
+            <p className="font-bold text-sm">{titles[view]}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
+        </div>
+        <div className="overflow-y-auto p-4 flex-1">
+          {view === 'setup'    && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
+          {view === 'scoring'  && liveMatch && <ScorerView initialMatch={liveMatch} isHost={isHost} onComplete={handleComplete}/>}
+          {view === 'complete' && liveMatch && <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
