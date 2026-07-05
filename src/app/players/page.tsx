@@ -530,7 +530,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
                             <MapPin size={10}/> {p.area}, {p.state}
                             {p.distKm !== undefined && <><span className="mx-1">·</span>{p.distKm} km away</>}
                           </p>
-                          {avail && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><span>\U0001f550</span>{avail}</p>}
+                          {avail && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><span>🕐</span>{avail}</p>}
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           {isSent ? (
