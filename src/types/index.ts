@@ -75,6 +75,7 @@ export interface Match {
 export interface Tournament {
   id: string;
   isDummy?: boolean;
+  country?: string;
   name: string;
   type: MatchType;
   status: 'Upcoming' | 'Active' | 'Completed';

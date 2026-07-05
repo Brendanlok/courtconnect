@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation } from '@/lib/utils';
+import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
+import type { CountryCode } from '@/types';
 import type { UserProfile } from '@/types';
 
 type PrivacyLevel = 'public' | 'friends' | 'private';
@@ -39,10 +40,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [bio,         setBio]         = useState(user.bio ?? '');
   const [gender,      setGender]      = useState<'Male' | 'Female' | undefined>(user.gender);
   const [birthday,    setBirthday]    = useState(user.birthday ?? '');
+  const [countryCode, setCountryCode] = useState<CountryCode>((user.countryCode ?? 'MY') as CountryCode);
+  const [region,      setRegion]      = useState(user.region ?? user.state ?? '');
+  const [cityText,    setCityText]    = useState(user.area ?? '');
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
   const [availability,setAvailability]= useState<string[]>(
     (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
   );
+  const countryData = COUNTRIES.find(c => c.code === countryCode) ?? COUNTRIES[0];
   const [privacy,     setPrivacy]     = useState<PrivacySettings>({ ...DEFAULT_PRIVACY, ...user.privacy });
   const [saved,       setSaved]       = useState(false);
   const [deleteStep,  setDeleteStep]  = useState<DeleteStep>('idle');
@@ -51,16 +56,21 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
-  const location = postcodeToLocation(postcode);
+  const isMY = countryCode === 'MY';
+  const location = isMY ? postcodeToLocation(postcode) : null;
 
   const toggleAvail = (id: string) =>
     setAvailability(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const save = () => {
     updateUser({
-      displayName, bio, postcode, gender, birthday: birthday || undefined,
-      area:  location?.city  ?? user.area,
-      state: location?.state ?? user.state,
+      displayName, bio, gender, birthday: birthday || undefined,
+      country: countryData.name,
+      countryCode,
+      region: isMY ? (location?.state ?? region) : region,
+      area:   isMY ? (location?.city  ?? cityText) : cityText,
+      state:  (isMY ? (location?.state ?? user.state) : region) as import('@/types').MalaysiaState,
+      postcode: isMY ? postcode : undefined,
       available: availability.join(','),
       privacy,
     });
@@ -136,24 +146,67 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             </div>
           </div>
 
-          {/* Postcode → auto-fills city + state */}
+          {/* Country */}
+          <div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Country</p>
+            <select value={countryCode}
+              onChange={e => { setCountryCode(e.target.value as CountryCode); setRegion(''); setCityText(''); setPostcode(''); }}
+              className={inp}>
+              {COUNTRIES.map(c => (
+                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Location — country-aware */}
           <div>
             <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Location</p>
-            <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
-              placeholder="Enter 5-digit postcode, e.g. 47810" maxLength={5}
-              className={`${inp} font-mono`}/>
-            {location ? (
-              <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1.5">
-                <span className="text-slate-500">📍</span>
-                <span className="font-semibold">{location.city}</span>
-                <span className="text-slate-500">·</span>
-                <span>{location.state}</span>
-              </p>
-            ) : postcode.length === 5 ? (
-              <p className="text-xs text-red-400 mt-1.5">Postcode not recognised</p>
-            ) : postcode.length > 0 ? (
-              <p className="text-xs text-slate-600 mt-1.5">Enter all 5 digits</p>
-            ) : null}
+            <div className="space-y-2">
+              {isMY ? (
+                <>
+                  <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
+                    placeholder="5-digit postcode e.g. 47810" maxLength={5}
+                    className={`${inp} font-mono`}/>
+                  {location ? (
+                    <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+                      <span className="text-slate-500">📍</span>
+                      <span className="font-semibold">{location.city}</span>
+                      <span className="text-slate-500">·</span>
+                      <span>{location.state}</span>
+                    </p>
+                  ) : postcode.length === 5 ? (
+                    <p className="text-xs text-red-400">Postcode not recognised — enter area manually:</p>
+                  ) : postcode.length > 0 ? (
+                    <p className="text-xs text-slate-600">Enter all 5 digits</p>
+                  ) : null}
+                  {(postcode.length === 0 || (postcode.length === 5 && !location)) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={region} onChange={e => setRegion(e.target.value)}
+                        className={inp}>
+                        <option value="">State…</option>
+                        {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input value={cityText} onChange={e => setCityText(e.target.value)}
+                        placeholder="City / Area" className={inp}/>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {countryData.regions.length > 0 ? (
+                    <select value={region} onChange={e => setRegion(e.target.value)} className={inp}>
+                      <option value="">{countryData.regionLabel}…</option>
+                      {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <input value={region} onChange={e => setRegion(e.target.value)}
+                      placeholder={countryData.regionLabel} className={inp}/>
+                  )}
+                  <input value={cityText} onChange={e => setCityText(e.target.value)}
+                    placeholder="City / Area" className={inp}/>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Availability grid: 7 days × 6 time slots */}

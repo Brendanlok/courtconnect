@@ -37,10 +37,11 @@ function coordsToState(lat: number, lng: number): { state: MalaysiaState; area: 
 
 function LocationPicker({ onClose }: { onClose: () => void }) {
   const { user, updateUser } = useApp();
-  const [state,    setState]    = useState<MalaysiaState>(user.state);
-  const [area,     setArea]     = useState(user.area);
-  const [detecting,setDetecting]= useState(false);
-  const [gpsError, setGpsError] = useState('');
+  const countryData = getCountryByName(user.country ?? 'Malaysia');
+  const [state,     setState]    = useState(user.region ?? user.state ?? '');
+  const [area,      setArea]     = useState(user.area ?? '');
+  const [detecting, setDetecting]= useState(false);
+  const [gpsError,  setGpsError] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,21 +51,23 @@ function LocationPicker({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const detect = () => {
-    if (!navigator.geolocation) { setGpsError('Geolocation not supported by your browser.'); return; }
+    if (!navigator.geolocation) { setGpsError('Geolocation not supported.'); return; }
     setDetecting(true); setGpsError('');
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const { state: s, area: a } = coordsToState(pos.coords.latitude, pos.coords.longitude);
-        setState(s); setArea(a);
+        if (countryData.code === 'MY') {
+          const { state: s, area: a } = coordsToState(pos.coords.latitude, pos.coords.longitude);
+          setState(s); setArea(a);
+        }
         setDetecting(false);
       },
-      () => { setGpsError('Could not get your location. Pick manually below.'); setDetecting(false); },
+      () => { setGpsError('Could not get location. Pick manually below.'); setDetecting(false); },
       { timeout: 8000 }
     );
   };
 
   const save = () => {
-    updateUser({ state, area });
+    updateUser({ state: state as MalaysiaState, area, region: state });
     onClose();
   };
 
@@ -72,28 +75,36 @@ function LocationPicker({ onClose }: { onClose: () => void }) {
     <div ref={ref}
       className="absolute left-0 top-full mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <p className="font-semibold text-sm flex items-center gap-2"><MapPin size={14} className="text-emerald-400"/> Your Location</p>
+        <p className="font-semibold text-sm flex items-center gap-2">
+          <MapPin size={14} className="text-emerald-400"/>
+          {countryData.flag} {countryData.name} Location
+        </p>
         <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={15}/></button>
       </div>
       <div className="p-4 space-y-3">
-        <button onClick={detect} disabled={detecting}
-          className="w-full flex items-center justify-center gap-2 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
-          <Navigation size={14} className={detecting ? 'animate-spin' : ''}/>
-          {detecting ? 'Detecting…' : 'Use my current location'}
-        </button>
+        {countryData.code === 'MY' && (
+          <button onClick={detect} disabled={detecting}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+            <Navigation size={14} className={detecting ? 'animate-spin' : ''}/>
+            {detecting ? 'Detecting…' : 'Use my current location'}
+          </button>
+        )}
         {gpsError && <p className="text-xs text-red-400">{gpsError}</p>}
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <div className="flex-1 h-px bg-slate-800"/><span>or pick manually</span><div className="flex-1 h-px bg-slate-800"/>
-        </div>
         <label className="block">
-          <span className="text-[11px] text-slate-500 font-semibold">State</span>
-          <select value={state} onChange={e => setState(e.target.value as MalaysiaState)}
-            className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors">
-            {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <span className="text-[11px] text-slate-500 font-semibold">{countryData.regionLabel}</span>
+          {countryData.regions.length > 0 ? (
+            <select value={state} onChange={e => setState(e.target.value)}
+              className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors">
+              <option value="">Select {countryData.regionLabel}…</option>
+              {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          ) : (
+            <input value={state} onChange={e => setState(e.target.value)} placeholder={`Enter ${countryData.regionLabel}…`}
+              className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          )}
         </label>
         <label className="block">
-          <span className="text-[11px] text-slate-500 font-semibold">Area / City</span>
+          <span className="text-[11px] text-slate-500 font-semibold">City / Area</span>
           <input value={area} onChange={e => setArea(e.target.value)} placeholder="e.g. Petaling Jaya"
             className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors"/>
         </label>
@@ -139,21 +150,27 @@ export function Topbar() {
 
   return (
     <>
-      <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-5 shrink-0 relative z-30">
-        {/* Left: clickable location */}
-        <div className="relative hidden sm:block">
+      <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-4 sm:px-5 shrink-0 relative z-30">
+        {/* Left: clickable location (visible on all screens) */}
+        <div className="relative">
           <button onClick={() => { setLocationOpen(o => !o); setMenuOpen(false); setNotifOpen(false); }}
-            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors group">
-            <MapPin size={13} className="text-emerald-400" />
-            <span className="text-slate-300 font-medium group-hover:text-emerald-300 transition-colors">{user.area},</span>
-            <span>{user.state}</span>
+            className="flex items-center gap-1 sm:gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors group">
+            <MapPin size={13} className="text-emerald-400 shrink-0" />
+            {/* Mobile: compact — area + flag only */}
+            <span className="sm:hidden text-slate-300 font-medium text-xs max-w-[100px] truncate group-hover:text-emerald-300 transition-colors">
+              {user.area || user.state}
+            </span>
+            <span className="sm:hidden text-xs">{getCountryByName(user.country ?? 'Malaysia').flag}</span>
+            {/* Desktop: full display */}
+            <span className="hidden sm:inline text-slate-300 font-medium group-hover:text-emerald-300 transition-colors">{user.area},</span>
+            <span className="hidden sm:inline">{user.region ?? user.state}</span>
             <ChevronDown size={11} className={`text-slate-500 transition-transform ${locationOpen ? 'rotate-180' : ''}`}/>
-            <span className="ml-1 text-xs bg-slate-800 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">🇲🇾 Malaysia</span>
+            <span className="hidden sm:inline ml-1 text-xs bg-slate-800 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+              {getCountryByName(user.country ?? 'Malaysia').flag} {user.country ?? 'Malaysia'}
+            </span>
           </button>
           {locationOpen && <LocationPicker onClose={() => setLocationOpen(false)}/>}
         </div>
-        {/* Mobile: app name */}
-        <span className="sm:hidden font-bold text-emerald-400 text-base">CourtConnect</span>
 
         {/* Right */}
         <div className="flex items-center gap-3">

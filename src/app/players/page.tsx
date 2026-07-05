@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, skillMatch } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, skillMatch } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -364,15 +364,18 @@ function RanksView({ user, friends }: { user: UserProfile; friends: string[] }) 
 // ─── All Players list ─────────────────────────────────────────────────────────
 
 function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'friends' | 'incoming'>) {
-  const [view,          setView]         = useState<'browse' | 'ranks'>('browse');
-  const [query,          setQuery]          = useState('');
-  const [stateFilter,    setStateFilter]    = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter,     setTierFilter]     = useState<Tier | 'All'>('All');
-  const [sortDir,        setSortDir]        = useState<SortDir>('desc');
-  const [openToPlay,     setOpenToPlay]     = useState(false);
-  const [openToPartner,  setOpenToPartner]  = useState(false);
+  const userCountry = user.country ?? 'Malaysia';
+  const [view,           setView]          = useState<'browse' | 'ranks'>('browse');
+  const [query,          setQuery]         = useState('');
+  const [stateFilter,    setStateFilter]   = useState<MalaysiaState | 'All'>('All');
+  const [tierFilter,     setTierFilter]    = useState<Tier | 'All'>('All');
+  const [sortDir,        setSortDir]       = useState<SortDir>('desc');
+  const [openToPlay,     setOpenToPlay]    = useState(false);
+  const [openToPartner,  setOpenToPartner] = useState(false);
+  const [countryFilter,  setCountryFilter] = useState<string>(userCountry);
 
   const filtered = PLAYERS
+    .filter(p => (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => {
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
@@ -402,6 +405,20 @@ function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'fr
 
       {view === 'browse' && (
         <>
+          {/* Country filter */}
+          <div className="flex gap-1.5 flex-wrap">
+            {[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)].map(name => {
+              const c = COUNTRIES.find(x => x.name === name);
+              if (!c) return null;
+              return (
+                <button key={name} onClick={() => setCountryFilter(name)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
+                    ${countryFilter === name ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
+                  {c.flag} {name}
+                </button>
+              );
+            })}
+          </div>
           <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
             tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}
             openToPlay={openToPlay} setOpenToPlay={setOpenToPlay}

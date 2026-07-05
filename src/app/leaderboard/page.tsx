@@ -5,8 +5,8 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE } from '@/lib/utils';
-import { Search, MapPin, ArrowUpDown } from 'lucide-react';
+import { MY_STATES, TIER_STYLE, COUNTRIES } from '@/lib/utils';
+import { Search, MapPin, ArrowUpDown, Globe } from 'lucide-react';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Friends'] as const;
@@ -24,16 +24,19 @@ const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Plat
 
 export default function Leaderboard() {
   const { user, friends } = useApp();
-  const [tab,        setTab]       = useState<Tab>('Nationwide');
-  const [query,      setQuery]     = useState('');
-  const [selState,   setSelState]  = useState<MalaysiaState>(user.state);
-  const [sortKey,    setSortKey]   = useState<SortKey>('mmr');
-  const [tierFilter, setTierFilter] = useState<Tier | 'All'>('All');
+  const [tab,           setTab]          = useState<Tab>('Nationwide');
+  const [query,         setQuery]        = useState('');
+  const [selState,      setSelState]     = useState<MalaysiaState>(user.state as MalaysiaState);
+  const [sortKey,       setSortKey]      = useState<SortKey>('mmr');
+  const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
+  const userCountry = user.country ?? 'Malaysia';
+  const [countryFilter, setCountryFilter]= useState<string>(userCountry);
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
   const all: UserProfile[] = [user, ...PLAYERS];
 
   const list = all
+    .filter(p => (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => {
       if (tab === 'By State') return p.state === selState;
       if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
@@ -86,6 +89,21 @@ export default function Leaderboard() {
             onChange={setSelState}
           />
         )}
+      </div>
+
+      {/* Country filter */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)].map(name => {
+          const c = COUNTRIES.find(x => x.name === name);
+          if (!c) return null;
+          return (
+            <button key={name} onClick={() => setCountryFilter(name)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
+                ${countryFilter === name ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
+              {c.flag} {name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search + filters row */}

@@ -24,6 +24,7 @@ interface SlotPlayer {
   displayName: string;
   username: string;
   gender?: 'Male' | 'Female';
+  country?: string;
 }
 
 interface PlannedMatch {
@@ -140,6 +141,7 @@ export default function MatchesPage() {
     displayName: user.displayName,
     username: user.username,
     gender: user.gender,
+    country: user.country ?? 'Malaysia',
   };
 
   const [planned, setPlanned] = useState<PlannedMatch[]>(() =>
@@ -198,21 +200,15 @@ export default function MatchesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Matches</h1>
           <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
         </div>
-        <div className="flex gap-2 sm:mt-1">
-          <button onClick={() => openPlan(undefined, 'live')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
-            <Radio size={12}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
-          </button>
-          <button onClick={() => openPlan()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
-            <Plus size={13}/> Plan Match
-          </button>
-        </div>
+        <button onClick={() => openPlan()}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+          <Plus size={13}/> Plan Match
+        </button>
       </div>
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
@@ -418,30 +414,17 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord }: {
           </div>
         )}
 
-        {/* Actions */}
-        {m.status !== 'cancelled' && (
+        {/* Actions — only on confirmed matches */}
+        {m.status === 'confirmed' && (
           <div className="flex gap-2 pt-0.5 flex-wrap">
             <button onClick={onLog}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-xl text-xs font-bold transition-colors">
               <Trophy size={11}/> Log Match
             </button>
-            {m.liveRecord && (() => {
-              const allPlayers = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
-              const allConfirmed = allPlayers.length === 0 || allPlayers.every(p => m.accepted.includes(p.uid));
-              return (
-                <button onClick={allConfirmed ? onLiveRecord : undefined} disabled={!allConfirmed}
-                  title={allConfirmed ? 'Start live scoring' : 'Waiting for all players to confirm'}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors
-                    ${allConfirmed
-                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                      : 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed'}`}>
-                  <Radio size={11}/>
-                  {allConfirmed
-                    ? <><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Start Live Scoring</>
-                    : 'Waiting for confirmations…'}
-                </button>
-              );
-            })()}
+            <button onClick={onLiveRecord}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
+              <Radio size={11}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
+            </button>
           </div>
         )}
       </div>
@@ -529,12 +512,13 @@ function MatchHistoryCard({ match: m }: { match: import('@/types').Match }) {
 
 type SlotKey = { team: 'A' | 'B'; idx: number };
 
-function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer }: {
+function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, userCountry }: {
   gender: 'Male' | 'Female' | null;
   exclude: string[];
   onSelect: (p: SlotPlayer) => void;
   onClose: () => void;
   selfPlayer?: SlotPlayer; // show at top as "(Self)"
+  userCountry?: string;
 }) {
   const [q, setQ] = useState('');
   const showSelf = selfPlayer && !exclude.includes(selfPlayer.uid) && (!gender || selfPlayer.gender === gender) &&
@@ -543,6 +527,7 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer }
     .filter(p => !exclude.includes(p.uid))
     .filter(p => p.uid !== selfPlayer?.uid) // selfPlayer shown separately
     .filter(p => !gender || p.gender === gender)
+    .filter(p => !userCountry || (p.country ?? 'Malaysia') === userCountry)
     .filter(p => !q || p.displayName.toLowerCase().includes(q.toLowerCase()) || p.username.toLowerCase().includes(q.toLowerCase()))
     .slice(0, showSelf ? 5 : 6);
 
@@ -636,6 +621,7 @@ function SlotPicker({ slot, label, genderRequired, exclude, selfPlayer, isSelfSl
           gender={genderRequired}
           exclude={exclude}
           selfPlayer={selfPlayer}
+          userCountry={selfPlayer.country}
           onSelect={onSet}
           onClose={() => setOpen(false)}
         />
@@ -659,10 +645,10 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
 
   const { teamSize } = slotsForFormat(format);
 
-  // slot A0 defaults to me but is freely clearable/swappable
+  // slot A0 starts empty (user can add anyone incl. themselves)
   const initTeamA = (): (SlotPlayer | null)[] => {
     if (existing?.format === format) return existing.teamA;
-    return teamSize === 1 ? [me] : [me, null];
+    return teamSize === 1 ? [null] : [null, null];
   };
   const initTeamB = (): (SlotPlayer | null)[] => {
     if (existing?.format === format) return existing.teamB;
@@ -690,8 +676,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
     if (formatDisabled(f)) return;
     setFormat(f);
     const { teamSize: ts } = slotsForFormat(f);
-    // keep slot A0 if it was set (preserve the "self/organiser" assignment)
-    const keptA0 = teamA[0] ?? null;
+    const keptA0 = teamA[0] ?? null; // preserve whoever is in A0
     setTeamA(ts === 1 ? [keptA0] : [keptA0, null]);
     setTeamB(ts === 1 ? [null] : [null, null]);
   };
