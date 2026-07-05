@@ -69,7 +69,7 @@ function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament;
           <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width:`${Math.round((participants.length / t.maxPlayers) * 100)}%` }}/>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5 text-right">{t.maxPlayers - names.length} spots remaining</p>
+          <p className="text-xs text-slate-500 mt-1.5 text-right">{t.maxPlayers - participants.length} spots remaining</p>
         </div>
       </div>
     </div>
