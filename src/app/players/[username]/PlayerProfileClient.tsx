@@ -422,6 +422,110 @@ export function PlayerProfileClient({ username }: { username: string }) {
             </div>
           </div>
         </div>
+
+        {/* ── Stage 2: Match Analytics ──────────────────────────────── */}
+        {(() => {
+          const confirmed = playerMatches.filter(m => m.status === 'Confirmed');
+          if (confirmed.length === 0) return null;
+
+          // Win rate by format
+          const formats = ['MS','WS','MD','WD','MX'] as MatchType[];
+          const byFormat = formats
+            .map(f => {
+              const ms = confirmed.filter(m => m.type === f);
+              if (ms.length === 0) return null;
+              const w = ms.filter(m => m.winnerId === player.uid).length;
+              return { format: f, played: ms.length, wins: w, rate: Math.round((w / ms.length) * 100) };
+            })
+            .filter(Boolean) as { format: MatchType; played: number; wins: number; rate: number }[];
+
+          // Recent form: last 7 confirmed matches
+          const recent = [...confirmed].sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()).slice(0, 7);
+
+          // Streak: current W or L run from latest match
+          let streak = 0; let streakType: 'W' | 'L' | null = null;
+          for (const m of recent) {
+            const won = m.winnerId === player.uid;
+            if (streakType === null) { streakType = won ? 'W' : 'L'; streak = 1; }
+            else if ((streakType === 'W') === won) streak++;
+            else break;
+          }
+
+          // Score patterns: avg points scored/conceded per game
+          let scored = 0, conceded = 0, gameCount = 0;
+          confirmed.forEach(m => {
+            const isP1 = m.player1Id === player.uid;
+            m.games.forEach(g => {
+              scored   += isP1 ? g.p1 : g.p2;
+              conceded += isP1 ? g.p2 : g.p1;
+              gameCount++;
+            });
+          });
+          const avgScored   = gameCount > 0 ? (scored / gameCount).toFixed(1) : '—';
+          const avgConceded = gameCount > 0 ? (conceded / gameCount).toFixed(1) : '—';
+
+          return (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">Match Analytics</h2>
+                <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-semibold">Stage 2</span>
+              </div>
+
+              {/* Recent form */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400">Recent Form</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {recent.map((m, i) => {
+                      const won = m.winnerId === player.uid;
+                      return (
+                        <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold
+                          ${won ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
+                          {won ? 'W' : 'L'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {streakType && (
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${streakType === 'W' ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                      {streak}{streakType} streak
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Win rate by format */}
+              {byFormat.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-400">Win Rate by Format</p>
+                  <div className="space-y-2">
+                    {byFormat.map(row => (
+                      <div key={row.format} className="flex items-center gap-3">
+                        <span className="text-[11px] font-mono font-bold w-8 shrink-0 text-slate-300">{row.format}</span>
+                        <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${row.rate}%` }}/>
+                        </div>
+                        <span className="text-[11px] text-slate-400 w-12 text-right shrink-0">{row.rate}% <span className="text-slate-600">({row.played})</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Score patterns */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                  <p className="text-xl font-black text-emerald-400">{avgScored}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Avg pts scored/game</p>
+                </div>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                  <p className="text-xl font-black text-rose-400">{avgConceded}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Avg pts conceded/game</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
