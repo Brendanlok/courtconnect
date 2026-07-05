@@ -331,12 +331,12 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
   match: PlannedMatch; me: SlotPlayer;
   onEdit: () => void; onLog: () => void; onCancel: () => void;
 }) {
+  const { addNotification } = useApp();
+  const [removeTarget, setRemoveTarget] = useState<SlotPlayer | null>(null);
   const dateObj = new Date(m.date + 'T' + m.time);
   const isPast  = dateObj < new Date();
   const dateStr = dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
   const borderClass = m.status === 'confirmed' ? 'border-emerald-500/25' : m.status === 'cancelled' ? 'border-red-500/20 opacity-60' : 'border-slate-800';
-
-  const allInvited = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
 
   return (
     <div className={`bg-slate-900 border rounded-2xl overflow-hidden ${borderClass}`}>
