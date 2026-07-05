@@ -6,6 +6,39 @@
 
 ---
 
+## [2026-07-05 20:19] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. Implemented the "Match history filter/search" feature from prior session's plan, and a background audit agent found + I fixed a real anti-cheat bypass in doubles matches.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Feature: Match history filter/search on profile pages | ✅ | Implemented per prior session's "Upcoming Plans" — see below |
+| 3 | 🔴 | Audit Home/Tournaments/Chat/LogMatchModal/Topbar/AppContext (delegated) | ✅ | Found 1 confirmed bug + 1 latent bug in `LogMatchModal.tsx`'s anti-cheat logic — see below |
+
+### Issues Found
+- 🟠 [src/components/LogMatchModal.tsx:345](src/components/LogMatchModal.tsx) — `antiCheatCheck`'s max-3-per-week / max-2-per-day opponent limits only checked `opp1`, so in doubles (MD/WD/MX) a player could farm MMR against the same real opponent repeatedly by rotating which slot ("opp1" vs "opp2") they occupy each time, silently bypassing the anti-farming caps.
+- 🟢 [src/components/LogMatchModal.tsx:367](src/components/LogMatchModal.tsx) — The daily-MMR-gain-cap rule only counted wins where the current user was `player1Id`, never `player2Id`. Not currently reachable (self-logged matches always set `player1Id: user.uid`), but a landmine if an opponent-initiated logging path is ever added.
+
+### Improvements Made
+- [src/app/players/[username]/PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — Added a search box (by opponent name/@username) and Result/Format filter dropdowns above the Match History list, reusing the existing `FilterDropdown` component and search-input pattern from Leaderboard. Verified via `npx next build` only — could not verify live in the browser this session because another concurrent session already had a `next dev` server holding the project's dev lock, and this project's dev script refuses to start a second instance even on a different port.
+- [src/components/LogMatchModal.tsx](src/components/LogMatchModal.tsx) — `antiCheatCheck` now takes an array of opponent uids and checks match history against partner/opponent slots on both sides, closing the doubles farming bypass. Also widened the daily-MMR-cap win filter to count wins regardless of which `playerXId` slot the user occupies.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Club chat / per-club message board | Carried over — clubs have one-way announcements only, no member discussion | Medium — new tab in Club detail view, reuse Chat's message list UI against a club-scoped thread |
+| Toast/snackbar for incoming friend + challenge requests | Carried over — still blocked on a design call: app has no live multi-user simulation to trigger an *incoming* event against | Needs a design decision before scoping |
+
+### Critical Alerts
+None.
+
+
 <!-- ENTRIES BELOW — newest first -->
 
 ## [2026-07-05 19:03] — Auto-Dev Session
