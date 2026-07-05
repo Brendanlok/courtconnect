@@ -200,6 +200,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return id;
     });
     addNotif({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
+    const uid = auth.currentUser?.uid;
+    if (uid) saveClubMembership(uid, id).catch(() => {});
   }, []);
 
   const requestJoinClub = useCallback((id: string) => {
