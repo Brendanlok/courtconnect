@@ -220,16 +220,16 @@ function PlayerCard({ player: p, myMMR, isFriend, isIncoming }: {
               <p className="font-bold text-sm truncate">{p.displayName}</p>
               <p className="text-[11px] text-slate-500 shrink-0">@{p.username}</p>
               {p.openToPlay && (
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shrink-0" title="Open to play"/>
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0"/>
               )}
               {p.lookingForPartner && (
-                <Users size={9} className="text-violet-400 shrink-0"/>
+                <Users size={12} className="text-violet-400 shrink-0"/>
               )}
               {isFriend && (
-                <UserCheck size={9} className="text-emerald-400 shrink-0"/>
+                <UserCheck size={12} className="text-emerald-400 shrink-0"/>
               )}
               {isIncoming && !isFriend && (
-                <Bell size={9} className="text-amber-400 shrink-0"/>
+                <Bell size={12} className="text-amber-400 shrink-0"/>
               )}
             </div>
             <p className="text-base font-bold text-amber-400 shrink-0">{p.mmr.toLocaleString()}</p>
