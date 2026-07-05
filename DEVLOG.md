@@ -8,6 +8,39 @@
 
 <!-- ENTRIES BELOW — newest first -->
 
+## [2026-07-05 19:03] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. Audited the recently-landed Events/Clubs overhaul (unified layout, private gating, My Events filter, club hosting, localStorage persistence) via a background agent — most flagged findings turned out to be false positives on closer inspection, so no code changes were made this session.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean, no errors |
+| 2 | 🔴 | Audit Events/Clubs overhaul (delegated) | ✅ | Agent flagged 2 "critical" issues; both verified false positives (see below) |
+| 3 | 🟢 | Scan for no-op handlers / TODOs app-wide | ✅ | None found |
+
+### Issues Found (verified false positives, no fix needed)
+- ❌ Claimed: club-hosted tournaments never satisfy `isMyEvent()` since `organiser` is set to the club name, not `user.displayName`. **Verified false** — [src/app/tournaments/page.tsx:641](src/app/tournaments/page.tsx) always sets `hostUid: 'me'` on creation regardless of hosting club, and `isMyEvent()` (line 101-102) checks `hostUid === 'me'` first, so the host always matches.
+- ❌ Claimed: Chat's `?uid=` deep-link effect is missing `convs` from its dependency array and won't fire if conversations already exist. **Verified false** — this app always navigates via full-page `window.location.href` reloads (project convention, never `router.push`), so the mount-once effect (`[]` deps) is the correct pattern; there's no client-side route transition where a stale-deps bug could manifest.
+- 🟢 Noted but not actioned: `AppContext.tsx`'s `useState` initializers for `user`, `clubs`, `myClubId`, `myClubPendingIds` read `localStorage` synchronously guarded by `typeof window !== 'undefined'`. This is a long-standing pattern (present for `user.openToPlay` since earlier sessions) that can theoretically cause a hydration mismatch on the very first paint in a real SSR context. In practice this is a static-export app with no server render step the user actually sees pre-hydration, so it hasn't caused observed bugs — flagging only so a future session doesn't "rediscover" it as new.
+
+### Improvements Made
+None — audit did not surface any confirmed, actionable bug this session.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Match history filter/search on profile pages | `PlayerProfileClient` lists recent matches but has no way to filter by opponent, format, or win/loss — gets unwieldy as match count grows | Small — reuse the search/filter pattern already used in Players/Leaderboard |
+| Club chat / per-club message board | Clubs have one-way announcements (owner/mod only) but no member discussion; Chat page is 1:1 only | Medium — new tab in Club detail view, reuse Chat's message list UI against a club-scoped thread |
+| Toast/snackbar for incoming friend + challenge requests | Carried over three sessions now — still blocked on a design call: app has no live multi-user simulation, so there's no real trigger point for an *incoming* event to fire against while the user is active | Needs a design decision before scoping — flagging for the user rather than guessing |
+
+### Critical Alerts
+None.
+
 ### 📊 Daily Summary (18:00)
 - Sessions run: 5 (00:20–00:38, 10:37–11:14 auto-dev, 11:23 quick pass, 12:08–12:41, 17:00 Events/Clubs overhaul)
 - Total fixes deployed: 8+ (friend request system, new Matches page, Players page rework, Partner Finder bug fixes x2, Bo3 bracket score fix, Events/Clubs overhaul)
