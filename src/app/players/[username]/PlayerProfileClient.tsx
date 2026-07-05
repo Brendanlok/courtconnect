@@ -60,6 +60,21 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
   const sm  = isMe ? 100 : skillMatch(ME.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+  const filteredMatches = playerMatches
+    .filter(m => matchFormat === 'All' || m.type === matchFormat)
+    .filter(m => {
+      if (matchResult === 'All')     return true;
+      if (matchResult === 'Pending') return m.status === 'Pending';
+      if (matchResult === 'Wins')    return m.winnerId === player.uid;
+      return m.status !== 'Pending' && m.winnerId !== player.uid;
+    })
+    .filter(m => {
+      if (!matchQuery.trim()) return true;
+      const opponent = m.player1Id === player.uid ? m.player2Name     : m.player1Name;
+      const oppUser  = m.player1Id === player.uid ? m.player2Username : m.player1Username;
+      const q = matchQuery.toLowerCase();
+      return opponent.toLowerCase().includes(q) || oppUser.toLowerCase().includes(q);
+    });
 
   // Head-to-Head: confirmed matches between me and this player
   const h2hMatches = isMe ? [] : allMatches.filter(m =>
