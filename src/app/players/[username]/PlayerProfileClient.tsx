@@ -9,11 +9,15 @@ import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { tierProgress, nextTier, skillMatch } from '@/lib/utils';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search } from 'lucide-react';
 import { useState } from 'react';
-import type { Match } from '@/types';
+import type { Match, MatchType } from '@/types';
+
+const RESULT_FILTERS = ['All', 'Wins', 'Losses', 'Pending'] as const;
+type ResultFilter = typeof RESULT_FILTERS[number];
 
 const RADAR_DATA = [
   { stat:'Smash', val:72 },{ stat:'Net Play', val:58 },{ stat:'Defense', val:65 },
