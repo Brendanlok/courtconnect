@@ -135,6 +135,7 @@ export default function Leaderboard() {
                       className={`mx-auto ${isFirst ? 'ring-2 ring-amber-400' : ''}`}/>
                     <p className="text-xs text-slate-400 mt-1">@{p.username}</p>
                     <p className={`font-bold mt-0.5 group-hover:text-emerald-300 transition-colors ${isFirst ? 'text-base' : 'text-sm'}`}>{p.displayName}</p>
+                    {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded">DEMO</span>}
                     <p className={`font-bold text-amber-400 ${isFirst ? 'text-lg' : 'text-sm'}`}>{p.mmr.toLocaleString()}</p>
                     <div className="flex justify-center mt-1"><TierBadge tier={p.tier}/></div>
                     <p className="text-xs text-slate-500 mt-1">📍 {p.area}</p>
@@ -171,6 +172,7 @@ export default function Leaderboard() {
                           <p className={`text-sm font-semibold truncate ${isMe ? 'text-emerald-400' : ''}`}>
                             {p.displayName}{isMe ? ' (You)' : ''}
                           </p>
+                          {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded shrink-0">DEMO</span>}
                           {p.openToPlay && (
                             <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded-full shrink-0">
                               <span className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse"/>Live

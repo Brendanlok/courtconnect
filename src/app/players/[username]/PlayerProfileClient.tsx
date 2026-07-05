@@ -97,6 +97,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 <h1 className="text-2xl font-bold">{player.displayName}</h1>
                 <span className="text-slate-400 text-base">@{player.username}</span>
                 <TierBadge tier={player.tier}/>
+                {player.isDummy && (
+                  <span className="text-[10px] font-bold bg-slate-700 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full tracking-wide">
+                    DEMO PROFILE
+                  </span>
+                )}
               </div>
               <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
                 <MapPin size={12}/> {player.area}, {player.state}
