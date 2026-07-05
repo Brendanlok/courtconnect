@@ -483,7 +483,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
           {incomingPlayers.length > 0 && (
             <div className="p-3 space-y-2">
               <p className="text-[11px] text-amber-400 font-semibold px-1 flex items-center gap-1">
-                <Bell size={10}/> {incomingPlayers.length} incoming
+                <Bell size={10}/> {incomingPlayers.length} Friend Request{incomingPlayers.length !== 1 ? 's' : ''}
               </p>
               {incomingPlayers.map(p => (
                 <div key={p.uid} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
