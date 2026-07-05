@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, signOut, updateProfile, User,
+  signInWithPopup, signInWithRedirect, getRedirectResult, signOut, updateProfile, User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
@@ -56,6 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Handle redirect result from Google sign-in
+    getRedirectResult(auth).then(result => {
+      if (result?.user) createUserDoc(result.user);
+    }).catch(() => {});
+
     const unsub = onAuthStateChanged(auth, user => {
       setAuthUser(user);
       setIsLoading(false);
@@ -87,11 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async (): Promise<string | null> => {
     try {
+      // Try popup first; fall back to redirect if blocked
       const { user } = await signInWithPopup(auth, googleProvider);
       await createUserDoc(user);
       return null;
     } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
+      const code = (e as { code?: string }).code ?? '';
+      if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request') {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      }
+      return friendlyError(code);
     }
   };
 
