@@ -118,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTournaments(ts => ts.map(t => t.id === id ? {
       ...t,
       currentPlayers: t.currentPlayers + 1,
-      participants: [...(t.participants ?? []), user.displayName],
+      participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
     } : t));
   }, [user.displayName]);
   const unregisterTournament = useCallback((id: string) => {
