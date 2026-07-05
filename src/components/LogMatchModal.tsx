@@ -342,15 +342,17 @@ function PlayerSearch({
 
 // ─── Anti-cheat checks ───────────────────────────────────────────────────────
 
-function antiCheatCheck(matches: import('@/types').Match[], userId: string, oppUid: string): string | null {
+function antiCheatCheck(matches: import('@/types').Match[], userId: string, oppUids: string[]): string | null {
   const now = Date.now();
   const day  = 24 * 3600 * 1000;
   const week = 7 * day;
 
-  // Rule 1: max 3 matches vs same opponent in 7 days
+  // Rule 1: max 3 matches vs any of the same opponents in 7 days
   const recentVsOpp = matches.filter(m => {
-    const involves = (m.player1Id === userId && m.player2Id === oppUid) ||
-                     (m.player1Id === oppUid && m.player2Id === userId);
+    const opponentIds = [m.player1Id === userId ? null : m.player1Id, m.player2Id === userId ? null : m.player2Id,
+      m.player1PartnerId, m.player2PartnerId].filter(Boolean) as string[];
+    const involves = (m.player1Id === userId || m.player2Id === userId) &&
+      opponentIds.some(id => oppUids.includes(id));
     return involves && (now - new Date(m.playedAt).getTime()) < week;
   });
   if (recentVsOpp.length >= 3) {
@@ -365,7 +367,7 @@ function antiCheatCheck(matches: import('@/types').Match[], userId: string, oppU
 
   // Rule 3: daily MMR gain cap — check confirmed wins today
   const todayWins = matches.filter(m =>
-    m.player1Id === userId && m.winnerId === userId &&
+    (m.player1Id === userId || m.player2Id === userId) && m.winnerId === userId &&
     m.status === 'Confirmed' &&
     (now - new Date(m.playedAt).getTime()) < day
   );
@@ -403,7 +405,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
     : null;
 
   const hasScores   = games.some(g => Number(g.p1) > 0 || Number(g.p2) > 0);
-  const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, opp1.uid) : null;
+  const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
   const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !cheatBlock;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>
