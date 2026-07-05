@@ -216,3 +216,107 @@ export const MY_STATES = [
   'Kedah','Kelantan','Terengganu','Pahang','Negeri Sembilan',
   'Melaka','Perlis','Sabah','Sarawak','Putrajaya','Labuan',
 ];
+
+// ─── Country data ─────────────────────────────────────────────────────────────
+
+export interface CountryData {
+  code: CountryCode;
+  name: string;
+  flag: string;
+  regionLabel: string;    // "State", "Province", "Region"
+  regions: string[];      // list of states/provinces, empty = free text
+  hasPostcode: boolean;
+  postcodeLen?: number;
+  postcodePattern?: RegExp;
+}
+
+export const COUNTRIES: CountryData[] = [
+  {
+    code: 'MY', name: 'Malaysia', flag: '🇲🇾', regionLabel: 'State',
+    regions: MY_STATES, hasPostcode: true, postcodeLen: 5, postcodePattern: /^\d{5}$/,
+  },
+  {
+    code: 'SG', name: 'Singapore', flag: '🇸🇬', regionLabel: 'Region',
+    regions: ['Central','East','North','North-East','West'],
+    hasPostcode: false,
+  },
+  {
+    code: 'ID', name: 'Indonesia', flag: '🇮🇩', regionLabel: 'Province',
+    regions: ['Bali','Banten','DKI Jakarta','East Java','East Kalimantan','East Nusa Tenggara',
+              'Gorontalo','Jambi','Lampung','Maluku','North Kalimantan','North Maluku',
+              'North Sulawesi','North Sumatra','Papua','Riau','Riau Islands','South Kalimantan',
+              'South Sulawesi','South Sumatra','Southeast Sulawesi','West Java','West Kalimantan',
+              'West Nusa Tenggara','West Papua','West Sulawesi','West Sumatra','Yogyakarta'],
+    hasPostcode: false,
+  },
+  {
+    code: 'TH', name: 'Thailand', flag: '🇹🇭', regionLabel: 'Province',
+    regions: ['Bangkok','Chiang Mai','Chiang Rai','Chonburi','Khon Kaen','Nakhon Ratchasima',
+              'Nonthaburi','Pathum Thani','Phuket','Songkhla','Surat Thani','Udon Thani'],
+    hasPostcode: false,
+  },
+  {
+    code: 'PH', name: 'Philippines', flag: '🇵🇭', regionLabel: 'Region',
+    regions: ['NCR','CAR','Region I','Region II','Region III','Region IV-A','Region IV-B',
+              'Region V','Region VI','Region VII','Region VIII','Region IX','Region X',
+              'Region XI','Region XII','BARMM','Caraga'],
+    hasPostcode: false,
+  },
+  {
+    code: 'VN', name: 'Vietnam', flag: '🇻🇳', regionLabel: 'Province',
+    regions: ['Hanoi','Ho Chi Minh City','Da Nang','Hai Phong','Can Tho','Bien Hoa','Hue'],
+    hasPostcode: false,
+  },
+  {
+    code: 'CN', name: 'China', flag: '🇨🇳', regionLabel: 'Province',
+    regions: ['Beijing','Shanghai','Guangzhou','Shenzhen','Chengdu','Hangzhou','Wuhan',
+              'Chongqing','Nanjing','Xi\'an','Tianjin','Suzhou'],
+    hasPostcode: false,
+  },
+  {
+    code: 'JP', name: 'Japan', flag: '🇯🇵', regionLabel: 'Prefecture',
+    regions: ['Tokyo','Osaka','Kyoto','Kanagawa','Aichi','Hokkaido','Fukuoka','Hyogo',
+              'Saitama','Chiba','Hiroshima','Miyagi'],
+    hasPostcode: false,
+  },
+  {
+    code: 'KR', name: 'South Korea', flag: '🇰🇷', regionLabel: 'Province',
+    regions: ['Seoul','Busan','Incheon','Daegu','Daejeon','Gwangju','Suwon','Ulsan',
+              'Gyeonggi','Gyeongnam','Gyeongbuk','Jeonnam','Jeonbuk','Chungnam','Chungbuk','Gangwon','Jeju'],
+    hasPostcode: false,
+  },
+  {
+    code: 'IN', name: 'India', flag: '🇮🇳', regionLabel: 'State',
+    regions: ['Andhra Pradesh','Delhi','Gujarat','Karnataka','Kerala','Maharashtra',
+              'Punjab','Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','West Bengal'],
+    hasPostcode: false,
+  },
+  {
+    code: 'AU', name: 'Australia', flag: '🇦🇺', regionLabel: 'State',
+    regions: ['ACT','New South Wales','Northern Territory','Queensland',
+              'South Australia','Tasmania','Victoria','Western Australia'],
+    hasPostcode: false,
+  },
+  {
+    code: 'GB', name: 'United Kingdom', flag: '🇬🇧', regionLabel: 'Region',
+    regions: ['England','Scotland','Wales','Northern Ireland'],
+    hasPostcode: false,
+  },
+  {
+    code: 'US', name: 'United States', flag: '🇺🇸', regionLabel: 'State',
+    regions: ['Alabama','Alaska','Arizona','California','Colorado','Florida','Georgia',
+              'Hawaii','Illinois','New York','Ohio','Pennsylvania','Texas','Virginia','Washington'],
+    hasPostcode: false,
+  },
+  {
+    code: 'OTHER', name: 'Other', flag: '🌐', regionLabel: 'Region',
+    regions: [], hasPostcode: false,
+  },
+];
+
+export function getCountryByCode(code: CountryCode): CountryData {
+  return COUNTRIES.find(c => c.code === code) ?? COUNTRIES[0];
+}
+export function getCountryByName(name: string): CountryData {
+  return COUNTRIES.find(c => c.name === name) ?? COUNTRIES[0];
+}

@@ -9,7 +9,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { Plus, User, Settings, LogOut, QrCode, ChevronDown, MapPin, Bell, Navigation, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
-import { MY_STATES } from '@/lib/utils';
+import { MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import type { MalaysiaState } from '@/types';
 
 // Rough coordinate → Malaysian state mapping

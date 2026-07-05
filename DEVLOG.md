@@ -6,6 +6,38 @@
 
 ---
 
+## [2026-07-06 00:00] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start (already included the user's own `Record Live` / planned-match / privacy-settings work landed since the last auto-dev session at 20:19). Audited the newly-landed `matches/page.tsx`, `LiveMatchModal.tsx`, and `SettingsModal.tsx` changes; found and fixed a display bug in the Planned Matches card, and flagged (but did not fix) a bigger gap: the new Privacy settings UI saves preferences that are never read/enforced anywhere.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🔴 | Audit `matches/page.tsx`, `LiveMatchModal.tsx`, `SettingsModal.tsx`, `AuthGate.tsx` (recent commits since last session) | ✅ | Found 1 confirmed display bug + 1 confirmed incomplete-feature gap — see below |
+
+### Issues Found
+- 🟠 [src/app/matches/page.tsx:388](src/app/matches/page.tsx) — `PlannedCard`'s Team A slot rendering hardcoded `slots={[me, ...m.teamA.slice(1)]}`, always displaying the current user in Team A slot 0 regardless of what was actually saved. Since `PlanMatchModal`'s slot picker explicitly allows clearing/swapping slot A0 to a different player (comment: "freely clearable/swappable"), a user who reassigned themselves out of slot 0 (e.g. planning a match they're organizing for others) would see the card silently show themselves back in that slot — a display-only bug, the underlying saved data and downstream `LiveMatchModal` usage were unaffected.
+- 🟠 [src/components/SettingsModal.tsx](src/components/SettingsModal.tsx) / [src/types/index.ts](src/types/index.ts) — New Privacy settings (Match History / Planned Matches / Friend List / Club Membership / Event History visibility) save a `user.privacy` object via `updateUser`, but no other file in the app reads `.privacy` — confirmed via full-codebase grep. The UI is fully functional and persists choices, but setting anything to "Friends" or "Only Me" currently has zero effect on what's actually shown on profile/leaderboard/club pages. Not fixed this session — enforcing it properly touches multiple pages (`PlayerProfileClient`, `players/page.tsx`, `tournaments/page.tsx`) and is a bigger scope than a quick fix; flagging for a dedicated session or user sign-off on which pages should respect it first.
+
+### Improvements Made
+- [src/app/matches/page.tsx](src/app/matches/page.tsx) — `PlannedCard` now passes `m.teamA` directly to `TeamSlots` instead of overriding slot 0 with the current user; label switches between "Team A (You)" and "Team A" based on whether the user is actually in that team. Verified via `npx next build` — could not verify live in the browser this session since the app's auth is real Firebase (no demo/guest login available to script through headlessly).
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce Privacy settings | Settings UI exists and persists but has zero effect anywhere — misleading to users who set it expecting privacy | Medium-Large — needs a pass through `PlayerProfileClient`, `players/page.tsx` (Partner Finder/Clubs), `tournaments/page.tsx` to gate what's rendered per `privacy` level and viewer relationship (friend/stranger) |
+| Club chat / per-club message board | Carried over — clubs have one-way announcements only, no member discussion | Medium — new tab in Club detail view, reuse Chat's message list UI against a club-scoped thread |
+| Toast/snackbar for incoming friend + challenge requests | Carried over — still blocked on a design call: app has no live multi-user simulation to trigger an *incoming* event against | Needs a design decision before scoping |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-05 20:19] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
