@@ -319,7 +319,6 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
   const [tierFilter,   setTierFilter]   = useState<Tier | 'All'>('All');
   const [sortDir,      setSortDir]      = useState<SortDir>('desc');
   const [formatFilter,   setFormatFilter]   = useState<'All' | MatchType>('All');
-  const [partnerSent,    setPartnerSent]    = useState<string[]>([]);
   const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
   const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
   const requestsRef = useRef<HTMLDivElement>(null);
