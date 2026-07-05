@@ -35,28 +35,31 @@ const VENUE_SUGGESTIONS = [
 // ─── Participants Modal ────────────────────────────────────────────────────────
 
 function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament; onClose: () => void }) {
-  const names = t.participants ?? [];
+  const participants = t.participants ?? [];
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
           <div>
             <h3 className="font-bold text-sm">{t.name}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{names.length} / {t.maxPlayers} players signed up</p>
+            <p className="text-xs text-slate-400 mt-0.5">{participants.length} / {t.maxPlayers} players signed up</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
         <div className="p-4 max-h-[60vh] overflow-y-auto">
-          {names.length === 0 ? (
+          {participants.length === 0 ? (
             <p className="text-slate-500 text-sm text-center py-6">No players signed up yet.</p>
           ) : (
             <div className="space-y-2">
-              {names.map((name, i) => (
+              {participants.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 bg-slate-800 rounded-xl px-3 py-2.5">
                   <div className="w-6 h-6 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-[10px] font-bold text-emerald-400 shrink-0">
                     {i + 1}
                   </div>
-                  <span className="text-sm font-medium">{name}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">{p.displayName}</span>
+                    <span className="text-xs text-slate-500 ml-1.5">@{p.username}</span>
+                  </div>
                 </div>
               ))}
             </div>
