@@ -31,6 +31,13 @@ export interface UserProfile {
   distKm?: number;
   joinedAt: string;
   endorsements?: Record<string, number>; // skill → count
+  privacy?: {
+    matchHistory:  'public' | 'friends' | 'private';
+    plannedMatches:'public' | 'friends' | 'private';
+    friendList:    'public' | 'friends' | 'private';
+    clubMembership:'public' | 'friends' | 'private';
+    eventHistory:  'public' | 'friends' | 'private';
+  };
 }
 
 export interface Match {

@@ -523,11 +523,102 @@ function CompletionView({ match, onLogMatch, onClose }: {
   );
 }
 
+// ── Planned match start view ──────────────────────────────────────────────────
+
+function PlannedMatchStart({ pm, me, onStart, onJoin }: {
+  pm: PlannedMatchRef; me: LiveMatchPlayer;
+  onStart: () => void; onJoin: (m: LiveMatch) => void;
+}) {
+  const [joinCode, setJoinCode] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
+  const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
+
+  const handleJoin = async () => {
+    if (!joinCode.trim()) return;
+    setJoinLoading(true); setJoinError('');
+    const m = await getLiveMatchByCode(joinCode.trim()).catch(() => null);
+    setJoinLoading(false);
+    if (!m) { setJoinError('Match not found. Check the code.'); return; }
+    onJoin(m);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Match summary */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400 text-xs">Format</span>
+          <span className="font-bold text-xs">{FORMAT_LABELS[pm.format]}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400 text-xs">Venue</span>
+          <span className="text-xs text-slate-200 truncate max-w-[60%] text-right">{pm.venue}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-400 text-xs">Best of</span>
+          <span className="text-xs text-slate-200">{pm.bestOf ?? 3}</span>
+        </div>
+      </div>
+
+      {/* Teams preview */}
+      <div className="grid grid-cols-2 gap-2">
+        {[{ label: 'Team A', players: aPlayers }, { label: 'Team B', players: bPlayers }].map(({ label, players }) => (
+          <div key={label} className="space-y-1">
+            <p className="text-[10px] text-slate-500 font-semibold uppercase">{label}</p>
+            {players.length === 0
+              ? <p className="text-[11px] text-slate-600 italic">No players</p>
+              : players.map(p => (
+                <div key={p.uid} className="flex items-center gap-1.5 bg-slate-800 rounded-lg px-2 py-1.5">
+                  <Avatar name={p.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
+                  <span className="text-[11px] font-semibold truncate">{p.displayName}</span>
+                </div>
+              ))}
+          </div>
+        ))}
+      </div>
+
+      <button onClick={onStart}
+        className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+        <Radio size={14}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Start Live Scoring
+      </button>
+
+      <div className="relative flex items-center gap-2">
+        <div className="flex-1 border-t border-slate-700"/>
+        <span className="text-[10px] text-slate-600 shrink-0">or join as spectator</span>
+        <div className="flex-1 border-t border-slate-700"/>
+      </div>
+
+      <div className="flex gap-2">
+        <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
+          maxLength={6} placeholder="Join code"
+          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm font-mono font-bold tracking-widest outline-none focus:border-emerald-500 uppercase"/>
+        <button onClick={handleJoin} disabled={joinLoading || joinCode.length < 4}
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors">
+          {joinLoading ? '…' : 'Watch'}
+        </button>
+      </div>
+      {joinError && <p className="text-xs text-red-400">{joinError}</p>}
+    </div>
+  );
+}
+
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 type ModalView = 'setup' | 'scoring' | 'complete';
 
-export function LiveMatchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// PlannedMatch shape (minimal — matches the type in matches/page.tsx)
+interface PlannedMatchRef {
+  id: string; format: MatchType; venue: string; bestOf?: 1 | 3 | 5;
+  teamA: ({ uid: string; displayName: string; username: string } | null)[];
+  teamB: ({ uid: string; displayName: string; username: string } | null)[];
+}
+
+export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
+  open: boolean; onClose: () => void; plannedMatch?: PlannedMatchRef | null;
+}) {
   const { user, addMatch } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
@@ -539,6 +630,28 @@ export function LiveMatchModal({ open, onClose }: { open: boolean; onClose: () =
 
   const handleStart = (m: LiveMatch) => { setLiveMatch(m); setIsHost(true); setView('scoring'); };
   const handleJoin  = (m: LiveMatch) => { setLiveMatch(m); setIsHost(false); setView('scoring'); };
+
+  // If coming from a planned match, auto-build and start immediately
+  const handleStartFromPlanned = (pm: PlannedMatchRef) => {
+    const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
+    const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
+    const buildName = (slots: LiveMatchPlayer[]) =>
+      slots.map(p => p.displayName.split(' ')[0]).join(' & ') || '—';
+    const m: LiveMatch = {
+      id: genId(), joinCode: genCode(), format: pm.format, bestOf: pm.bestOf ?? 3,
+      venue: pm.venue, hostUid: me.uid,
+      teamA: aPlayers.length ? aPlayers : [me],
+      teamB: bPlayers.length ? bPlayers : [],
+      teamAName: buildName(aPlayers.length ? aPlayers : [me]),
+      teamBName: buildName(bPlayers),
+      status: 'active', currentGame: 0,
+      games: [{ a: 0, b: 0, done: false }],
+      gameWins: { a: 0, b: 0 },
+      createdAt: new Date().toISOString(),
+    };
+    createLiveMatch(m).catch(() => {});
+    handleStart(m);
+  };
   const handleComplete = (m: LiveMatch) => { setLiveMatch(m); setView('complete'); };
 
   const handleLogMatch = (m: LiveMatch) => {
@@ -563,7 +676,7 @@ export function LiveMatchModal({ open, onClose }: { open: boolean; onClose: () =
   };
 
   const titles: Record<ModalView, string> = {
-    setup: 'Live Match',
+    setup: plannedMatch ? 'Record Live' : 'Live Match',
     scoring: liveMatch ? `${liveMatch.teamAName} vs ${liveMatch.teamBName}` : 'Live Scoring',
     complete: 'Match Complete',
   };
@@ -582,7 +695,10 @@ export function LiveMatchModal({ open, onClose }: { open: boolean; onClose: () =
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
         </div>
         <div className="overflow-y-auto p-4 flex-1">
-          {view === 'setup'    && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
+          {view === 'setup' && plannedMatch && (
+            <PlannedMatchStart pm={plannedMatch} me={me} onStart={() => handleStartFromPlanned(plannedMatch)} onJoin={handleJoin}/>
+          )}
+          {view === 'setup' && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
           {view === 'scoring'  && liveMatch && <ScorerView initialMatch={liveMatch} isHost={isHost} onComplete={handleComplete}/>}
           {view === 'complete' && liveMatch && <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}/>}
         </div>

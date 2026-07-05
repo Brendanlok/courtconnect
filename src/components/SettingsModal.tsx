@@ -1,8 +1,34 @@
 'use client';
 import { useState } from 'react';
-import { X, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation } from '@/lib/utils';
+import type { UserProfile } from '@/types';
+
+type PrivacyLevel = 'public' | 'friends' | 'private';
+type PrivacySettings = NonNullable<UserProfile['privacy']>;
+
+const DEFAULT_PRIVACY: PrivacySettings = {
+  matchHistory:   'public',
+  plannedMatches: 'public',
+  friendList:     'public',
+  clubMembership: 'public',
+  eventHistory:   'public',
+};
+
+const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string; icon: React.ReactNode }[] = [
+  { value: 'public',  label: 'Public',  icon: <Globe  size={11}/> },
+  { value: 'friends', label: 'Friends', icon: <Users  size={11}/> },
+  { value: 'private', label: 'Only Me', icon: <Lock   size={11}/> },
+];
+
+const PRIVACY_ITEMS: { key: keyof PrivacySettings; label: string }[] = [
+  { key: 'matchHistory',   label: 'Match History' },
+  { key: 'plannedMatches', label: 'Planned Matches' },
+  { key: 'friendList',     label: 'Friend List' },
+  { key: 'clubMembership', label: 'Club Membership' },
+  { key: 'eventHistory',   label: 'Event History' },
+];
 
 type DeleteStep = 'idle' | 'warn' | 'confirm';
 
@@ -15,6 +41,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [availability,setAvailability]= useState<string[]>(
     (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
   );
+  const [privacy,     setPrivacy]     = useState<PrivacySettings>({ ...DEFAULT_PRIVACY, ...user.privacy });
   const [saved,       setSaved]       = useState(false);
   const [deleteStep,  setDeleteStep]  = useState<DeleteStep>('idle');
   const [deleteInput, setDeleteInput] = useState('');
@@ -33,6 +60,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       area:  location?.city  ?? user.area,
       state: location?.state ?? user.state,
       available: availability.join(','),
+      privacy,
     });
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 900);
@@ -139,6 +167,30 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-500">Username</span>
             <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
+          </div>
+
+          {/* Privacy */}
+          <div className="border-t border-slate-800/80 pt-3 space-y-3">
+            <div>
+              <p className="text-[11px] text-slate-500 font-semibold mb-0.5">Privacy</p>
+              <p className="text-[10px] text-slate-600">Control who can see your profile information.</p>
+            </div>
+            {PRIVACY_ITEMS.map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <span className="text-xs text-slate-300 shrink-0">{label}</span>
+                <div className="flex gap-1">
+                  {PRIVACY_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => setPrivacy(p => ({ ...p, [key]: opt.value }))}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-colors
+                        ${privacy[key] === opt.value
+                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                      {opt.icon}{opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Delete account */}

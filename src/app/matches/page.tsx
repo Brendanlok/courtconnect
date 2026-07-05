@@ -17,6 +17,7 @@ import type { UserProfile, MatchType } from '@/types';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PlannedStatus = 'pending' | 'confirmed' | 'cancelled';
+type PlanMode = 'plan' | 'live'; // 'live' = Record Live flow
 
 interface SlotPlayer {
   uid: string;
@@ -39,6 +40,7 @@ interface PlannedMatch {
   accepted: string[];
   declined: string[];
   status: PlannedStatus;
+  liveRecord?: boolean; // created via Record Live — live scoring enabled once all confirmed
 }
 
 const FORMAT_LABELS: Record<MatchType, string> = {
@@ -120,11 +122,13 @@ const SEED_PLANNED: PlannedMatch[] = [
 export default function MatchesPage() {
   const { user, matches, addNotification } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
-  const [logOpen,  setLogOpen]  = useState(false);
-  const [liveOpen, setLiveOpen] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [editId,   setEditId]   = useState<string | null>(null);
-  const [cancelId, setCancelId] = useState<string | null>(null);
+  const [logOpen,     setLogOpen]     = useState(false);
+  const [liveOpen,    setLiveOpen]    = useState(false);
+  const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
+  const [planOpen,    setPlanOpen]    = useState(false);
+  const [planMode,    setPlanMode]    = useState<PlanMode>('plan');
+  const [editId,      setEditId]      = useState<string | null>(null);
+  const [cancelId,    setCancelId]    = useState<string | null>(null);
 
   const myMatches = matches.filter(m =>
     m.player1Id === 'me' || m.player2Id === 'me' ||
@@ -145,26 +149,27 @@ export default function MatchesPage() {
     }))
   );
 
-  const openPlan = (id?: string) => { setEditId(id ?? null); setPlanOpen(true); };
+  const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
 
   const handleSavePlan = (pm: PlannedMatch) => {
+    const pmFinal = planMode === 'live' ? { ...pm, liveRecord: true } : pm;
     setPlanned(prev => editId
-      ? prev.map(p => p.id === editId ? pm : p)
-      : [pm, ...prev]);
+      ? prev.map(p => p.id === editId ? pmFinal : p)
+      : [pmFinal, ...prev]);
     setPlanOpen(false);
     // Persist to Firestore
     const uid = auth.currentUser?.uid;
-    if (uid) savePlannedMatch(uid, pm).catch(() => {});
+    if (uid) savePlannedMatch(uid, pmFinal).catch(() => {});
     // Notify all invited players
-    const invited = [...pm.teamA, ...pm.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
+    const invited = [...pmFinal.teamA, ...pmFinal.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
     invited.forEach(p => {
       addNotification({
         id: `notif_${Date.now()}_${p.uid}`,
         type: 'match_pending',
-        title: editId ? 'Match Updated' : 'Match Invite',
+        title: editId ? 'Match Updated' : pmFinal.liveRecord ? 'Live Match Invite' : 'Match Invite',
         body: editId
-          ? `${user.displayName} updated a planned match you're in (${pm.venue}, ${pm.date}).`
-          : `${user.displayName} invited you to a ${FORMAT_LABELS[pm.format]} at ${pm.venue} on ${pm.date}.`,
+          ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
+          : `${user.displayName} invited you to a ${FORMAT_LABELS[pmFinal.format]} at ${pmFinal.venue} on ${pmFinal.date}.${pmFinal.liveRecord ? ' (Live recorded match — please confirm to enable live scoring.)' : ''}`,
         read: false,
         createdAt: new Date().toISOString(),
       });
@@ -199,9 +204,9 @@ export default function MatchesPage() {
           <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
         </div>
         <div className="flex items-center gap-2 mt-1">
-          <button onClick={() => setLiveOpen(true)}
+          <button onClick={() => openPlan(undefined, 'live')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
-            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Live
+            <Radio size={12}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
           </button>
           <button onClick={() => openPlan()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
@@ -243,6 +248,7 @@ export default function MatchesPage() {
                 onEdit={() => openPlan(m.id)}
                 onLog={() => setLogOpen(true)}
                 onCancel={() => setCancelId(m.id)}
+                onLiveRecord={() => { setLiveMatchId(m.id); setLiveOpen(true); }}
               />
             ))
           )}
@@ -270,7 +276,13 @@ export default function MatchesPage() {
       )}
 
       {logOpen  && <LogMatchModal  open={true} onClose={() => setLogOpen(false)}/>}
-      {liveOpen && <LiveMatchModal open={true} onClose={() => setLiveOpen(false)}/>}
+      {liveOpen && (
+        <LiveMatchModal
+          open={true}
+          onClose={() => { setLiveOpen(false); setLiveMatchId(null); }}
+          plannedMatch={liveMatchId ? planned.find(m => m.id === liveMatchId) ?? null : null}
+        />
+      )}
 
       {planOpen && (
         <PlanMatchModal
@@ -336,9 +348,9 @@ function GenderDot({ gender }: { gender?: 'Male' | 'Female' | null }) {
 
 // ─── Planned match card ───────────────────────────────────────────────────────
 
-function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
+function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord }: {
   match: PlannedMatch; me: SlotPlayer;
-  onEdit: () => void; onLog: () => void; onCancel: () => void;
+  onEdit: () => void; onLog: () => void; onCancel: () => void; onLiveRecord: () => void;
 }) {
   const { addNotification } = useApp();
   const [removeTarget, setRemoveTarget] = useState<SlotPlayer | null>(null);
@@ -407,14 +419,31 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-0.5">
-          {isPast && m.status !== 'cancelled' && (
+        {m.status !== 'cancelled' && (
+          <div className="flex gap-2 pt-0.5 flex-wrap">
             <button onClick={onLog}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
-              <Trophy size={11}/> Log Result
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-xl text-xs font-bold transition-colors">
+              <Trophy size={11}/> Log Match
             </button>
-          )}
-        </div>
+            {m.liveRecord && (() => {
+              const allPlayers = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
+              const allConfirmed = allPlayers.length === 0 || allPlayers.every(p => m.accepted.includes(p.uid));
+              return (
+                <button onClick={allConfirmed ? onLiveRecord : undefined} disabled={!allConfirmed}
+                  title={allConfirmed ? 'Start live scoring' : 'Waiting for all players to confirm'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors
+                    ${allConfirmed
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                      : 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed'}`}>
+                  <Radio size={11}/>
+                  {allConfirmed
+                    ? <><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Start Live Scoring</>
+                    : 'Waiting for confirmations…'}
+                </button>
+              );
+            })()}
+          </div>
+        )}
       </div>
     </div>
   );
