@@ -2,6 +2,12 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
+import { auth } from '@/lib/firebase';
+import {
+  saveMatch, saveUserProfile, saveOpenToPlay,
+  saveTournamentReg, deleteTournamentReg,
+  saveClubMembership, saveFriend, removeFriendRecord,
+} from '@/lib/firestoreService';
 
 interface AppCtx {
   user: UserProfile;
