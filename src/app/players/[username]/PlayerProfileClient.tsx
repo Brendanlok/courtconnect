@@ -46,6 +46,9 @@ export function PlayerProfileClient({ username }: { username: string }) {
     return new URLSearchParams(window.location.search).get('challenge') === '1';
   });
   const [settOpen,       setSettOpen]       = useState(false);
+  const [matchQuery,     setMatchQuery]     = useState('');
+  const [matchFormat,    setMatchFormat]    = useState<MatchType | 'All'>('All');
+  const [matchResult,    setMatchResult]    = useState<ResultFilter>('All');
 
   if (!staticPlayer) return notFound();
 
