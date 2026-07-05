@@ -357,8 +357,8 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
             {m.notes && <p className="text-[11px] text-slate-500 italic">{m.notes}</p>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEdit} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><Edit3 size={13}/></button>
-            <button onClick={onDelete} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={13}/></button>
+            {m.status !== 'cancelled' && <button onClick={onEdit} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><Edit3 size={13}/></button>}
+            {m.status !== 'cancelled' && <button onClick={onCancel} title="Cancel match" className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={13}/></button>}
           </div>
         </div>
 
