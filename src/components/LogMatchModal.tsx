@@ -51,14 +51,37 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
       let payload: { uid?: string; username?: string; displayName?: string } = {};
       try { payload = JSON.parse(result.data); } catch { payload = {}; }
 
-      const player = ALL_PLAYERS.find(p =>
+      // First check seed players, then look up in Firestore
+      let player: UserProfile | null = ALL_PLAYERS.find(p =>
         (payload.uid && p.uid === payload.uid) ||
         (payload.username && p.username === payload.username)
-      );
+      ) ?? null;
+
+      if (!player && (payload.uid || payload.username)) {
+        const fbUser = payload.uid
+          ? await lookupUserByUid(payload.uid)
+          : await lookupUserByUsername(payload.username!);
+        if (fbUser && fbUser.uid && fbUser.username && fbUser.displayName) {
+          player = {
+            uid: fbUser.uid,
+            username: fbUser.username,
+            displayName: fbUser.displayName,
+            email: fbUser.email ?? '',
+            mmr: fbUser.mmr ?? 1200,
+            tier: fbUser.tier ?? 'Silver',
+            globalRank: fbUser.globalRank ?? 9999,
+            state: fbUser.state ?? 'Selangor',
+            area: fbUser.area ?? '',
+            stats: fbUser.stats ?? { wins: 0, losses: 0, totalMatches: 0 },
+            joinedAt: fbUser.joinedAt ?? new Date().toISOString(),
+            gender: fbUser.gender,
+          } as UserProfile;
+        }
+      }
 
       if (!player) {
         setState('error');
-        setMessage(`QR decoded but player "${payload.displayName ?? payload.username ?? result.data}" is not in the system.`);
+        setMessage(`QR decoded but player "${payload.displayName ?? payload.username ?? result.data}" is not registered.`);
         return;
       }
 
