@@ -37,6 +37,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const [displayName, setDisplayName] = useState(user.displayName);
   const [bio,         setBio]         = useState(user.bio ?? '');
+  const [gender,      setGender]      = useState<'Male' | 'Female' | undefined>(user.gender);
+  const [birthday,    setBirthday]    = useState(user.birthday ?? '');
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
   const [availability,setAvailability]= useState<string[]>(
     (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
@@ -56,7 +58,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const save = () => {
     updateUser({
-      displayName, bio, postcode,
+      displayName, bio, postcode, gender, birthday: birthday || undefined,
       area:  location?.city  ?? user.area,
       state: location?.state ?? user.state,
       available: availability.join(','),
@@ -107,6 +109,32 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               placeholder="Tell other players about yourself…"
               className={`mt-1 ${inp} resize-none`}/>
           </label>
+
+          {/* Gender + Birthday */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Gender</p>
+              <div className="flex gap-2">
+                {(['Male','Female'] as const).map(g => (
+                  <button key={g} type="button" onClick={() => setGender(g)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors
+                      ${gender === g
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    {g === 'Male' ? '♂ Male' : '♀ Female'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-500 font-semibold mb-1.5">
+                Birthday {birthday && <span className="text-slate-400 font-normal">· age {Math.floor((Date.now() - new Date(birthday).getTime()) / 31557600000)}</span>}
+              </p>
+              <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
+                max={new Date().toISOString().slice(0,10)}
+                className={`${inp} text-sm`}/>
+            </div>
+          </div>
 
           {/* Postcode → auto-fills city + state */}
           <div>

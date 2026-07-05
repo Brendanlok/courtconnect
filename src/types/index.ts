@@ -30,6 +30,7 @@ export interface UserProfile {
   preferredFormats?: MatchType[];
   distKm?: number;
   joinedAt: string;
+  birthday?: string;                     // ISO date e.g. "1997-04-15"
   endorsements?: Record<string, number>; // skill → count
   privacy?: {
     matchHistory:  'public' | 'friends' | 'private';

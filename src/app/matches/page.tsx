@@ -198,18 +198,18 @@ export default function MatchesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Matches</h1>
           <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
         </div>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex gap-2 sm:mt-1">
           <button onClick={() => openPlan(undefined, 'live')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
             <Radio size={12}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
           </button>
           <button onClick={() => openPlan()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
             <Plus size={13}/> Plan Match
           </button>
         </div>
@@ -529,18 +529,22 @@ function MatchHistoryCard({ match: m }: { match: import('@/types').Match }) {
 
 type SlotKey = { team: 'A' | 'B'; idx: number };
 
-function PlayerSearchDropdown({ gender, exclude, onSelect, onClose }: {
+function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer }: {
   gender: 'Male' | 'Female' | null;
   exclude: string[];
   onSelect: (p: SlotPlayer) => void;
   onClose: () => void;
+  selfPlayer?: SlotPlayer; // show at top as "(Self)"
 }) {
   const [q, setQ] = useState('');
+  const showSelf = selfPlayer && !exclude.includes(selfPlayer.uid) && (!gender || selfPlayer.gender === gender) &&
+    (!q || selfPlayer.displayName.toLowerCase().includes(q.toLowerCase()) || selfPlayer.username.toLowerCase().includes(q.toLowerCase()));
   const candidates = PLAYERS
     .filter(p => !exclude.includes(p.uid))
+    .filter(p => p.uid !== selfPlayer?.uid) // selfPlayer shown separately
     .filter(p => !gender || p.gender === gender)
     .filter(p => !q || p.displayName.toLowerCase().includes(q.toLowerCase()) || p.username.toLowerCase().includes(q.toLowerCase()))
-    .slice(0, 6);
+    .slice(0, showSelf ? 5 : 6);
 
   return (
     <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
@@ -553,7 +557,21 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose }: {
         </div>
       </div>
       <div className="max-h-48 overflow-y-auto">
-        {candidates.length === 0 ? (
+        {showSelf && selfPlayer && (
+          <button onClick={() => { onSelect(selfPlayer); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-emerald-500/10 border-b border-slate-700/50 transition-colors text-left">
+            <Avatar name={selfPlayer.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold truncate">{selfPlayer.displayName}</p>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-bold shrink-0">Self</span>
+              </div>
+              <p className="text-[10px] text-slate-500">@{selfPlayer.username}</p>
+            </div>
+            {selfPlayer.gender && <GenderDot gender={selfPlayer.gender}/>}
+          </button>
+        )}
+        {candidates.length === 0 && !showSelf ? (
           <p className="text-xs text-slate-500 text-center py-4">{gender ? `No ${gender.toLowerCase()} players found` : 'No players found'}</p>
         ) : candidates.map(p => (
           <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username, gender: p.gender }); onClose(); }}
@@ -571,37 +589,30 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose }: {
   );
 }
 
-function SlotPicker({ slot, label, genderRequired, exclude, isMe, onSet, onClear }: {
+function SlotPicker({ slot, label, genderRequired, exclude, selfPlayer, isSelfSlot, onSet, onClear }: {
   slot: SlotPlayer | null;
   label: string;
   genderRequired: 'Male' | 'Female' | null;
   exclude: string[];
-  isMe?: boolean;
+  selfPlayer: SlotPlayer;   // current user, shown at top of picker
+  isSelfSlot?: boolean;     // visual hint that this is the default-self slot
   onSet: (p: SlotPlayer) => void;
   onClear: () => void;
 }) {
   const [open, setOpen] = useState(false);
-
-  if (isMe && slot) {
-    return (
-      <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3 py-2 min-h-[44px]">
-        <Avatar name={slot.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate">{slot.displayName}</p>
-          <p className="text-[10px] text-slate-500">@{slot.username} · You</p>
-        </div>
-        {slot.gender && <GenderDot gender={slot.gender}/>}
-      </div>
-    );
-  }
+  const isFilledBySelf = slot?.uid === selfPlayer.uid;
 
   return (
     <div className="relative">
       {slot ? (
-        <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-h-[44px]">
+        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 min-h-[44px] border
+          ${isFilledBySelf ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-slate-800 border-slate-700'}`}>
           <Avatar name={slot.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate">{slot.displayName}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold truncate">{slot.displayName}</p>
+              {isFilledBySelf && <span className="text-[9px] text-emerald-400 font-bold shrink-0">You</span>}
+            </div>
             <p className="text-[10px] text-slate-500">@{slot.username}</p>
           </div>
           {slot.gender && <GenderDot gender={slot.gender}/>}
@@ -624,6 +635,7 @@ function SlotPicker({ slot, label, genderRequired, exclude, isMe, onSet, onClear
         <PlayerSearchDropdown
           gender={genderRequired}
           exclude={exclude}
+          selfPlayer={selfPlayer}
           onSelect={onSet}
           onClose={() => setOpen(false)}
         />
@@ -647,9 +659,9 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
 
   const { teamSize } = slotsForFormat(format);
 
-  // teamA[0] = always the organiser (me)
+  // slot A0 defaults to me but is freely clearable/swappable
   const initTeamA = (): (SlotPlayer | null)[] => {
-    if (existing?.format === format) return existing.teamA.map((s, i) => i === 0 ? me : s);
+    if (existing?.format === format) return existing.teamA;
     return teamSize === 1 ? [me] : [me, null];
   };
   const initTeamB = (): (SlotPlayer | null)[] => {
@@ -660,11 +672,27 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   const [teamA, setTeamA] = useState<(SlotPlayer | null)[]>(initTeamA);
   const [teamB, setTeamB] = useState<(SlotPlayer | null)[]>(initTeamB);
 
+  // Derive available formats based on currently-selected players' genders
+  const allSelected = [...teamA, ...teamB].filter((s): s is SlotPlayer => s !== null);
+  const hasMale   = allSelected.some(s => s.gender === 'Male');
+  const hasFemale = allSelected.some(s => s.gender === 'Female');
+  const allMale   = allSelected.length > 0 && allSelected.every(s => s.gender === 'Male');
+  const allFemale = allSelected.length > 0 && allSelected.every(s => s.gender === 'Female');
+  const formatDisabled = (f: MatchType): boolean => {
+    if (f === 'MS' || f === 'MD') return hasFemale;
+    if (f === 'WS' || f === 'WD') return hasMale;
+    if (f === 'MX') return allMale || allFemale;
+    return false;
+  };
+
   // Reset slots when format changes
   const changeFormat = (f: MatchType) => {
+    if (formatDisabled(f)) return;
     setFormat(f);
     const { teamSize: ts } = slotsForFormat(f);
-    setTeamA(ts === 1 ? [me] : [me, null]);
+    // keep slot A0 if it was set (preserve the "self/organiser" assignment)
+    const keptA0 = teamA[0] ?? null;
+    setTeamA(ts === 1 ? [keptA0] : [keptA0, null]);
     setTeamB(ts === 1 ? [null] : [null, null]);
   };
 
@@ -694,9 +722,8 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   };
 
   const slotLabel = (team: 'A' | 'B', idx: number) => {
-    if (team === 'A' && idx === 0) return 'You';
-    if (teamSize === 1) return team === 'A' ? 'You' : 'Opponent';
-    return team === 'A' ? `Your partner` : `Opponent ${idx + 1}`;
+    if (teamSize === 1) return team === 'A' ? 'Player A' : 'Player B';
+    return team === 'A' ? `Team A player ${idx + 1}` : `Team B player ${idx + 1}`;
   };
 
   return (
@@ -712,14 +739,20 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
           <div className="space-y-1.5">
             <label className="text-xs text-slate-400 font-semibold">Format</label>
             <div className="flex gap-1.5 flex-wrap">
-              {FORMATS.map(f => (
-                <button key={f} onClick={() => changeFormat(f)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
-                    format === f ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
-                  }`}>
-                  {f}
-                </button>
-              ))}
+              {FORMATS.map(f => {
+                const disabled = formatDisabled(f);
+                return (
+                  <button key={f} onClick={() => changeFormat(f)} disabled={disabled}
+                    title={disabled ? 'Incompatible with selected players' : undefined}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                      format === f ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                      : disabled ? 'bg-slate-900 border-slate-800 text-slate-700 cursor-not-allowed line-through'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}>
+                    {f}
+                  </button>
+                );
+              })}
             </div>
             <p className="text-[11px] text-slate-500">{FORMAT_LABELS[format]}</p>
           </div>
@@ -738,7 +771,8 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
                     label={slotLabel('A', idx)}
                     genderRequired={getSlotGender(format, 'A', idx, me.gender)}
                     exclude={allFilledUids()}
-                    isMe={idx === 0}
+                    selfPlayer={me}
+                    isSelfSlot={idx === 0}
                     onSet={p => setSlot('A', idx, p)}
                     onClear={() => clearSlot('A', idx)}
                   />
@@ -754,7 +788,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
                     label={slotLabel('B', idx)}
                     genderRequired={getSlotGender(format, 'B', idx, me.gender)}
                     exclude={allFilledUids()}
-                    isMe={false}
+                    selfPlayer={me}
                     onSet={p => setSlot('B', idx, p)}
                     onClear={() => clearSlot('B', idx)}
                   />
