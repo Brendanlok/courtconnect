@@ -10,7 +10,7 @@ import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
-  Users, Trophy, Zap, Target, ChevronRight, MapPin, Star,
+  Users, Trophy, Target, ChevronRight, MapPin, Star,
 } from 'lucide-react';
 import type { Match, Tournament, Challenge } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -141,31 +141,6 @@ export default function Home() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* ── Quick Actions ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={() => window.location.href='/players/'}
-            className="group flex flex-col items-center gap-2 bg-slate-900 border border-slate-800 hover:border-emerald-500/40 hover:bg-emerald-500/5 rounded-2xl p-4 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center group-hover:bg-emerald-500/25 transition-colors">
-              <Zap size={18} className="text-emerald-400"/>
-            </div>
-            <span className="text-xs font-semibold text-slate-300 group-hover:text-emerald-300 transition-colors text-center leading-tight">Find Match</span>
-          </button>
-          <button onClick={() => window.location.href='/players/?tab=partner'}
-            className="group flex flex-col items-center gap-2 bg-slate-900 border border-slate-800 hover:border-violet-500/40 hover:bg-violet-500/5 rounded-2xl p-4 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center group-hover:bg-violet-500/25 transition-colors">
-              <Users size={18} className="text-violet-400"/>
-            </div>
-            <span className="text-xs font-semibold text-slate-300 group-hover:text-violet-300 transition-colors text-center leading-tight">Find Partner</span>
-          </button>
-          <button onClick={() => window.location.href='/tournaments/'}
-            className="group flex flex-col items-center gap-2 bg-slate-900 border border-slate-800 hover:border-amber-500/40 hover:bg-amber-500/5 rounded-2xl p-4 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center group-hover:bg-amber-500/25 transition-colors">
-              <Trophy size={18} className="text-amber-400"/>
-            </div>
-            <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300 transition-colors text-center leading-tight">Events</span>
-          </button>
         </div>
 
         {/* ── Pending verification banner ────────────────────────────────────── */}
