@@ -327,9 +327,9 @@ function GenderDot({ gender }: { gender?: 'Male' | 'Female' | null }) {
 
 // ─── Planned match card ───────────────────────────────────────────────────────
 
-function PlannedCard({ match: m, me, onEdit, onLog, onDelete }: {
+function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
   match: PlannedMatch; me: SlotPlayer;
-  onEdit: () => void; onLog: () => void; onDelete: () => void;
+  onEdit: () => void; onLog: () => void; onCancel: () => void;
 }) {
   const dateObj = new Date(m.date + 'T' + m.time);
   const isPast  = dateObj < new Date();
