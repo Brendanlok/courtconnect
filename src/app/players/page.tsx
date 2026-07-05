@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, skillMatch, MATCH_TYPE_LABEL, formatAvailability } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, skillMatch } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -424,16 +424,12 @@ function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'fr
 
 function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove }: FriendProps & { updateUser: (p: Partial<UserProfile>) => void }) {
   const [requestsOpen, setRequestsOpen] = useState(false);
-  const [partnerOpen,  setPartnerOpen]  = useState(false);
   const [query,        setQuery]        = useState('');
   const [stateFilter,  setStateFilter]  = useState<MalaysiaState | 'All'>('All');
   const [tierFilter,   setTierFilter]   = useState<Tier | 'All'>('All');
   const [sortDir,      setSortDir]      = useState<SortDir>('desc');
-  const [formatFilter,   setFormatFilter]   = useState<'All' | MatchType>('All');
   const [openToPlay,     setOpenToPlay]     = useState(false);
   const [openToPartner,  setOpenToPartner]  = useState(false);
-  const [confirmSend,    setConfirmSend]    = useState<string | null>(null);
-  const [confirmRetract, setConfirmRetract] = useState<string | null>(null);
   const requestsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -463,20 +459,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
     })
     .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
 
-  const partnerFormats: ('All' | MatchType)[] =
-    user.gender === 'Male'   ? ['All', 'MD', 'MX'] :
-    user.gender === 'Female' ? ['All', 'WD', 'MX'] :
-    ['All', 'MD', 'WD', 'MX'];
-
   const allPlayers = [user, ...PLAYERS];
-  const partnerCandidates = allPlayers.filter(p => {
-    if (p.uid === 'me') return false;
-    if (!p.lookingForPartner) return false;
-    if (formatFilter === 'All') return true;
-    if (formatFilter === 'MD') return p.gender === 'Male'   && (p.preferredFormats ?? []).includes('MD');
-    if (formatFilter === 'WD') return p.gender === 'Female' && (p.preferredFormats ?? []).includes('WD');
-    return (p.preferredFormats ?? []).includes(formatFilter);
-  }).sort((a, b) => Number(friends.includes(b.uid)) - Number(friends.includes(a.uid)));
 
   const requestsBell = (
     <div className="relative ml-auto" ref={requestsRef}>
@@ -564,107 +547,6 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
         openToPartner={openToPartner} setOpenToPartner={setOpenToPartner}
         endSlot={requestsBell}/>
 
-      {/* Partner Finder (collapsible) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-        <button onClick={() => setPartnerOpen(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors">
-          <div className="flex items-center gap-2">
-            <Users size={14} className="text-violet-400"/>
-            <span className="text-sm font-semibold">Partner Finder</span>
-            <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">
-              {partnerCandidates.length} available
-            </span>
-            {user.lookingForPartner && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25">
-                <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"/> Listed
-              </span>
-            )}
-          </div>
-          <ChevronDown size={14} className={`text-slate-400 transition-transform ${partnerOpen ? 'rotate-180' : ''}`}/>
-        </button>
-
-        {partnerOpen && (
-          <div className="border-t border-slate-800 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Filter size={12} className="text-slate-500"/>
-              <FilterDropdown<'All' | MatchType>
-                label="All Formats" value={formatFilter}
-                options={partnerFormats.map(f => ({ value: f, label: f === 'All' ? 'All Formats' : `${f} · ${MATCH_TYPE_LABEL[f]}` }))}
-                onChange={setFormatFilter}
-              />
-            </div>
-            {partnerCandidates.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                <Users size={28} className="mx-auto mb-2 opacity-30"/>
-                <p className="text-sm">No players found for this format.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {partnerCandidates.map(p => {
-                  const isSent = outgoing.includes(p.uid);
-                  const avail = formatAvailability(p.available ?? '');
-                  return (
-                    <div key={p.uid} className="bg-slate-800 rounded-xl p-3 space-y-2">
-                      <div className="flex items-start gap-3">
-                        <button onClick={() => { window.location.href = `/players/${p.username}/`; }} className="shrink-0">
-                          <Avatar name={p.displayName} className={p.openToPlay ? 'ring-2 ring-emerald-400' : ''}/>
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button onClick={() => { window.location.href = `/players/${p.username}/`; }}
-                              className="font-semibold text-sm hover:text-emerald-400 transition-colors">{p.displayName}</button>
-                            <p className="text-xs text-slate-500">@{p.username}</p>
-                            <TierBadge tier={p.tier}/>
-                            {p.gender && <span className="text-xs text-slate-500">{p.gender === 'Male' ? '♂' : '♀'}</span>}
-                            {friends.includes(p.uid) && (
-                              <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                <UserCheck size={9}/> Friend
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                            <MapPin size={10}/> {p.area}, {p.state}
-                            {p.distKm !== undefined && <><span className="mx-1">·</span>{p.distKm} km away</>}
-                          </p>
-                          {avail && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><span>🕐</span>{avail}</p>}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          {isSent ? (
-                            <button onClick={() => setConfirmRetract(p.uid)}
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400">
-                              <Check size={11}/> Sent
-                            </button>
-                          ) : friends.includes(p.uid) ? (
-                            <span className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-400">
-                              <UserCheck size={11}/> Friend
-                            </span>
-                          ) : (
-                            <button onClick={() => setConfirmSend(p.uid)}
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white">
-                              <UserPlus size={11}/> Add Friend
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {(p.preferredFormats ?? []).map(f => (
-                          <span key={f} className="text-[10px] font-semibold px-2 py-0.5 bg-slate-700 border border-slate-600 rounded-lg text-slate-300">{f}</span>
-                        ))}
-                        {p.mmr && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 bg-amber-500/8 border border-amber-500/20 rounded-lg text-amber-400">
-                            {p.mmr.toLocaleString()} MMR
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Friends list */}
       <div className="space-y-3">
         <p className="text-xs font-semibold text-slate-400">
@@ -688,59 +570,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
         )}
       </div>
 
-      {/* Confirm dialogs */}
-      {confirmSend && (() => {
-        const p = allPlayers.find(x => x.uid === confirmSend);
-        if (!p) return null;
-        return (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmSend(null)}>
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                  <UserPlus size={18} className="text-emerald-400"/>
-                </div>
-                <div>
-                  <p className="font-bold text-sm">Send Friend Request?</p>
-                  <p className="text-xs text-slate-400 mt-1">Sending a friend request to <span className="text-white font-semibold">{p.displayName}</span>.</p>
-                </div>
-                <button onClick={() => setConfirmSend(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmSend(null)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-                <button onClick={() => { onSend(confirmSend); setConfirmSend(null); }}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-bold transition-colors">Send Request</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {confirmRetract && (() => {
-        const p = allPlayers.find(x => x.uid === confirmRetract);
-        if (!p) return null;
-        return (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setConfirmRetract(null)}>
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                  <AlertTriangle size={18} className="text-amber-400"/>
-                </div>
-                <div>
-                  <p className="font-bold text-sm">Cancel Partner Request?</p>
-                  <p className="text-xs text-slate-400 mt-1">This will cancel your request to <span className="text-white font-semibold">{p.displayName}</span>.</p>
-                </div>
-                <button onClick={() => setConfirmRetract(null)} className="text-slate-500 hover:text-white shrink-0"><X size={15}/></button>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmRetract(null)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep It</button>
-                <button onClick={() => { onCancel(confirmRetract); setConfirmRetract(null); }}
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Cancel Request</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+
     </div>
   );
 }

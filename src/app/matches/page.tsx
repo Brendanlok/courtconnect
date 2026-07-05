@@ -4,39 +4,80 @@ import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import {
-  CalendarDays, Plus, Users, MapPin, Clock, Check, X, UserPlus,
-  ChevronRight, Swords, Trophy, Search, Edit3, Trash2, Bell,
+  CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
+  Swords, Trophy, Search, Edit3, Trash2, Bell, User,
 } from 'lucide-react';
 import type { UserProfile, MatchType } from '@/types';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type PlannedStatus = 'pending' | 'confirmed' | 'cancelled';
+
+interface SlotPlayer {
+  uid: string;
+  displayName: string;
+  username: string;
+  gender?: 'Male' | 'Female';
+}
 
 interface PlannedMatch {
   id: string;
   format: MatchType;
-  date: string;       // ISO date string
-  time: string;       // e.g. "18:30"
+  date: string;
+  time: string;
   venue: string;
   notes?: string;
-  invitedUids: string[];
-  confirmedUids: string[];
-  declinedUids: string[];
+  // team A = organiser's team, team B = opponents
+  teamA: (SlotPlayer | null)[];
+  teamB: (SlotPlayer | null)[];
+  // accepted / declined per uid
+  accepted: string[];
+  declined: string[];
   status: PlannedStatus;
-  loggedMatchId?: string;
 }
 
 const FORMAT_LABELS: Record<MatchType, string> = {
-  MS: 'Men\'s Singles',
-  WS: 'Women\'s Singles',
-  MD: 'Men\'s Doubles',
-  WD: 'Women\'s Doubles',
-  MX: 'Mixed Doubles',
+  MS: "Men's Singles",
+  WS: "Women's Singles",
+  MD: "Men's Doubles",
+  WD: "Women's Doubles",
+  MX: "Mixed Doubles",
 };
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
+
+// Gender required for each slot: null = any
+function slotGender(format: MatchType, team: 'A' | 'B', slot: number): 'Male' | 'Female' | null {
+  if (format === 'MD') return 'Male';
+  if (format === 'WD') return 'Female';
+  if (format === 'MS') return null;  // already filtered by user's gender in practice
+  if (format === 'WS') return null;
+  // MX: each team needs 1 male + 1 female; slot 0 = first gender, slot 1 = second
+  // For team A slot 0: pick based on user gender; for simplicity alternate
+  return null;
+}
+
+function slotsForFormat(format: MatchType): { teamSize: number } {
+  return { teamSize: format === 'MS' || format === 'WS' ? 1 : 2 };
+}
+
+// For MX, slot genders depend on user's gender
+function getMXSlotGender(userGender: 'Male' | 'Female' | undefined, team: 'A' | 'B', slotIdx: number): 'Male' | 'Female' | null {
+  if (!userGender) return null;
+  // Team A slot 0 = user (already filled), slot 1 = opposite gender
+  if (team === 'A') return slotIdx === 1 ? (userGender === 'Male' ? 'Female' : 'Male') : null;
+  // Team B: slot 0 = Male, slot 1 = Female (or one of each)
+  return slotIdx === 0 ? 'Male' : 'Female';
+}
+
+function getSlotGender(format: MatchType, team: 'A' | 'B', slotIdx: number, userGender?: 'Male' | 'Female'): 'Male' | 'Female' | null {
+  if (format === 'MD') return 'Male';
+  if (format === 'WD') return 'Female';
+  if (format === 'MX') return getMXSlotGender(userGender, team, slotIdx);
+  return null; // MS / WS — no gender constraint enforced
+}
 
 const SEED_PLANNED: PlannedMatch[] = [
   {
@@ -46,9 +87,13 @@ const SEED_PLANNED: PlannedMatch[] = [
     time: '19:00',
     venue: 'Setia Alam Sports Complex',
     notes: 'Bring shuttlecocks',
-    invitedUids: ['p2', 'p3'],
-    confirmedUids: ['p2'],
-    declinedUids: [],
+    teamA: [null, null],
+    teamB: [
+      { uid: 'p3', displayName: 'Faiz Hamdan', username: 'faizhamdan', gender: 'Male' },
+      null,
+    ],
+    accepted: ['p3'],
+    declined: [],
     status: 'pending',
   },
   {
@@ -57,20 +102,24 @@ const SEED_PLANNED: PlannedMatch[] = [
     date: '2026-07-12',
     time: '08:00',
     venue: 'Bukit Jalil National Aquatic Centre',
-    invitedUids: ['p1'],
-    confirmedUids: ['p1'],
-    declinedUids: [],
+    teamA: [null],
+    teamB: [
+      { uid: 'p1', displayName: 'Zack Azhar', username: 'zackaz', gender: 'Male' },
+    ],
+    accepted: ['p1'],
+    declined: [],
     status: 'confirmed',
   },
 ];
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function MatchesPage() {
-  const { user, matches, addMatch } = useApp();
-  const [tab, setTab] = useState<'history' | 'planned'>('planned');
-  const [planned, setPlanned] = useState<PlannedMatch[]>(SEED_PLANNED);
-  const [planOpen, setPlanOpen] = useState(false);
+  const { user, matches } = useApp();
+  const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
+  const [planned,  setPlanned]  = useState<PlannedMatch[]>(SEED_PLANNED);
   const [logOpen,  setLogOpen]  = useState(false);
-  const [logForId, setLogForId] = useState<string | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
   const [editId,   setEditId]   = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -79,20 +128,14 @@ export default function MatchesPage() {
     m.player1PartnerId === 'me' || m.player2PartnerId === 'me'
   );
 
-  const openPlanModal = (id?: string) => {
-    setEditId(id ?? null);
-    setPlanOpen(true);
+  const me: SlotPlayer = {
+    uid: 'me',
+    displayName: user.displayName,
+    username: user.username,
+    gender: user.gender,
   };
 
-  const openLogForPlanned = (id: string) => {
-    setLogForId(id);
-    setLogOpen(true);
-  };
-
-  const deletePlanned = (id: string) => {
-    setPlanned(p => p.filter(m => m.id !== id));
-    setDeleteId(null);
-  };
+  const openPlan = (id?: string) => { setEditId(id ?? null); setPlanOpen(true); };
 
   return (
     <div className="space-y-5">
@@ -101,13 +144,12 @@ export default function MatchesPage() {
           <h1 className="text-2xl font-bold">Matches</h1>
           <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
         </div>
-        <button onClick={() => openPlanModal()}
+        <button onClick={() => openPlan()}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0 mt-1">
           <Plus size={13}/> Plan Match
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
         <button onClick={() => setTab('planned')}
           className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
@@ -126,7 +168,6 @@ export default function MatchesPage() {
         </button>
       </div>
 
-      {/* Planned tab */}
       {tab === 'planned' && (
         <div className="space-y-3">
           {planned.length === 0 ? (
@@ -134,13 +175,13 @@ export default function MatchesPage() {
               icon={<CalendarDays size={32} className="text-slate-700"/>}
               title="No planned matches"
               desc="Tap Plan Match to schedule a game with friends."
-              action={<button onClick={() => openPlanModal()} className="text-xs text-emerald-400 font-semibold">+ Plan your first match</button>}
+              action={<button onClick={() => openPlan()} className="text-xs text-emerald-400 font-semibold">+ Plan your first match</button>}
             />
           ) : (
             planned.map(m => (
-              <PlannedCard key={m.id} match={m}
-                onEdit={() => openPlanModal(m.id)}
-                onLog={() => openLogForPlanned(m.id)}
+              <PlannedCard key={m.id} match={m} me={me}
+                onEdit={() => openPlan(m.id)}
+                onLog={() => setLogOpen(true)}
                 onDelete={() => setDeleteId(m.id)}
               />
             ))
@@ -148,7 +189,6 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* History tab */}
       {tab === 'history' && (
         <div className="space-y-3">
           {myMatches.length === 0 ? (
@@ -164,23 +204,18 @@ export default function MatchesPage() {
               }
             />
           ) : (
-            myMatches.map(m => <MatchHistoryCard key={m.id} match={m} userId="me"/>)
+            myMatches.map(m => <MatchHistoryCard key={m.id} match={m}/>)
           )}
         </div>
       )}
 
-      {/* Log match modal (standalone) */}
-      {logOpen && !logForId && (
-        <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>
-      )}
+      {logOpen && <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>}
 
-      {/* Plan / Edit modal */}
       {planOpen && (
         <PlanMatchModal
-          planned={planned}
-          editId={editId}
-          user={user}
-          onSave={(pm) => {
+          existing={planned.find(p => p.id === editId) ?? null}
+          me={me}
+          onSave={pm => {
             setPlanned(prev => editId
               ? prev.map(p => p.id === editId ? pm : p)
               : [pm, ...prev]);
@@ -190,16 +225,15 @@ export default function MatchesPage() {
         />
       )}
 
-      {/* Delete confirm */}
       {deleteId && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDeleteId(null)}>
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <p className="font-bold text-sm">Remove this planned match?</p>
-            <p className="text-xs text-slate-400">This will cancel the match and remove it from your list.</p>
+            <p className="text-xs text-slate-400">This will cancel the match and remove all invites.</p>
             <div className="flex gap-2">
               <button onClick={() => setDeleteId(null)}
                 className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep</button>
-              <button onClick={() => deletePlanned(deleteId)}
+              <button onClick={() => { setPlanned(p => p.filter(m => m.id !== deleteId)); setDeleteId(null); }}
                 className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Remove</button>
             </div>
           </div>
@@ -209,7 +243,7 @@ export default function MatchesPage() {
   );
 }
 
-// ─── Empty state helper ───────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function EmptyState({ icon, title, desc, action }: { icon: React.ReactNode; title: string; desc: string; action?: React.ReactNode }) {
   return (
@@ -222,103 +256,64 @@ function EmptyState({ icon, title, desc, action }: { icon: React.ReactNode; titl
   );
 }
 
+function GenderDot({ gender }: { gender?: 'Male' | 'Female' | null }) {
+  if (!gender) return null;
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${gender === 'Male' ? 'bg-sky-500/15 text-sky-400' : 'bg-pink-500/15 text-pink-400'}`}>
+      {gender === 'Male' ? '♂' : '♀'}
+    </span>
+  );
+}
+
 // ─── Planned match card ───────────────────────────────────────────────────────
 
-function PlannedCard({ match: m, onEdit, onLog, onDelete }: {
-  match: PlannedMatch;
-  onEdit: () => void;
-  onLog: () => void;
-  onDelete: () => void;
+function PlannedCard({ match: m, me, onEdit, onLog, onDelete }: {
+  match: PlannedMatch; me: SlotPlayer;
+  onEdit: () => void; onLog: () => void; onDelete: () => void;
 }) {
-  const allP = PLAYERS;
-  const invited = allP.filter(p => m.invitedUids.includes(p.uid));
-  const confirmed = allP.filter(p => m.confirmedUids.includes(p.uid));
-  const declined  = allP.filter(p => m.declinedUids.includes(p.uid));
-  const pending   = invited.filter(p => !m.confirmedUids.includes(p.uid) && !m.declinedUids.includes(p.uid));
-
   const dateObj = new Date(m.date + 'T' + m.time);
   const isPast  = dateObj < new Date();
   const dateStr = dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
+  const borderClass = m.status === 'confirmed' ? 'border-emerald-500/25' : m.status === 'cancelled' ? 'border-red-500/20 opacity-60' : 'border-slate-800';
 
-  const statusColor = m.status === 'confirmed' ? 'border-emerald-500/25 bg-emerald-500/5'
-    : m.status === 'cancelled' ? 'border-red-500/20 opacity-60'
-    : 'border-slate-800';
+  const allInvited = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
 
   return (
-    <div className={`bg-slate-900 border rounded-2xl overflow-hidden ${statusColor}`}>
+    <div className={`bg-slate-900 border rounded-2xl overflow-hidden ${borderClass}`}>
       <div className="p-4 space-y-3">
-        {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-white">{FORMAT_LABELS[m.format]}</span>
+              <span className="text-xs font-bold">{FORMAT_LABELS[m.format]}</span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
                 m.status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
                 : m.status === 'cancelled' ? 'bg-red-500/15 text-red-400 border-red-500/25'
                 : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-              }`}>
-                {m.status === 'confirmed' ? 'Confirmed' : m.status === 'cancelled' ? 'Cancelled' : 'Pending'}
-              </span>
-              {isPast && m.status !== 'cancelled' && !m.loggedMatchId && (
-                <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">Past</span>
-              )}
+              }`}>{m.status === 'confirmed' ? 'Confirmed' : m.status === 'cancelled' ? 'Cancelled' : 'Pending'}</span>
+              {isPast && m.status !== 'cancelled' && <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">Past</span>}
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <span className="flex items-center gap-1"><CalendarDays size={10}/> {dateStr} · {m.time}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              <MapPin size={10}/> {m.venue}
-            </div>
-            {m.notes && (
-              <p className="text-[11px] text-slate-500 italic">{m.notes}</p>
-            )}
+            <p className="text-xs text-slate-400 flex items-center gap-1"><CalendarDays size={10}/> {dateStr} · {m.time}</p>
+            <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={10}/> {m.venue}</p>
+            {m.notes && <p className="text-[11px] text-slate-500 italic">{m.notes}</p>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEdit} title="Edit"
-              className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-              <Edit3 size={13}/>
-            </button>
-            <button onClick={onDelete} title="Remove"
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
-              <Trash2 size={13}/>
-            </button>
+            <button onClick={onEdit} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><Edit3 size={13}/></button>
+            <button onClick={onDelete} className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={13}/></button>
           </div>
         </div>
 
-        {/* Players row */}
-        {invited.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Invited</p>
-            <div className="flex flex-wrap gap-2">
-              {invited.map(p => {
-                const isConf = m.confirmedUids.includes(p.uid);
-                const isDecl = m.declinedUids.includes(p.uid);
-                return (
-                  <div key={p.uid} className="flex items-center gap-1.5 bg-slate-800 rounded-xl px-2.5 py-1.5">
-                    <Avatar name={p.displayName} className="!w-5 !h-5 !text-[9px]"/>
-                    <span className="text-xs font-medium">{p.displayName}</span>
-                    {isConf && <Check size={10} className="text-emerald-400"/>}
-                    {isDecl && <X size={10} className="text-red-400"/>}
-                    {!isConf && !isDecl && <Clock size={10} className="text-amber-400"/>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Slots grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <TeamSlots label="Team A (You)" slots={m.teamA} accepted={m.accepted} declined={m.declined} meUid="me"/>
+          <TeamSlots label="Team B" slots={m.teamB} accepted={m.accepted} declined={m.declined} meUid="me"/>
+        </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-2 pt-1">
-          {isPast && !m.loggedMatchId && m.status !== 'cancelled' && (
+        {/* Actions */}
+        <div className="flex gap-2 pt-0.5">
+          {isPast && m.status !== 'cancelled' && (
             <button onClick={onLog}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
               <Trophy size={11}/> Log Result
-            </button>
-          )}
-          {!isPast && m.status === 'pending' && (
-            <button onClick={onEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
-              <UserPlus size={11}/> Invite More
             </button>
           )}
         </div>
@@ -327,15 +322,48 @@ function PlannedCard({ match: m, onEdit, onLog, onDelete }: {
   );
 }
 
+function TeamSlots({ label, slots, accepted, declined, meUid }: {
+  label: string; slots: (SlotPlayer | null)[]; accepted: string[]; declined: string[]; meUid: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</p>
+      {slots.map((s, i) => {
+        if (!s) {
+          return (
+            <div key={i} className="flex items-center gap-1.5 border border-dashed border-slate-700 rounded-xl px-2.5 py-2 text-slate-600">
+              <User size={11}/><span className="text-[11px]">Invite pending</span>
+            </div>
+          );
+        }
+        const isMe = s.uid === meUid;
+        const isAcc = accepted.includes(s.uid);
+        const isDec = declined.includes(s.uid);
+        return (
+          <div key={i} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
+            <Avatar name={s.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold truncate">{s.displayName}</p>
+              <p className="text-[10px] text-slate-500">@{s.username}</p>
+            </div>
+            {isMe   && <span className="text-[9px] text-emerald-400 font-bold shrink-0">You</span>}
+            {!isMe && isAcc  && <Check size={10} className="text-emerald-400 shrink-0"/>}
+            {!isMe && isDec  && <X size={10} className="text-red-400 shrink-0"/>}
+            {!isMe && !isAcc && !isDec && <Clock size={10} className="text-amber-400 shrink-0"/>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Match history card ───────────────────────────────────────────────────────
 
-function MatchHistoryCard({ match: m, userId }: { match: import('@/types').Match; userId: string }) {
-  const iWon = m.winnerId === userId;
+function MatchHistoryCard({ match: m }: { match: import('@/types').Match }) {
+  const iWon = m.winnerId === 'me';
   const myScore  = m.games.map(g => g.p1).join('-');
   const oppScore = m.games.map(g => g.p2).join('-');
-  const oppName  = m.player2Name;
   const date = new Date(m.playedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
-
   return (
     <div className={`bg-slate-900 border rounded-2xl p-4 space-y-2 ${iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
       <div className="flex items-center justify-between gap-2">
@@ -343,83 +371,215 @@ function MatchHistoryCard({ match: m, userId }: { match: import('@/types').Match
           <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {iWon ? 'W' : 'L'}
           </span>
-          <span className="text-sm font-semibold">vs {oppName}</span>
+          <div>
+            <span className="text-sm font-semibold">vs {m.player2Name}</span>
+            <span className="text-[11px] text-slate-500 ml-1">@{m.player2Username}</span>
+          </div>
           <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{m.type}</span>
         </div>
-        <span className="text-xs text-slate-500">{date}</span>
+        <span className="text-xs text-slate-500 shrink-0">{date}</span>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">
-          {myScore} <span className="text-slate-600 mx-1">·</span> {oppScore}
-        </p>
+        <p className="text-xs text-slate-400">{myScore} · {oppScore}</p>
         {m.mmrChange !== undefined && (
           <span className={`text-xs font-bold ${m.mmrChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {m.mmrChange >= 0 ? '+' : ''}{m.mmrChange} MMR
           </span>
         )}
       </div>
-      {m.venue && (
-        <p className="text-[11px] text-slate-500 flex items-center gap-1">
-          <MapPin size={9}/>{m.venue}
-        </p>
-      )}
+      {m.venue && <p className="text-[11px] text-slate-500 flex items-center gap-1"><MapPin size={9}/>{m.venue}</p>}
     </div>
   );
 }
 
 // ─── Plan match modal ─────────────────────────────────────────────────────────
 
-function PlanMatchModal({ planned, editId, user, onSave, onClose }: {
-  planned: PlannedMatch[];
-  editId: string | null;
-  user: UserProfile;
+type SlotKey = { team: 'A' | 'B'; idx: number };
+
+function PlayerSearchDropdown({ gender, exclude, onSelect, onClose }: {
+  gender: 'Male' | 'Female' | null;
+  exclude: string[];
+  onSelect: (p: SlotPlayer) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const candidates = PLAYERS
+    .filter(p => !exclude.includes(p.uid))
+    .filter(p => !gender || p.gender === gender)
+    .filter(p => !q || p.displayName.toLowerCase().includes(q.toLowerCase()) || p.username.toLowerCase().includes(q.toLowerCase()))
+    .slice(0, 6);
+
+  return (
+    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+      <div className="p-2 border-b border-slate-700">
+        <div className="relative">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+            placeholder={gender ? `Search ${gender} player…` : 'Search player…'}
+            className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs outline-none focus:border-emerald-500"/>
+        </div>
+      </div>
+      <div className="max-h-48 overflow-y-auto">
+        {candidates.length === 0 ? (
+          <p className="text-xs text-slate-500 text-center py-4">{gender ? `No ${gender.toLowerCase()} players found` : 'No players found'}</p>
+        ) : candidates.map(p => (
+          <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username, gender: p.gender }); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
+            <Avatar name={p.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate">{p.displayName}</p>
+              <p className="text-[10px] text-slate-500">@{p.username}</p>
+            </div>
+            {p.gender && <GenderDot gender={p.gender}/>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlotPicker({ slot, label, genderRequired, exclude, isMe, onSet, onClear }: {
+  slot: SlotPlayer | null;
+  label: string;
+  genderRequired: 'Male' | 'Female' | null;
+  exclude: string[];
+  isMe?: boolean;
+  onSet: (p: SlotPlayer) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (isMe && slot) {
+    return (
+      <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3 py-2 min-h-[44px]">
+        <Avatar name={slot.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold truncate">{slot.displayName}</p>
+          <p className="text-[10px] text-slate-500">@{slot.username} · You</p>
+        </div>
+        {slot.gender && <GenderDot gender={slot.gender}/>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {slot ? (
+        <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-h-[44px]">
+          <Avatar name={slot.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate">{slot.displayName}</p>
+            <p className="text-[10px] text-slate-500">@{slot.username}</p>
+          </div>
+          {slot.gender && <GenderDot gender={slot.gender}/>}
+          <button onClick={onClear} className="text-slate-500 hover:text-red-400 shrink-0"><X size={12}/></button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center gap-2 border border-dashed border-slate-600 hover:border-slate-500 rounded-xl px-3 py-2 min-h-[44px] transition-colors text-left">
+          <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+            <UserPlus size={10} className="text-slate-500"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-slate-400">{label}</p>
+            {genderRequired && <p className="text-[10px] text-slate-600">{genderRequired} only</p>}
+          </div>
+          {genderRequired && <GenderDot gender={genderRequired}/>}
+        </button>
+      )}
+      {open && (
+        <PlayerSearchDropdown
+          gender={genderRequired}
+          exclude={exclude}
+          onSelect={onSet}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PlanMatchModal({ existing, me, onSave, onClose }: {
+  existing: PlannedMatch | null;
+  me: SlotPlayer;
   onSave: (pm: PlannedMatch) => void;
   onClose: () => void;
 }) {
-  const existing = planned.find(p => p.id === editId);
-  const [format,  setFormat]  = useState<MatchType>(existing?.format ?? 'MS');
-  const [date,    setDate]    = useState(existing?.date ?? '');
-  const [time,    setTime]    = useState(existing?.time ?? '');
-  const [venue,   setVenue]   = useState(existing?.venue ?? '');
-  const [notes,   setNotes]   = useState(existing?.notes ?? '');
-  const [query,   setQuery]   = useState('');
-  const [invited, setInvited] = useState<string[]>(existing?.invitedUids ?? []);
+  const [format, setFormat] = useState<MatchType>(existing?.format ?? 'MS');
+  const [date,   setDate]   = useState(existing?.date ?? '');
+  const [time,   setTime]   = useState(existing?.time ?? '');
+  const [venue,  setVenue]  = useState(existing?.venue ?? '');
+  const [notes,  setNotes]  = useState(existing?.notes ?? '');
 
-  const candidates = PLAYERS.filter(p =>
-    p.displayName.toLowerCase().includes(query.toLowerCase()) ||
-    p.username.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 8);
+  const { teamSize } = slotsForFormat(format);
 
-  const toggle = (uid: string) =>
-    setInvited(prev => prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]);
+  // teamA[0] = always the organiser (me)
+  const initTeamA = (): (SlotPlayer | null)[] => {
+    if (existing?.format === format) return existing.teamA.map((s, i) => i === 0 ? me : s);
+    return teamSize === 1 ? [me] : [me, null];
+  };
+  const initTeamB = (): (SlotPlayer | null)[] => {
+    if (existing?.format === format) return existing.teamB;
+    return teamSize === 1 ? [null] : [null, null];
+  };
+
+  const [teamA, setTeamA] = useState<(SlotPlayer | null)[]>(initTeamA);
+  const [teamB, setTeamB] = useState<(SlotPlayer | null)[]>(initTeamB);
+
+  // Reset slots when format changes
+  const changeFormat = (f: MatchType) => {
+    setFormat(f);
+    const { teamSize: ts } = slotsForFormat(f);
+    setTeamA(ts === 1 ? [me] : [me, null]);
+    setTeamB(ts === 1 ? [null] : [null, null]);
+  };
+
+  const allFilledUids = (): string[] =>
+    [...teamA, ...teamB].filter((s): s is SlotPlayer => s !== null).map(s => s.uid);
+
+  const setSlot = (team: 'A' | 'B', idx: number, p: SlotPlayer) => {
+    if (team === 'A') setTeamA(prev => { const n = [...prev]; n[idx] = p; return n; });
+    else              setTeamB(prev => { const n = [...prev]; n[idx] = p; return n; });
+  };
+  const clearSlot = (team: 'A' | 'B', idx: number) => {
+    if (team === 'A') setTeamA(prev => { const n = [...prev]; n[idx] = null; return n; });
+    else              setTeamB(prev => { const n = [...prev]; n[idx] = null; return n; });
+  };
 
   const save = () => {
     if (!date || !time || !venue) return;
     const pm: PlannedMatch = {
-      id: editId ?? `pm${Date.now()}`,
+      id: existing?.id ?? `pm${Date.now()}`,
       format, date, time, venue, notes: notes.trim() || undefined,
-      invitedUids: invited,
-      confirmedUids: existing?.confirmedUids ?? [],
-      declinedUids: existing?.declinedUids ?? [],
+      teamA, teamB,
+      accepted: existing?.accepted ?? [],
+      declined: existing?.declined ?? [],
       status: existing?.status ?? 'pending',
     };
     onSave(pm);
   };
 
+  const slotLabel = (team: 'A' | 'B', idx: number) => {
+    if (team === 'A' && idx === 0) return 'You';
+    if (teamSize === 1) return team === 'A' ? 'You' : 'Opponent';
+    return team === 'A' ? `Your partner` : `Opponent ${idx + 1}`;
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center sm:items-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-          <p className="font-bold text-sm">{editId ? 'Edit Match' : 'Plan a Match'}</p>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+          <p className="font-bold text-sm">{existing ? 'Edit Match' : 'Plan a Match'}</p>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
         </div>
+
         <div className="overflow-y-auto p-4 space-y-4 flex-1">
           {/* Format */}
           <div className="space-y-1.5">
             <label className="text-xs text-slate-400 font-semibold">Format</label>
             <div className="flex gap-1.5 flex-wrap">
               {FORMATS.map(f => (
-                <button key={f} onClick={() => setFormat(f)}
+                <button key={f} onClick={() => changeFormat(f)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
                     format === f ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
                   }`}>
@@ -427,6 +587,49 @@ function PlanMatchModal({ planned, editId, user, onSave, onClose }: {
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-slate-500">{FORMAT_LABELS[format]}</p>
+          </div>
+
+          {/* Player slots */}
+          <div className="space-y-3">
+            <label className="text-xs text-slate-400 font-semibold">Players</label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Team A */}
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Team A</p>
+                {teamA.map((slot, idx) => (
+                  <SlotPicker
+                    key={idx}
+                    slot={slot}
+                    label={slotLabel('A', idx)}
+                    genderRequired={getSlotGender(format, 'A', idx, me.gender)}
+                    exclude={allFilledUids()}
+                    isMe={idx === 0}
+                    onSet={p => setSlot('A', idx, p)}
+                    onClear={() => clearSlot('A', idx)}
+                  />
+                ))}
+              </div>
+              {/* Team B */}
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Team B</p>
+                {teamB.map((slot, idx) => (
+                  <SlotPicker
+                    key={idx}
+                    slot={slot}
+                    label={slotLabel('B', idx)}
+                    genderRequired={getSlotGender(format, 'B', idx, me.gender)}
+                    exclude={allFilledUids()}
+                    isMe={false}
+                    onSet={p => setSlot('B', idx, p)}
+                    onClear={() => clearSlot('B', idx)}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-500 flex items-center gap-1">
+              <Bell size={10}/> Invited players must accept before the match is confirmed.
+            </p>
           </div>
 
           {/* Date + Time */}
@@ -445,7 +648,7 @@ function PlanMatchModal({ planned, editId, user, onSave, onClose }: {
 
           {/* Venue */}
           <div className="space-y-1.5">
-            <label className="text-xs text-slate-400 font-semibold">Venue / Location</label>
+            <label className="text-xs text-slate-400 font-semibold">Venue</label>
             <input value={venue} onChange={e => setVenue(e.target.value)}
               placeholder="e.g. Setia Alam Sports Complex"
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
@@ -458,48 +661,14 @@ function PlanMatchModal({ planned, editId, user, onSave, onClose }: {
               placeholder="e.g. bring extra shuttles"
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
           </div>
-
-          {/* Invite players */}
-          <div className="space-y-2">
-            <label className="text-xs text-slate-400 font-semibold">Invite Players</label>
-            <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-              <input value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Search by name…"
-                className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
-            </div>
-            {invited.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {PLAYERS.filter(p => invited.includes(p.uid)).map(p => (
-                  <span key={p.uid} className="flex items-center gap-1 text-xs bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 px-2 py-1 rounded-lg">
-                    {p.displayName}
-                    <button onClick={() => toggle(p.uid)}><X size={9}/></button>
-                  </span>
-                ))}
-              </div>
-            )}
-            {query && (
-              <div className="space-y-1">
-                {candidates.map(p => (
-                  <button key={p.uid} onClick={() => toggle(p.uid)}
-                    className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors">
-                    <Avatar name={p.displayName} className="!w-6 !h-6 !text-[10px]"/>
-                    <span className="text-sm flex-1 text-left">{p.displayName}</span>
-                    <span className="text-[11px] text-slate-500">@{p.username}</span>
-                    {invited.includes(p.uid) && <Check size={12} className="text-emerald-400"/>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-800 flex gap-2">
+        <div className="px-4 py-3 border-t border-slate-800 flex gap-2 shrink-0">
           <button onClick={onClose}
             className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
           <button onClick={save} disabled={!date || !time || !venue}
             className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition-colors">
-            {editId ? 'Save Changes' : 'Create Match'}
+            {existing ? 'Save Changes' : 'Send Invites'}
           </button>
         </div>
       </div>
