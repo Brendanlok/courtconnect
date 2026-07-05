@@ -1,107 +1,106 @@
 'use client';
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { AuthUser } from '@/types';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, signOut, updateProfile, User,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, googleProvider } from '@/lib/firebase';
 
 interface AuthCtx {
-  authUser: AuthUser | null;
+  authUser: User | null;
   isLoading: boolean;
-  login: (emailOrUsername: string, password: string) => string | null;
-  signup: (displayName: string, username: string, email: string, password: string) => string | null;
-  loginWithGoogle: () => void;
-  logout: () => void;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signUp: (displayName: string, username: string, email: string, password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
+  logout: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>({} as AuthCtx);
 
-const USERS_KEY   = 'cc_auth_users';
-const SESSION_KEY = 'cc_auth_session';
-
-function getUsers(): AuthUser[] {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) ?? '[]'); } catch { return []; }
+async function createUserDoc(user: User, extra?: { username?: string; displayName?: string }) {
+  const ref = doc(db, 'users', user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    const username = extra?.username ?? user.email?.split('@')[0] ?? 'player';
+    await setDoc(ref, {
+      uid: user.uid,
+      email: user.email,
+      displayName: extra?.displayName ?? user.displayName ?? 'Player',
+      username,
+      photoURL: user.photoURL ?? null,
+      mmr: 1200,
+      stats: { wins: 0, losses: 0, totalMatches: 0 },
+      openToPlay: false,
+      createdAt: serverTimestamp(),
+    });
+  }
 }
-function saveUsers(users: AuthUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+function friendlyError(code: string): string {
+  switch (code) {
+    case 'auth/email-already-in-use':    return 'Email already registered.';
+    case 'auth/invalid-email':           return 'Enter a valid email address.';
+    case 'auth/weak-password':           return 'Password must be at least 6 characters.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':      return 'Invalid email or password.';
+    case 'auth/too-many-requests':       return 'Too many attempts. Try again later.';
+    case 'auth/popup-closed-by-user':    return 'Sign-in popup was closed.';
+    default: return 'Something went wrong. Please try again.';
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) setAuthUser(JSON.parse(raw));
-    } catch {}
-    setIsLoading(false);
+    const unsub = onAuthStateChanged(auth, user => {
+      setAuthUser(user);
+      setIsLoading(false);
+    });
+    return unsub;
   }, []);
 
-  const persist = (u: AuthUser) => {
-    setAuthUser(u);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+  const signIn = async (email: string, password: string): Promise<string | null> => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return null;
+    } catch (e: unknown) {
+      return friendlyError((e as { code?: string }).code ?? '');
+    }
   };
 
-  const login = (emailOrUsername: string, password: string): string | null => {
-    const users = getUsers();
-    const found = users.find(u =>
-      (u.email.toLowerCase() === emailOrUsername.toLowerCase() ||
-       u.username.toLowerCase() === emailOrUsername.toLowerCase()) &&
-      u.passwordHash === password
-    );
-    if (!found) return 'Invalid email/username or password.';
-    persist(found);
-    return null;
-  };
-
-  const signup = (displayName: string, username: string, email: string, password: string): string | null => {
+  const signUp = async (displayName: string, username: string, email: string, password: string): Promise<string | null> => {
     if (!displayName.trim()) return 'Name is required.';
     if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
-    if (!email.includes('@')) return 'Enter a valid email.';
-    if (password.length < 6) return 'Password must be at least 6 characters.';
-
-    const users = getUsers();
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) return 'Email already registered.';
-    if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) return 'Username already taken.';
-
-    const newUser: AuthUser = {
-      uid: `u_${Date.now()}`,
-      displayName: displayName.trim(),
-      username: username.toLowerCase(),
-      email: email.toLowerCase(),
-      provider: 'email',
-      passwordHash: password,
-    };
-    saveUsers([...users, newUser]);
-    persist(newUser);
-    return null;
-  };
-
-  const loginWithGoogle = () => {
-    const users = getUsers();
-    const googleEmail = 'lokkai@gmail.com';
-    let gUser = users.find(u => u.email === googleEmail && u.provider === 'google');
-    if (!gUser) {
-      gUser = {
-        uid: `g_${Date.now()}`,
-        displayName: 'Lok Kai',
-        username: 'lokkai',
-        email: googleEmail,
-        provider: 'google',
-      };
-      // ensure unique username
-      let base = gUser.username; let i = 1;
-      while (users.some(u => u.username === gUser!.username)) { gUser!.username = `${base}${i++}`; }
-      saveUsers([...users, gUser]);
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(user, { displayName: displayName.trim() });
+      await createUserDoc(user, { username, displayName: displayName.trim() });
+      return null;
+    } catch (e: unknown) {
+      return friendlyError((e as { code?: string }).code ?? '');
     }
-    persist(gUser);
   };
 
-  const logout = () => {
-    setAuthUser(null);
-    localStorage.removeItem(SESSION_KEY);
+  const loginWithGoogle = async (): Promise<string | null> => {
+    try {
+      const { user } = await signInWithPopup(auth, googleProvider);
+      await createUserDoc(user);
+      return null;
+    } catch (e: unknown) {
+      return friendlyError((e as { code?: string }).code ?? '');
+    }
+  };
+
+  const logout = async () => {
+    await signOut(auth);
   };
 
   return (
-    <Ctx.Provider value={{ authUser, isLoading, login, signup, loginWithGoogle, logout }}>
+    <Ctx.Provider value={{ authUser, isLoading, signIn, signUp, loginWithGoogle, logout }}>
       {children}
     </Ctx.Provider>
   );
