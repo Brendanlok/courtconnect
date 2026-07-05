@@ -145,7 +145,10 @@ export const TOURNAMENTS: Tournament[] = [
       {displayName:'Beh Jiann Liang',username:'behjl'},{displayName:'Ong Soon Hock',username:'ongsh'},
     ] },
   { id:'t4', name:'Penang Open Championship', type:'MD', status:'Upcoming', prizePool:800, entryFee:30, maxPlayers:8, currentPlayers:4, state:'Penang', venue:'Penang Sports Arena, Jalan Batu Uban, 11700 Penang', date:'2025-07-12', time:'10:00', organiser:'Penang BA', description:'Annual doubles championship for northern Malaysia. Register as a pair.', tags:['Doubles','Prize'],
-    participants:['Khoo Hui Jin','Zack Azhar','Lee Ming Xuan','Sarina Azmi'] },
+    participants:[
+      {displayName:'Khoo Hui Jin',username:'khoohj'},{displayName:'Zack Azhar',username:'zackaz'},
+      {displayName:'Lee Ming Xuan',username:'leemingxuan'},{displayName:'Sarina Azmi',username:'sarinaazmi'},
+    ] },
   { id:'t5', name:'KL Club Championship', type:'MD', status:'Completed', prizePool:300, entryFee:15, maxPlayers:8, currentPlayers:8, state:'Kuala Lumpur', venue:'Stadium Putra, Jalan Stadium, 57000 Kuala Lumpur', date:'2025-05-15', organiser:'KL Smashers', description:'Monthly club doubles tournament. Results finalised.', tags:['Doubles','Completed'] },
 ];
 
