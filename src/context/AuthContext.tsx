@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithRedirect, getRedirectResult, signOut, updateProfile, User,
+  signInWithPopup, signOut, updateProfile, User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
@@ -56,11 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Handle redirect result from Google sign-in
-    getRedirectResult(auth).then(result => {
-      if (result?.user) createUserDoc(result.user);
-    }).catch(() => {});
-
     const unsub = onAuthStateChanged(auth, user => {
       setAuthUser(user);
       setIsLoading(false);
@@ -92,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async (): Promise<string | null> => {
     try {
-      await signInWithRedirect(auth, googleProvider);
+      const { user } = await signInWithPopup(auth, googleProvider);
+      await createUserDoc(user);
       return null;
     } catch (e: unknown) {
       const code = (e as { code?: string }).code ?? '';
