@@ -117,12 +117,12 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches } = useApp();
+  const { user, matches, addNotification } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [logOpen,  setLogOpen]  = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [editId,   setEditId]   = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [cancelId, setCancelId] = useState<string | null>(null);
 
   const myMatches = matches.filter(m =>
     m.player1Id === 'me' || m.player2Id === 'me' ||
@@ -136,7 +136,6 @@ export default function MatchesPage() {
     gender: user.gender,
   };
 
-  // Backfill slot 0 of teamA with current user in seed data
   const [planned, setPlanned] = useState<PlannedMatch[]>(() =>
     SEED_PLANNED.map(m => ({
       ...m,
@@ -145,6 +144,50 @@ export default function MatchesPage() {
   );
 
   const openPlan = (id?: string) => { setEditId(id ?? null); setPlanOpen(true); };
+
+  const handleSavePlan = (pm: PlannedMatch) => {
+    setPlanned(prev => editId
+      ? prev.map(p => p.id === editId ? pm : p)
+      : [pm, ...prev]);
+    setPlanOpen(false);
+    // Persist to Firestore
+    const uid = auth.currentUser?.uid;
+    if (uid) savePlannedMatch(uid, pm).catch(() => {});
+    // Notify all invited players
+    const invited = [...pm.teamA, ...pm.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
+    invited.forEach(p => {
+      addNotification({
+        id: `notif_${Date.now()}_${p.uid}`,
+        type: 'match_pending',
+        title: editId ? 'Match Updated' : 'Match Invite',
+        body: editId
+          ? `${user.displayName} updated a planned match you're in (${pm.venue}, ${pm.date}).`
+          : `${user.displayName} invited you to a ${FORMAT_LABELS[pm.format]} at ${pm.venue} on ${pm.date}.`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    });
+  };
+
+  const handleCancelMatch = (id: string) => {
+    const match = planned.find(m => m.id === id);
+    setPlanned(prev => prev.map(m => m.id === id ? { ...m, status: 'cancelled' as const } : m));
+    setCancelId(null);
+    const uid = auth.currentUser?.uid;
+    if (uid && match) savePlannedMatch(uid, { ...match, status: 'cancelled' }).catch(() => {});
+    // Notify all parties
+    const all = match ? [...match.teamA, ...match.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me') : [];
+    all.forEach(p => {
+      addNotification({
+        id: `notif_cancel_${Date.now()}_${p.uid}`,
+        type: 'match_pending',
+        title: 'Match Cancelled',
+        body: `${user.displayName} cancelled the planned match at ${match?.venue ?? 'the venue'}.`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -191,7 +234,7 @@ export default function MatchesPage() {
               <PlannedCard key={m.id} match={m} me={me}
                 onEdit={() => openPlan(m.id)}
                 onLog={() => setLogOpen(true)}
-                onDelete={() => setDeleteId(m.id)}
+                onCancel={() => setCancelId(m.id)}
               />
             ))
           )}
@@ -224,26 +267,34 @@ export default function MatchesPage() {
         <PlanMatchModal
           existing={planned.find(p => p.id === editId) ?? null}
           me={me}
-          onSave={pm => {
-            setPlanned(prev => editId
-              ? prev.map(p => p.id === editId ? pm : p)
-              : [pm, ...prev]);
-            setPlanOpen(false);
-          }}
+          onSave={handleSavePlan}
           onClose={() => setPlanOpen(false)}
+          hostName={user.displayName}
         />
       )}
 
-      {deleteId && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDeleteId(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-            <p className="font-bold text-sm">Remove this planned match?</p>
-            <p className="text-xs text-slate-400">This will cancel the match and remove all invites.</p>
+      {/* Cancel match confirmation */}
+      {cancelId && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCancelId(null)}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-red-400"/>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Cancel this match?</p>
+                <p className="text-xs text-slate-400 mt-0.5">All invited players will be notified.</p>
+              </div>
+            </div>
             <div className="flex gap-2">
-              <button onClick={() => setDeleteId(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Keep</button>
-              <button onClick={() => { setPlanned(p => p.filter(m => m.id !== deleteId)); setDeleteId(null); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Remove</button>
+              <button onClick={() => setCancelId(null)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                Keep Match
+              </button>
+              <button onClick={() => handleCancelMatch(cancelId)}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
+                Yes, Cancel
+              </button>
             </div>
           </div>
         </div>
