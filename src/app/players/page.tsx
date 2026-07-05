@@ -436,7 +436,7 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
     if (formatFilter === 'MD') return p.gender === 'Male'   && (p.preferredFormats ?? []).includes('MD');
     if (formatFilter === 'WD') return p.gender === 'Female' && (p.preferredFormats ?? []).includes('WD');
     return (p.preferredFormats ?? []).includes(formatFilter);
-  });
+  }).sort((a, b) => Number(friends.includes(b.uid)) - Number(friends.includes(a.uid)));
 
   const sendRequest    = (uid: string) => setSent(prev => [...prev, uid]);
   const retractRequest = (uid: string) => setSent(prev => prev.filter(id => id !== uid));
