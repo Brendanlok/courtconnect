@@ -1,5 +1,5 @@
-'use client';
-import { useState } from 'react';
+﻿'use client';
+import { useState, useRef, useEffect } from 'react';
 import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -9,7 +9,7 @@ import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
   X, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, Crown, ShieldCheck,
-  UserMinus, Trash2, UserCheck, UserX, Bell,
+  UserMinus, Trash2, UserCheck, UserX, Bell, ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
@@ -18,10 +18,9 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Players', 'Partner Finder', 'Clubs'] as const;
-const PLAYER_SUBTABS = ['All Players', 'Friends'] as const;
+const TABS = ['Players', 'Friends', 'Clubs'] as const;
 
-export default function Players() {
+export default function PlayersPage() {
   const {
     user, updateUser,
     clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub,
@@ -34,7 +33,7 @@ export default function Players() {
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Players';
     const t = new URLSearchParams(window.location.search).get('tab');
-    if (t === 'partner') return 'Partner Finder';
+    if (t === 'friends') return 'Friends';
     if (t === 'clubs')   return 'Clubs';
     return 'Players';
   });
@@ -58,15 +57,20 @@ export default function Players() {
           <button key={t} onClick={() => setTab(t)}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-            {t === 'Partner Finder' && <Users size={13}/>}
-            {t === 'Clubs'          && <Shield size={13}/>}
+            {t === 'Friends' && <UserCheck size={13}/>}
+            {t === 'Clubs'   && <Shield size={13}/>}
             {t}
+            {t === 'Friends' && incomingFriendRequests.length > 0 && (
+              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {incomingFriendRequests.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {tab === 'Players' && (
-        <PlayersSection
+        <PlayersList
           user={user}
           friends={friends}
           outgoing={outgoingFriendRequests}
@@ -78,8 +82,20 @@ export default function Players() {
           onRemove={removeFriend}
         />
       )}
-      {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser} friends={friends}/>}
-      {tab === 'Clubs'          && (
+      {tab === 'Friends' && (
+        <FriendsTab
+          user={user} updateUser={updateUser}
+          friends={friends}
+          outgoing={outgoingFriendRequests}
+          incoming={incomingFriendRequests}
+          onSend={sendFriendRequest}
+          onCancel={cancelFriendRequest}
+          onAccept={acceptFriendRequest}
+          onDecline={declineFriendRequest}
+          onRemove={removeFriend}
+        />
+      )}
+      {tab === 'Clubs' && (
         <ClubsTab
           clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
           joinClub={joinClub} requestJoinClub={requestJoinClub}
@@ -108,34 +124,6 @@ interface FriendProps {
   onRemove: (uid: string) => void;
 }
 
-function PlayersSection(props: FriendProps) {
-  const [subtab, setSubtab] = useState<typeof PLAYER_SUBTABS[number]>('All Players');
-  const { friends, incoming } = props;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 rounded-lg p-0.5 w-fit">
-        {PLAYER_SUBTABS.map(st => (
-          <button key={st} onClick={() => setSubtab(st)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors
-              ${subtab === st ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-            {st === 'Friends' && <UserCheck size={11}/>}
-            {st}
-            {st === 'Friends' && friends.length > 0 && (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{friends.length}</span>
-            )}
-            {st === 'Friends' && incoming.length > 0 && (
-              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{incoming.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {subtab === 'All Players' && <PlayersList {...props}/>}
-      {subtab === 'Friends'     && <FriendsList {...props}/>}
-    </div>
-  );
-}
 
 // ─── Shared filter bar ────────────────────────────────────────────────────────
 

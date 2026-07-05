@@ -8,6 +8,36 @@
 
 <!-- ENTRIES BELOW — newest first -->
 
+## [2026-07-05 10:50] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at the start of the session. Implemented the "Friends-aware Partner Finder" feature from last session's plan, then discovered `src/app/players/page.tsx` was being actively rewritten by a concurrent editing session live during this run — paused all further work on that file rather than risk clobbering it.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Feature: Friends-aware Partner Finder | ✅ | Implemented per last session's "Upcoming Plans" — see below |
+| 3 | 🔴 | Re-verify build before deploy | ❌ | Build now fails — see Critical Alerts. Not caused by my change; a concurrent edit landed on the same file mid-session |
+
+### Issues Found
+None newly found by audit — session was cut short by the concurrent-edit situation below before Phase 3 could proceed to other files.
+
+### Improvements Made
+- [src/app/players/page.tsx](src/app/players/page.tsx) — Implemented friends-aware Partner Finder: `PartnerFinder` now receives `friends` from `AppContext` (via `Players`), sorts candidates so accepted friends surface first, and shows a green "Friend" badge next to their name/tier. Verified live in the browser: accepted Faiz Hamdan's pending friend request, confirmed he re-sorted to the top of Partner Finder with the badge showing (had to clear the `.next` cache once — Turbopack Fast Refresh briefly served a stale module after the edit).
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Toast/snackbar for incoming friend + challenge requests | Carried over from last session — still not built | Medium — lightweight toast component + hook into `addNotif` calls |
+| Bo3 score display in tournament brackets | Carried over from last session — still not built | Small — rework score parsing in `BracketCard` to map over all games |
+
+### Critical Alerts
+🔴 **Concurrent edit collision on `src/app/players/page.tsx`.** Partway through this session, the file started changing on disk independent of my own edits — a live refactor removing the standalone "Partner Finder" top-level tab in favor of a merged "Friends" tab (`TABS` narrowed to `['Players', 'Friends', 'Clubs']`, a `FriendsTab` component referenced but not yet defined, `PLAYER_SUBTABS` removed from module scope while still referenced elsewhere). I re-checked the diff twice ~20s apart and it kept growing, confirming an active editing session (not a one-shot linter pass). The build fails as of this write-up (`Cannot find name 'FriendsTab'`) — that failure is from the in-progress refactor, not from my Friends-aware Partner Finder change. Per the hard rule to never push a broken build, **I did not commit or push anything this session**, and deliberately stopped touching this file so as not to overwrite whatever is mid-flight. If this was you editing live, no action needed — just finish and it'll pick back up next run. If it wasn't you, worth checking who/what is writing to this file.
+
 ## [2026-07-05 00:38] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
