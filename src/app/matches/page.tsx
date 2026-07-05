@@ -135,6 +135,14 @@ export default function MatchesPage() {
     gender: user.gender,
   };
 
+  // Backfill slot 0 of teamA with current user in seed data
+  const [planned, setPlanned] = useState<PlannedMatch[]>(() =>
+    SEED_PLANNED.map(m => ({
+      ...m,
+      teamA: m.teamA.map((s, i) => i === 0 ? me : s),
+    }))
+  );
+
   const openPlan = (id?: string) => { setEditId(id ?? null); setPlanOpen(true); };
 
   return (
