@@ -164,6 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentPlayers: t.currentPlayers + 1,
       participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
     } : t));
+    addNotif({ type: 'event_registered', title: 'Event Registration', body: 'You have registered for the event!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveTournamentReg(uid, id, reg).catch(() => {});
   }, [user.displayName, user.username]);
@@ -265,6 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const sendFriendRequest = useCallback((uid: string) => {
     setOutgoingFriendRequests(p => [...p, uid]);
+    addNotif({ type: 'friend_request', title: 'Friend Request Sent', body: 'Your friend request has been sent.' });
   }, []);
 
   const cancelFriendRequest = useCallback((uid: string) => {
@@ -274,6 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const acceptFriendRequest = useCallback((friendUid: string) => {
     setIncomingFriendRequests(p => p.filter(id => id !== friendUid));
     setFriends(p => [...p, friendUid]);
+    addNotif({ type: 'friend_accepted', title: 'Friend Request Accepted', body: 'You are now friends!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveFriend(uid, friendUid).catch(() => {});
   }, []);

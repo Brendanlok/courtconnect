@@ -167,7 +167,7 @@ export default function MatchesPage() {
     invited.forEach(p => {
       addNotification({
         id: `notif_${Date.now()}_${p.uid}`,
-        type: 'match_pending',
+        type: 'match_invite',
         title: editId ? 'Match Updated' : pmFinal.liveRecord ? 'Live Match Invite' : 'Match Invite',
         body: editId
           ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
@@ -401,7 +401,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord }: {
               <button onClick={() => {
                 addNotification({
                   id: `notif_remove_${Date.now()}_${removeTarget.uid}`,
-                  type: 'match_pending',
+                  type: 'match_invite',
                   title: 'Removed from Match',
                   body: `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`,
                   read: false,

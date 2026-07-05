@@ -18,7 +18,7 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Players', 'Friends', 'Clubs'] as const;
+const TABS = ['Leaderboard', 'Friends', 'Clubs'] as const;
 
 export default function PlayersPage() {
   const {
@@ -31,11 +31,11 @@ export default function PlayersPage() {
   } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
-    if (typeof window === 'undefined') return 'Players';
+    if (typeof window === 'undefined') return 'Leaderboard';
     const t = new URLSearchParams(window.location.search).get('tab');
     if (t === 'friends') return 'Friends';
     if (t === 'clubs')   return 'Clubs';
-    return 'Players';
+    return 'Leaderboard';
   });
 
   // Shared filter state — applies to both Players and Friends tabs
@@ -96,7 +96,7 @@ export default function PlayersPage() {
         <SharedPlayerFilters f={sharedFilters}/>
       </div>
 
-      <div className={tab !== 'Players' ? 'hidden' : ''}>
+      <div className={tab !== 'Leaderboard' ? 'hidden' : ''}>
         <PlayersList
           user={user}
           friends={friends}
@@ -344,8 +344,9 @@ interface PlayerFilters {
 }
 
 function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
-  const selectedCountryData = getCountryByName(f.countryFilter);
-  const regionOptions = selectedCountryData.regions;
+  const isAllCountries = f.countryFilter === 'All';
+  const selectedCountryData = isAllCountries ? null : getCountryByName(f.countryFilter);
+  const regionOptions = selectedCountryData?.regions ?? [];
   return (
     <div className="space-y-2">
       {/* Search */}
@@ -359,21 +360,22 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
       <div className="flex flex-wrap gap-1.5 items-center">
         <Filter size={13} className="text-slate-500 shrink-0"/>
         <FilterDropdown<string>
-          label={`${getCountryByName(f.countryFilter).flag} ${f.countryFilter}`}
+          label={isAllCountries ? '🌏 All Countries' : `${getCountryByName(f.countryFilter).flag} ${f.countryFilter}`}
           value={f.countryFilter}
           options={[
+            { value: 'All', label: '🌏 All Countries' },
             { value: f.userCountry, label: `${getCountryByName(f.userCountry).flag} ${f.userCountry}` },
             ...COUNTRIES.filter(c => c.name !== f.userCountry).sort((a,b) => a.name.localeCompare(b.name)).map(c => ({ value: c.name, label: `${c.flag} ${c.name}` })),
           ]}
           onChange={v => { f.setCountryFilter(v); f.setRegionFilter('All'); }}
         />
-        {regionOptions.length > 0 && (
+        {!isAllCountries && regionOptions.length > 0 && (
           <FilterDropdown<string>
             icon={<MapPin size={11} className="text-emerald-400"/>}
-            label={f.regionFilter === 'All' ? `All ${selectedCountryData.regionLabel}s` : f.regionFilter}
+            label={f.regionFilter === 'All' ? `All ${selectedCountryData!.regionLabel}s` : f.regionFilter}
             value={f.regionFilter}
             options={[
-              { value: 'All', label: `All ${selectedCountryData.regionLabel}s` },
+              { value: 'All', label: `All ${selectedCountryData!.regionLabel}s` },
               ...(f.countryFilter === f.userCountry && f.userRegion
                 ? [{ value: f.userRegion, label: f.userRegion }, ...regionOptions.filter(r => r !== f.userRegion).sort().map(r => ({ value: r, label: r }))]
                 : regionOptions.slice().sort().map(r => ({ value: r, label: r }))
@@ -427,7 +429,7 @@ function PlayersList({ user, friends, incoming, filters }: Pick<FriendProps, 'us
 
   const all = [user, ...PLAYERS];
   const ranked = all
-    .filter(p => (p.country ?? 'Malaysia') === countryFilter)
+    .filter(p => countryFilter === 'All' || (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
     .filter(p => tierFilter === 'All' || p.tier === tierFilter)
     .filter(p => !openToPlay    || p.openToPlay)
@@ -491,7 +493,7 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
       if (!friends.includes(p.uid)) return false;
       const q = query.toLowerCase();
       return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
-        && ((p.country ?? 'Malaysia') === countryFilter)
+        && (countryFilter === 'All' || (p.country ?? 'Malaysia') === countryFilter)
         && (regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
         && (tierFilter  === 'All' || p.tier  === tierFilter)
         && (!openToPlay    || p.openToPlay)
