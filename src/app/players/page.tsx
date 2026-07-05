@@ -416,7 +416,7 @@ function FriendsList({ user, friends, incoming, outgoing, onAccept, onDecline, o
 
 // ─── Partner Finder ───────────────────────────────────────────────────────────
 
-function PartnerFinder({ user, updateUser }: { user: UserProfile; updateUser: (p: Partial<UserProfile>) => void }) {
+function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updateUser: (p: Partial<UserProfile>) => void; friends: string[] }) {
   const partnerFormats: ('All' | MatchType)[] =
     user.gender === 'Male'   ? ['All', 'MD', 'MX'] :
     user.gender === 'Female' ? ['All', 'WD', 'MX'] :
