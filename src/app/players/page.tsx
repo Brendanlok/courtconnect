@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, skillMatch } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, skillMatch } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -43,7 +43,7 @@ export default function PlayersPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">Players</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Find players across 🇲🇾 Malaysia</p>
+          <p className="text-slate-400 text-sm mt-0.5">Find players, friends & clubs</p>
         </div>
         <button onClick={() => setMmrInfoOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium transition-colors shrink-0 mt-1">
@@ -290,53 +290,94 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
   );
 }
 
-function RanksView({ user, friends }: { user: UserProfile; friends: string[] }) {
-  const [tab,      setTab]      = useState<RankTab>('Nationwide');
-  const [selState, setSelState] = useState<MalaysiaState>(user.state);
-  const [sortKey,  setSortKey]  = useState<SortKey>('mmr');
-  const [query,    setQuery]    = useState('');
+// ─── Players list (ranks-style with full filters) ─────────────────────────────
+
+function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'friends' | 'incoming'>) {
+  const userCountry = user.country ?? 'Malaysia';
+  const userRegion  = user.region ?? user.state ?? '';
+  const [query,         setQuery]        = useState('');
+  const [countryFilter, setCountryFilter]= useState<string>(userCountry);
+  const [regionFilter,  setRegionFilter] = useState<string>('All');
+  const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
+  const [sortKey,       setSortKey]      = useState<SortKey>('mmr');
+  const [openToPlay,    setOpenToPlay]   = useState(false);
+  const [openToPartner, setOpenToPartner]= useState(false);
+
+  const selectedCountryData = getCountryByName(countryFilter);
+  const regionOptions = selectedCountryData.regions;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
+
   const all = [user, ...PLAYERS];
   const ranked = all
+    .filter(p => (p.country ?? 'Malaysia') === countryFilter)
+    .filter(p => regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
+    .filter(p => tierFilter === 'All' || p.tier === tierFilter)
+    .filter(p => !openToPlay    || p.openToPlay)
+    .filter(p => !openToPartner || p.lookingForPartner)
     .filter(p => {
-      if (tab === 'By State') return p.state === selState;
-      if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
-      if (tab === 'Friends')  return friends.includes(p.uid) || p.uid === 'me';
-      return true;
+      const q = query.toLowerCase();
+      return !q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
     })
-    .filter(p => p.displayName.toLowerCase().includes(query.toLowerCase()) || p.username.toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => {
       if (sortKey === 'winRate') return winRate(b) - winRate(a);
       if (sortKey === 'wins')    return b.stats.wins - a.stats.wins;
       if (sortKey === 'matches') return b.stats.totalMatches - a.stats.totalMatches;
       return b.mmr - a.mmr;
     });
+
   const meIdx = ranked.findIndex(p => p.uid === 'me');
+
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
-        {RANK_TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap
-              ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-            {t}
-          </button>
-        ))}
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+        <input value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Search by name or @username…"
+          className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
       </div>
-      {tab === 'By State' && (
-        <FilterDropdown<MalaysiaState>
-          icon={<MapPin size={11} className="text-emerald-400"/>}
-          label={selState} value={selState}
-          options={MY_STATES.map(s => ({ value: s as MalaysiaState, label: s }))}
-          onChange={setSelState}
+
+      {/* Country + Region */}
+      <div className="flex flex-wrap gap-2">
+        <FilterDropdown<string>
+          icon={<span className="text-xs">{getCountryByName(countryFilter).flag}</span>}
+          label={countryFilter}
+          value={countryFilter}
+          options={[
+            { value: userCountry, label: `${getCountryByName(userCountry).flag} ${userCountry}` },
+            ...COUNTRIES.filter(c => c.name !== userCountry).sort((a,b) => a.name.localeCompare(b.name)).map(c => ({ value: c.name, label: `${c.flag} ${c.name}` })),
+          ]}
+          onChange={v => { setCountryFilter(v); setRegionFilter('All'); }}
         />
-      )}
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search…"
-            className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
-        </div>
+        {regionOptions.length > 0 && (
+          <FilterDropdown<string>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label={regionFilter === 'All' ? `All ${selectedCountryData.regionLabel}s` : regionFilter}
+            value={regionFilter}
+            options={[
+              { value: 'All', label: `All ${selectedCountryData.regionLabel}s` },
+              ...(countryFilter === userCountry && userRegion
+                ? [{ value: userRegion, label: userRegion }, ...regionOptions.filter(r => r !== userRegion).sort().map(r => ({ value: r, label: r }))]
+                : regionOptions.slice().sort().map(r => ({ value: r, label: r }))
+              ),
+            ]}
+            onChange={setRegionFilter}
+          />
+        )}
+      </div>
+
+      {/* Tier + Sort + toggles */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <FilterDropdown<Tier | 'All'>
+          icon={<span className="text-[11px]">{tierFilter !== 'All' ? TIER_STYLE[tierFilter].icon : '🏅'}</span>}
+          label={tierFilter === 'All' ? 'All Tiers' : tierFilter}
+          value={tierFilter}
+          options={TIERS.map(t => ({
+            value: t, label: t === 'All' ? 'All Tiers' : t,
+            prefix: t !== 'All' ? <span className="text-sm">{TIER_STYLE[t].icon}</span> : undefined,
+          }))}
+          onChange={setTierFilter}
+        />
         <FilterDropdown<SortKey>
           icon={<BarChart2 size={11} className="text-amber-400"/>}
           label={SORT_OPTIONS.find(o => o.key === sortKey)?.label ?? 'MMR'}
@@ -344,7 +385,20 @@ function RanksView({ user, friends }: { user: UserProfile; friends: string[] }) 
           options={SORT_OPTIONS.map(o => ({ value: o.key, label: o.label }))}
           onChange={setSortKey}
         />
+        <button onClick={() => setOpenToPlay(o => !o)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
+            ${openToPlay ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${openToPlay ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
+          Open to Play
+        </button>
+        <button onClick={() => setOpenToPartner(o => !o)}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
+            ${openToPartner ? 'bg-violet-500/15 border-violet-500/30 text-violet-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${openToPartner ? 'bg-violet-400' : 'bg-slate-600'}`}/>
+          Open to Partner
+        </button>
       </div>
+
       {meIdx >= 0 && (
         <div className="flex items-center gap-2 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 py-2">
           <span className="text-xs font-bold text-emerald-400">#{meIdx + 1}</span>
@@ -357,83 +411,6 @@ function RanksView({ user, friends }: { user: UserProfile; friends: string[] }) 
           <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFriend={friends.includes(p.uid)} sortKey={sortKey}/>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ─── All Players list ─────────────────────────────────────────────────────────
-
-function PlayersList({ user, friends, incoming }: Pick<FriendProps, 'user' | 'friends' | 'incoming'>) {
-  const userCountry = user.country ?? 'Malaysia';
-  const [view,           setView]          = useState<'browse' | 'ranks'>('browse');
-  const [query,          setQuery]         = useState('');
-  const [stateFilter,    setStateFilter]   = useState<MalaysiaState | 'All'>('All');
-  const [tierFilter,     setTierFilter]    = useState<Tier | 'All'>('All');
-  const [sortDir,        setSortDir]       = useState<SortDir>('desc');
-  const [openToPlay,     setOpenToPlay]    = useState(false);
-  const [openToPartner,  setOpenToPartner] = useState(false);
-  const [countryFilter,  setCountryFilter] = useState<string>(userCountry);
-
-  const filtered = PLAYERS
-    .filter(p => (p.country ?? 'Malaysia') === countryFilter)
-    .filter(p => {
-      const q = query.toLowerCase();
-      return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
-        && (stateFilter === 'All' || p.state === stateFilter)
-        && (tierFilter  === 'All' || p.tier  === tierFilter)
-        && (!openToPlay    || p.openToPlay)
-        && (!openToPartner || p.lookingForPartner);
-    })
-    .sort((a, b) => sortDir === 'desc' ? b.mmr - a.mmr : a.mmr - b.mmr);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex bg-slate-800 border border-slate-700 rounded-xl p-0.5 gap-0.5 w-fit">
-        <button onClick={() => setView('browse')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-            ${view === 'browse' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-          <LayoutList size={11}/> Browse
-        </button>
-        <button onClick={() => setView('ranks')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-            ${view === 'ranks' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-          <BarChart2 size={11}/> Ranks
-        </button>
-      </div>
-
-      {view === 'ranks' && <RanksView user={user} friends={friends}/>}
-
-      {view === 'browse' && (
-        <>
-          {/* Country filter */}
-          <div className="flex gap-1.5 flex-wrap">
-            {[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)].map(name => {
-              const c = COUNTRIES.find(x => x.name === name);
-              if (!c) return null;
-              return (
-                <button key={name} onClick={() => setCountryFilter(name)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
-                    ${countryFilter === name ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
-                  {c.flag} {name}
-                </button>
-              );
-            })}
-          </div>
-          <FilterBar query={query} setQuery={setQuery} stateFilter={stateFilter} setStateFilter={setStateFilter}
-            tierFilter={tierFilter} setTierFilter={setTierFilter} sortDir={sortDir} setSortDir={setSortDir}
-            openToPlay={openToPlay} setOpenToPlay={setOpenToPlay}
-            openToPartner={openToPartner} setOpenToPartner={setOpenToPartner}/>
-          <p className="text-xs text-slate-500">{filtered.length} player{filtered.length !== 1 ? 's' : ''}</p>
-          <div className="space-y-2">
-            {filtered.map(p => (
-              <PlayerCard key={p.uid} player={p} myMMR={user.mmr}
-                isFriend={friends.includes(p.uid)}
-                isIncoming={incoming.includes(p.uid)}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

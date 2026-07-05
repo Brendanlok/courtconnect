@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
          AlertTriangle, X, Filter, Info, Eye } from 'lucide-react';
-import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 
@@ -84,8 +84,10 @@ export default function Tournaments() {
           updateUser, clubs } = useApp();
 
   const userCountry = user.country ?? 'Malaysia';
+  const userRegion  = user.region ?? user.state ?? '';
   const [tab,           setTab]         = useState<'Active'|'Upcoming'|'Completed'>('Active');
   const [countryFilter, setCountryFilter] = useState<string>(userCountry);
+  const [regionFilter,  setRegionFilter]  = useState<string>('All');
   const [visFilter,     setVisFilter]   = useState<VisFilter>('All');
   const [typeFilter,    setTypeFilter]  = useState<'All' | MatchType>('All');
   const [eligFilter,    setEligFilter]  = useState<EligFilter>('All');
@@ -103,8 +105,12 @@ export default function Tournaments() {
   const isMyEvent = (t: Tournament) =>
     t.hostUid === 'me' || t.organiser === user.displayName || !!registrations[t.id];
 
+  const selectedCountryData = getCountryByName(countryFilter);
+  const regionOptions = selectedCountryData.regions;
+
   const list = tournaments
     .filter(t => (t.country ?? 'Malaysia') === countryFilter)
+    .filter(t => regionFilter === 'All' || (t.state ?? '') === regionFilter)
     .filter(t => t.status === tab)
     .filter(t => visFilter === 'All' ? true : visFilter === 'Private' ? t.isPrivate : !t.isPrivate)
     .filter(t => typeFilter === 'All' || t.type === typeFilter)
@@ -130,7 +136,7 @@ export default function Tournaments() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Events</h1>
-          <p className="text-slate-400 text-sm mt-0.5">🇲🇾 Malaysia</p>
+          <p className="text-slate-400 text-sm mt-0.5">{getCountryByName(countryFilter).flag} {countryFilter}{regionFilter !== 'All' ? ` · ${regionFilter}` : ''}</p>
         </div>
         <button onClick={() => setHostOpen(true)}
           className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition-colors">
@@ -150,19 +156,33 @@ export default function Tournaments() {
         ))}
       </div>
 
-      {/* Country filter */}
-      <div className="flex gap-1.5 flex-wrap">
-        {[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)].map(name => {
-          const c = COUNTRIES.find(x => x.name === name);
-          if (!c) return null;
-          return (
-            <button key={name} onClick={() => setCountryFilter(name)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
-                ${countryFilter === name ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
-              {c.flag} {name}
-            </button>
-          );
-        })}
+      {/* Country + Region filter */}
+      <div className="flex flex-wrap gap-2">
+        <FilterDropdown<string>
+          icon={<span className="text-xs">{getCountryByName(countryFilter).flag}</span>}
+          label={countryFilter}
+          value={countryFilter}
+          options={[
+            { value: userCountry, label: `${getCountryByName(userCountry).flag} ${userCountry}` },
+            ...COUNTRIES.filter(c => c.name !== userCountry).sort((a,b) => a.name.localeCompare(b.name)).map(c => ({ value: c.name, label: `${c.flag} ${c.name}` })),
+          ]}
+          onChange={v => { setCountryFilter(v); setRegionFilter('All'); }}
+        />
+        {regionOptions.length > 0 && (
+          <FilterDropdown<string>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label={regionFilter === 'All' ? `All ${selectedCountryData.regionLabel}s` : regionFilter}
+            value={regionFilter}
+            options={[
+              { value: 'All', label: `All ${selectedCountryData.regionLabel}s` },
+              ...(countryFilter === userCountry && userRegion
+                ? [{ value: userRegion, label: userRegion }, ...regionOptions.filter(r => r !== userRegion).sort().map(r => ({ value: r, label: r }))]
+                : regionOptions.slice().sort().map(r => ({ value: r, label: r }))
+              ),
+            ]}
+            onChange={setRegionFilter}
+          />
+        )}
       </div>
 
       {/* Filter bar */}

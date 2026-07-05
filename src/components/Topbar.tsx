@@ -151,25 +151,12 @@ export function Topbar() {
   return (
     <>
       <header className="h-14 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex items-center justify-between px-4 sm:px-5 shrink-0 relative z-30">
-        {/* Left: clickable location (visible on all screens) */}
-        <div className="relative">
-          <button onClick={() => { setLocationOpen(o => !o); setMenuOpen(false); setNotifOpen(false); }}
-            className="flex items-center gap-1 sm:gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors group">
-            <MapPin size={13} className="text-emerald-400 shrink-0" />
-            {/* Mobile: compact — area + flag only */}
-            <span className="sm:hidden text-slate-300 font-medium text-xs max-w-[100px] truncate group-hover:text-emerald-300 transition-colors">
-              {user.area || user.state}
-            </span>
-            <span className="sm:hidden text-xs">{getCountryByName(user.country ?? 'Malaysia').flag}</span>
-            {/* Desktop: full display */}
-            <span className="hidden sm:inline text-slate-300 font-medium group-hover:text-emerald-300 transition-colors">{user.area},</span>
-            <span className="hidden sm:inline">{user.region ?? user.state}</span>
-            <ChevronDown size={11} className={`text-slate-500 transition-transform ${locationOpen ? 'rotate-180' : ''}`}/>
-            <span className="hidden sm:inline ml-1 text-xs bg-slate-800 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-              {getCountryByName(user.country ?? 'Malaysia').flag} {user.country ?? 'Malaysia'}
-            </span>
-          </button>
-          {locationOpen && <LocationPicker onClose={() => setLocationOpen(false)}/>}
+        {/* Left: app branding */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+            <span className="text-black font-black text-xs">CC</span>
+          </div>
+          <span className="font-bold text-sm tracking-tight">CourtConnect</span>
         </div>
 
         {/* Right */}
