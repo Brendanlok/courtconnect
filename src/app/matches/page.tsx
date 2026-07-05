@@ -364,9 +364,38 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
 
         {/* Slots grid */}
         <div className="grid grid-cols-2 gap-2">
-          <TeamSlots label="Team A (You)" slots={[me, ...m.teamA.slice(1)]} accepted={m.accepted} declined={m.declined} meUid="me"/>
-          <TeamSlots label="Team B" slots={m.teamB} accepted={m.accepted} declined={m.declined} meUid="me"/>
+          <TeamSlots label="Team A (You)" slots={[me, ...m.teamA.slice(1)]} accepted={m.accepted} declined={m.declined} meUid="me"
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}/>
+          <TeamSlots label="Team B" slots={m.teamB} accepted={m.accepted} declined={m.declined} meUid="me"
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}/>
         </div>
+
+        {/* Remove player confirmation */}
+        {removeTarget && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={13} className="text-red-400 shrink-0"/>
+              <p className="text-xs font-semibold text-red-300">Remove {removeTarget.displayName} from this match?</p>
+            </div>
+            <p className="text-[11px] text-slate-400">They will be notified that they've been removed.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setRemoveTarget(null)}
+                className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors">Keep</button>
+              <button onClick={() => {
+                addNotification({
+                  id: `notif_remove_${Date.now()}_${removeTarget.uid}`,
+                  type: 'match_pending',
+                  title: 'Removed from Match',
+                  body: `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`,
+                  read: false,
+                  createdAt: new Date().toISOString(),
+                });
+                setRemoveTarget(null);
+              }}
+                className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors">Remove</button>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 pt-0.5">
