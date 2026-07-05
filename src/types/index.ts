@@ -7,6 +7,8 @@ export type MalaysiaState =
   | 'Kedah' | 'Kelantan' | 'Terengganu' | 'Pahang' | 'Negeri Sembilan'
   | 'Melaka' | 'Perlis' | 'Sabah' | 'Sarawak' | 'Putrajaya' | 'Labuan';
 
+export type CountryCode = 'MY' | 'SG' | 'ID' | 'TH' | 'PH' | 'VN' | 'CN' | 'JP' | 'KR' | 'IN' | 'AU' | 'GB' | 'US' | 'OTHER';
+
 export interface UserProfile {
   uid: string;
   username: string;          // e.g. @lokkai
@@ -31,6 +33,9 @@ export interface UserProfile {
   distKm?: number;
   joinedAt: string;
   birthday?: string;                     // ISO date e.g. "1997-04-15"
+  country?: string;                      // e.g. "Malaysia" (default)
+  countryCode?: CountryCode;             // e.g. "MY"
+  region?: string;                       // state/province for non-MY users
   endorsements?: Record<string, number>; // skill → count
   privacy?: {
     matchHistory:  'public' | 'friends' | 'private';

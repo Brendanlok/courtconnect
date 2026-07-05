@@ -1,4 +1,4 @@
-import type { Tier, MalaysiaState } from '@/types';
+import type { Tier, MalaysiaState, CountryCode } from '@/types';
 
 export function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
