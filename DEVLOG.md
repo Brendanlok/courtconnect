@@ -8,6 +8,45 @@
 
 <!-- ENTRIES BELOW — newest first -->
 
+## [2026-07-05 11:10] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was broken at session start (`Cannot find name 'FriendsTab'`) from the concurrent Players-tab refactor flagged as a critical alert last session — the user finished and committed that refactor (`3210377`) moments before this session started, so the build was already fixed and pushed by the time I checked. Audited the new `FriendsTab`/Partner Finder code and found + fixed two real bugs, plus verified everything live in the browser.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | Failed initially (`FriendsTab` undefined), but resolved itself — the user's own in-flight refactor from last session's critical alert landed and fixed it before I could touch the file |
+| 2 | 🔴 | Audit refactored Players/Friends/Clubs page | ✅ | Found 2 real bugs in the new `FriendsTab` Partner Finder (see below) |
+| 3 | 🟢 | Bo3 score display in tournament brackets | ✅ | Fixed — carried over from two prior sessions |
+| 4 | 🟢 | Broader code audit (delegated) | ✅ | Ran a background audit agent; most other findings were minor `any`-typing/UX nitpicks not worth churn this session |
+
+### Issues Found
+- 🔴 [src/app/players/page.tsx:508](src/app/players/page.tsx) — Partner Finder's "Sent" button state was driven by a local `partnerSent` array that was never populated on send (only ever cleared on retract), so the button never flipped to "Sent" after actually sending a request via the real `onSend`/`sendFriendRequest`.
+- 🔴 [src/app/players/page.tsx:646](src/app/players/page.tsx) — The Partner Finder's "Cancel Request" confirm dialog only mutated the dead local `partnerSent` state instead of calling the real `onCancel`/`cancelFriendRequest` — retracting a request from Partner Finder didn't actually cancel it in `AppContext`, leaving a phantom outgoing request.
+- 🟢 [src/app/players/page.tsx:533](src/app/players/page.tsx) — A Partner Finder availability line rendered the literal text `\U0001f550` instead of a 🕐 clock emoji (Python-style unicode escape, not valid in JS/JSX).
+- 🟢 [src/app/tournaments/page.tsx:825](src/app/tournaments/page.tsx) — `BracketCard` picked one arbitrary game's score fragment by row index instead of showing the full match score, silently dropping games in Bo3 matches (carried over from two prior sessions' "Upcoming Plans").
+
+### Improvements Made
+- Rewired Partner Finder's send/retract flow to use the real `outgoing` prop and `onCancel` callback instead of dead local state; verified live in the browser — sending a request now flips the button to "Sent", and retracting it correctly reverts to "Add Friend" (confirmed the underlying `outgoingFriendRequests` state actually changes, not just local UI state).
+- Fixed the broken clock emoji escape in Partner Finder's availability line.
+- `BracketCard` now shows the full match score (e.g. `18-21, 21-19, 21-17`) next to the winner instead of one arbitrary game fragment.
+- Also had to clean up two environment snags mid-session: a leftover `next dev` process from an earlier diagnostic step was holding port 3199 and blocking the preview server restart (killed it), and a stale service worker registration in the preview browser was serving a cached pre-refactor JS bundle for `/players/` even after a hard reload (unregistered it + cleared caches) — worth knowing if a future session sees "phantom" old UI in the preview despite a clean build and correct source.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Toast/snackbar for incoming friend + challenge requests | Carried over twice now — re-evaluated this session: the app has no live multi-user simulation, so there's no real trigger point for a friend-request toast to fire against (incoming requests are just seed data present at load, not events that happen while you're active). Needs a design decision first: either simulate periodic fake incoming events, or scope the toast to actions the user themselves can trigger (e.g. their own outgoing request getting "auto-accepted" after a delay) | Needs a design call before scoping — flagging for the user rather than guessing |
+| Club chat / per-club message board | Clubs currently have announcements (one-way, owner/mod only) but no member discussion; chat page is 1:1 only | Medium — new tab in Club detail view, reuse Chat's message list UI against a club-scoped thread |
+| Match history filter/search on profile pages | `PlayerProfileClient` lists recent matches but has no way to filter by opponent, format, or win/loss — gets unwieldy as match count grows | Small — reuse the search/filter pattern already used in Players/Leaderboard |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-05 10:50] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
