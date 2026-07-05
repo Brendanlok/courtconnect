@@ -78,7 +78,7 @@ export default function Players() {
           onRemove={removeFriend}
         />
       )}
-      {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser}/>}
+      {tab === 'Partner Finder' && <PartnerFinder user={user} updateUser={updateUser} friends={friends}/>}
       {tab === 'Clubs'          && (
         <ClubsTab
           clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
