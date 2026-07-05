@@ -80,9 +80,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
   const [challenges,       setChallenges]       = useState<Challenge[]>([]);
-  const [clubs,            setClubs]            = useState<Club[]>(SEED_CLUBS);
-  const [myClubId,         setMyClubId]         = useState<string | null>(null);
-  const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>([]);
+  const [clubs,            setClubs]            = useState<Club[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem('cc_myClubId');
+      if (savedId) {
+        return SEED_CLUBS.map(c => c.id === savedId && !c.memberIds.includes('me')
+          ? { ...c, memberIds: [...c.memberIds, 'me'] }
+          : c);
+      }
+    }
+    return SEED_CLUBS;
+  });
+  const [myClubId,         setMyClubId]         = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('cc_myClubId') ?? null;
+    return null;
+  });
+  const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try { return JSON.parse(localStorage.getItem('cc_myClubPendingIds') ?? '[]'); } catch { return []; }
+    }
+    return [];
+  });
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
   const [friends,                setFriends]               = useState<string[]>([]);
   const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
@@ -93,6 +111,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
   }, [user.openToPlay]);
+
+  useEffect(() => {
+    if (myClubId) localStorage.setItem('cc_myClubId', myClubId);
+    else localStorage.removeItem('cc_myClubId');
+  }, [myClubId]);
+
+  useEffect(() => {
+    localStorage.setItem('cc_myClubPendingIds', JSON.stringify(myClubPendingIds));
+  }, [myClubPendingIds]);
 
   const addMatch      = useCallback((m: Match) => setMatches(p => [m, ...p]), []);
   const confirmMatch  = useCallback((id: string) => {

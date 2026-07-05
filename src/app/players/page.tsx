@@ -596,6 +596,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
 }) {
   const [stateFilter,    setStateFilter]    = useState<string>('All');
   const [search,         setSearch]         = useState('');
+  const [myClubsOnly,    setMyClubsOnly]    = useState(false);
   const [createOpen,     setCreateOpen]     = useState(false);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
@@ -607,10 +608,13 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   const states  = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
   const myClub  = clubs.find(c => c.id === myClubId);
 
+  const isMyClub = (c: Club) => c.id === myClubId || c.adminId === userId || c.memberIds.includes(userId);
+
   const filtered = clubs.filter(c => {
     const q = search.toLowerCase();
     return (stateFilter === 'All' || c.state === stateFilter) &&
-      (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q));
+      (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q)) &&
+      (!myClubsOnly || isMyClub(c));
   });
 
   const copyLink = (clubId: string) => {
@@ -656,8 +660,18 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
       )}
 
       {/* Header row */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">{clubs.length} club{clubs.length !== 1 ? 's' : ''} in Malaysia</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-slate-500">{filtered.length} of {clubs.length} club{clubs.length !== 1 ? 's' : ''}</p>
+          <button
+            onClick={() => setMyClubsOnly(o => !o)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors
+              ${myClubsOnly
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>
+            <Shield size={10}/> My Clubs
+          </button>
+        </div>
         {!myClubId && (
           <button onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
