@@ -116,6 +116,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
+    const uid = auth.currentUser?.uid;
+    if (uid) saveOpenToPlay(uid, user.openToPlay ?? false).catch(() => {});
   }, [user.openToPlay]);
 
   useEffect(() => {
