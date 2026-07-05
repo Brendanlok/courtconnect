@@ -366,11 +366,36 @@ export function PlayerProfileClient({ username }: { username: string }) {
             {playerMatches.length === 0 ? (
               <p className="text-slate-500 text-sm py-4 text-center">No matches recorded yet.</p>
             ) : (
-              <div className="space-y-1">
-                {playerMatches.slice(0,6).map(m => (
-                  <MatchCard key={m.id} match={m} userId={player.uid} onClick={() => setSelectedMatch(m)}/>
-                ))}
-              </div>
+              <>
+                <div className="flex gap-2 flex-wrap items-center mb-3">
+                  <div className="relative flex-1 min-w-[140px]">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"/>
+                    <input value={matchQuery} onChange={e => setMatchQuery(e.target.value)}
+                      placeholder="Search opponent…"
+                      className="w-full pl-7 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs outline-none focus:border-emerald-500 transition-colors"/>
+                  </div>
+                  <FilterDropdown<ResultFilter>
+                    label="All" value={matchResult}
+                    options={RESULT_FILTERS.map(r => ({ value: r, label: r }))}
+                    onChange={setMatchResult}
+                  />
+                  <FilterDropdown<MatchType | 'All'>
+                    label="Format" value={matchFormat}
+                    options={[{ value: 'All' as const, label: 'All Formats' },
+                      ...(Object.keys(MATCH_TYPE_LABEL) as MatchType[]).map(t => ({ value: t, label: MATCH_TYPE_LABEL[t] }))]}
+                    onChange={setMatchFormat}
+                  />
+                </div>
+                {filteredMatches.length === 0 ? (
+                  <p className="text-slate-500 text-sm py-4 text-center">No matches match these filters.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {filteredMatches.slice(0,6).map(m => (
+                      <MatchCard key={m.id} match={m} userId={player.uid} onClick={() => setSelectedMatch(m)}/>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
