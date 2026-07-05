@@ -382,8 +382,9 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel }: {
   );
 }
 
-function TeamSlots({ label, slots, accepted, declined, meUid }: {
+function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer }: {
   label: string; slots: (SlotPlayer | null)[]; accepted: string[]; declined: string[]; meUid: string;
+  onRemovePlayer?: (player: SlotPlayer) => void;
 }) {
   return (
     <div className="space-y-1.5">
@@ -391,8 +392,8 @@ function TeamSlots({ label, slots, accepted, declined, meUid }: {
       {slots.map((s, i) => {
         if (!s) {
           return (
-            <div key={i} className="flex items-center gap-1.5 border border-dashed border-slate-700 rounded-xl px-2.5 py-2 text-slate-600">
-              <User size={11}/><span className="text-[11px]">Invite pending</span>
+            <div key={i} className="flex items-center gap-1.5 border border-dashed border-slate-700 rounded-xl px-2.5 py-2 min-h-[44px]">
+              <User size={11} className="text-slate-600"/><span className="text-[11px] text-slate-600">Invite pending</span>
             </div>
           );
         }
@@ -400,7 +401,7 @@ function TeamSlots({ label, slots, accepted, declined, meUid }: {
         const isAcc = accepted.includes(s.uid);
         const isDec = declined.includes(s.uid);
         return (
-          <div key={i} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
+          <div key={i} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 min-h-[44px] ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
             <Avatar name={s.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold truncate">{s.displayName}</p>
@@ -410,6 +411,11 @@ function TeamSlots({ label, slots, accepted, declined, meUid }: {
             {!isMe && isAcc  && <Check size={10} className="text-emerald-400 shrink-0"/>}
             {!isMe && isDec  && <X size={10} className="text-red-400 shrink-0"/>}
             {!isMe && !isAcc && !isDec && <Clock size={10} className="text-amber-400 shrink-0"/>}
+            {!isMe && onRemovePlayer && (
+              <button onClick={() => onRemovePlayer(s)} className="ml-1 text-slate-600 hover:text-red-400 shrink-0 transition-colors">
+                <X size={10}/>
+              </button>
+            )}
           </div>
         );
       })}
