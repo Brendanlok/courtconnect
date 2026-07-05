@@ -83,8 +83,8 @@ export default function PlayersPage() {
         />
       )}
       {tab === 'Friends' && (
-        <FriendsTab
-          user={user} updateUser={updateUser}
+        <FriendsList
+          user={user}
           friends={friends}
           outgoing={outgoingFriendRequests}
           incoming={incomingFriendRequests}
