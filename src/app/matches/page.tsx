@@ -171,7 +171,7 @@ export default function MatchesPage() {
 
       {/* Log match modal (standalone) */}
       {logOpen && !logForId && (
-        <LogMatchModal onClose={() => setLogOpen(false)}/>
+        <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>
       )}
 
       {/* Plan / Edit modal */}
