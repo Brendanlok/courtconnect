@@ -442,7 +442,7 @@ function PartnerFinder({ user, updateUser, friends }: { user: UserProfile; updat
   const retractRequest = (uid: string) => setSent(prev => prev.filter(id => id !== uid));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-debug-friends={JSON.stringify(friends)}>
       <div className="space-y-2">
         <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl">
           <div className="flex items-center gap-2.5">
