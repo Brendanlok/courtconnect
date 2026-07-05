@@ -594,11 +594,12 @@ function SlotPicker({ slot, label, genderRequired, exclude, isMe, onSet, onClear
   );
 }
 
-function PlanMatchModal({ existing, me, onSave, onClose }: {
+function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   existing: PlannedMatch | null;
   me: SlotPlayer;
   onSave: (pm: PlannedMatch) => void;
   onClose: () => void;
+  hostName?: string;
 }) {
   const [format, setFormat] = useState<MatchType>(existing?.format ?? 'MS');
   const [date,   setDate]   = useState(existing?.date ?? '');
