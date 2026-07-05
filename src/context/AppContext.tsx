@@ -145,7 +145,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
   const disputeMatch  = useCallback((id: string) => setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m)), []);
-  const updateUser    = useCallback((patch: Partial<UserProfile>) => setUser(u => ({ ...u, ...patch })), []);
+  const updateUser    = useCallback((patch: Partial<UserProfile>) => {
+    setUser(u => ({ ...u, ...patch }));
+    const uid = auth.currentUser?.uid;
+    if (uid) saveUserProfile(uid, patch).catch(() => {});
+  }, []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
   const totalUnread   = conversations.reduce((s, c) => s + c.unread, 0);
 
