@@ -27,6 +27,7 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
   onClose: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -36,6 +37,21 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
       color: { dark: '#111827', light: '#ffffff' },
     }).catch(() => {});
   }, [qrPayload]);
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${user.displayName} on CourtConnect`, url: qrPayload });
+        return;
+      } catch { /* user cancelled or not supported */ }
+    }
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(qrPayload);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
@@ -57,15 +73,15 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
         <p className="text-slate-500 text-xs mt-1">#{user.globalRank} National · {user.area}, {user.state}</p>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose}
+          <button onClick={handleShare}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
-            <Share2 size={15}/> Share
+            {copied ? <><Check size={15}/> Copied!</> : <><Share2 size={15}/> Share</>}
           </button>
           <button onClick={onClose} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl font-semibold text-sm transition-colors">
             Close
           </button>
         </div>
-        <p className="text-slate-500 text-xs mt-4">💡 Opponent scans this to auto-fill match details</p>
+        <p className="text-slate-500 text-xs mt-4">Scan to open this profile · Tap Share to copy link</p>
       </div>
     </div>
   );
