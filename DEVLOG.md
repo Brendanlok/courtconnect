@@ -1,5 +1,39 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-07 00:20] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start (user landed a large batch of new work since the 21:10 session: Live Score page, Onboarding flow, Club chat/detail page, Chat Firestore persistence, profile photo upload, QR-code-as-profile-link). Note: the user was actively editing the app live in a parallel session while this audit ran (their own dev server was occupying the port, and new commits landed mid-session), so this session's scope was audit-and-fix only, no new features started, to avoid colliding with in-progress work.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🔴 | Audit ~20 unaudited files from the Live/Onboarding/Chat/Club batch (commits since 21:10) | ✅ | Found 2 confirmed 🔴 regressions — see below |
+
+### Issues Found
+- 🔴 [src/components/BottomNav.tsx](src/components/BottomNav.tsx) + [src/components/Sidebar.tsx](src/components/Sidebar.tsx) — when the new "Live Score" nav link was added, the "Messages/Chat" link was replaced rather than added alongside it, in both the mobile bottom nav and the desktop sidebar. The unread-message badge logic (`totalUnread`) was deleted along with it. Since `/chat` has no other entry point in the app except a deep-link from a specific player's profile ("Message" button), the Chat feature — which the user was actively improving in the same commit range (Firestore persistence, header fixes) — became unreachable from primary navigation, with no way to know new messages had arrived.
+- 🔴 [src/components/QRModal.tsx](src/components/QRModal.tsx) + [src/components/LogMatchModal.tsx](src/components/LogMatchModal.tsx) — `QRModal` was changed to encode a profile URL (`/players/<username>/`) in the QR code instead of the old `{"uid","username","displayName"}` JSON payload. But `QRScanner` inside `LogMatchModal` (used to scan an opponent's QR code and auto-fill them into a match) still only did `JSON.parse(result.data)` — parsing a URL string as JSON always throws, silently swallowed into an empty payload, so scanning any profile QR to add an opponent to a match always failed with "player not registered" after this change.
+
+### Improvements Made
+- [src/components/BottomNav.tsx](src/components/BottomNav.tsx) / [src/components/Sidebar.tsx](src/components/Sidebar.tsx) — restored the Chat/Messages link (and its unread badge) alongside the new Live Score link instead of replacing it; BottomNav grid widened from 5 to 6 columns to fit both.
+- [src/components/LogMatchModal.tsx](src/components/LogMatchModal.tsx) — `QRScanner`'s payload parser now also recognizes the new `/players/<username>/` URL format (regex-extracts the username) as a fallback when `JSON.parse` fails, so opponent QR scanning works again with the new QR format while still supporting the legacy JSON payload.
+- Verified via `npx next build` (clean, no TS errors) after each fix. Could not verify live in the browser — a parallel session's dev server already held the preview port, and the app requires real Firebase auth with no headless/demo login path anyway, consistent with prior sessions.
+
+### Feature Ideas / Upcoming Plans
+(Carried over — untouched this session since the user's own batch of work already covers several of these)
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce remaining Privacy settings (plannedMatches, friendList, eventHistory) | Match History and Club Membership are enforced; these 3 still have no display surface on the profile | Medium-Large — needs new profile sections, not just visibility checks |
+| Club chat / per-club message board | Now appears partially covered by the user's new ClubDetailClient — verify in a future session once the port is free | Re-check scope, may already be done |
+
+### Critical Alerts
+None — both 🔴 issues found this session were fixed and deployed within the session.
+
+
 ## [2026-07-06 21:10] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
