@@ -66,6 +66,11 @@ export function Sidebar() {
             >
               <span className="relative shrink-0">
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+                {href === '/chat' && totalUnread > 0 && !active && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white leading-none px-0.5">
+                    {totalUnread > 9 ? '9+' : totalUnread}
+                  </span>
+                )}
               </span>
 
               {/* Label — fades out when collapsed */}
