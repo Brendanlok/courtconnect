@@ -94,122 +94,120 @@ export function PlayerProfileClient({ username }: { username: string }) {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-br from-slate-900 to-emerald-950/20 border border-emerald-500/20 rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row gap-5 items-start">
+        <div className="bg-gradient-to-br from-slate-900 to-emerald-950/20 border border-emerald-500/20 rounded-2xl p-6 space-y-4">
+          {/* Top row: avatar left, skill match right */}
+          <div className="flex items-start justify-between">
             <Avatar name={player.displayName} size="lg" className="ring-4 ring-emerald-500/20"/>
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl font-bold">{player.displayName}</h1>
-                <span className="text-slate-400 text-base">@{player.username}</span>
-                <TierBadge tier={player.tier}/>
-                {player.isDummy && (
-                  <span className="text-[10px] font-bold bg-slate-700 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full tracking-wide">
-                    DEMO PROFILE
-                  </span>
-                )}
+            {!isMe && (
+              <div className="group relative">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
+                  ${sm>=80?'bg-emerald-500/10 border-emerald-500/25 text-emerald-400':sm>=60?'bg-amber-500/10 border-amber-500/25 text-amber-400':'bg-red-500/10 border-red-500/25 text-red-400'}`}>
+                  {sm>=80?'⚡':sm>=60?'🟡':'🔴'} {sm}% match
+                </div>
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
+                  <p className="font-semibold text-white mb-1">Skill Match</p>
+                  How closely your MMR matches theirs. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
+                  <p className="mt-1 text-slate-400">{sm>=80?'Very even match':sm>=60?'Moderate gap — still competitive':'Large gap — may feel one-sided'}</p>
+                </div>
               </div>
-              <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
-                <MapPin size={12}/> {player.area}, {player.state}
-                <span className="text-slate-600">·</span>
-                <span>#{player.globalRank} National</span>
-                {player.gender && (
-                  <>
-                    <span className="text-slate-600">·</span>
-                    <span>{player.gender === 'Male' ? '♂' : '♀'} {player.gender}</span>
-                  </>
-                )}
-              </p>
-              {player.openToPlay && (
-                <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Open to play today
+            )}
+          </div>
+
+          {/* Player info */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-2xl font-bold">{player.displayName}</h1>
+              <span className="text-slate-400 text-base">@{player.username}</span>
+              <TierBadge tier={player.tier}/>
+              {player.isDummy && (
+                <span className="text-[10px] font-bold bg-slate-700 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full tracking-wide">
+                  DEMO PROFILE
                 </span>
               )}
-              {player.bio && <p className="text-slate-300 text-sm mt-2">{player.bio}</p>}
+            </div>
+            <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
+              <MapPin size={12}/> {player.area}, {player.state}
+              <span className="text-slate-600">·</span>
+              <span>#{player.globalRank} National</span>
+              {player.gender && (
+                <>
+                  <span className="text-slate-600">·</span>
+                  <span>{player.gender === 'Male' ? '♂' : '♀'} {player.gender}</span>
+                </>
+              )}
+            </p>
+            {player.openToPlay && (
+              <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Open to play today
+              </span>
+            )}
+            {player.bio && <p className="text-slate-300 text-sm mt-2">{player.bio}</p>}
 
-              <div className="flex flex-wrap gap-5 mt-4">
-                {[
-                  { label:'MMR',      val:player.mmr.toLocaleString(), color:'text-amber-400' },
-                  { label:'Wins',     val:player.stats.wins,           color:'text-emerald-400' },
-                  { label:'Losses',   val:player.stats.losses,         color:'text-red-400' },
-                  { label:'Matches',  val:player.stats.totalMatches,   color:'' },
-                  { label:'Win Rate', val:`${wr}%`,                    color:'text-emerald-400' },
-                ].map(s => (
-                  <div key={s.label} className="text-center">
-                    <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
-                    <p className="text-xs text-slate-500">{s.label}</p>
+            <div className="flex flex-wrap gap-5 mt-4">
+              {[
+                { label:'MMR',      val:player.mmr.toLocaleString(), color:'text-amber-400' },
+                { label:'Wins',     val:player.stats.wins,           color:'text-emerald-400' },
+                { label:'Losses',   val:player.stats.losses,         color:'text-red-400' },
+                { label:'Matches',  val:player.stats.totalMatches,   color:'' },
+                { label:'Win Rate', val:`${wr}%`,                    color:'text-emerald-400' },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <p className={`text-xl font-bold ${s.color}`}>{s.val}</p>
+                  <p className="text-xs text-slate-500">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Discipline MMR chips */}
+            {player.disciplineMMR && Object.keys(player.disciplineMMR).length > 0 && (
+              <div className="flex gap-2 flex-wrap mt-3">
+                {(Object.entries(player.disciplineMMR) as [string, number][]).filter(([,v]) => v != null).map(([type, val]) => (
+                  <div key={type} className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-center">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">{type}</p>
+                    <p className="text-sm font-bold text-amber-400 leading-tight mt-0.5">{val.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
+            )}
 
-              {/* Discipline MMR chips */}
-              {player.disciplineMMR && Object.keys(player.disciplineMMR).length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-3">
-                  {(Object.entries(player.disciplineMMR) as [string, number][]).filter(([,v]) => v != null).map(([type, val]) => (
-                    <div key={type} className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-center">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wide leading-none">{type}</p>
-                      <p className="text-sm font-bold text-amber-400 leading-tight mt-0.5">{val.toLocaleString()}</p>
-                    </div>
-                  ))}
+            {nextName && (
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-slate-500 mb-1">
+                  <span>{player.tier}</span>
+                  <span>{nextName} @ {threshold.toLocaleString()}</span>
                 </div>
-              )}
-
-              {nextName && (
-                <div className="mt-4 max-w-xs">
-                  <div className="flex justify-between text-xs text-slate-500 mb-1">
-                    <span>{player.tier}</span>
-                    <span>{nextName} @ {threshold.toLocaleString()}</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full" style={{ width:`${progress}%` }}/>
-                  </div>
+                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-emerald-500 to-amber-400 rounded-full" style={{ width:`${progress}%` }}/>
                 </div>
-              )}
-            </div>
-
-            {/* Actions column */}
-            <div className="flex flex-col gap-2 items-end shrink-0 mt-2 sm:mt-0">
-              {/* Skill match badge — top of column */}
-              {!isMe && (
-                <div className="group relative self-end">
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
-                    ${sm>=80?'bg-emerald-500/10 border-emerald-500/25 text-emerald-400':sm>=60?'bg-amber-500/10 border-amber-500/25 text-amber-400':'bg-red-500/10 border-red-500/25 text-red-400'}`}>
-                    {sm>=80?'⚡':sm>=60?'🟡':'🔴'} {sm}% match
-                  </div>
-                  <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
-                    <p className="font-semibold text-white mb-1">Skill Match</p>
-                    How closely your MMR matches theirs. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
-                    <p className="mt-1 text-slate-400">{sm>=80?'Very even match':sm>=60?'Moderate gap — still competitive':'Large gap — may feel one-sided'}</p>
-                  </div>
-                </div>
-              )}
-              {/* Buttons */}
-              <div className="flex gap-2">
-                {isMe ? (
-                  <>
-                    <button onClick={() => setQrOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                      <QrCode size={14}/> QR Code
-                    </button>
-                    <button onClick={() => setSettOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                      <Settings size={14}/> Edit Profile
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => setChallengeOpen(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
-                      <Swords size={14}/> Challenge
-                    </button>
-                    <button
-                      onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                      <MessageCircle size={14}/> Message
-                    </button>
-                  </>
-                )}
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Full-width action buttons */}
+          <div className="flex gap-2">
+            {isMe ? (
+              <>
+                <button onClick={() => setQrOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                  <QrCode size={14}/> QR Code
+                </button>
+                <button onClick={() => setSettOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                  <Settings size={14}/> Edit Profile
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setChallengeOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
+                  <Swords size={14}/> Challenge
+                </button>
+                <button onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                  <MessageCircle size={14}/> Message
+                </button>
+              </>
+            )}
           </div>
         </div>
 
