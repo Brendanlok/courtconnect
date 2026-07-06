@@ -60,7 +60,7 @@ export function Topbar() {
 
           {/* Notification bell */}
           <div className="relative">
-            <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); setLocationOpen(false); }}
+            <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }}
               className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-800 transition-colors">
               <Bell size={17} className="text-slate-400"/>
               {unreadNotifCount > 0 && (
