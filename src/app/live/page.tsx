@@ -84,8 +84,11 @@ export default function LivePage() {
   const [teamAName,  setTeamAName]  = useState(user.displayName);
   const [teamBName,  setTeamBName]  = useState('');
 
-  // join flow
-  const [joinInput,  setJoinInput]  = useState('');
+  // join flow — pre-fill from ?code= query param
+  const [joinInput,  setJoinInput]  = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('code') ?? '';
+  });
   const [joinErr,    setJoinErr]    = useState('');
   const [joinLoading,setJoinLoading]= useState(false);
 

@@ -8,7 +8,7 @@ import { LogMatchModal } from '@/components/LogMatchModal';
 import { LiveMatchModal } from '@/components/LiveMatchModal';
 import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
-  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio,
+  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
@@ -123,6 +123,8 @@ const SEED_PLANNED: PlannedMatch[] = [
 export default function MatchesPage() {
   const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
+  const [watchCode, setWatchCode] = useState('');
+  const [watchErr,  setWatchErr]  = useState('');
   const [logOpen,     setLogOpen]     = useState(false);
   const [liveOpen,    setLiveOpen]    = useState(false);
   const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
@@ -234,6 +236,38 @@ export default function MatchesPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
           <Plus size={13}/> Plan Match
         </button>
+      </div>
+
+      {/* Watch a live match */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+        <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-3">
+          <Eye size={13} className="text-blue-400"/> Watch a Live Match
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={watchCode}
+            onChange={e => { setWatchCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setWatchErr(''); }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && watchCode.length === 6) {
+                window.location.href = `/live/?code=${watchCode}`;
+              }
+            }}
+            maxLength={6}
+            placeholder="Enter 6-digit code"
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono tracking-widest uppercase outline-none focus:border-blue-500 transition-colors"
+          />
+          <button
+            onClick={() => {
+              if (watchCode.length !== 6) { setWatchErr('Enter the full 6-character code.'); return; }
+              window.location.href = `/live/?code=${watchCode}`;
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition-colors shrink-0"
+          >
+            Join
+          </button>
+        </div>
+        {watchErr && <p className="text-xs text-red-400 mt-1.5">{watchErr}</p>}
+        <p className="text-[11px] text-slate-600 mt-2">Get the code from whoever is scoring the match.</p>
       </div>
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">

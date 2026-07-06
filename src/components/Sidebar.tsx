@@ -2,14 +2,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Home, TrendingUp, Trophy, Users, Menu, Zap, MessageCircle } from 'lucide-react';
+import { Home, TrendingUp, Trophy, Users, Menu, MessageCircle, CalendarDays } from 'lucide-react';
 
 const LINKS = [
   { href: '/',            label: 'Home',        icon: Home },
+  { href: '/matches',     label: 'Matches',     icon: CalendarDays },
   { href: '/leaderboard', label: 'Leaderboard', icon: TrendingUp },
   { href: '/tournaments', label: 'Tournaments', icon: Trophy },
   { href: '/players',     label: 'Players',     icon: Users },
-  { href: '/live',        label: 'Live Score',  icon: Zap },
   { href: '/chat',        label: 'Messages',    icon: MessageCircle },
 ];
 
