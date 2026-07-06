@@ -389,3 +389,37 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     </div>
   );
 }
+
+function NotificationPermissionRow() {
+  const [perm, setPerm] = useState<NotificationPermission>(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
+    return Notification.permission;
+  });
+
+  const request = async () => {
+    if (!('Notification' in window)) return;
+    const result = await Notification.requestPermission();
+    setPerm(result);
+  };
+
+  if (!('Notification' in (typeof window !== 'undefined' ? window : {}))) return null;
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 bg-slate-800/50 border border-slate-800 rounded-xl">
+      <div className="flex items-center gap-2">
+        {perm === 'granted' ? <Bell size={13} className="text-emerald-400"/> : <BellOff size={13} className="text-slate-500"/>}
+        <div>
+          <p className="text-xs font-semibold text-slate-300">Push Notifications</p>
+          <p className="text-[10px] text-slate-500">{perm === 'granted' ? 'Enabled — you\'ll get alerts when the app is in background' : perm === 'denied' ? 'Blocked — allow in browser settings' : 'Off'}</p>
+        </div>
+      </div>
+      {perm === 'default' && (
+        <button onClick={request}
+          className="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold transition-colors shrink-0">
+          Enable
+        </button>
+      )}
+      {perm === 'granted' && <span className="text-[10px] text-emerald-400 font-bold shrink-0">✓ On</span>}
+    </div>
+  );
+}
