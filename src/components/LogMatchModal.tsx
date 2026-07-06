@@ -47,9 +47,13 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
         return;
       }
 
-      // Parse the QR payload — expects {"uid":"...","username":"...","displayName":"..."}
+      // Parse the QR payload — either a profile URL (".../players/<username>/") or
+      // the legacy {"uid":"...","username":"...","displayName":"..."} JSON payload
       let payload: { uid?: string; username?: string; displayName?: string } = {};
-      try { payload = JSON.parse(result.data); } catch { payload = {}; }
+      try { payload = JSON.parse(result.data); } catch {
+        const match = result.data.match(/\/players\/([^/?#]+)\/?/);
+        if (match) payload = { username: decodeURIComponent(match[1]) };
+      }
 
       // First check seed players, then look up in Firestore
       let player: UserProfile | null = ALL_PLAYERS.find(p =>
