@@ -393,6 +393,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNotifications(p => [{
       ...n, id: `n_${Date.now()}_${Math.random()}`, read: false, createdAt: new Date().toISOString(),
     }, ...p]);
+    // Fire browser notification if permission granted and page not focused
+    if (typeof window !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+      try { new Notification(n.title, { body: n.body, icon: '/icons/icon-192x192.png' }); } catch { /* ignore */ }
+    }
   };
   const addNotification  = useCallback((n: Notification) => setNotifications(p => [n, ...p]), []);
   const markNotifRead    = useCallback((id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n)), []);
