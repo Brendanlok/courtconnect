@@ -159,6 +159,30 @@ export function subscribeLiveMatch(id: string, cb: (m: LiveMatch | null) => void
   });
 }
 
+// ── Conversations (chat messages) ─────────────────────────────────────────────
+
+interface StoredConversation {
+  id: string;
+  participantUid: string;
+  lastMessage: string;
+  lastAt: string;
+  unread: number;
+  messages: Array<{ id: string; senderId: string; text: string; sentAt: string }>;
+}
+
+export async function saveConversation(uid: string, conv: StoredConversation) {
+  if (!uid || uid === 'me') return;
+  await setDoc(doc(db, 'users', uid, 'conversations', conv.id), {
+    ...conv,
+    savedAt: serverTimestamp(),
+  });
+}
+
+export async function loadConversations(uid: string): Promise<StoredConversation[]> {
+  const snaps = await getDocs(collection(db, 'users', uid, 'conversations'));
+  return snaps.docs.map(d => d.data() as StoredConversation);
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 export function toISOString(ts: unknown): string {

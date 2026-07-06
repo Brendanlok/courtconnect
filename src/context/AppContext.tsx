@@ -3,10 +3,13 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay,
   saveTournamentReg, deleteTournamentReg,
   saveClubMembership, saveFriend, removeFriendRecord,
+  loadConversations,
 } from '@/lib/firestoreService';
 
 interface AppCtx {
@@ -113,6 +116,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<string[]>(['p2', 'p4']); // seed: two players already sent requests
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
+
+  // Load persisted conversations from Firestore on sign-in
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (authUser) => {
+      if (!authUser) return;
+      try {
+        const stored = await loadConversations(authUser.uid);
+        if (!stored.length) return;
+        const allPlayers = [ME_DATA, ...ALL_PLAYERS];
+        setConversations(prev => {
+          const merged = [...prev];
+          stored.forEach(s => {
+            const participant = allPlayers.find(p => p.uid === s.participantUid);
+            if (!participant) return;
+            const idx = merged.findIndex(c => c.id === s.id);
+            const conv: Conversation = { id: s.id, participant, lastMessage: s.lastMessage, lastAt: s.lastAt, unread: s.unread, messages: s.messages };
+            if (idx >= 0) merged[idx] = conv;
+            else merged.unshift(conv);
+          });
+          return merged.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+        });
+      } catch { /* Firestore unavailable — keep seed convs */ }
+    });
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));

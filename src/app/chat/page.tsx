@@ -8,6 +8,8 @@ import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message } from '@/types';
 import Link from 'next/link';
+import { auth } from '@/lib/firebase';
+import { saveConversation } from '@/lib/firestoreService';
 
 export default function Chat() {
   const { user, conversations: convs, setConversations: setConvs } = useApp();
@@ -57,12 +59,30 @@ export default function Chat() {
   };
 
   const send = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !activeId) return;
     const msg: Message = { id: `msg-${Date.now()}`, senderId: user.uid, text: input.trim(), sentAt: new Date().toISOString() };
-    setConvs(cs => cs.map(c => c.id === activeId
-      ? { ...c, messages: [...c.messages, msg], lastMessage: input.trim(), lastAt: msg.sentAt, unread: 0 }
-      : c
-    ));
+    setConvs(cs => {
+      const updated = cs.map(c => c.id === activeId
+        ? { ...c, messages: [...c.messages, msg], lastMessage: input.trim(), lastAt: msg.sentAt, unread: 0 }
+        : c
+      );
+      // Persist to Firestore
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        const conv = updated.find(c => c.id === activeId);
+        if (conv) {
+          saveConversation(uid, {
+            id: conv.id,
+            participantUid: conv.participant.uid,
+            lastMessage: conv.lastMessage,
+            lastAt: conv.lastAt,
+            unread: conv.unread,
+            messages: conv.messages,
+          }).catch(() => {});
+        }
+      }
+      return updated;
+    });
     setInput('');
   };
 
