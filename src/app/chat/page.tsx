@@ -118,11 +118,11 @@ export default function Chat() {
         </div>
         <div className="flex-1">
           <p className="font-semibold text-sm">{active.participant.displayName}</p>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-emerald-400">● Online</span>
-            <span className="text-slate-600">·</span>
-            <TierBadge tier={active.participant.tier} className="text-[10px] px-1.5 py-0"/>
-            <span className="text-xs text-slate-500">{active.participant.mmr} MMR</span>
+          <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
+            <span className="text-xs text-emerald-400 shrink-0">● Online</span>
+            <span className="text-slate-600 shrink-0">·</span>
+            <TierBadge tier={active.participant.tier}/>
+            <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
           </div>
         </div>
         <button
