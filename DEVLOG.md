@@ -36,6 +36,12 @@ None pending.
 ### Critical Alerts
 None.
 
+### 📊 Daily Summary (18:00)
+- Sessions run: 2
+- Total fixes deployed: 4
+- Build status: ✅ Healthy
+- Telegram summary: ✅ Sent
+
 
 > Each entry is written by the AI agent after its daily self-check session.
 > Priority: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low
