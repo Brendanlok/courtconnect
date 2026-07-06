@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-06 02:47] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start (already included the user's own new work on Events/Players filters, country/region dropdowns, Topbar branding). A background audit agent reviewed the newly-landed filter/dropdown/Topbar/SettingsModal changes and found 3 confirmed bugs, all fixed and deployed this session.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟠 | Audit `players/page.tsx`, `tournaments/page.tsx`, `leaderboard/page.tsx`, `matches/page.tsx`, `SettingsModal.tsx`, `Topbar.tsx`, `NotificationPanel.tsx` (recent user commits) | ✅ | Found 3 confirmed bugs — see below |
+
+### Issues Found
+- 🟡 [src/components/ui/FilterDropdown.tsx:24](src/components/ui/FilterDropdown.tsx) + call sites in [players/page.tsx](src/app/players/page.tsx) and [tournaments/page.tsx](src/app/tournaments/page.tsx) — `isDefault` was inferred from `value === options[0]?.value`, but the Country dropdown's `options[0]` is always `'All'` while its actual no-filter default is the user's own country, and the Region dropdown reorders the user's own region to `options[0]` whenever the selected country matches the user's home country. Result: both the Country filter (always) and the Region filter (for users with a home region set) rendered with the emerald "active filter" styling on page load, even though the user hadn't touched either filter.
+- 🟢 [src/components/Topbar.tsx](src/components/Topbar.tsx) — `LocationPicker` component (~90 lines), `coordsToState` helper, `locationOpen` state, and the `MapPin`/`Navigation`/`X`/`MalaysiaState`/`MY_STATES`/`COUNTRIES`/`getCountryByName` imports were all dead code left over from a prior commit (b981a7d) that replaced the clickable location button with static "CourtConnect" branding but never removed the now-unreachable picker.
+- 🟠 [src/components/SettingsModal.tsx:72](src/components/SettingsModal.tsx) — `save()` force-cast an arbitrary free-text `region` string to the `MalaysiaState` union type (`as import('@/types').MalaysiaState`) for non-Malaysia users, which would silently store invalid `MalaysiaState` values on `user.state` for any non-MY user who edits settings.
+
+### Improvements Made
+- [src/components/ui/FilterDropdown.tsx](src/components/ui/FilterDropdown.tsx) — added an explicit `defaultValue` prop so callers can declare what "no filter applied" means instead of relying on options-array ordering; wired it through in both Players and Tournaments pages (`defaultValue={userCountry}` for country, `defaultValue="All"` for region).
+- [src/components/Topbar.tsx](src/components/Topbar.tsx) — removed the entire dead `LocationPicker`/`coordsToState`/`locationOpen` code path and its now-unused imports.
+- [src/components/SettingsModal.tsx](src/components/SettingsModal.tsx) — for non-MY users, `state` now keeps `user.state` unchanged instead of being force-cast from the free-text region field.
+- Verified via `npx next build` (clean, no TS errors). Could not verify live in the browser this session — the app requires real Firebase auth with no headless/demo login path, consistent with prior sessions' notes.
+
+### Feature Ideas / Upcoming Plans
+(Carried over from prior session, still open)
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce Privacy settings | Settings UI exists and persists but has zero effect anywhere | Medium-Large — needs a pass through `PlayerProfileClient`, `players/page.tsx`, `tournaments/page.tsx` |
+| Club chat / per-club message board | Clubs have one-way announcements only, no member discussion | Medium — new tab in Club detail view, reuse Chat's message list UI |
+| Toast/snackbar for incoming friend + challenge requests | Blocked on a design call — app has no live multi-user simulation | Needs a design decision before scoping |
+
+### Critical Alerts
+None.
+
+
 > Each entry is written by the AI agent after its daily self-check session.
 > Priority: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low
 > Status: ✅ Done · 🚧 In Progress · 📋 Planned · ❌ Skipped
