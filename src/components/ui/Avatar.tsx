@@ -11,8 +11,22 @@ function colorFor(name: string) {
   return COLORS[h % COLORS.length];
 }
 
-export function Avatar({ name, size = 'md', className = '' }: { name: string; size?: 'sm'|'md'|'lg'; className?: string }) {
+export function Avatar({ name, size = 'md', className = '', photoURL }: {
+  name: string;
+  size?: 'sm'|'md'|'lg';
+  className?: string;
+  photoURL?: string | null;
+}) {
   const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-16 h-16 text-2xl' : 'w-10 h-10 text-sm';
+  if (photoURL) {
+    return (
+      <img
+        src={photoURL}
+        alt={name}
+        className={`${sz} rounded-full object-cover shrink-0 ${className}`}
+      />
+    );
+  }
   return (
     <div className={`${sz} ${colorFor(name)} rounded-full flex items-center justify-center font-bold shrink-0 ${className}`}>
       {getInitials(name)}

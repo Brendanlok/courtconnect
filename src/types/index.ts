@@ -37,6 +37,7 @@ export interface UserProfile {
   countryCode?: CountryCode;             // e.g. "MY"
   region?: string;                       // state/province for non-MY users
   endorsements?: Record<string, number>; // skill → count
+  photoURL?: string | null;
   privacy?: {
     matchHistory:  'public' | 'friends' | 'private';
     plannedMatches:'public' | 'friends' | 'private';

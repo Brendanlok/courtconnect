@@ -1,10 +1,13 @@
 'use client';
-import { useState } from 'react';
-import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
 import type { CountryCode } from '@/types';
 import type { UserProfile } from '@/types';
+import { storage, auth } from '@/lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { Avatar } from '@/components/ui/Avatar';
 
 type PrivacyLevel = 'public' | 'friends' | 'private';
 type PrivacySettings = NonNullable<UserProfile['privacy']>;
@@ -52,6 +55,28 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [saved,       setSaved]       = useState(false);
   const [deleteStep,  setDeleteStep]  = useState<DeleteStep>('idle');
   const [deleteInput, setDeleteInput] = useState('');
+  const [photoURL,    setPhotoURL]    = useState<string | null>(user.photoURL ?? null);
+  const [uploadPct,   setUploadPct]   = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const storageRef = ref(storage, `profilePics/${uid}/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    setUploadPct(0);
+    task.on('state_changed',
+      snap => setUploadPct(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
+      () => setUploadPct(null),
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setPhotoURL(url);
+        setUploadPct(null);
+      }
+    );
+  };
 
   if (!open) return null;
 
@@ -73,6 +98,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       postcode: isMY ? postcode : undefined,
       available: availability.join(','),
       privacy,
+      photoURL,
     });
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 900);
@@ -105,6 +131,26 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto">
+
+          {/* Profile picture */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative cursor-pointer group" onClick={() => fileRef.current?.click()}>
+              <Avatar name={displayName} size="lg" photoURL={photoURL} className="ring-4 ring-slate-700 group-hover:ring-emerald-500/50 transition-all"/>
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={20} className="text-white"/>
+              </div>
+              {uploadPct !== null && (
+                <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">{uploadPct}%</span>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+              {photoURL ? 'Change photo' : 'Add photo'}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange}/>
+          </div>
 
           {/* Name */}
           <label className="block">
