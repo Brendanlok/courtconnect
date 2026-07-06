@@ -11,8 +11,9 @@ export function QRModal({ open, onClose }: { open: boolean; onClose: () => void 
   if (!open) return null;
   const s = TIER_STYLE[user.tier];
 
-  // Encode uid + username + displayName as a compact JSON string
-  const qrPayload = JSON.stringify({ uid: user.uid, username: user.username, displayName: user.displayName });
+  // Encode as profile URL so any QR scanner opens the profile directly
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://courtconnectcc.netlify.app';
+  const qrPayload = `${baseUrl}/players/${user.username}/`;
 
   return (
     <QRModalInner user={user} s={s} qrPayload={qrPayload} onClose={onClose}/>
