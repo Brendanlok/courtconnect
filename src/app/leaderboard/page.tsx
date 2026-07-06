@@ -10,7 +10,7 @@ import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
 
-const TABS = ['Nationwide', 'By State', 'Nearby', 'Friends'] as const;
+const TABS = ['Nationwide', 'By State', 'Nearby', 'Following'] as const;
 type Tab = typeof TABS[number];
 type SortKey = 'mmr' | 'winRate' | 'wins' | 'matches';
 
@@ -24,7 +24,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 
 export default function Leaderboard() {
-  const { user, friends } = useApp();
+  const { user, following } = useApp();
   const [tab,           setTab]          = useState<Tab>('Nationwide');
   const [query,         setQuery]        = useState('');
   const [selState,      setSelState]     = useState<MalaysiaState>(user.state as MalaysiaState);
@@ -41,7 +41,7 @@ export default function Leaderboard() {
     .filter(p => {
       if (tab === 'By State') return p.state === selState;
       if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
-      if (tab === 'Friends')  return friends.includes(p.uid) || p.uid === 'me';
+      if (tab === 'Following') return following.includes(p.uid) || p.uid === 'me';
       return true;
     })
     .filter(p => tierFilter === 'All' || p.tier === tierFilter)
@@ -225,7 +225,7 @@ export default function Leaderboard() {
                 <p className="text-xs text-slate-400">
                   {tab === 'By State' ? `Top ${(meInList as any).tabRank} in ${selState}` :
                    tab === 'Nearby'   ? `Top ${(meInList as any).tabRank} within 10km` :
-                   tab === 'Friends'  ? `Top ${(meInList as any).tabRank} among friends` :
+                   tab === 'Following' ? `Top ${(meInList as any).tabRank} among following` :
                    `You need ${Math.max(0, 2000 - user.mmr)} more MMR to break into the top 100`}
                 </p>
               </div>

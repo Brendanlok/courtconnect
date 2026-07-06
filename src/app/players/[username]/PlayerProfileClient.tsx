@@ -12,7 +12,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
 
@@ -34,7 +34,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, friends, clubs } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, friends, clubs, following, followPlayer, unfollowPlayer } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -211,6 +211,19 @@ export function PlayerProfileClient({ username }: { username: string }) {
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                   <MessageCircle size={14}/> Message
                 </button>
+                {(() => {
+                  const isFollowing = following.includes(player.uid);
+                  return (
+                    <button onClick={() => isFollowing ? unfollowPlayer(player.uid) : followPlayer(player.uid)}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors ${
+                        isFollowing
+                          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                      }`}>
+                      {isFollowing ? <UserCheck size={14}/> : <UserPlus size={14}/>}
+                    </button>
+                  );
+                })()}
               </>
             )}
           </div>

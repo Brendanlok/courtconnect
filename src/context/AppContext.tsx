@@ -65,6 +65,10 @@ interface AppCtx {
   acceptFriendRequest: (uid: string) => void;
   declineFriendRequest: (uid: string) => void;
   removeFriend: (uid: string) => void;
+  // Follow
+  following: string[];
+  followPlayer: (uid: string) => void;
+  unfollowPlayer: (uid: string) => void;
   // Endorsements
   myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
   playerEndorsements: Record<string, Record<string, number>>; // targetUid → skill → count
@@ -126,6 +130,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
   const [friends,                setFriends]               = useState<string[]>([]);
+  const [following,              setFollowing]             = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_following');
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return [];
+  });
   const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
   const [incomingFriendRequests, setIncomingFriendRequests] = useState<string[]>(['p2', 'p4']); // seed: two players already sent requests
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
@@ -385,6 +398,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (uid) removeFriendRecord(uid, friendUid).catch(() => {});
   }, []);
 
+  const followPlayer = useCallback((uid: string) => {
+    setFollowing(p => {
+      const next = p.includes(uid) ? p : [...p, uid];
+      try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const unfollowPlayer = useCallback((uid: string) => {
+    setFollowing(p => {
+      const next = p.filter(id => id !== uid);
+      try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   // Endorsements — toggle: endorse if not given, remove if already given
   const endorsePlayer = useCallback((targetUid: string, skill: string) => {
     setMyEndorsements(prev => {
@@ -427,6 +456,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       friends, outgoingFriendRequests, incomingFriendRequests,
       sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
+      following, followPlayer, unfollowPlayer,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>

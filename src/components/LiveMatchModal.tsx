@@ -529,21 +529,8 @@ function PlannedMatchStart({ pm, me, onStart, onJoin }: {
   pm: PlannedMatchRef; me: LiveMatchPlayer;
   onStart: () => void; onJoin: (m: LiveMatch) => void;
 }) {
-  const [joinCode, setJoinCode] = useState('');
-  const [joinError, setJoinError] = useState('');
-  const [joinLoading, setJoinLoading] = useState(false);
-
   const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
   const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
-
-  const handleJoin = async () => {
-    if (!joinCode.trim()) return;
-    setJoinLoading(true); setJoinError('');
-    const m = await getLiveMatchByCode(joinCode.trim()).catch(() => null);
-    setJoinLoading(false);
-    if (!m) { setJoinError('Match not found. Check the code.'); return; }
-    onJoin(m);
-  };
 
   return (
     <div className="space-y-4">
@@ -584,23 +571,6 @@ function PlannedMatchStart({ pm, me, onStart, onJoin }: {
         className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
         <Radio size={14}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Start Live Scoring
       </button>
-
-      <div className="relative flex items-center gap-2">
-        <div className="flex-1 border-t border-slate-700"/>
-        <span className="text-[10px] text-slate-600 shrink-0">or join as spectator</span>
-        <div className="flex-1 border-t border-slate-700"/>
-      </div>
-
-      <div className="flex gap-2">
-        <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())}
-          maxLength={6} placeholder="Join code"
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm font-mono font-bold tracking-widest outline-none focus:border-emerald-500 uppercase"/>
-        <button onClick={handleJoin} disabled={joinLoading || joinCode.length < 4}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors">
-          {joinLoading ? '…' : 'Watch'}
-        </button>
-      </div>
-      {joinError && <p className="text-xs text-red-400">{joinError}</p>}
     </div>
   );
 }
