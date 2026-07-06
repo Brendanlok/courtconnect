@@ -141,6 +141,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 </>
               )}
             </p>
+            {playerClub && (
+              <span className="inline-flex items-center gap-1.5 mt-1.5 mr-1.5 text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/25 px-2.5 py-1 rounded-full">
+                🏸 {playerClub.name}
+              </span>
+            )}
             {player.openToPlay && (
               <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Open to play today
