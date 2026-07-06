@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Home, TrendingUp, Trophy, Users, Menu, Zap } from 'lucide-react';
+import { Home, TrendingUp, Trophy, Users, Menu, Zap, MessageCircle } from 'lucide-react';
 
 const LINKS = [
   { href: '/',            label: 'Home',        icon: Home },
@@ -10,11 +10,12 @@ const LINKS = [
   { href: '/tournaments', label: 'Tournaments', icon: Trophy },
   { href: '/players',     label: 'Players',     icon: Users },
   { href: '/live',        label: 'Live Score',  icon: Zap },
+  { href: '/chat',        label: 'Messages',    icon: MessageCircle },
 ];
 
 export function Sidebar() {
   const path = usePathname();
-  const { sidebarCollapsed, toggleSidebar } = useApp();
+  const { sidebarCollapsed, toggleSidebar, totalUnread } = useApp();
   const collapsed = sidebarCollapsed;
 
   return (

@@ -12,7 +12,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
 
@@ -141,11 +141,6 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 </>
               )}
             </p>
-            {playerClub && (
-              <span className="inline-flex items-center gap-1.5 mt-1.5 mr-1.5 text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/25 px-2.5 py-1 rounded-full">
-                🏸 {playerClub.name}
-              </span>
-            )}
             {player.openToPlay && (
               <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Open to play today
@@ -345,6 +340,38 @@ export function PlayerProfileClient({ username }: { username: string }) {
             </div>
           );
         })()}
+
+        {/* ── Club Membership ── */}
+        {playerClub && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Users size={15} className="text-violet-400"/> Club
+            </h2>
+            <a href={`/clubs/${playerClub.id}/`}
+              className="flex items-center gap-4 p-3 bg-slate-800/60 border border-slate-700 hover:border-violet-500/40 rounded-2xl transition-colors group">
+              {/* Club logo */}
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black border ${playerClub.color}`}>
+                {playerClub.logoInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm group-hover:text-violet-300 transition-colors">{playerClub.name}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">{playerClub.area}, {playerClub.state}</p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-[10px] text-slate-400">
+                    <span className="font-bold text-white">{playerClub.memberIds.length}</span> members
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Avg MMR <span className="font-bold text-amber-400">{playerClub.avgMMR.toLocaleString()}</span>
+                  </span>
+                  {playerClub.tags.slice(0, 2).map(t => (
+                    <span key={t} className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-md">{t}</span>
+                  ))}
+                </div>
+              </div>
+              <span className="text-slate-600 group-hover:text-violet-400 transition-colors text-sm shrink-0">›</span>
+            </a>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-5">
           {/* MMR chart */}
@@ -557,7 +584,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
-      {isMe && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
+      {isMe && settOpen && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
       {!isMe && challengeOpen && <ChallengeModal opponent={player} onClose={() => setChallengeOpen(false)}/>}
     </>
   );

@@ -83,11 +83,17 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
   const isMY = countryCode === 'MY';
   const location = isMY ? postcodeToLocation(postcode) : null;
+  const postcodeValid = countryData.hasPostcode && postcode
+    ? !!(countryData.postcodePattern?.test(postcode))
+    : null; // null = not applicable or empty
 
   const toggleAvail = (id: string) =>
     setAvailability(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
+  const postcodeInvalid = countryData.hasPostcode && postcode && postcodeValid === false;
+
   const save = () => {
+    if (postcodeInvalid) return; // blocked — invalid postcode
     updateUser({
       displayName, bio, gender, birthday: birthday || undefined,
       country: countryData.name,
@@ -95,7 +101,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       region: isMY ? (location?.state ?? region) : region,
       area:   isMY ? (location?.city  ?? cityText) : cityText,
       state:  isMY ? (location?.state ?? user.state) : user.state,
-      postcode: isMY ? postcode : undefined,
+      postcode: countryData.hasPostcode ? postcode : undefined,
       available: availability.join(','),
       privacy,
       photoURL,
@@ -227,8 +233,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   ) : null}
                   {(postcode.length === 0 || (postcode.length === 5 && !location)) && (
                     <div className="grid grid-cols-2 gap-2">
-                      <select value={region} onChange={e => setRegion(e.target.value)}
-                        className={inp}>
+                      <select value={region} onChange={e => setRegion(e.target.value)} className={inp}>
                         <option value="">State…</option>
                         {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -238,19 +243,52 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   )}
                 </>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {countryData.regions.length > 0 ? (
-                    <select value={region} onChange={e => setRegion(e.target.value)} className={inp}>
-                      <option value="">{countryData.regionLabel}…</option>
-                      {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  ) : (
-                    <input value={region} onChange={e => setRegion(e.target.value)}
-                      placeholder={countryData.regionLabel} className={inp}/>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {countryData.regions.length > 0 ? (
+                      <select value={region} onChange={e => setRegion(e.target.value)} className={inp}>
+                        <option value="">{countryData.regionLabel}…</option>
+                        {countryData.regions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <input value={region} onChange={e => setRegion(e.target.value)}
+                        placeholder={countryData.regionLabel} className={inp}/>
+                    )}
+                    <input value={cityText} onChange={e => setCityText(e.target.value)}
+                      placeholder="City / Area" className={inp}/>
+                  </div>
+                  {countryData.hasPostcode && (
+                    <div>
+                      <input
+                        value={postcode}
+                        onChange={e => {
+                          const raw = e.target.value.toUpperCase();
+                          const maxLen = countryData.postcodeLen || 10;
+                          setPostcode(raw.slice(0, maxLen || raw.length));
+                        }}
+                        placeholder={
+                          countryCode === 'GB' ? 'e.g. SW1A 1AA'
+                          : countryCode === 'US' ? 'e.g. 90210'
+                          : `${countryData.postcodeLen}-digit postcode`
+                        }
+                        className={`${inp} font-mono ${
+                          postcode && postcodeValid === false ? 'border-red-500 focus:border-red-500' :
+                          postcode && postcodeValid === true  ? 'border-emerald-500' : ''
+                        }`}
+                      />
+                      {postcode && postcodeValid === false && (
+                        <p className="text-xs text-red-400 mt-1">
+                          {countryCode === 'GB' ? 'Enter a valid UK postcode e.g. SW1A 1AA'
+                          : countryCode === 'US' ? 'Enter a valid 5-digit ZIP code'
+                          : `Enter a valid ${countryData.postcodeLen}-digit postcode`}
+                        </p>
+                      )}
+                      {postcode && postcodeValid === true && (
+                        <p className="text-xs text-emerald-400 mt-1">✓ Valid postcode</p>
+                      )}
+                    </div>
                   )}
-                  <input value={cityText} onChange={e => setCityText(e.target.value)}
-                    placeholder="City / Area" className={inp}/>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -376,8 +414,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <div className="px-5 pb-5 flex gap-3 border-t border-slate-800 pt-4">
-          <button onClick={save}
-            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
+          <button onClick={save} disabled={!!postcodeInvalid}
+            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-semibold text-sm transition-colors">
             <Save size={14}/> Save
           </button>
           <button onClick={onClose}
