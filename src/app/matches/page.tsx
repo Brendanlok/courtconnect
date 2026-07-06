@@ -121,7 +121,7 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches, addNotification } = useApp();
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [logOpen,     setLogOpen]     = useState(false);
   const [liveOpen,    setLiveOpen]    = useState(false);
@@ -178,6 +178,39 @@ export default function MatchesPage() {
     });
   };
 
+  // Convert an accepted challenge into a planned match
+  const handleAcceptChallenge = (challengeId: string) => {
+    const ch = challenges.find(c => c.id === challengeId);
+    if (!ch) return;
+    acceptChallenge(challengeId);
+    const isDoubles = ['MD', 'WD', 'MX'].includes(ch.format);
+    const opponent: SlotPlayer = { uid: ch.toId, displayName: ch.toName, username: ch.toUsername };
+    const [datePart, timeRaw] = ch.date.split('T');
+    const timePart = timeRaw ? timeRaw.slice(0, 5) : '09:00';
+    const pm: PlannedMatch = {
+      id: `pm_ch_${Date.now()}`,
+      format: ch.format,
+      date: datePart,
+      time: timePart,
+      venue: ch.venue,
+      notes: ch.message,
+      teamA: isDoubles ? [me, null] : [me],
+      teamB: isDoubles ? [opponent, null] : [opponent],
+      accepted: ['me'],
+      declined: [],
+      status: 'pending',
+    };
+    setPlanned(prev => [pm, ...prev]);
+    addNotification({
+      id: `notif_ch_acc_${Date.now()}`,
+      type: 'match_confirmed',
+      title: 'Challenge Accepted',
+      body: `${ch.toName} accepted your challenge — match added to Planned.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+  };
+
   const handleCancelMatch = (id: string) => {
     const match = planned.find(m => m.id === id);
     setPlanned(prev => prev.map(m => m.id === id ? { ...m, status: 'cancelled' as const } : m));
@@ -231,7 +264,36 @@ export default function MatchesPage() {
 
       {tab === 'planned' && (
         <div className="space-y-3">
-          {planned.length === 0 ? (
+          {/* Pending challenges sent by me — awaiting opponent response */}
+          {challenges.filter(c => c.fromId === 'me' && c.status === 'pending').map(ch => (
+            <div key={ch.id} className="bg-slate-900 border border-amber-500/25 rounded-2xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+                    <Swords size={11}/> Challenge Sent · Awaiting Response
+                  </p>
+                  <p className="font-bold text-sm">{FORMAT_LABELS[ch.format]} vs {ch.toName}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                    <MapPin size={10}/> {ch.venue}
+                    <span className="mx-1">·</span>
+                    <Bell size={10}/> {new Date(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
+                  </p>
+                  {ch.message && <p className="text-xs text-slate-500 mt-1 italic">"{ch.message}"</p>}
+                </div>
+                <button onClick={() => declineChallenge(ch.id)}
+                  className="text-[11px] text-slate-500 hover:text-red-400 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0">
+                  Cancel
+                </button>
+              </div>
+              {/* Demo: simulate opponent accepting */}
+              <button onClick={() => handleAcceptChallenge(ch.id)}
+                className="w-full py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold transition-colors">
+                ✓ Simulate: {ch.toName} accepts
+              </button>
+            </div>
+          ))}
+
+          {planned.length === 0 && challenges.filter(c => c.fromId === 'me' && c.status === 'pending').length === 0 ? (
             <EmptyState
               icon={<CalendarDays size={32} className="text-slate-700"/>}
               title="No planned matches"

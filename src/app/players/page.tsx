@@ -297,15 +297,14 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
   const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : p.mmr.toLocaleString();
   const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
-    <Link href={isMe ? '/profile' : `/players/${p.username}`}
-      className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 py-3 min-h-[60px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
+    <Link href={`/players/${p.username}`}
+      className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[76px] overflow-hidden transition-all hover:-translate-y-0.5 ${borderClass}`}>
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
       <Avatar name={p.displayName}/>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          <p className="font-bold text-sm truncate">{p.displayName}</p>
+        <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+          <p className="font-bold text-sm truncate shrink">{p.displayName}</p>
           {isMe && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">You</span>}
-          {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1 py-0.5 rounded shrink-0">DEMO</span>}
           {p.openToPlay && (
             <span title="Open to Play" className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded shrink-0">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Play
@@ -317,7 +316,7 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-1">
           <TierBadge tier={p.tier}/>
           <p className="text-[11px] text-slate-500">{p.stats.wins}W · {wr}% WR</p>
         </div>

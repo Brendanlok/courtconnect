@@ -166,43 +166,49 @@ export function PlayerProfileClient({ username }: { username: string }) {
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 flex-wrap">
-              {isMe ? (
-                <>
-                  <button onClick={() => setQrOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    <QrCode size={14}/> QR Code
-                  </button>
-                  <button onClick={() => setSettOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    <Settings size={14}/> Edit Profile
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => setChallengeOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
-                    <Swords size={14}/> Challenge
-                  </button>
-                  <button
-                    onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
-                    <MessageCircle size={14}/> Message
-                  </button>
-                  <div className="group relative flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-slate-400 cursor-help">
-                    Skill match:
-                    <span className={`font-bold ${sm>=80?'text-emerald-400':sm>=60?'text-amber-400':'text-red-400'}`}>{sm}%</span>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
-                      <p className="font-semibold text-white mb-1">Skill Match</p>
-                      How closely your MMR matches theirs. Higher % = more competitive match. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
-                      <p className="mt-1 text-slate-400">
-                        {sm>=80?'⚡ Very even match':sm>=60?'🟡 Moderate gap — still competitive':'🔴 Large gap — may feel one-sided'}
-                      </p>
-                    </div>
+            {/* Actions column */}
+            <div className="flex flex-col gap-2 items-end shrink-0 mt-2 sm:mt-0">
+              {/* Skill match badge — top of column */}
+              {!isMe && (
+                <div className="group relative self-end">
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
+                    ${sm>=80?'bg-emerald-500/10 border-emerald-500/25 text-emerald-400':sm>=60?'bg-amber-500/10 border-amber-500/25 text-amber-400':'bg-red-500/10 border-red-500/25 text-red-400'}`}>
+                    {sm>=80?'⚡':sm>=60?'🟡':'🔴'} {sm}% match
                   </div>
-                </>
+                  <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
+                    <p className="font-semibold text-white mb-1">Skill Match</p>
+                    How closely your MMR matches theirs. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
+                    <p className="mt-1 text-slate-400">{sm>=80?'Very even match':sm>=60?'Moderate gap — still competitive':'Large gap — may feel one-sided'}</p>
+                  </div>
+                </div>
               )}
+              {/* Buttons */}
+              <div className="flex gap-2">
+                {isMe ? (
+                  <>
+                    <button onClick={() => setQrOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                      <QrCode size={14}/> QR Code
+                    </button>
+                    <button onClick={() => setSettOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                      <Settings size={14}/> Edit Profile
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setChallengeOpen(true)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
+                      <Swords size={14}/> Challenge
+                    </button>
+                    <button
+                      onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                      <MessageCircle size={14}/> Message
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
