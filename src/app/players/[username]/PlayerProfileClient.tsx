@@ -90,6 +90,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const isFriendOfPlayer = friends.includes(player.uid);
   const canSeeMatchHistory = isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFriendOfPlayer);
 
+  // Club membership privacy: same public/friends/private rule as Match History
+  const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
+  const canSeeClubMembership = isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFriendOfPlayer);
+  const playerClub = canSeeClubMembership ? clubs.find(c => c.memberIds.includes(player.uid)) : undefined;
+
   return (
     <>
       <div className="space-y-6">
