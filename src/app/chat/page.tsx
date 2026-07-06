@@ -112,19 +112,24 @@ export default function Chat() {
         <button onClick={() => setMobileView('list')} className="md:hidden text-slate-400 hover:text-white mr-1">
           <ArrowLeft size={18}/>
         </button>
-        <div className="relative">
-          <Avatar name={active.participant.displayName} size="sm"/>
-          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
-        </div>
-        <div className="flex-1">
-          <p className="font-semibold text-sm">{active.participant.displayName}</p>
-          <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
-            <span className="text-xs text-emerald-400 shrink-0">● Online</span>
-            <span className="text-slate-600 shrink-0">·</span>
-            <TierBadge tier={active.participant.tier}/>
-            <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
+        <a href={`/players/${active.participant.username}/`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+          <div className="relative shrink-0">
+            <Avatar name={active.participant.displayName} size="sm"/>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
           </div>
-        </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="font-semibold text-sm truncate">{active.participant.displayName}</p>
+              <p className="text-xs text-slate-500 shrink-0">@{active.participant.username}</p>
+            </div>
+            <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
+              <span className="text-xs text-emerald-400 shrink-0">● Online</span>
+              <span className="text-slate-600 shrink-0">·</span>
+              <TierBadge tier={active.participant.tier}/>
+              <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
+            </div>
+          </div>
+        </a>
         <button
           onClick={() => { window.location.href = `/players/${active.participant.username}/?challenge=1`; }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
