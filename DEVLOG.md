@@ -1,5 +1,37 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-06 18:20] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start; the only commits since the last logged session (02:47) were the DEVLOG write-up itself, so no new user work needed auditing. Picked up the long-carried-over "Enforce Privacy settings" feature idea and implemented the Match History slice of it.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Feature: enforce `privacy.matchHistory` setting | ✅ | Implemented — see below |
+
+### Issues Found
+None new — no unaudited commits since last session.
+
+### Improvements Made
+- [src/app/players/[username]/PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — Match History card and the derived Match Analytics section now respect `player.privacy.matchHistory` (`public`/`friends`/`private`) when viewed by someone other than the profile owner, checked against the `friends` list from `AppContext`. Private/friends-only profiles show an explanatory empty state instead of the match list. This is the first slice of the "Enforce Privacy settings" item carried over from prior sessions — `plannedMatches`, `friendList`, `clubMembership`, and `eventHistory` are not yet enforced anywhere (see below).
+- Verified via `npx next build` (clean, no TS errors). Could not verify live in the browser this session — the app requires real Firebase auth with no headless/demo login path, consistent with prior sessions' notes.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce remaining Privacy settings (plannedMatches, friendList, clubMembership, eventHistory) | Match History is now enforced; the other 4 privacy categories still have zero effect anywhere | Medium — plannedMatches on `matches/page.tsx`, friendList/clubMembership on `players/page.tsx` and profile, eventHistory on `tournaments/page.tsx` |
+| Club chat / per-club message board | Clubs have one-way announcements only, no member discussion | Medium — new tab in Club detail view, reuse Chat's message list UI |
+| Toast/snackbar for incoming friend + challenge requests | Blocked on a design call — app has no live multi-user simulation | Needs a design decision before scoping |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-06 02:47] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
