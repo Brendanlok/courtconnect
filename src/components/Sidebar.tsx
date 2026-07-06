@@ -2,19 +2,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Home, TrendingUp, Trophy, Users, MessageCircle, Menu } from 'lucide-react';
+import { Home, TrendingUp, Trophy, Users, Menu, Zap } from 'lucide-react';
 
 const LINKS = [
   { href: '/',            label: 'Home',        icon: Home },
   { href: '/leaderboard', label: 'Leaderboard', icon: TrendingUp },
   { href: '/tournaments', label: 'Tournaments', icon: Trophy },
   { href: '/players',     label: 'Players',     icon: Users },
-  { href: '/chat',        label: 'Messages',    icon: MessageCircle },
+  { href: '/live',        label: 'Live Score',  icon: Zap },
 ];
 
 export function Sidebar() {
   const path = usePathname();
-  const { sidebarCollapsed, toggleSidebar, totalUnread } = useApp();
+  const { sidebarCollapsed, toggleSidebar } = useApp();
   const collapsed = sidebarCollapsed;
 
   return (
@@ -63,14 +63,8 @@ export function Sidebar() {
                   : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent',
               ].join(' ')}
             >
-              {/* Icon + unread badge */}
               <span className="relative shrink-0">
                 <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                {href === '/chat' && totalUnread > 0 && !active && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white leading-none px-0.5">
-                    {totalUnread > 9 ? '9+' : totalUnread}
-                  </span>
-                )}
               </span>
 
               {/* Label — fades out when collapsed */}

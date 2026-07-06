@@ -10,13 +10,13 @@ import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
-  Users, Trophy, Target, ChevronRight, MapPin, Star,
+  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone,
 } from 'lucide-react';
-import type { Match, Tournament, Challenge } from '@/types';
+import type { Match, Tournament, Challenge, Club } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
 
 export default function Home() {
-  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, clubs } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen, setLogOpen] = useState(false);
 
@@ -316,7 +316,7 @@ export default function Home() {
         </div>
 
         {/* ── Activity Feed ─────────────────────────────────────────────────── */}
-        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} userId={user.uid} communityFeed={COMMUNITY_FEED}/>
+        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} clubs={clubs} userId={user.uid} communityFeed={COMMUNITY_FEED}/>
 
       </div>
 
@@ -415,10 +415,40 @@ type FeedItem =
 
 type CommunityItem = { p1: string; p2: string; score: string; type: string; venue: string; ts: string };
 
-function ActivityFeed({ matches, registrations, tournaments, userId, communityFeed }: {
+type DynamicFeedItem =
+  | { kind: 'announcement'; clubName: string; clubId: string; text: string; ts: string }
+  | { kind: 'tournament_reg'; name: string; player: string; ts: string }
+  | { kind: 'match_result'; p1: string; p2: string; score: string; type: string; venue: string; ts: string };
+
+function buildCommunityFeed(clubs: Club[], tournaments: Tournament[], fallback: CommunityItem[]): DynamicFeedItem[] {
+  const items: DynamicFeedItem[] = [];
+
+  // Club announcements
+  clubs.forEach(c => {
+    if (c.announcement) {
+      items.push({ kind: 'announcement', clubName: c.name, clubId: c.id, text: c.announcement, ts: `${c.foundedYear}-01-01T00:00:00Z` });
+    }
+  });
+
+  // Recent tournament registrations (simulate from participants lists)
+  tournaments.forEach(t => {
+    (t.participants ?? []).slice(0, 3).forEach((p, i) => {
+      const fakeTs = new Date(new Date(t.date).getTime() - (i + 1) * 86400000 * 3).toISOString();
+      items.push({ kind: 'tournament_reg', name: t.name, player: p.displayName, ts: fakeTs });
+    });
+  });
+
+  // Static match results as fallback community matches
+  fallback.forEach(f => items.push({ kind: 'match_result', p1: f.p1, p2: f.p2, score: f.score, type: f.type, venue: f.venue, ts: f.ts }));
+
+  return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 12);
+}
+
+function ActivityFeed({ matches, registrations, tournaments, clubs, userId, communityFeed }: {
   matches: Match[];
   registrations: Record<string, { registeredAt: string }>;
   tournaments: Tournament[];
+  clubs: Club[];
   userId: string;
   communityFeed: CommunityItem[];
 }) {
@@ -505,27 +535,68 @@ function ActivityFeed({ matches, registrations, tournaments, userId, communityFe
           </div>
         )
       ) : (
-        <div className="space-y-1">
-          {communityFeed.map((item, i) => (
-            <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
-              <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-slate-800 text-[10px] font-bold text-slate-400">
-                {item.type}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-300 truncate">
-                  <span className="font-semibold text-white">{item.p1}</span>
-                  <span className="text-slate-500 mx-1.5 text-xs">def.</span>
-                  <span className="font-semibold text-white">{item.p2}</span>
-                </p>
-                <p className="text-xs text-slate-500 truncate">{item.score} · {item.venue}</p>
-              </div>
-              <span className="text-[10px] text-slate-600 shrink-0">
-                {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
-              </span>
-            </div>
-          ))}
-        </div>
+        <DynamicCommunityFeed clubs={clubs} tournaments={tournaments} fallback={communityFeed}/>
       )}
+    </div>
+  );
+}
+
+function DynamicCommunityFeed({ clubs, tournaments, fallback }: { clubs: Club[]; tournaments: Tournament[]; fallback: CommunityItem[] }) {
+  const items = buildCommunityFeed(clubs, tournaments, fallback);
+
+  if (!items.length) return (
+    <div className="text-center py-6 text-slate-500 text-sm">No community activity yet.</div>
+  );
+
+  return (
+    <div className="space-y-1">
+      {items.map((item, i) => {
+        if (item.kind === 'announcement') return (
+          <div key={i} className="flex items-start gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-violet-500/15">
+              <Megaphone size={13} className="text-violet-400"/>
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-violet-400 truncate">{item.clubName}</p>
+              <p className="text-sm text-slate-300 line-clamp-2">{item.text}</p>
+            </div>
+            <span className="text-[10px] text-slate-600 shrink-0 mt-0.5">
+              {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+            </span>
+          </div>
+        );
+
+        if (item.kind === 'tournament_reg') return (
+          <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 text-base">🏆</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-300 truncate">
+                <span className="font-semibold text-white">{item.player}</span> registered for {item.name}
+              </p>
+              <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+            </div>
+          </div>
+        );
+
+        return (
+          <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-slate-800 text-[10px] font-bold text-slate-400">
+              {item.type}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-300 truncate">
+                <span className="font-semibold text-white">{item.p1}</span>
+                <span className="text-slate-500 mx-1.5 text-xs">def.</span>
+                <span className="font-semibold text-white">{item.p2}</span>
+              </p>
+              <p className="text-xs text-slate-500 truncate">{item.score} · {item.venue}</p>
+            </div>
+            <span className="text-[10px] text-slate-600 shrink-0">
+              {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
