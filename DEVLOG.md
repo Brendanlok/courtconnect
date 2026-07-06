@@ -1,5 +1,41 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-06 21:10] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** One Telegram message was received but had no text content (empty payload), so there was nothing to act on. Build was clean at session start. A background audit of the three unaudited user commits since the last session (18:53, 19:37, 19:39 — Players card-height/username-row changes and the Challenge→PlannedMatch flow) found no critical bugs, but did surface one confirmed high-priority bug and one confirmed dead-code item, both fixed this session. Also picked up the next slice of the long-carried "Enforce Privacy settings" item: club membership is now gated by `privacy.clubMembership`.
+
+### Telegram Commands Processed
+None — the one pending message had empty text (no actionable content).
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟠 | Audit unaudited commits `869d6c9`, `230796a`, `70e8aba` (Players card height, username row, Challenge→PlannedMatch, Profile redesign) | ✅ | Found 1 confirmed 🟠 bug + 1 confirmed 🟡 dead-code item — see below |
+| 3 | 🟢 | Feature: enforce `privacy.clubMembership` setting | ✅ | Implemented — see below |
+
+### Issues Found
+- 🟠 [src/app/matches/page.tsx](src/app/matches/page.tsx) — `handleAcceptChallenge` fired its own `addNotification({type:'match_confirmed', ...})` on top of the `addNotif({type:'challenge_accepted', ...})` already fired inside `AppContext.acceptChallenge`. One challenge-accept action produced two stacked notifications describing the same event. Fixed by removing the page-level duplicate; the shared `AppContext` notification (also used by the Home page's `ChallengesSection`) now fires exactly once.
+- 🟡 [src/app/players/page.tsx](src/app/players/page.tsx) — `PlayerCard` (~66 lines) had zero call sites anywhere in `src` and had drifted out of sync with `RankRow` (still had the old `min-h-[76px]` value, missing the `@username` row and `overflow-hidden` added to `RankRow` in the 19:37 commit). Removed the dead component and its now-unused `skillMatch` import.
+
+### Improvements Made
+- [src/app/matches/page.tsx](src/app/matches/page.tsx) — removed duplicate notification on challenge accept (see above).
+- [src/app/players/page.tsx](src/app/players/page.tsx) — removed dead `PlayerCard` component and unused import.
+- [src/app/players/[username]/PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — profile header now shows a club-name chip when the viewed player belongs to a club, gated by `player.privacy.clubMembership` (`public`/`friends`/`private`) using the same visibility rule already established for Match History. Club lookup is `clubs.find(c => c.memberIds.includes(player.uid))` from `AppContext`. This is the second slice of "Enforce remaining Privacy settings" — `plannedMatches`, `friendList`, and `eventHistory` are still not displayed anywhere on the profile (not just unenforced — there's currently no UI surface for them at all, so enforcing those categories means building the display first, not just gating an existing one).
+- Verified via `npx next build` (clean, no TS errors) after each change. Could not verify live in the browser this session — the app requires real Firebase auth with no headless/demo login path, consistent with prior sessions' notes.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce remaining Privacy settings (plannedMatches, friendList, eventHistory) | Match History and Club Membership are now enforced; these 3 have no display surface on the profile at all yet, so this is "build + gate" not just "gate" | Medium-Large — needs new profile sections, not just visibility checks on existing ones |
+| Club chat / per-club message board | Clubs have one-way announcements only, no member discussion | Medium — new tab in Club detail view, reuse Chat's message list UI |
+| Toast/snackbar for incoming friend + challenge requests | Blocked on a design call — app has no live multi-user simulation | Needs a design decision before scoping |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-06 18:20] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
