@@ -201,14 +201,6 @@ export default function MatchesPage() {
       status: 'pending',
     };
     setPlanned(prev => [pm, ...prev]);
-    addNotification({
-      id: `notif_ch_acc_${Date.now()}`,
-      type: 'match_confirmed',
-      title: 'Challenge Accepted',
-      body: `${ch.toName} accepted your challenge — match added to Planned.`,
-      read: false,
-      createdAt: new Date().toISOString(),
-    });
   };
 
   const handleCancelMatch = (id: string) => {
