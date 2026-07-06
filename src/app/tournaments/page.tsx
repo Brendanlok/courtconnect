@@ -177,6 +177,7 @@ export default function Tournaments() {
         <FilterDropdown<string>
           label={isAllCountries ? '🌏 All Countries' : `${getCountryByName(countryFilter).flag} ${countryFilter}`}
           value={countryFilter}
+          defaultValue={userCountry}
           options={[
             { value: 'All', label: '🌏 All Countries' },
             { value: userCountry, label: `${getCountryByName(userCountry).flag} ${userCountry}` },
@@ -190,6 +191,7 @@ export default function Tournaments() {
             icon={<MapPin size={11} className="text-emerald-400"/>}
             label={regionFilter === 'All' ? `All ${selectedCountryData!.regionLabel}s` : regionFilter}
             value={regionFilter}
+            defaultValue="All"
             options={[
               { value: 'All', label: `All ${selectedCountryData!.regionLabel}s` },
               ...(countryFilter === userCountry && userRegion
