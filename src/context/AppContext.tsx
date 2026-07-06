@@ -82,6 +82,10 @@ const Ctx = createContext<AppCtx>({} as AppCtx);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_userProfile');
+        if (saved) return { ...ME, ...JSON.parse(saved) };
+      } catch { /* ignore */ }
       const otp = localStorage.getItem('cc_openToPlay');
       if (otp !== null) return { ...ME, openToPlay: otp === 'true' };
     }
@@ -187,7 +191,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const disputeMatch  = useCallback((id: string) => setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m)), []);
   const updateUser    = useCallback((patch: Partial<UserProfile>) => {
-    setUser(u => ({ ...u, ...patch }));
+    setUser(u => {
+      const next = { ...u, ...patch };
+      try {
+        // persist all profile fields except seed-only ones
+        const { uid, username, globalRank, stats, mmr, tier, ...rest } = next;
+        localStorage.setItem('cc_userProfile', JSON.stringify(rest));
+      } catch { /* ignore */ }
+      return next;
+    });
     const uid = auth.currentUser?.uid;
     if (uid) saveUserProfile(uid, patch).catch(() => {});
   }, []);
