@@ -3,13 +3,15 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
 export function FilterDropdown<T extends string>({
-  icon, label, value, options, onChange,
+  icon, label, value, options, onChange, defaultValue,
 }: {
   icon?: React.ReactNode;
   label: string;
   value: T;
   options: { value: T; label: string; prefix?: React.ReactNode }[];
   onChange: (v: T) => void;
+  /** Value considered "no filter applied" for the active/inactive button styling. Defaults to options[0]'s value. */
+  defaultValue?: T;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -21,7 +23,7 @@ export function FilterDropdown<T extends string>({
   }, []);
 
   const selected = options.find(o => o.value === value);
-  const isDefault = value === options[0]?.value;
+  const isDefault = value === (defaultValue ?? options[0]?.value);
 
   return (
     <div className="relative" ref={ref}>
