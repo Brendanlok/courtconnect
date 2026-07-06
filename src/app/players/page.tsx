@@ -362,6 +362,7 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
         <FilterDropdown<string>
           label={isAllCountries ? '🌏 All Countries' : `${getCountryByName(f.countryFilter).flag} ${f.countryFilter}`}
           value={f.countryFilter}
+          defaultValue={f.userCountry}
           options={[
             { value: 'All', label: '🌏 All Countries' },
             { value: f.userCountry, label: `${getCountryByName(f.userCountry).flag} ${f.userCountry}` },
@@ -374,6 +375,7 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
             icon={<MapPin size={11} className="text-emerald-400"/>}
             label={f.regionFilter === 'All' ? `All ${selectedCountryData!.regionLabel}s` : f.regionFilter}
             value={f.regionFilter}
+            defaultValue="All"
             options={[
               { value: 'All', label: `All ${selectedCountryData!.regionLabel}s` },
               ...(f.countryFilter === f.userCountry && f.userRegion
