@@ -483,6 +483,56 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
   );
 }
 
+// ─── Bracket View ─────────────────────────────────────────────────────────────
+
+function BracketView({ bracket }: { bracket: import('@/types').BracketMatch[] }) {
+  const rounds = Array.from(new Set(bracket.map(b => b.round))).sort((a, b) => a - b);
+  const roundLabel = (r: number, total: number) => {
+    const remaining = total - r + 1;
+    if (remaining === 1) return 'Final';
+    if (remaining === 2) return 'Semi-Final';
+    if (remaining === 3) return 'Quarter-Final';
+    return `Round ${r}`;
+  };
+
+  return (
+    <div className="overflow-x-auto -mx-4 px-4">
+      <div className="flex gap-3 min-w-max pb-2">
+        {rounds.map(round => {
+          const matches = bracket.filter(b => b.round === round);
+          return (
+            <div key={round} className="flex flex-col gap-2" style={{ minWidth: 160 }}>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide text-center mb-1">
+                {roundLabel(round, rounds.length)}
+              </p>
+              {matches.map(m => (
+                <div key={m.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                  {[{ name: m.player1, isWinner: m.winner === m.player1 },
+                    { name: m.player2, isWinner: m.winner === m.player2 }].map((side, i) => (
+                    <div key={i} className={`flex items-center gap-2 px-3 py-2 ${i === 0 ? 'border-b border-slate-700/60' : ''}
+                      ${side.isWinner ? 'bg-emerald-500/10' : ''}`}>
+                      <span className={`flex-1 text-xs font-medium truncate
+                        ${!side.name || side.name === 'TBD' ? 'text-slate-600 italic' : side.isWinner ? 'text-emerald-400 font-bold' : m.winner ? 'text-slate-500' : 'text-slate-300'}`}>
+                        {side.name ?? 'TBD'}
+                      </span>
+                      {side.isWinner && <Trophy size={10} className="text-amber-400 shrink-0"/>}
+                    </div>
+                  ))}
+                  {m.score && (
+                    <div className="px-3 py-1 bg-slate-900/60 border-t border-slate-700/40">
+                      <p className="text-[10px] text-slate-500 text-center font-mono">{m.score}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-slate-800 rounded-xl px-3 py-2.5">
