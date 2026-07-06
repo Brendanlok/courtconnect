@@ -6,7 +6,8 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MY_STATES, TIER_STYLE, COUNTRIES } from '@/lib/utils';
-import { Search, MapPin, ArrowUpDown, Globe } from 'lucide-react';
+import { Search, MapPin, ArrowUpDown } from 'lucide-react';
+import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Friends'] as const;
@@ -58,7 +59,7 @@ export default function Leaderboard() {
   const rest      = list.slice(3);
   const meInList  = list.find(p => p.uid === 'me');
 
-  const goToProfile = (username: string) => { window.location.href = `/players/${username}/`; };
+  const profileHref = (username: string) => `/players/${username}/`;
 
   return (
     <div className="space-y-6">
@@ -145,11 +146,11 @@ export default function Leaderboard() {
                 const isFirst = idx === 1;
                 const medal   = ['🥈','🥇','🥉'][idx];
                 return (
-                  <button key={p.uid} onClick={() => goToProfile(p.username)}
+                  <Link key={p.uid} href={profileHref(p.username)}
                     className={`text-center group hover:opacity-90 transition-opacity ${isFirst ? '' : 'mt-6'}`}
                     style={{ width: isFirst ? 140 : 110 }}>
                     <p className="text-2xl mb-2">{medal}</p>
-                    <Avatar name={p.displayName} size={isFirst ? 'lg' : 'md'}
+                    <Avatar name={p.displayName} size={isFirst ? 'lg' : 'md'} photoURL={p.photoURL}
                       className={`mx-auto ${isFirst ? 'ring-2 ring-amber-400' : ''}`}/>
                     <p className="text-xs text-slate-400 mt-1">@{p.username}</p>
                     <p className={`font-bold mt-0.5 group-hover:text-emerald-300 transition-colors ${isFirst ? 'text-base' : 'text-sm'}`}>{p.displayName}</p>
@@ -157,7 +158,7 @@ export default function Leaderboard() {
                     <p className={`font-bold text-amber-400 ${isFirst ? 'text-lg' : 'text-sm'}`}>{p.mmr.toLocaleString()}</p>
                     <div className="flex justify-center mt-1"><TierBadge tier={p.tier}/></div>
                     <p className="text-xs text-slate-500 mt-1">📍 {p.area}</p>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -174,8 +175,8 @@ export default function Leaderboard() {
                 const displayRank = tab === 'Nationwide' ? p.globalRank : (p as any).tabRank;
                 const isMe = p.uid === 'me';
                 return (
-                  <button key={p.uid} onClick={() => goToProfile(p.username)}
-                    className={`w-full grid grid-cols-[44px_1fr_auto_auto] gap-3 items-center px-4 py-3 text-left transition-colors
+                  <Link key={p.uid} href={profileHref(p.username)}
+                    className={`grid grid-cols-[44px_1fr_auto_auto] gap-3 items-center px-4 py-3 transition-colors
                       ${isMe
                         ? 'bg-emerald-500/5 shadow-[inset_0_0_0_1.5px_rgba(16,185,129,0.35)]'
                         : 'hover:bg-slate-800/50'}`}>
@@ -184,7 +185,7 @@ export default function Leaderboard() {
                       {displayRank<=3?['🥇','🥈','🥉'][displayRank-1]:displayRank}
                     </span>
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={p.displayName} size="sm"/>
+                      <Avatar name={p.displayName} size="sm" photoURL={p.photoURL}/>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className={`text-sm font-semibold truncate ${isMe ? 'text-emerald-400' : ''}`}>
@@ -207,7 +208,7 @@ export default function Leaderboard() {
                       {sortKey === 'wins'    && `${p.stats.wins}W`}
                       {sortKey === 'matches' && `${p.stats.totalMatches}`}
                     </p>
-                  </button>
+                  </Link>
                 );
               })}
             </div>

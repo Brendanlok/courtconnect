@@ -102,7 +102,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
         <div className="bg-gradient-to-br from-slate-900 to-emerald-950/20 border border-emerald-500/20 rounded-2xl p-6 space-y-4">
           {/* Top row: avatar left, skill match right */}
           <div className="flex items-start justify-between">
-            <Avatar name={player.displayName} size="lg" className="ring-4 ring-emerald-500/20"/>
+            <Avatar name={player.displayName} size="lg" photoURL={player.photoURL} className="ring-4 ring-emerald-500/20"/>
             {!isMe && (
               <div className="group relative">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
