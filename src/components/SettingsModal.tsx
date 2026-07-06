@@ -22,7 +22,7 @@ const DEFAULT_PRIVACY: PrivacySettings = {
 
 const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string; icon: React.ReactNode }[] = [
   { value: 'public',  label: 'Public',  icon: <Globe  size={11}/> },
-  { value: 'friends', label: 'Friends', icon: <Users  size={11}/> },
+  { value: 'friends', label: 'Followers', icon: <Users  size={11}/> },
   { value: 'private', label: 'Only Me', icon: <Lock   size={11}/> },
 ];
 

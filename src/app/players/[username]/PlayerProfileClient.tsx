@@ -34,7 +34,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, friends, clubs, following, followPlayer, unfollowPlayer } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followPlayer, unfollowPlayer } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -85,14 +85,14 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const h2hWins   = h2hMatches.filter(m => m.winnerId === 'me').length;
   const h2hLosses = h2hMatches.filter(m => m.winnerId === player.uid).length;
 
-  // Match History privacy: public = visible to all, friends = visible to accepted friends only, private = owner only
+  // Match History privacy: public = visible to all, followers = visible to followers only, private = owner only
   const matchHistoryVisibility = player.privacy?.matchHistory ?? 'public';
-  const isFriendOfPlayer = friends.includes(player.uid);
-  const canSeeMatchHistory = isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFriendOfPlayer);
+  const isFollowingPlayer = following.includes(player.uid);
+  const canSeeMatchHistory = isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFollowingPlayer);
 
-  // Club membership privacy: same public/friends/private rule as Match History
+  // Club membership privacy: same public/followers/private rule
   const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
-  const canSeeClubMembership = isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFriendOfPlayer);
+  const canSeeClubMembership = isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer);
   const playerClub = canSeeClubMembership ? clubs.find(c => c.memberIds.includes(player.uid)) : undefined;
 
   return (
@@ -161,6 +161,24 @@ export function PlayerProfileClient({ username }: { username: string }) {
                   <p className="text-xs text-slate-500">{s.label}</p>
                 </div>
               ))}
+              <div className="w-px bg-slate-700/60 self-stretch"/>
+              {isMe ? (
+                <>
+                  <div className="text-center">
+                    <p className="text-xl font-bold">{following.length}</p>
+                    <p className="text-xs text-slate-500">Following</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-slate-500">—</p>
+                    <p className="text-xs text-slate-500">Followers</p>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xl font-bold">{(player.followersCount ?? 0).toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">Followers</p>
+                </div>
+              )}
             </div>
 
             {/* Discipline MMR chips */}
@@ -429,7 +447,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
             <h2 className="font-semibold mb-3">Match History</h2>
             {!canSeeMatchHistory ? (
               <p className="text-slate-500 text-sm py-4 text-center">
-                {matchHistoryVisibility === 'private' ? 'This player has hidden their match history.' : 'Only friends can see this player\'s match history.'}
+                {matchHistoryVisibility === 'private' ? 'This player has hidden their match history.' : 'Only followers can see this player\'s match history.'}
               </p>
             ) : playerMatches.length === 0 ? (
               <p className="text-slate-500 text-sm py-4 text-center">No matches recorded yet.</p>

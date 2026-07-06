@@ -9,7 +9,7 @@ import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
   X, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, Crown, ShieldCheck,
-  UserMinus, Trash2, UserCheck, UserX, Bell, ChevronDown, LayoutList, BarChart2,
+  UserMinus, Trash2, UserCheck, ChevronDown, LayoutList, BarChart2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
@@ -18,7 +18,7 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Leaderboard', 'Friends', 'Clubs'] as const;
+const TABS = ['Leaderboard', 'Following', 'Clubs'] as const;
 
 export default function PlayersPage() {
   const {
@@ -26,15 +26,14 @@ export default function PlayersPage() {
     clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub,
     myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub,
     assignModerator, removeModerator,
-    friends, outgoingFriendRequests, incomingFriendRequests,
-    sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
+    following, followPlayer, unfollowPlayer,
   } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Leaderboard';
     const t = new URLSearchParams(window.location.search).get('tab');
-    if (t === 'friends') return 'Friends';
-    if (t === 'clubs')   return 'Clubs';
+    if (t === 'following') return 'Following';
+    if (t === 'clubs')     return 'Clubs';
     return 'Leaderboard';
   });
 
@@ -65,7 +64,7 @@ export default function PlayersPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">Players</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Find players, friends & clubs</p>
+          <p className="text-slate-400 text-sm mt-0.5">Find players & clubs</p>
         </div>
         <button onClick={() => setMmrInfoOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium transition-colors shrink-0 mt-1">
@@ -79,14 +78,9 @@ export default function PlayersPage() {
           <button key={t} onClick={() => setTab(t)}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-            {t === 'Friends' && <UserCheck size={13}/>}
-            {t === 'Clubs'   && <Shield size={13}/>}
+            {t === 'Following' && <UserCheck size={13}/>}
+            {t === 'Clubs'    && <Shield size={13}/>}
             {t}
-            {t === 'Friends' && incomingFriendRequests.length > 0 && (
-              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {incomingFriendRequests.length}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -97,26 +91,10 @@ export default function PlayersPage() {
       </div>
 
       <div className={tab !== 'Leaderboard' ? 'hidden' : ''}>
-        <PlayersList
-          user={user}
-          friends={friends}
-          incoming={incomingFriendRequests}
-          filters={sharedFilters}
-        />
+        <PlayersList user={user} following={following} filters={sharedFilters}/>
       </div>
-      <div className={tab !== 'Friends' ? 'hidden' : ''}>
-        <FriendsTab
-          user={user} updateUser={updateUser}
-          friends={friends}
-          outgoing={outgoingFriendRequests}
-          incoming={incomingFriendRequests}
-          onSend={sendFriendRequest}
-          onCancel={cancelFriendRequest}
-          onAccept={acceptFriendRequest}
-          onDecline={declineFriendRequest}
-          onRemove={removeFriend}
-          filters={sharedFilters}
-        />
+      <div className={tab !== 'Following' ? 'hidden' : ''}>
+        <FollowingTab following={following} followPlayer={followPlayer} unfollowPlayer={unfollowPlayer} user={user} filters={sharedFilters}/>
       </div>
       {tab === 'Clubs' && (
         <ClubsTab
@@ -135,18 +113,6 @@ export default function PlayersPage() {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface FriendProps {
-  user: UserProfile;
-  friends: string[];
-  outgoing: string[];
-  incoming: string[];
-  onSend: (uid: string) => void;
-  onCancel: (uid: string) => void;
-  onAccept: (uid: string) => void;
-  onDecline: (uid: string) => void;
-  onRemove: (uid: string) => void;
-}
-
 type SortDir = 'desc' | 'asc';
 type SortKey = 'mmr' | 'winRate' | 'wins' | 'matches';
 
@@ -157,8 +123,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'matches', label: 'Matches' },
 ];
 
-const RANK_TABS = ['Nationwide', 'By State', 'Nearby', 'Friends'] as const;
-type RankTab = typeof RANK_TABS[number];
 
 // ─── Shared filter bar ────────────────────────────────────────────────────────
 
@@ -222,12 +186,12 @@ function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, s
 
 // ─── Ranks view (embedded leaderboard) ───────────────────────────────────────
 
-function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
-  player: UserProfile; rank: number; isMe: boolean; isFriend: boolean; sortKey: SortKey;
+function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
+  player: UserProfile; rank: number; isMe: boolean; isFollowing: boolean; sortKey: SortKey;
 }) {
   const wr = p.stats.totalMatches > 0 ? Math.round((p.stats.wins / p.stats.totalMatches) * 100) : 0;
   const rankColor = rank === 1 ? 'text-amber-400' : rank === 2 ? 'text-slate-300' : rank === 3 ? 'text-amber-600/80' : 'text-slate-500';
-  const borderClass = isMe ? 'border-emerald-500/30 bg-emerald-500/5' : isFriend ? 'border-emerald-500/15' : 'border-slate-800 hover:border-slate-700';
+  const borderClass = isMe ? 'border-emerald-500/30 bg-emerald-500/5' : isFollowing ? 'border-emerald-500/15' : 'border-slate-800 hover:border-slate-700';
   const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : p.mmr.toLocaleString();
   const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
@@ -363,7 +327,7 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
 
 // ─── Players list ─────────────────────────────────────────────────────────────
 
-function PlayersList({ user, friends, incoming, filters }: Pick<FriendProps, 'user' | 'friends' | 'incoming'> & { filters: PlayerFilters }) {
+function PlayersList({ user, following, filters }: { user: UserProfile; following: string[]; filters: PlayerFilters }) {
   const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
 
@@ -397,45 +361,30 @@ function PlayersList({ user, friends, incoming, filters }: Pick<FriendProps, 'us
       <p className="text-xs text-slate-500">{ranked.length} player{ranked.length !== 1 ? 's' : ''}</p>
       <div className="space-y-2">
         {ranked.map((p, i) => (
-          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFriend={friends.includes(p.uid)} sortKey={sortKey}/>
+          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFollowing={following.includes(p.uid)} sortKey={sortKey}/>
         ))}
       </div>
     </div>
   );
 }
 
-// ─── Friends tab ─────────────────────────────────────────────────────────────
+// ─── Following tab ────────────────────────────────────────────────────────────
 
-function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onCancel, onAccept, onDecline, onRemove, filters }: FriendProps & { updateUser: (p: Partial<UserProfile>) => void; filters: PlayerFilters }) {
-  const [requestsOpen, setRequestsOpen] = useState(false);
-  const requestsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!requestsOpen) return;
-    function handler(e: MouseEvent) {
-      if (requestsRef.current && !requestsRef.current.contains(e.target as Node)) {
-        setRequestsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [requestsOpen]);
-
+function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }: {
+  following: string[]; followPlayer: (uid: string) => void; unfollowPlayer: (uid: string) => void;
+  user: UserProfile; filters: PlayerFilters;
+}) {
   const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
 
-  const incomingPlayers = PLAYERS.filter(p => incoming.includes(p.uid));
-  const outgoingPlayers = PLAYERS.filter(p => outgoing.includes(p.uid));
-  const totalRequests = incoming.length + outgoing.length;
-
-  const friendPlayers = PLAYERS
+  const followedPlayers = PLAYERS
+    .filter(p => following.includes(p.uid))
     .filter(p => {
-      if (!friends.includes(p.uid)) return false;
       const q = query.toLowerCase();
-      return (p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
+      return (!q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
         && (countryFilter === 'All' || (p.country ?? 'Malaysia') === countryFilter)
         && (regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
-        && (tierFilter  === 'All' || p.tier  === tierFilter)
+        && (tierFilter === 'All' || p.tier === tierFilter)
         && (!openToPlay    || p.openToPlay)
         && (!openToPartner || p.lookingForPartner);
     })
@@ -446,108 +395,64 @@ function FriendsTab({ user, updateUser, friends, outgoing, incoming, onSend, onC
       return b.mmr - a.mmr;
     });
 
-  const allPlayers = [user, ...PLAYERS];
-
-  const requestsBell = (
-    <div className="relative ml-auto" ref={requestsRef}>
-      <button onClick={() => setRequestsOpen(o => !o)}
-        title="Friend requests"
-        className={`flex items-center gap-1 px-2 py-1.5 rounded-xl border text-xs font-medium transition-colors ${
-          incoming.length > 0
-            ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-            : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-        }`}>
-        <Bell size={13} className={incoming.length > 0 ? 'text-amber-400' : 'text-slate-500'}/>
-        {totalRequests > 0 && (
-          <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${incoming.length > 0 ? 'bg-amber-500/30 text-amber-300' : 'bg-slate-700 text-slate-400'}`}>
-            {totalRequests}
-          </span>
-        )}
-      </button>
-
-      {requestsOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-30 overflow-hidden max-h-80 overflow-y-auto">
-          {incomingPlayers.length > 0 && (
-            <div className="p-3 space-y-2">
-              <p className="text-[11px] text-amber-400 font-semibold px-1 flex items-center gap-1">
-                <Bell size={10}/> {incomingPlayers.length} Friend Request{incomingPlayers.length !== 1 ? 's' : ''}
-              </p>
-              {incomingPlayers.map(p => (
-                <div key={p.uid} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
-                  <Avatar name={p.displayName} className="!w-7 !h-7 !text-xs shrink-0"/>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">{p.displayName}</p>
-                    <p className="text-[10px] text-slate-500">@{p.username} · {p.mmr} MMR</p>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => onAccept(p.uid)}
-                      className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors">
-                      <Check size={11}/>
-                    </button>
-                    <button onClick={() => onDecline(p.uid)}
-                      className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                      <X size={11} className="text-slate-400"/>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {incomingPlayers.length > 0 && outgoingPlayers.length > 0 && (
-            <div className="border-t border-slate-800"/>
-          )}
-          {outgoingPlayers.length > 0 && (
-            <div className="p-3 space-y-2">
-              <p className="text-[11px] text-slate-400 font-semibold px-1">{outgoingPlayers.length} sent</p>
-              {outgoingPlayers.map(p => (
-                <div key={p.uid} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
-                  <Avatar name={p.displayName} className="!w-7 !h-7 !text-xs shrink-0"/>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">{p.displayName}</p>
-                    <p className="text-[10px] text-slate-500">@{p.username}</p>
-                  </div>
-                  <button onClick={() => onCancel(p.uid)}
-                    className="text-[10px] text-slate-500 hover:text-red-400 px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0">
-                    Cancel
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {totalRequests === 0 && (
-            <div className="p-5 text-center">
-              <p className="text-xs text-slate-500">No pending requests</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  // Suggested: not yet followed, similar MMR ±300, not current user
+  const suggested = PLAYERS
+    .filter(p => !following.includes(p.uid) && Math.abs(p.mmr - user.mmr) <= 300)
+    .sort((a, b) => Math.abs(a.mmr - user.mmr) - Math.abs(b.mmr - user.mmr))
+    .slice(0, 3);
 
   return (
-    <div className="space-y-3">
-      {/* Friends list */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-slate-400">
-          Friends <span className="text-slate-600 font-normal">({friends.length})</span>
-        </p>
-        {requestsBell}
-      </div>
-      {friends.length === 0 ? (
+    <div className="space-y-5">
+      {following.length === 0 ? (
         <div className="text-center py-10 space-y-2">
           <UserCheck size={28} className="mx-auto text-slate-700"/>
-          <p className="text-sm text-slate-400 font-medium">No friends yet</p>
-          <p className="text-xs text-slate-600">Go to the Players tab and tap a player to add them.</p>
+          <p className="text-sm text-slate-400 font-medium">Not following anyone yet</p>
+          <p className="text-xs text-slate-600">Visit a player's profile and tap Follow to start.</p>
         </div>
       ) : (
-        <>
-          <p className="text-xs text-slate-500">{friendPlayers.length} friend{friendPlayers.length !== 1 ? 's' : ''}</p>
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-slate-400">
+            Following <span className="text-slate-600 font-normal">({following.length})</span>
+          </p>
           <div className="space-y-2">
-            {friendPlayers.map((p, i) => (
-              <RankRow key={p.uid} player={p} rank={i + 1} isMe={false} isFriend={true} sortKey={filters.sortKey}/>
+            {followedPlayers.map((p, i) => (
+              <div key={p.uid} className="relative group">
+                <RankRow player={p} rank={i + 1} isMe={false} isFollowing={true} sortKey={filters.sortKey}/>
+                <button
+                  onClick={e => { e.preventDefault(); unfollowPlayer(p.uid); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity px-2.5 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/30 text-slate-400 rounded-xl text-[11px] font-medium z-10">
+                  Unfollow
+                </button>
+              </div>
             ))}
           </div>
-        </>
+        </div>
+      )}
+
+      {/* Suggested to follow */}
+      {suggested.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-slate-400">Suggested</p>
+          <div className="space-y-2">
+            {suggested.map(p => (
+              <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-3.5 py-3">
+                <Avatar name={p.displayName} photoURL={p.photoURL}/>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/players/${p.username}/`} className="font-bold text-sm hover:text-emerald-300 transition-colors truncate block">{p.displayName}</Link>
+                  <p className="text-[11px] text-slate-500">@{p.username} · {p.mmr.toLocaleString()} MMR</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <TierBadge tier={p.tier}/>
+                    {p.openToPlay && <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded">Open to Play</span>}
+                  </div>
+                </div>
+                <button onClick={() => followPlayer(p.uid)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-colors shrink-0">
+                  Follow
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

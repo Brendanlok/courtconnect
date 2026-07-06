@@ -8,7 +8,7 @@ import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay,
   saveTournamentReg, deleteTournamentReg,
-  saveClubMembership, saveFriend, removeFriendRecord,
+  saveClubMembership,
   loadConversations,
 } from '@/lib/firestoreService';
 
@@ -56,15 +56,6 @@ interface AppCtx {
   acceptClubInvite: (clubId: string) => void;
   declineClubInvite: (clubId: string) => void;
   sendClubMessage: (clubId: string, text: string) => void;
-  // Friends
-  friends: string[];                     // accepted friend uids
-  outgoingFriendRequests: string[];      // uids I've sent a request to
-  incomingFriendRequests: string[];      // uids who sent me a request
-  sendFriendRequest: (uid: string) => void;
-  cancelFriendRequest: (uid: string) => void;
-  acceptFriendRequest: (uid: string) => void;
-  declineFriendRequest: (uid: string) => void;
-  removeFriend: (uid: string) => void;
   // Follow
   following: string[];
   followPlayer: (uid: string) => void;
@@ -129,7 +120,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return [];
   });
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
-  const [friends,                setFriends]               = useState<string[]>([]);
   const [following,              setFollowing]             = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -139,8 +129,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return [];
   });
-  const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<string[]>([]);
-  const [incomingFriendRequests, setIncomingFriendRequests] = useState<string[]>(['p2', 'p4']); // seed: two players already sent requests
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
 
@@ -371,33 +359,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, [user.displayName]);
 
-  const sendFriendRequest = useCallback((uid: string) => {
-    setOutgoingFriendRequests(p => [...p, uid]);
-    addNotif({ type: 'friend_request', title: 'Friend Request Sent', body: 'Your friend request has been sent.' });
-  }, []);
-
-  const cancelFriendRequest = useCallback((uid: string) => {
-    setOutgoingFriendRequests(p => p.filter(id => id !== uid));
-  }, []);
-
-  const acceptFriendRequest = useCallback((friendUid: string) => {
-    setIncomingFriendRequests(p => p.filter(id => id !== friendUid));
-    setFriends(p => [...p, friendUid]);
-    addNotif({ type: 'friend_accepted', title: 'Friend Request Accepted', body: 'You are now friends!' });
-    const uid = auth.currentUser?.uid;
-    if (uid) saveFriend(uid, friendUid).catch(() => {});
-  }, []);
-
-  const declineFriendRequest = useCallback((uid: string) => {
-    setIncomingFriendRequests(p => p.filter(id => id !== uid));
-  }, []);
-
-  const removeFriend = useCallback((friendUid: string) => {
-    setFriends(p => p.filter(id => id !== friendUid));
-    const uid = auth.currentUser?.uid;
-    if (uid) removeFriendRecord(uid, friendUid).catch(() => {});
-  }, []);
-
   const followPlayer = useCallback((uid: string) => {
     setFollowing(p => {
       const next = p.includes(uid) ? p : [...p, uid];
@@ -454,8 +415,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
-      friends, outgoingFriendRequests, incomingFriendRequests,
-      sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
       following, followPlayer, unfollowPlayer,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
