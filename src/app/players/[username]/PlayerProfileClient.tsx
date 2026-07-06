@@ -373,7 +373,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
           {/* Match history */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h2 className="font-semibold mb-3">Match History</h2>
-            {playerMatches.length === 0 ? (
+            {!canSeeMatchHistory ? (
+              <p className="text-slate-500 text-sm py-4 text-center">
+                {matchHistoryVisibility === 'private' ? 'This player has hidden their match history.' : 'Only friends can see this player\'s match history.'}
+              </p>
+            ) : playerMatches.length === 0 ? (
               <p className="text-slate-500 text-sm py-4 text-center">No matches recorded yet.</p>
             ) : (
               <>
