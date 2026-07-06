@@ -34,7 +34,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, friends } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, friends, clubs } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
