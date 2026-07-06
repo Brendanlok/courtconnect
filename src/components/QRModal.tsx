@@ -1,8 +1,8 @@
 'use client';
 import { useApp } from '@/context/AppContext';
 import { TIER_STYLE } from '@/lib/utils';
-import { X, Share2 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { X, Share2, Copy, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
