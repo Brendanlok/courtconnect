@@ -85,6 +85,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const h2hWins   = h2hMatches.filter(m => m.winnerId === 'me').length;
   const h2hLosses = h2hMatches.filter(m => m.winnerId === player.uid).length;
 
+  // Match History privacy: public = visible to all, friends = visible to accepted friends only, private = owner only
+  const matchHistoryVisibility = player.privacy?.matchHistory ?? 'public';
+  const isFriendOfPlayer = friends.includes(player.uid);
+  const canSeeMatchHistory = isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFriendOfPlayer);
+
   return (
     <>
       <div className="space-y-6">
