@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification } from '@/types';
+import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -51,6 +51,11 @@ interface AppCtx {
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
+  clubInvites: string[];                 // club IDs I've been invited to
+  inviteToClub: (clubId: string, targetUid: string) => void;
+  acceptClubInvite: (clubId: string) => void;
+  declineClubInvite: (clubId: string) => void;
+  sendClubMessage: (clubId: string, text: string) => void;
   // Friends
   friends: string[];                     // accepted friend uids
   outgoingFriendRequests: string[];      // uids I've sent a request to
@@ -101,9 +106,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return SEED_CLUBS;
   });
   const [myClubId,         setMyClubId]         = useState<string | null>(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('cc_myClubId') ?? null;
-    return null;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cc_myClubId');
+      if (saved) return saved;
+    }
+    // Derive from seed data (e.g. 'me' seeded into c1)
+    return SEED_CLUBS.find(c => c.memberIds.includes('me'))?.id ?? null;
   });
+  const [clubInvites,      setClubInvites]      = useState<string[]>([]);
   const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try { return JSON.parse(localStorage.getItem('cc_myClubPendingIds') ?? '[]'); } catch { return []; }
@@ -293,6 +303,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, []);
 
+  const inviteToClub = useCallback((clubId: string, targetUid: string) => {
+    if (targetUid === 'me') {
+      // Being invited by someone else — add pending invite + notification
+      setClubInvites(p => [...p, clubId]);
+      addNotif({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
+    } else {
+      // Admin inviting another player — simulate acceptance immediately (demo)
+      setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes(targetUid)
+        ? { ...c, memberIds: [...c.memberIds, targetUid] }
+        : c));
+      addNotif({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
+    }
+  }, []);
+
+  const acceptClubInvite = useCallback((clubId: string) => {
+    setClubInvites(p => p.filter(id => id !== clubId));
+    setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes('me')
+      ? { ...c, memberIds: [...c.memberIds, 'me'] }
+      : c));
+    setMyClubId(clubId);
+    addNotif({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
+    const uid = auth.currentUser?.uid;
+    if (uid) saveClubMembership(uid, clubId).catch(() => {});
+  }, []);
+
+  const declineClubInvite = useCallback((clubId: string) => {
+    setClubInvites(p => p.filter(id => id !== clubId));
+    addNotif({ type: 'club_declined', title: 'Invitation Declined', body: 'You declined the club invitation.' });
+  }, []);
+
+  const sendClubMessage = useCallback((clubId: string, text: string) => {
+    const msg: ClubMessage = {
+      id: `cm_${Date.now()}`,
+      senderId: 'me',
+      senderName: user.displayName,
+      text,
+      sentAt: new Date().toISOString(),
+    };
+    setClubs(cs => cs.map(c => c.id === clubId
+      ? { ...c, clubMessages: [...(c.clubMessages ?? []), msg] }
+      : c));
+  }, [user.displayName]);
+
   const sendFriendRequest = useCallback((uid: string) => {
     setOutgoingFriendRequests(p => [...p, uid]);
     addNotif({ type: 'friend_request', title: 'Friend Request Sent', body: 'Your friend request has been sent.' });
@@ -355,6 +408,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge,
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
+      clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       friends, outgoingFriendRequests, incomingFriendRequests,
       sendFriendRequest, cancelFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend,
       myEndorsements, playerEndorsements, endorsePlayer,

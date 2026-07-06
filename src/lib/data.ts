@@ -1,4 +1,7 @@
-import type { UserProfile, Match, Tournament, Conversation, Club } from '@/types';
+import type { UserProfile, Match, Tournament, Conversation, Club, ClubMessage } from '@/types';
+
+// Re-export for use in other modules
+export type { ClubMessage };
 
 export const ME: UserProfile = {
   uid: 'me', username: 'brendanlok', displayName: 'Lok', email: 'chanlokk97@gmail.com',
@@ -165,6 +168,12 @@ export const CLUBS: Club[] = [
     avgMMR: 1820, topPlayers: ['Zack Azhar', 'Lok Kai', 'Lee Ming Xuan'],
     tags: ['Competitive', 'Training', 'Nationals'], foundedYear: 2019,
     announcement: 'Inter-club tournament vs PJ Aces on 12 July — all members must confirm attendance by Friday.',
+    clubMessages: [
+      { id: 'cm1', senderId: 'p1', senderName: 'Zack Azhar', text: "Yo, who's free this Saturday morning for a training session?", sentAt: '2026-07-04T08:15:00Z' },
+      { id: 'cm2', senderId: 'p3', senderName: 'Lee Ming Xuan', text: 'I can make it! What time?', sentAt: '2026-07-04T08:23:00Z' },
+      { id: 'cm3', senderId: 'p1', senderName: 'Zack Azhar', text: '9am at Cheras Badminton Hall. Bring your A game 🏸', sentAt: '2026-07-04T08:25:00Z' },
+      { id: 'cm4', senderId: 'me', senderName: 'Lok', text: 'I'll be there. Just booked the court.', sentAt: '2026-07-04T08:31:00Z' },
+    ],
   },
   {
     isDummy: true, id: 'c2', name: 'Petaling Jaya Aces', shortName: 'PJA',

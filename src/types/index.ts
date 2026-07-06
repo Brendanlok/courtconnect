@@ -133,6 +133,14 @@ export interface Challenge {
 
 export type ClubPurpose = 'Competitive' | 'Recreational' | 'Training' | 'Social' | 'Youth';
 
+export interface ClubMessage {
+  id: string;
+  senderId: string;    // uid ('me' or playerUid)
+  senderName: string;
+  text: string;
+  sentAt: string;
+}
+
 export interface Club {
   id: string;
   isDummy?: boolean;
@@ -156,6 +164,7 @@ export interface Club {
   tags: string[];
   foundedYear: number;
   announcement?: string;
+  clubMessages?: ClubMessage[];
 }
 
 export interface Notification {
@@ -166,6 +175,7 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   linkTo?: string;
+  meta?: Record<string, string>;
 }
 
 export interface AuthUser {

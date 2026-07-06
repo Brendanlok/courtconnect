@@ -841,7 +841,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-bold text-sm">{club.name}</p>
+                      <a href={`/clubs/${club.id}/`} className="font-bold text-sm hover:text-emerald-400 transition-colors">{club.name}</a>
                       {club.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-400 px-1 py-0.5 rounded">DEMO</span>}
                       {club.isPrivate
                         ? <Lock size={10} className="text-violet-400"/>

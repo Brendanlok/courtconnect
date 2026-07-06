@@ -24,7 +24,7 @@ const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
-  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount } = useApp();
+  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount, acceptClubInvite, declineClubInvite } = useApp();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,19 +60,31 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           notifications.map(n => (
-            <button key={n.id} onClick={() => markNotifRead(n.id)}
-              className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-slate-800/60 last:border-0 transition-colors
-                ${n.read ? 'opacity-60 hover:opacity-80' : 'bg-slate-800/40 hover:bg-slate-800/60'}`}>
+            <div key={n.id}
+              className={`flex items-start gap-3 px-4 py-3 border-b border-slate-800/60 last:border-0 transition-colors
+                ${n.read ? 'opacity-60' : 'bg-slate-800/40'}`}>
               <span className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
                 {NOTIF_ICON[n.type]}
               </span>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0" onClick={() => markNotifRead(n.id)}>
                 <p className="text-xs font-semibold text-slate-200">{n.title}</p>
                 <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{n.body}</p>
                 <p className="text-[10px] text-slate-600 mt-1">{timeAgo(n.createdAt)}</p>
+                {n.type === 'club_invite' && n.meta?.clubId && (
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={e => { e.stopPropagation(); acceptClubInvite(n.meta!.clubId!); markNotifRead(n.id); }}
+                      className="flex-1 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-[11px] font-semibold transition-colors">
+                      Accept
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); declineClubInvite(n.meta!.clubId!); markNotifRead(n.id); }}
+                      className="flex-1 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-semibold transition-colors">
+                      Decline
+                    </button>
+                  </div>
+                )}
               </div>
               {!n.read && <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0 mt-1.5"/>}
-            </button>
+            </div>
           ))
         )}
       </div>
