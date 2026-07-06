@@ -15,7 +15,6 @@ export function Topbar() {
   const { logout } = useAuth();
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [notifOpen,   setNotifOpen]   = useState(false);
-  const [locationOpen,setLocationOpen]= useState(false);
   const [qrOpen,      setQrOpen]      = useState(false);
   const [logOpen,     setLogOpen]     = useState(false);
   const [settOpen,    setSettOpen]    = useState(false);
