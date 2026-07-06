@@ -1,14 +1,19 @@
 'use client';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
 import { AppProvider } from '@/context/AppContext';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { BottomNav } from '@/components/BottomNav';
+import { OnboardingModal } from '@/components/OnboardingModal';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { authUser, isLoading } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !!localStorage.getItem('cc_onboarded');
+  });
 
   if (isLoading) {
     return (
@@ -24,6 +29,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <AppProvider>
+      {!onboardingDone && <OnboardingModal onComplete={() => setOnboardingDone(true)}/>}
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
