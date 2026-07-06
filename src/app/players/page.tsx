@@ -240,6 +240,7 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">
           <p className="font-bold text-sm truncate shrink">{p.displayName}</p>
           {isMe && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">You</span>}
+          {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1 py-0.5 rounded shrink-0">DEMO</span>}
           {p.openToPlay && (
             <span title="Open to Play" className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded shrink-0">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Play
