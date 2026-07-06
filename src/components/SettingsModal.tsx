@@ -69,7 +69,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       countryCode,
       region: isMY ? (location?.state ?? region) : region,
       area:   isMY ? (location?.city  ?? cityText) : cityText,
-      state:  (isMY ? (location?.state ?? user.state) : region) as import('@/types').MalaysiaState,
+      state:  isMY ? (location?.state ?? user.state) : user.state,
       postcode: isMY ? postcode : undefined,
       available: availability.join(','),
       privacy,
