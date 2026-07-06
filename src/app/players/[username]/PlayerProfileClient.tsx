@@ -434,6 +434,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
 
         {/* ── Stage 2: Match Analytics ──────────────────────────────── */}
         {(() => {
+          if (!canSeeMatchHistory) return null;
           const confirmed = playerMatches.filter(m => m.status === 'Confirmed');
           if (confirmed.length === 0) return null;
 
