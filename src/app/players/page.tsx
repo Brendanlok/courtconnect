@@ -298,10 +298,11 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
   const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
     <Link href={`/players/${p.username}`}
-      className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[76px] overflow-hidden transition-all hover:-translate-y-0.5 ${borderClass}`}>
+      className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[84px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
       <Avatar name={p.displayName}/>
       <div className="flex-1 min-w-0">
+        {/* Row 1: display name + status badges */}
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">
           <p className="font-bold text-sm truncate shrink">{p.displayName}</p>
           {isMe && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">You</span>}
@@ -316,6 +317,9 @@ function RankRow({ player: p, rank, isMe, isFriend, sortKey }: {
             </span>
           )}
         </div>
+        {/* Row 2: @username */}
+        <p className="text-[11px] text-slate-500 truncate mt-0.5">@{p.username}</p>
+        {/* Row 3: tier + stats */}
         <div className="flex items-center gap-2 mt-1">
           <TierBadge tier={p.tier}/>
           <p className="text-[11px] text-slate-500">{p.stats.wins}W · {wr}% WR</p>
