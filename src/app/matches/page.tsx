@@ -69,6 +69,14 @@ function slotsForFormat(format: MatchType): { teamSize: number } {
   return { teamSize: format === 'MS' || format === 'WS' ? 1 : 2 };
 }
 
+// A plan is confirmed once every slot is filled and every non-organiser player has accepted
+function derivePlanStatus(teamA: (SlotPlayer | null)[], teamB: (SlotPlayer | null)[], accepted: string[]): PlannedStatus {
+  const slots = [...teamA, ...teamB];
+  const allFilled   = slots.every(s => s !== null);
+  const allAccepted = slots.every(s => s === null || s.uid === 'me' || accepted.includes(s.uid));
+  return allFilled && allAccepted ? 'confirmed' : 'pending';
+}
+
 // For MX, slot genders depend on user's gender
 function getMXSlotGender(userGender: 'Male' | 'Female' | undefined, team: 'A' | 'B', slotIdx: number): 'Male' | 'Female' | null {
   if (!userGender) return null;
