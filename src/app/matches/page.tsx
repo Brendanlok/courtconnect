@@ -493,9 +493,11 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
         {/* Slots grid */}
         <div className="grid grid-cols-2 gap-2">
           <TeamSlots label={m.teamA.some(s => s?.uid === 'me') ? 'Team A (You)' : 'Team A'} slots={m.teamA} accepted={m.accepted} declined={m.declined} meUid="me"
-            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}/>
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}
+            onSimulateAccept={m.status !== 'cancelled' ? onSimulateAccept : undefined}/>
           <TeamSlots label="Team B" slots={m.teamB} accepted={m.accepted} declined={m.declined} meUid="me"
-            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}/>
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}
+            onSimulateAccept={m.status !== 'cancelled' ? onSimulateAccept : undefined}/>
         </div>
 
         {/* Remove player confirmation */}
