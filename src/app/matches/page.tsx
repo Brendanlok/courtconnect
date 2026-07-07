@@ -574,7 +574,14 @@ function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer, on
             {isMe   && <span className="text-[9px] text-emerald-400 font-bold shrink-0">You</span>}
             {!isMe && isAcc  && <Check size={10} className="text-emerald-400 shrink-0"/>}
             {!isMe && isDec  && <X size={10} className="text-red-400 shrink-0"/>}
-            {!isMe && !isAcc && !isDec && <Clock size={10} className="text-amber-400 shrink-0"/>}
+            {!isMe && !isAcc && !isDec && (
+              onSimulateAccept ? (
+                <button onClick={() => onSimulateAccept(s.uid)} title={`Simulate: ${s.displayName} accepts`}
+                  className="flex items-center gap-0.5 text-[9px] text-amber-400 hover:text-emerald-400 font-semibold shrink-0 transition-colors">
+                  <Clock size={10}/> Accept?
+                </button>
+              ) : <Clock size={10} className="text-amber-400 shrink-0"/>
+            )}
             {!isMe && onRemovePlayer && (
               <button onClick={() => onRemovePlayer(s)} className="ml-1 text-slate-600 hover:text-red-400 shrink-0 transition-colors">
                 <X size={10}/>
