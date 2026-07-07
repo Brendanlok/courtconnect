@@ -461,15 +461,27 @@ export default function LivePage() {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {isHost && !isDone && history.length > 0 && (
           <button onClick={undo}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
             <RotateCcw size={14}/> Undo
           </button>
         )}
+        {isHost && !isDone && (
+          <button onClick={() => setCourtOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+            <MapPin size={14}/> Track
+            {courtPositions.length > 0 && (
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">{courtPositions.length}</span>
+            )}
+          </button>
+        )}
+        {isHost && !isDone && (
+          <ClipRecorder match={match} onUploaded={() => awardClipCredits(50)}/>
+        )}
         {isDone && (
-          <button onClick={() => { setPhase('idle'); setMatch(null); setHistory([]); }}
+          <button onClick={() => { setPhase('idle'); setMatch(null); setHistory([]); setCourtPositions([]); setCourtSaved(false); }}
             className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
             New Match
           </button>
@@ -485,6 +497,59 @@ export default function LivePage() {
           </button>
         )}
       </div>
+
+      {/* Court save prompt on match completion */}
+      {isDone && courtPositions.length > 0 && !courtSaved && (
+        <div className="bg-slate-900 border border-emerald-500/25 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold flex items-center gap-2">
+              <MapPin size={14} className="text-emerald-400"/> Court Tracking
+            </p>
+            <span className="text-xs text-slate-500">{courtPositions.length} positions tagged</span>
+          </div>
+          <CourtHeatmap positions={courtPositions} showStats={false}/>
+          <button
+            onClick={() => { saveCourtPositions(courtPositions); setCourtSaved(true); }}
+            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition-colors">
+            Save to My Court Profile
+          </button>
+        </div>
+      )}
+      {isDone && courtSaved && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-sm text-emerald-400">
+          <Check size={14}/> Court data saved to your profile
+        </div>
+      )}
+
+      {/* Court position tracker sheet */}
+      {courtOpen && (
+        <div className="fixed inset-0 z-40 bg-black/80 flex items-end" onClick={() => setCourtOpen(false)}>
+          <div className="w-full max-w-lg mx-auto bg-slate-900 border-t border-slate-800 rounded-t-2xl p-5 space-y-3"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <MapPin size={14} className="text-emerald-400"/> Tap your position on court
+              </p>
+              <button onClick={() => setCourtOpen(false)}>
+                <X size={16} className="text-slate-400"/>
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500">Your side is on the left. Tap where you were standing.</p>
+            <CourtHeatmap
+              positions={courtPositions}
+              tapMode
+              showStats={false}
+              onTap={pos => {
+                setCourtPositions(prev => [...prev, pos]);
+                setCourtOpen(false);
+              }}
+            />
+            <p className="text-[11px] text-slate-600 text-center">
+              {courtPositions.length} position{courtPositions.length !== 1 ? 's' : ''} tagged this match
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Watching notice */}
       {phase === 'watching' && (

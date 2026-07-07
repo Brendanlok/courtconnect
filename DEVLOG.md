@@ -1,5 +1,43 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-08 05:00] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. Ran a full code audit across Home/Players/Tournaments/Leaderboard/Chat/PlayerProfile/LogMatchModal/Topbar/AppContext and fixed 5 issues, the most notable being a real auth bug: Google onboarding was calling `signInWithPopup` a second time instead of reusing the already-authenticated pending user, forcing a redundant popup and risking a session mismatch. ⚠️ Commit succeeded locally but `git push` failed — GitHub was unreachable from this machine (DNS/connectivity timeout on port 443, confirmed via ping). **Push is still pending** — will retry next session; if a push already went through by then this note is stale.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🔴 | Fix Google onboarding double-popup bug | ✅ | `AuthContext.tsx` `completeGoogleOnboarding` called `signInWithPopup` again instead of reusing `pendingGoogleUser` |
+| 3 | 🔴 | Fix inconsistent nav trailing slash | ✅ | `players/page.tsx` `RankRow` linked to `/players/${username}` (no trailing slash) unlike rest of app |
+| 4 | 🟠 | Fix hardcoded "top 100" MMR threshold | ✅ | `leaderboard/page.tsx` used a magic `2000` MMR constant instead of the actual #100 player's MMR |
+| 5 | 🟢 | Remove dead code | ✅ | `FilterBar` component in `players/page.tsx` was fully superseded by `SharedPlayerFilters` and never referenced — deleted |
+| 6 | 🟢 | Clean up `as any` casts | ✅ | `leaderboard/page.tsx` had 4 unnecessary `(meInList as any).tabRank` casts — `list`/`meInList` were already properly typed via `.map`, so removed |
+
+### Issues Found (not yet fixed — logged for follow-up)
+- 🟠 Disputed matches (`disputeMatch` in AppContext) have no resolution UI anywhere — once a match is marked Disputed it's a permanent dead end. Needs a small design decision (re-submit? admin review?) before implementing.
+- 🟡 `PlayerProfileClient.tsx` — the Skills radar chart (`RADAR_DATA`) and `ACHIEVEMENTS` are hardcoded identically for every player profile, not derived from real stats. Misleading but cosmetic; needs product decision on whether to compute real values or label as illustrative.
+- 🟢 `LogMatchModal.tsx` — `hasScores` validation only requires one game to have a nonzero score before allowing submit; a match with an incomplete second game could still submit. Minor, not fixed this session.
+- Note: the audit also flagged that auth is fully Firebase-backed (not localStorage `cc_auth_users`/`cc_auth_session` as older docs describe) — this looks like an intentional prior migration, not a regression, but flagging in case it's news.
+
+### Improvements Made
+Auth reliability fix (no more double Google popup), one navigation consistency fix, one data-accuracy fix on the leaderboard callout, and two code-quality cleanups (dead code + unnecessary `any` casts). All verified with a clean `npx next build`.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Disputed match resolution flow | Currently a dead end for users — no way to un-dispute or escalate | Small: add a "Resolve" action (re-confirm or cancel) to the disputed match card |
+| Real per-player Skills radar | Current radar chart is fake/identical for everyone, undermines trust in stats | Medium: derive from match history (smash/net/footwork could map from a shot-tagging or simplified per-match self-rating) |
+
+### Critical Alerts
+🔴 **Push to GitHub failed this session** — network to github.com was unreachable (connection timeout on port 443). Commit `ec27ce6` is sitting locally on `main`, 3 commits ahead of `origin/main` now. **Next session must push this before doing anything else**, or the user should push manually if urgent.
+
+---
+
 ## [2026-07-07 20:37] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)

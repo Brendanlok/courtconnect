@@ -30,6 +30,16 @@ export const PLAYERS: UserProfile[] = [
     openToPlay: true, lookingForPartner: true, preferredFormats: ['MD', 'MX'],
     distKm: 3.2, joinedAt: '2024-06-12',
     followersCount: 148,
+    clipCredits: 12, clipBadge: 'Director' as const,
+    courtProfile: {
+      positions: [
+        { x: 0.2, y: 0.5 }, { x: 0.25, y: 0.4 }, { x: 0.25, y: 0.6 },
+        { x: 0.3, y: 0.5 }, { x: 0.15, y: 0.5 }, { x: 0.35, y: 0.35 },
+        { x: 0.3, y: 0.65 }, { x: 0.4, y: 0.5 }, { x: 0.2, y: 0.4 },
+        { x: 0.45, y: 0.55 }, { x: 0.38, y: 0.3 },
+      ],
+      totalMatches: 7, lastUpdated: '2026-06-20T14:00:00Z',
+    },
     endorsements: { 'Powerful Smash': 24, 'Great Footwork': 18, 'Sharp Net Play': 12, 'Smart Placement': 9, 'Good Sportsmanship': 7 },
   },
   {
@@ -90,6 +100,17 @@ export const PLAYERS: UserProfile[] = [
     openToPlay: false, lookingForPartner: false, preferredFormats: ['MD'],
     distKm: 9.1, joinedAt: '2024-03-01',
     followersCount: 312,
+    clipCredits: 50, clipBadge: 'Broadcaster' as const,
+    courtProfile: {
+      positions: [
+        { x: 0.15, y: 0.5 }, { x: 0.12, y: 0.45 }, { x: 0.18, y: 0.55 },
+        { x: 0.2,  y: 0.5 }, { x: 0.1,  y: 0.5  }, { x: 0.3,  y: 0.3  },
+        { x: 0.25, y: 0.7 }, { x: 0.35, y: 0.5 }, { x: 0.15, y: 0.6 },
+        { x: 0.08, y: 0.5 }, { x: 0.22, y: 0.4 }, { x: 0.18, y: 0.62 },
+        { x: 0.45, y: 0.5 }, { x: 0.4,  y: 0.45 }, { x: 0.42, y: 0.55 },
+      ],
+      totalMatches: 18, lastUpdated: '2026-07-01T10:00:00Z',
+    },
     endorsements: { 'Sharp Net Play': 31, 'Powerful Smash': 28, 'Great Footwork': 19, 'Smart Placement': 15 },
   },
 ];

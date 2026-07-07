@@ -12,7 +12,8 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera } from 'lucide-react';
+import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
 
@@ -34,7 +35,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followPlayer, unfollowPlayer, tournaments } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -646,6 +647,89 @@ export function PlayerProfileClient({ username }: { username: string }) {
                   <p className="text-[10px] text-slate-400 mt-0.5">Avg pts conceded/game</p>
                 </div>
               </div>
+            </div>
+          );
+        })()}
+        {/* ── Court Analytics ── */}
+        {(() => {
+          const profile = isMe ? courtProfile : (player.courtProfile ?? null);
+          const positions = profile?.positions ?? [];
+          const credits   = isMe ? clipCredits : (player.clipCredits ?? 0);
+          const badge     = isMe ? (ctxUser.clipBadge ?? null) : (player.clipBadge ?? null);
+
+          const BADGE_META: Record<string, { icon: string; label: string; desc: string; color: string }> = {
+            Camera:       { icon: '📹', label: 'Camera',       desc: '1st clip uploaded',    color: 'text-slate-300 border-slate-600 bg-slate-800' },
+            Director:     { icon: '🎬', label: 'Director',     desc: '5 clips uploaded',     color: 'text-amber-300 border-amber-500/40 bg-amber-500/10' },
+            Studio:       { icon: '🎥', label: 'Studio',       desc: '20 clips uploaded',    color: 'text-purple-300 border-purple-500/40 bg-purple-500/10' },
+            Broadcaster:  { icon: '📡', label: 'Broadcaster',  desc: '50 clips uploaded',    color: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' },
+          };
+
+          if (positions.length === 0 && credits === 0) return null;
+
+          return (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Camera size={15} className="text-sky-400"/> Court Analytics
+                </h2>
+                <span className="text-[10px] bg-sky-500/15 text-sky-400 border border-sky-500/25 px-2 py-0.5 rounded-full font-semibold">Stage 3</span>
+              </div>
+
+              {/* Clip badge + credits */}
+              {(badge || credits > 0) && (
+                <div className="flex items-center gap-3">
+                  {badge && (
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold ${BADGE_META[badge].color}`}>
+                      <span>{BADGE_META[badge].icon}</span>
+                      <div>
+                        <p className="text-xs font-bold">{BADGE_META[badge].label}</p>
+                        <p className="text-[10px] opacity-70">{BADGE_META[badge].desc}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex-1 text-right">
+                    <p className="text-xl font-black text-sky-400">{credits}</p>
+                    <p className="text-[10px] text-slate-500">Clip Credits</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Clip credits progress */}
+              {credits > 0 && (
+                <div>
+                  <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                    <span>Next: {credits < 5 ? 'Director' : credits < 20 ? 'Studio' : credits < 50 ? 'Broadcaster' : 'Max reached'}</span>
+                    <span>{credits < 5 ? `${credits}/5` : credits < 20 ? `${credits}/20` : credits < 50 ? `${credits}/50` : '50/50'}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-sky-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, credits < 5 ? (credits/5)*100 : credits < 20 ? (credits/20)*100 : credits < 50 ? (credits/50)*100 : 100)}%` }}/>
+                  </div>
+                </div>
+              )}
+
+              {/* Court heatmap */}
+              {positions.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                      <MapPin size={11}/> Court Coverage
+                    </p>
+                    <span className="text-[10px] text-slate-500">
+                      {positions.length} pts · {profile?.totalMatches ?? 1} match{(profile?.totalMatches ?? 1) !== 1 ? 'es' : ''}
+                    </span>
+                  </div>
+                  <CourtHeatmap positions={positions} showStats/>
+                </div>
+              )}
+
+              {positions.length === 0 && isMe && (
+                <div className="text-center py-3">
+                  <Video size={20} className="text-slate-600 mx-auto mb-2"/>
+                  <p className="text-sm text-slate-500">No court data yet</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">Use <span className="text-emerald-500">Track</span> during a live match to build your court profile</p>
+                </div>
+              )}
             </div>
           );
         })()}
