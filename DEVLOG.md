@@ -34,6 +34,12 @@ None pending.
 ### Critical Alerts
 None.
 
+### 📊 Daily Summary (18:00)
+- Sessions run: 2
+- Total fixes deployed: 3
+- Build status: ✅ Healthy
+- Telegram summary: ✅ Sent
+
 
 ## [2026-07-07 00:20] — Auto-Dev Session
 
