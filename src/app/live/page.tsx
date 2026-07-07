@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch } from '@/lib/firestoreService';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
-import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users } from 'lucide-react';
-import type { LiveMatch, MatchType } from '@/types';
+import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users, MapPin, X } from 'lucide-react';
+import type { LiveMatch, MatchType, CourtPosition } from '@/types';
+import ClipRecorder from '@/components/ClipRecorder';
+import CourtHeatmap from '@/components/CourtHeatmap';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -71,7 +73,7 @@ function ScorePill({ score, winner }: { score: string; winner?: 'A' | 'B' }) {
 type Phase = 'idle' | 'setup' | 'scoring' | 'complete' | 'watching';
 
 export default function LivePage() {
-  const { user } = useApp();
+  const { user, awardClipCredits, saveCourtPositions } = useApp();
 
   // phase machine
   const [phase,      setPhase]      = useState<Phase>('idle');
@@ -83,6 +85,11 @@ export default function LivePage() {
   const [bestOf,     setBestOf]     = useState<1 | 3 | 5>(3);
   const [teamAName,  setTeamAName]  = useState(user.displayName);
   const [teamBName,  setTeamBName]  = useState('');
+
+  // court tracking
+  const [courtPositions, setCourtPositions] = useState<CourtPosition[]>([]);
+  const [courtOpen,      setCourtOpen]      = useState(false);
+  const [courtSaved,     setCourtSaved]     = useState(false);
 
   // join flow — pre-fill from ?code= query param
   const [joinInput,  setJoinInput]  = useState(() => {

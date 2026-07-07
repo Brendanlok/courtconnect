@@ -115,9 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!displayName.trim()) return 'Name is required.';
     if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
     try {
-      const { user } = await signInWithPopup(auth, googleProvider);
-      await updateProfile(user, { displayName: displayName.trim() });
-      await createUserDoc(user, { username, displayName: displayName.trim(), country, region });
+      await updateProfile(pendingGoogleUser, { displayName: displayName.trim() });
+      await createUserDoc(pendingGoogleUser, { username, displayName: displayName.trim(), country, region });
       setPendingGoogleUser(null);
       return null;
     } catch (e: unknown) {

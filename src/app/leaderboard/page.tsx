@@ -220,13 +220,13 @@ export default function Leaderboard() {
               <Avatar name={user.displayName} size="sm"/>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-emerald-300">
-                  {tab === 'Nationwide' ? `National Rank #${user.globalRank}` : `${tab} Rank #${(meInList as any).tabRank}`}
+                  {tab === 'Nationwide' ? `National Rank #${user.globalRank}` : `${tab} Rank #${meInList.tabRank}`}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {tab === 'By State' ? `Top ${(meInList as any).tabRank} in ${selState}` :
-                   tab === 'Nearby'   ? `Top ${(meInList as any).tabRank} within 10km` :
-                   tab === 'Following' ? `Top ${(meInList as any).tabRank} among following` :
-                   `You need ${Math.max(0, 2000 - user.mmr)} more MMR to break into the top 100`}
+                  {tab === 'By State' ? `Top ${meInList.tabRank} in ${selState}` :
+                   tab === 'Nearby'   ? `Top ${meInList.tabRank} within 10km` :
+                   tab === 'Following' ? `Top ${meInList.tabRank} among following` :
+                   `You need ${Math.max(0, (list[99]?.mmr ?? 2000) - user.mmr)} more MMR to break into the top 100`}
                 </p>
               </div>
               <p className="text-2xl font-bold text-amber-400">{user.mmr.toLocaleString()}</p>

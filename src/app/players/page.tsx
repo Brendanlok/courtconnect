@@ -151,66 +151,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 
-// ─── Shared filter bar ────────────────────────────────────────────────────────
-
-function FilterBar({ query, setQuery, stateFilter, setStateFilter, tierFilter, setTierFilter, sortDir, setSortDir, openToPlay, setOpenToPlay, openToPartner, setOpenToPartner, endSlot }: {
-  query: string; setQuery: (v: string) => void;
-  stateFilter: MalaysiaState | 'All'; setStateFilter: (v: MalaysiaState | 'All') => void;
-  tierFilter: Tier | 'All'; setTierFilter: (v: Tier | 'All') => void;
-  sortDir: SortDir; setSortDir: (v: SortDir) => void;
-  openToPlay?: boolean; setOpenToPlay?: (v: boolean) => void;
-  openToPartner?: boolean; setOpenToPartner?: (v: boolean) => void;
-  endSlot?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-        <input value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Search by name or @username…"
-          className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
-      </div>
-      <div className="flex gap-1.5 flex-wrap items-center">
-        <FilterDropdown<MalaysiaState | 'All'>
-          icon={<MapPin size={11} className="text-emerald-400"/>}
-          label="All States" value={stateFilter}
-          options={[{ value: 'All', label: 'All States' }, ...MY_STATES.map(s => ({ value: s as MalaysiaState, label: s }))]}
-          onChange={setStateFilter}
-        />
-        <FilterDropdown<Tier | 'All'>
-          icon={<span className="text-[11px]">{tierFilter !== 'All' ? TIER_STYLE[tierFilter].icon : '🏅'}</span>}
-          label="All Tiers" value={tierFilter}
-          options={TIERS.map(t => ({
-            value: t, label: t === 'All' ? 'All Tiers' : t,
-            prefix: t !== 'All' ? <span className="text-sm">{TIER_STYLE[t].icon}</span> : undefined,
-          }))}
-          onChange={setTierFilter}
-        />
-        <button onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-colors">
-          {sortDir === 'desc' ? <ArrowDown size={10} className="text-amber-400"/> : <ArrowUp size={10} className="text-amber-400"/>}
-          {sortDir === 'desc' ? 'High → Low' : 'Low → High'}
-        </button>
-        {setOpenToPlay && (
-          <button onClick={() => setOpenToPlay(!openToPlay)}
-            className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors " + (openToPlay ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700')}>
-            <span className={"w-1.5 h-1.5 rounded-full " + (openToPlay ? 'bg-emerald-400' : 'bg-slate-600')}/>
-            Open to Play
-          </button>
-        )}
-        {setOpenToPartner && (
-          <button onClick={() => setOpenToPartner(!openToPartner)}
-            className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors " + (openToPartner ? 'bg-violet-500/15 border-violet-500/30 text-violet-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700')}>
-            <span className={"w-1.5 h-1.5 rounded-full " + (openToPartner ? 'bg-violet-400' : 'bg-slate-600')}/>
-            Open to Partner
-          </button>
-        )}
-        {endSlot}
-      </div>
-    </div>
-  );
-}
-
 // ─── Ranks view (embedded leaderboard) ───────────────────────────────────────
 
 function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
@@ -222,7 +162,7 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
   const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : p.mmr.toLocaleString();
   const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
-    <Link href={`/players/${p.username}`}
+    <Link href={`/players/${p.username}/`}
       className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[84px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
       <Avatar name={p.displayName}/>

@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage } from '@/types';
+import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -60,6 +60,11 @@ interface AppCtx {
   following: string[];
   followPlayer: (uid: string) => void;
   unfollowPlayer: (uid: string) => void;
+  // Clip Credits & Court
+  clipCredits: number;
+  awardClipCredits: (amount: number) => void;
+  courtProfile: CourtProfile | null;
+  saveCourtPositions: (positions: CourtPosition[]) => void;
   // Endorsements
   myEndorsements: Record<string, string[]>;            // targetUid → skills I've endorsed
   playerEndorsements: Record<string, Record<string, number>>; // targetUid → skill → count
@@ -131,6 +136,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
+  const [clipCredits,      setClipCredits]      = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('cc_clipCredits') ?? '0', 10) || 0;
+    }
+    return 0;
+  });
+  const [courtProfile,     setCourtProfile]     = useState<CourtProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_courtProfile');
+        if (saved) return JSON.parse(saved) as CourtProfile;
+      } catch { /* ignore */ }
+    }
+    return null;
+  });
 
   // Load persisted conversations from Firestore on sign-in
   useEffect(() => {
@@ -359,6 +379,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : c));
   }, [user.displayName]);
 
+  const awardClipCredits = useCallback((amount: number) => {
+    setClipCredits(prev => {
+      const next = prev + amount;
+      try { localStorage.setItem('cc_clipCredits', String(next)); } catch { /* ignore */ }
+      // Determine badge tier
+      const badge: UserProfile['clipBadge'] =
+        next >= 50 ? 'Broadcaster' : next >= 20 ? 'Studio' : next >= 5 ? 'Director' : 'Camera';
+      setUser(u => ({ ...u, clipCredits: next, clipBadge: badge }));
+      return next;
+    });
+  }, []);
+
+  const saveCourtPositions = useCallback((positions: CourtPosition[]) => {
+    setCourtProfile(prev => {
+      const next: CourtProfile = {
+        positions: [...(prev?.positions ?? []), ...positions],
+        totalMatches: (prev?.totalMatches ?? 0) + 1,
+        lastUpdated: new Date().toISOString(),
+      };
+      try { localStorage.setItem('cc_courtProfile', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const followPlayer = useCallback((uid: string) => {
     setFollowing(p => {
       const next = p.includes(uid) ? p : [...p, uid];
@@ -416,6 +460,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       following, followPlayer, unfollowPlayer,
+      clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>

@@ -39,6 +39,9 @@ export interface UserProfile {
   endorsements?: Record<string, number>; // skill → count
   photoURL?: string | null;
   followersCount?: number;
+  clipCredits?: number;
+  clipBadge?: 'Camera' | 'Director' | 'Studio' | 'Broadcaster';
+  courtProfile?: CourtProfile;
   privacy?: {
     matchHistory:  'public' | 'friends' | 'private';
     plannedMatches:'public' | 'friends' | 'private';
@@ -179,6 +182,17 @@ export interface Notification {
   meta?: Record<string, string>;
 }
 
+export interface CourtPosition {
+  x: number; // 0–1, left baseline = 0, right baseline = 1
+  y: number; // 0–1, top sideline = 0, bottom sideline = 1
+}
+
+export interface CourtProfile {
+  positions: CourtPosition[];
+  totalMatches: number;
+  lastUpdated: string;
+}
+
 export interface AuthUser {
   uid: string;
   displayName: string;
@@ -219,6 +233,7 @@ export interface LiveMatch {
   winningSide?: 'A' | 'B';
   createdAt: string;
   completedAt?: string;
+  clipUrl?: string;
 }
 
 export interface Conversation {
