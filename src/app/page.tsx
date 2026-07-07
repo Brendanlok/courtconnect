@@ -230,6 +230,7 @@ export default function Home() {
               <Target size={13} className="text-slate-600"/>
             </div>
             <p className="text-2xl font-black">#{user.globalRank}</p>
+            <p className="text-[11px] text-slate-600">National</p>
           </div>
 
           {/* Win Rate */}
