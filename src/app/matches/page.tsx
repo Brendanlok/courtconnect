@@ -130,10 +130,11 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge } = useApp();
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [watchCode, setWatchCode] = useState('');
   const [watchErr,  setWatchErr]  = useState('');
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen,     setLogOpen]     = useState(false);
   const [liveOpen,    setLiveOpen]    = useState(false);
   const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
