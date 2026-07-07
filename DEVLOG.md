@@ -1,6 +1,44 @@
 # CourtConnect — Daily Dev Log
 
-## [2026-07-07 07:15] — Auto-Dev Session
+## [2026-07-07 19:10] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. Only unaudited commits since the last session were the 07:15 session's own modal-unmount fix landing late via the periodic snapshot-commit process (already known, no action needed). Both remaining "carried-over" feature ideas turned out to already be fully implemented (stale DEVLOG entries), so this session did a fresh audit instead and found a genuine 🔴 bug: planned matches could never reach "confirmed" status, permanently hiding the Log Match/Record Live buttons for any real match arranged through the app. Fixed that, closed a related gap (no way to confirm/dispute a logged match from the Matches page itself), fixed a tournament withdrawal-penalty timing bug, and implemented the Event History slice of the long-carried Privacy settings feature.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Re-check carried-over feature ideas ("Following" list, Club chat) | ✅ | Both already fully implemented (Following tab on Players page with suggestions/unfollow; Club chat via `sendClubMessage`/`clubMessages` in ClubDetailClient) — DEVLOG had drifted, removing both from the carry-over list |
+| 3 | 🔴 | Deep audit of matches/page.tsx, tournaments/page.tsx, AppContext.tsx (background agent) | ✅ | Found 1 confirmed 🔴 bug + 1 confirmed 🟠 gap + 1 confirmed 🟡 timing bug — see below |
+| 4 | 🟢 | Feature: enforce `privacy.eventHistory` setting | ✅ | Implemented — see below |
+
+### Issues Found
+- 🔴 [src/app/matches/page.tsx](src/app/matches/page.tsx) — no code path ever set a `PlannedMatch.status` to `'confirmed'` except the hardcoded seed match `pm2`. `handleSavePlan`, `handleAcceptChallenge`, and `PlanMatchModal.save()` all only ever produced `'pending'`. Since the "Log Match" / "Record Live" buttons are gated behind `m.status === 'confirmed'` (line ~506), any match a user actually planned or accepted via a challenge was stuck as "Pending" forever with no way to log a result or start live scoring — the core loop of "arrange a match → play it → log it" was broken for every real (non-seed) match. Root cause: the existing "✓ Simulate: {opponent} accepts" button (used for demo opponents who can't interact for real) updated `challenges` state but never actually added the opponent's uid to the plan's `accepted` list or flipped its status.
+- 🟠 [src/app/matches/page.tsx](src/app/matches/page.tsx) — the History tab's `MatchHistoryCard` had no `onClick` and there was no `MatchDetailModal` on the Matches page at all, so a match logged from this page (status `'Pending'`) could not be confirmed or disputed from the page whose whole purpose is managing matches — you had to know to go to the Home dashboard or your own profile to find the same match and act on it.
+- 🟡 [src/app/tournaments/page.tsx](src/app/tournaments/page.tsx) — `isPenalty()` computed `msUntil` from `new Date(t.date)` only, ignoring the separate `t.time` field (used correctly elsewhere in the same file for display). A tournament scheduled today at 20:00 would already read as "starting any moment" from 00:00 that same day, so withdrawing at 9am — 11 hours before the actual start — wrongly triggered the −25 MMR late-withdrawal penalty.
+- 🟢 (carry-over, now resolved) "Following" list and "Club chat" feature ideas were both already fully built in earlier commits; DEVLOG hadn't been updated to reflect it.
+
+### Improvements Made
+- [src/app/matches/page.tsx](src/app/matches/page.tsx) — added `derivePlanStatus()`: a plan is `'confirmed'` once every slot is filled and every non-organiser player is in `accepted`. Applied it in `handleSavePlan` and `handleAcceptChallenge` (simulating a challenge-accept now correctly marks the opponent's slot accepted, so singles matches confirm immediately). Added a per-slot "Accept?" simulate control in `TeamSlots` (via new `onSimulateAccept` prop) for slots that are filled but not yet accepted, wired through a new `handleSimulateAccept(planId, uid)` handler — this covers manually-created plans that don't go through the challenge flow, consistent with the existing "Simulate: opponent accepts" pattern already used elsewhere in this demo app.
+- [src/app/matches/page.tsx](src/app/matches/page.tsx) — added a `MatchDetailModal` + `selectedMatch` state to the Matches page; `MatchHistoryCard` is now a clickable button showing a distinct amber "Pending — tap to confirm or dispute" state, matching the pattern already used on the Home page and player profiles.
+- [src/app/tournaments/page.tsx](src/app/tournaments/page.tsx) — `isPenalty()` now parses `` `${t.date}T${t.time ?? '00:00'}` `` so the 12-hour penalty window is measured from the actual scheduled time, not midnight.
+- [src/app/players/[username]/PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — added an "Event History" section (Trophy icon) showing tournaments the viewed player has participated in (`tournaments` filtered by `participants` containing their username, sorted newest first), gated by `player.privacy.eventHistory` using the same public/friends/private + following pattern already established for Match History and Club Membership. This is the last remaining slice of the long-carried "Enforce remaining Privacy settings" item — all 5 privacy categories (`matchHistory`, `plannedMatches` is N/A to profiles, `friendList`, `clubMembership`, `eventHistory`) now have a real display surface except `friendList`, which has no data source at all in this app (static demo players have no stored following/friends list of their own — only the current session user's `following` exists) and would require a core data-model change to build (flagged below rather than attempted without sign-off).
+- Verified via `npx next build` (clean, no TS errors) after each change, and again at the end of the session. Attempted live browser verification via the preview tool — hit the same "This page couldn't load" dev-overlay issue prior sessions have flagged (traced it to the pre-existing SW-registration inline `<script>` tag in `src/app/layout.tsx:48`, untouched by this session's changes, with no failed network requests and no other console errors), so relied on the clean production build + code review as in prior sessions.
+- Note: this session's edits were captured and pushed to `origin/main` automatically by the periodic snapshot-commit process (generic "Update HH:MM" messages) before this session's own commit step ran — already live/deploying, no separate push needed.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| `friendList` privacy (last remaining privacy category) | Static demo players have no `following`/friends data of their own to show or gate — only the session user does | Medium — needs a data-model addition (e.g. a `followingUsernames` field on seed players) before any UI is possible; needs user sign-off since it touches core types |
+| Confirm/dispute affordance for teammates in doubles plans | The new "Accept?" simulate control only covers demo opponents; a real teammate flow (if ever added) would need its own UX | Small once real multi-user support exists — not yet needed |
+
+### Critical Alerts
+None.
+
 
 **Trigger:** Scheduled (every 5 hours)
 **Daily Summary:** No Telegram commands pending. Build was clean at session start. Audited 3 unaudited user commits since the last session (00:28–00:45: Live tab removal, profile photo/avatar link fixes, follow system + leaderboard Following tab) — all matched frozen nav decisions and had no regressions. Found and fixed one real cross-cutting bug: several modals never unmounted on close, leaving stale form/profile-edit data behind on reopen.
