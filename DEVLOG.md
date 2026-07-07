@@ -1,5 +1,45 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-07 20:37] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start, and no new user commits landed since the 19:10 session (only auto-snapshot commits). Audited Home page, Players page, Chat page, and Topbar (areas not covered by the last two sessions' deep dives into matches/tournaments). Found and fixed a genuine 🟡 misleading-data bug on the Home dashboard: two "this week" delta captions next to the MMR and Rank stats were hardcoded literal strings ("▲ +42 this week", "▲ +15") that never changed regardless of the player's actual results.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Check for unaudited user commits since 19:10 | ✅ | None — only periodic snapshot commits |
+| 3 | 🟠 | Audit src/app/page.tsx, players/page.tsx, chat/page.tsx, Topbar.tsx | ✅ | Found 1 confirmed 🟡 bug — see below |
+
+### Issues Found
+- 🟡 [src/app/page.tsx](src/app/page.tsx) — the Hero Player Card's MMR stat rendered a literal, hardcoded `▲ +42 this week` string next to the real, live `avgMMR` number, and the Stat Row's Nat. Rank card rendered a hardcoded `▲ +15` next to the real `user.globalRank`. Neither caption was ever computed from anything — confirmed via grep that `globalRank` is only ever set from static seed data (`src/lib/data.ts`) and is never updated anywhere at runtime, so a "+15 this week" claim had no possible basis in truth. Once a player's actual MMR moved (win/loss via `confirmMatch`), the fake "+42" caption would keep claiming the same positive gain regardless of whether the player had actually gained or lost MMR that week — actively misleading, not just decorative.
+
+### Improvements Made
+- [src/app/page.tsx](src/app/page.tsx) — added a real `weeklyMmrDelta` computed from the sum of `mmrChange` across `Confirmed` matches played in the last 7 days. The caption now shows `▲ +N this week` (green) or `▼ N this week` (red) based on that real total, and hides entirely when there's no match activity in the window (matches the app's existing pattern of hiding rather than showing a false zero, e.g. the tier-progress and mmrChange-badge conditionals already in the same file).
+- [src/app/page.tsx](src/app/page.tsx) — removed the fake `▲ +15` rank-delta caption entirely rather than fabricate a replacement, since there is no rank-history data source anywhere in the app to compute a real one from (`globalRank` is static seed data with no write path). Replaced it with a plain "National" sublabel so the Rank card keeps the same two-line height as the Win Rate and Matches cards in the same 3-column grid (grid `align-items: stretch` would otherwise leave this card visually shorter/misaligned).
+- Verified via `npx next build` (clean, no TS errors). Could not verify live in the browser — the app requires real Firebase auth with no headless/demo login path, consistent with every prior session's notes; attempted the preview anyway and confirmed it stops at the login screen with no bypass available.
+- Reviewed `src/components/Topbar.tsx` and `src/app/chat/page.tsx` in full — no issues found (Topbar's modal-unmount pattern from a prior session's fix is intact; Chat page's send/scroll/unread logic all checked out).
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Dynamic national rank (replace static `globalRank`) | Directly motivated by this session's fix — `globalRank` is frozen seed data and can never reflect real MMR movement the way `PlayersList`'s dynamic `meIdx` ranking already does on the Players page | Medium — needs a decision on whether to rank against the full seed `PLAYERS` list everywhere `globalRank` is shown (Home, QRModal, LogMatchModal, leaderboard), needs user sign-off since it changes displayed numbers app-wide |
+| Toast/banner for new chat messages while elsewhere in the app | Chat has an unread badge in nav but no active notification when a message arrives while the user is on another page | Small-Medium — could reuse the existing `NotificationPanel`/`addNotif` pattern already used for challenges and match confirmations |
+
+(Carried over, still open)
+| Feature | Why | Rough Scope |
+|---|---|---|
+| `friendList` privacy (last remaining privacy category) | Static demo players have no `following`/friends data of their own to show or gate — only the session user does | Medium — needs a data-model addition (e.g. a `followingUsernames` field on seed players) before any UI is possible; needs user sign-off since it touches core types |
+| Confirm/dispute affordance for teammates in doubles plans | The "Accept?" simulate control only covers demo opponents; a real teammate flow (if ever added) would need its own UX | Small once real multi-user support exists — not yet needed |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-07 19:10] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
