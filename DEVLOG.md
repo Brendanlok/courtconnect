@@ -1,5 +1,40 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-07 07:15] — Auto-Dev Session
+
+**Trigger:** Scheduled (every 5 hours)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. Audited 3 unaudited user commits since the last session (00:28–00:45: Live tab removal, profile photo/avatar link fixes, follow system + leaderboard Following tab) — all matched frozen nav decisions and had no regressions. Found and fixed one real cross-cutting bug: several modals never unmounted on close, leaving stale form/profile-edit data behind on reopen.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟠 | Audit commits `bb85ce3`, `637cf56`, `f397e75` (Live tab removal, avatar/link fixes, follow system) | ✅ | No regressions — Live tab removal matches frozen BottomNav/Sidebar spec exactly; avatar/Link changes verified safe (grid `display` blockifies the `<a>` so removing `w-full` doesn't break layout) |
+| 3 | 🟠 | Modal remount audit (prompted by re-checking the frozen SettingsModal-unmount note) | ✅ | Found `QRModal`, `LogMatchModal`, and `SettingsModal` were mounted unconditionally (via `open` prop + internal `if (!open) return null`) in `Topbar.tsx`, and `LogMatchModal` likewise in `src/app/page.tsx` — only `matches/page.tsx` and `PlayerProfileClient.tsx`'s SettingsModal usage followed the correct unmount-on-close pattern |
+
+### Issues Found
+- 🟠 [src/components/Topbar.tsx](src/components/Topbar.tsx) + [src/app/page.tsx](src/app/page.tsx) — `QRModal`, `LogMatchModal`, and `SettingsModal` were rendered unconditionally with only an `open` prop gating their return value (`if (!open) return null`), so the components never unmount between opens. Since none of these components reset their internal `useState` on reopen, closing without submitting/saving and reopening later showed stale data: `LogMatchModal` kept a previously-picked opponent/teammate, match type, and game scores from an abandoned attempt (real risk of submitting a match with the wrong opponent/scores); `SettingsModal` kept unsaved edited fields instead of the current profile; `QRModal`'s `copied` flag could stay stuck. `matches/page.tsx`'s `LogMatchModal` and `PlayerProfileClient.tsx`'s `SettingsModal` already used the correct `open && <Modal open={true} .../>` unmount pattern (matches the frozen SettingsModal note) — the other two call sites had drifted from it.
+
+### Improvements Made
+- [src/components/Topbar.tsx](src/components/Topbar.tsx) — `QRModal`, `LogMatchModal`, `SettingsModal` now rendered as `{stateVar && <Modal open={true} .../>}` so each unmounts on close and gets fresh state next open.
+- [src/app/page.tsx](src/app/page.tsx) — same fix applied to the Home page's `LogMatchModal` instance.
+- Verified via `npx next build` (clean, no TS errors) after the fix. Could not verify live in the browser this session — the app requires real Firebase auth with no headless/demo login path, consistent with prior sessions' notes.
+
+### Feature Ideas / Upcoming Plans
+(Carried over, still open)
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Enforce remaining Privacy settings (plannedMatches, friendList, eventHistory) | Match History and Club Membership are enforced; these 3 still have no display surface on the profile | Medium-Large — needs new profile sections, not just visibility checks |
+| Club chat / per-club message board | Now appears partially covered by ClubDetailClient — verify in a future session | Re-check scope, may already be done |
+| "Following" list surfaced somewhere (e.g. Players page filter) | Follow system now exists (`following` in AppContext) but the only place to see it is the leaderboard's Following tab | Small — reuse existing `following` state on Players page |
+
+### Critical Alerts
+None.
+
+
 ## [2026-07-07 00:20] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
