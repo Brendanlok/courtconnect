@@ -545,9 +545,10 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
   );
 }
 
-function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer }: {
+function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer, onSimulateAccept }: {
   label: string; slots: (SlotPlayer | null)[]; accepted: string[]; declined: string[]; meUid: string;
   onRemovePlayer?: (player: SlotPlayer) => void;
+  onSimulateAccept?: (uid: string) => void;
 }) {
   return (
     <div className="space-y-1.5">
