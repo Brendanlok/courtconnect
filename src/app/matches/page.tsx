@@ -354,6 +354,7 @@ export default function MatchesPage() {
                 onLog={() => setLogOpen(true)}
                 onCancel={() => setCancelId(m.id)}
                 onLiveRecord={() => { setLiveMatchId(m.id); setLiveOpen(true); }}
+                onSimulateAccept={uid => handleSimulateAccept(m.id, uid)}
               />
             ))
           )}
