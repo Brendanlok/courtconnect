@@ -37,6 +37,11 @@ export default function Home() {
     else break;
   }
 
+  const oneWeekAgo = Date.now() - 7 * 86400000;
+  const weeklyMmrDelta = confirmed
+    .filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo)
+    .reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+
   const upcomingEvents = tournaments.filter(t =>
     t.status === 'Upcoming' && registrations[t.id]
   );
