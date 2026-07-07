@@ -603,17 +603,19 @@ function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer, on
 
 // ─── Match history card ───────────────────────────────────────────────────────
 
-function MatchHistoryCard({ match: m }: { match: import('@/types').Match }) {
+function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Match; onClick: () => void }) {
+  const isPending = m.status === 'Pending';
   const iWon = m.winnerId === 'me';
   const myScore  = m.games.map(g => g.p1).join('-');
   const oppScore = m.games.map(g => g.p2).join('-');
   const date = new Date(m.playedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
-    <div className={`bg-slate-900 border rounded-2xl p-4 space-y-2 ${iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
+    <button onClick={onClick}
+      className={`w-full text-left bg-slate-900 border rounded-2xl p-4 space-y-2 hover:border-slate-700 transition-colors ${isPending ? 'border-amber-500/25' : iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-            {iWon ? 'W' : 'L'}
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isPending ? 'bg-amber-500/15 text-amber-400' : iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {isPending ? '?' : iWon ? 'W' : 'L'}
           </span>
           <div>
             <span className="text-sm font-semibold">vs {m.player2Name}</span>
@@ -625,14 +627,16 @@ function MatchHistoryCard({ match: m }: { match: import('@/types').Match }) {
       </div>
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-400">{myScore} · {oppScore}</p>
-        {m.mmrChange !== undefined && (
-          <span className={`text-xs font-bold ${m.mmrChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {m.mmrChange >= 0 ? '+' : ''}{m.mmrChange} MMR
-          </span>
-        )}
+        {isPending
+          ? <span className="text-xs text-amber-400 font-medium">Tap to confirm or dispute</span>
+          : m.mmrChange !== undefined && (
+            <span className={`text-xs font-bold ${m.mmrChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {m.mmrChange >= 0 ? '+' : ''}{m.mmrChange} MMR
+            </span>
+          )}
       </div>
       {m.venue && <p className="text-[11px] text-slate-500 flex items-center gap-1"><MapPin size={9}/>{m.venue}</p>}
-    </div>
+    </button>
   );
 }
 
