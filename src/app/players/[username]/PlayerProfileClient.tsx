@@ -412,6 +412,39 @@ export function PlayerProfileClient({ username }: { username: string }) {
           </div>
         )}
 
+        {/* ── Event History ── */}
+        {(canSeeEventHistory ? playerEvents.length > 0 : !isMe) && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Trophy size={15} className="text-amber-400"/> Event History
+            </h2>
+            {!canSeeEventHistory ? (
+              <p className="text-slate-500 text-sm py-4 text-center">
+                {eventHistoryVisibility === 'private' ? 'This player has hidden their event history.' : 'Only followers can see this player\'s event history.'}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {playerEvents.slice(0, 5).map(t => (
+                  <a key={t.id} href={`/tournaments/`}
+                    className="flex items-center gap-3 p-3 bg-slate-800/60 border border-slate-700 hover:border-amber-500/40 rounded-2xl transition-colors group">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm group-hover:text-amber-300 transition-colors truncate">{t.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(t.date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })} · {t.venue.split(',')[0]}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                      t.status === 'Completed' ? 'bg-slate-700 text-slate-400 border-slate-600'
+                      : t.status === 'Active'  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                      : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                    }`}>{t.status}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-5">
           {/* MMR chart */}
           {isMe && (
