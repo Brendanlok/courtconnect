@@ -52,6 +52,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   );
   const countryData = COUNTRIES.find(c => c.code === countryCode) ?? COUNTRIES[0];
   const [privacy,     setPrivacy]     = useState<PrivacySettings>({ ...DEFAULT_PRIVACY, ...user.privacy });
+  const [isPrivate,   setIsPrivate]   = useState(user.isPrivate ?? false);
   const [saved,       setSaved]       = useState(false);
   const [deleteStep,  setDeleteStep]  = useState<DeleteStep>('idle');
   const [deleteInput, setDeleteInput] = useState('');
@@ -104,6 +105,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       postcode: countryData.hasPostcode ? postcode : undefined,
       available: availability.join(','),
       privacy,
+      isPrivate,
       photoURL,
     });
     setSaved(true);
@@ -335,6 +337,27 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-500">Username</span>
             <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
+          </div>
+
+          {/* Account privacy */}
+          <div className="border-t border-slate-800/80 pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {isPrivate ? <Lock size={13} className="text-amber-400"/> : <Globe size={13} className="text-emerald-400"/>}
+                <div>
+                  <p className="text-xs font-semibold text-slate-200">Private Account</p>
+                  <p className="text-[10px] text-slate-500">
+                    {isPrivate ? 'Only approved followers can see your full profile.' : 'Anyone can see your full profile.'}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsPrivate(v => !v)}
+                className={`shrink-0 w-10 h-6 rounded-full border transition-colors relative ${
+                  isPrivate ? 'bg-amber-500/30 border-amber-500/50' : 'bg-slate-800 border-slate-700'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-transform ${
+                  isPrivate ? 'translate-x-[18px] bg-amber-400' : 'translate-x-0.5 bg-slate-500'}`}/>
+              </button>
+            </div>
           </div>
 
           {/* Privacy */}

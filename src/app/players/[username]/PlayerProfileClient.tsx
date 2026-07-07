@@ -12,7 +12,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
@@ -35,7 +35,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username }: { username: string }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -86,19 +86,24 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const h2hWins   = h2hMatches.filter(m => m.winnerId === 'me').length;
   const h2hLosses = h2hMatches.filter(m => m.winnerId === player.uid).length;
 
+  // Account privacy: private accounts require an accepted follow to see anything beyond the header
+  const isFollowingPlayer  = following.includes(player.uid);
+  const hasRequestedFollow = followRequestsSent.includes(player.uid);
+  const targetIsPrivate    = !!player.isPrivate;
+  const canSeeFullProfile  = isMe || !targetIsPrivate || isFollowingPlayer;
+
   // Match History privacy: public = visible to all, followers = visible to followers only, private = owner only
   const matchHistoryVisibility = player.privacy?.matchHistory ?? 'public';
-  const isFollowingPlayer = following.includes(player.uid);
-  const canSeeMatchHistory = isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFollowingPlayer);
+  const canSeeMatchHistory = canSeeFullProfile && (isMe || matchHistoryVisibility === 'public' || (matchHistoryVisibility === 'friends' && isFollowingPlayer));
 
   // Club membership privacy: same public/followers/private rule
   const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
-  const canSeeClubMembership = isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer);
+  const canSeeClubMembership = canSeeFullProfile && (isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer));
   const playerClub = canSeeClubMembership ? clubs.find(c => c.memberIds.includes(player.uid)) : undefined;
 
   // Event history privacy: same public/followers/private rule
   const eventHistoryVisibility = player.privacy?.eventHistory ?? 'public';
-  const canSeeEventHistory = isMe || eventHistoryVisibility === 'public' || (eventHistoryVisibility === 'friends' && isFollowingPlayer);
+  const canSeeEventHistory = canSeeFullProfile && (isMe || eventHistoryVisibility === 'public' || (eventHistoryVisibility === 'friends' && isFollowingPlayer));
   const playerEvents = canSeeEventHistory
     ? tournaments.filter(t => (t.participants ?? []).some(p => p.username === player.username))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -171,23 +176,14 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 </div>
               ))}
               <div className="w-px bg-slate-700/60 self-stretch"/>
-              {isMe ? (
-                <>
-                  <div className="text-center">
-                    <p className="text-xl font-bold">{following.length}</p>
-                    <p className="text-xs text-slate-500">Following</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xl font-bold text-slate-500">—</p>
-                    <p className="text-xs text-slate-500">Followers</p>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <p className="text-xl font-bold">{(player.followersCount ?? 0).toLocaleString()}</p>
-                  <p className="text-xs text-slate-500">Followers</p>
-                </div>
-              )}
+              <div className="text-center">
+                <p className="text-xl font-bold">{(isMe ? following.length : (player.followingCount ?? 0)).toLocaleString()}</p>
+                <p className="text-xs text-slate-500">Following</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold">{(isMe ? (ctxUser.followersCount ?? 0) : (player.followersCount ?? 0)).toLocaleString()}</p>
+                <p className="text-xs text-slate-500">Followers</p>
+              </div>
             </div>
 
             {/* Discipline MMR chips */}
@@ -238,24 +234,38 @@ export function PlayerProfileClient({ username }: { username: string }) {
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                   <MessageCircle size={14}/> Message
                 </button>
-                {(() => {
-                  const isFollowing = following.includes(player.uid);
-                  return (
-                    <button onClick={() => isFollowing ? unfollowPlayer(player.uid) : followPlayer(player.uid)}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors ${
-                        isFollowing
-                          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                      }`}>
-                      {isFollowing ? <UserCheck size={14}/> : <UserPlus size={14}/>}
-                    </button>
-                  );
-                })()}
+                <button onClick={() => {
+                    if (isFollowingPlayer || hasRequestedFollow) unfollowPlayer(player.uid);
+                    else followPlayer(player.uid, targetIsPrivate);
+                  }}
+                  title={hasRequestedFollow ? 'Cancel follow request' : isFollowingPlayer ? 'Unfollow' : targetIsPrivate ? 'Request to follow' : 'Follow'}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors ${
+                    isFollowingPlayer
+                      ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
+                      : hasRequestedFollow
+                        ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}>
+                  {isFollowingPlayer ? <UserCheck size={14}/> : hasRequestedFollow ? <Clock size={14}/> : <UserPlus size={14}/>}
+                  {hasRequestedFollow && <span className="text-xs">Requested</span>}
+                </button>
               </>
             )}
           </div>
         </div>
 
+        {!canSeeFullProfile ? (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center">
+            <Lock size={28} className="text-slate-600 mx-auto mb-3"/>
+            <p className="font-semibold text-slate-200">This account is private</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {hasRequestedFollow
+                ? 'Your follow request is pending. Their profile will unlock once accepted.'
+                : `Follow @${player.username} to see their matches, stats, and more.`}
+            </p>
+          </div>
+        ) : (
+        <>
         {/* ── Head to Head ── */}
         {!isMe && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
@@ -733,6 +743,8 @@ export function PlayerProfileClient({ username }: { username: string }) {
             </div>
           );
         })()}
+        </>
+        )}
       </div>
 
       <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}

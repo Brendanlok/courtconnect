@@ -7,7 +7,7 @@ import { AuthGate } from '@/components/AuthGate';
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
 export const viewport: Viewport = {
-  themeColor: '#059669',
+  themeColor: '#020817',
   width: 'device-width',
   initialScale: 1,
   minimumScale: 1,

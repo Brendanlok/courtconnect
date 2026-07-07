@@ -15,6 +15,7 @@ export const ME: UserProfile = {
   openToPlay: false,
   lookingForPartner: false,
   preferredFormats: ['MS', 'MD', 'MX'],
+  followersCount: 34,
   joinedAt: '2025-01-10',
 };
 
@@ -29,7 +30,7 @@ export const PLAYERS: UserProfile[] = [
     available: 'sat_6_9am,sat_9am_12pm,sat_12_3pm,sun_6_9am,sun_9am_12pm',
     openToPlay: true, lookingForPartner: true, preferredFormats: ['MD', 'MX'],
     distKm: 3.2, joinedAt: '2024-06-12',
-    followersCount: 148,
+    followersCount: 148, followingCount: 76,
     clipCredits: 12, clipBadge: 'Director' as const,
     courtProfile: {
       positions: [
@@ -51,7 +52,8 @@ export const PLAYERS: UserProfile[] = [
     bio: 'Casual doubles fan. Weekday evenings free.',
     available: 'mon_6_9pm,tue_6_9pm,wed_6_9pm,thu_6_9pm,fri_6_9pm,sat_6_9pm',
     openToPlay: false, lookingForPartner: true, preferredFormats: ['MD', 'MX'],
-    followersCount: 63,
+    followersCount: 63, followingCount: 112,
+    isPrivate: true,
     joinedAt: '2024-09-03',
   },
   {
@@ -62,7 +64,7 @@ export const PLAYERS: UserProfile[] = [
     stats: { wins: 44, losses: 19, totalMatches: 63 },
     available: 'sat_6_9am,sat_9am_12pm,sat_12_3pm,sat_6_9pm,sun_6_9am,sun_9am_12pm',
     openToPlay: false, lookingForPartner: false, preferredFormats: ['MD'],
-    followersCount: 41,
+    followersCount: 41, followingCount: 58,
     joinedAt: '2025-01-22',
   },
   {
@@ -75,7 +77,7 @@ export const PLAYERS: UserProfile[] = [
     available: 'mon_6_9pm,tue_6_9pm,wed_6_9pm,thu_6_9pm,fri_6_9pm,sat_6_9am,sun_6_9am',
     openToPlay: true, lookingForPartner: true, preferredFormats: ['WD', 'MX'],
     distKm: 1.8, joinedAt: '2024-11-05',
-    followersCount: 89,
+    followersCount: 89, followingCount: 94,
     endorsements: { 'Sharp Net Play': 17, 'Strong Defense': 14, 'Good Sportsmanship': 11, 'Smart Placement': 8 },
   },
   {
@@ -86,7 +88,8 @@ export const PLAYERS: UserProfile[] = [
     stats: { wins: 33, losses: 22, totalMatches: 55 },
     available: 'sat_12_3pm,sat_3_6pm,sat_6_9pm,sun_12_3pm,sun_3_6pm',
     openToPlay: false, lookingForPartner: true, preferredFormats: ['WD', 'MX'],
-    followersCount: 28,
+    followersCount: 28, followingCount: 45,
+    isPrivate: true,
     joinedAt: '2025-02-18',
   },
   {
@@ -99,7 +102,7 @@ export const PLAYERS: UserProfile[] = [
     available: 'mon_6_9am,tue_6_9am,wed_6_9am,thu_6_9am,fri_6_9am,sat_6_9am,sat_9am_12pm,sat_12_3pm',
     openToPlay: false, lookingForPartner: false, preferredFormats: ['MD'],
     distKm: 9.1, joinedAt: '2024-03-01',
-    followersCount: 312,
+    followersCount: 312, followingCount: 203,
     clipCredits: 50, clipBadge: 'Broadcaster' as const,
     courtProfile: {
       positions: [

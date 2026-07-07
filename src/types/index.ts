@@ -38,7 +38,9 @@ export interface UserProfile {
   region?: string;                       // state/province for non-MY users
   endorsements?: Record<string, number>; // skill → count
   photoURL?: string | null;
+  isPrivate?: boolean;
   followersCount?: number;
+  followingCount?: number;
   clipCredits?: number;
   clipBadge?: 'Camera' | 'Director' | 'Studio' | 'Broadcaster';
   courtProfile?: CourtProfile;

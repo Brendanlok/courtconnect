@@ -58,7 +58,8 @@ interface AppCtx {
   sendClubMessage: (clubId: string, text: string) => void;
   // Follow
   following: string[];
-  followPlayer: (uid: string) => void;
+  followRequestsSent: string[];
+  followPlayer: (uid: string, isTargetPrivate?: boolean) => void;
   unfollowPlayer: (uid: string) => void;
   // Clip Credits & Court
   clipCredits: number;
@@ -129,6 +130,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('cc_following');
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return [];
+  });
+  const [followRequestsSent,     setFollowRequestsSent]    = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_followRequestsSent');
         if (saved) return JSON.parse(saved);
       } catch { /* ignore */ }
     }
@@ -403,7 +413,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const followPlayer = useCallback((uid: string) => {
+  const followPlayer = useCallback((uid: string, isTargetPrivate?: boolean) => {
+    if (isTargetPrivate) {
+      setFollowRequestsSent(p => {
+        const next = p.includes(uid) ? p : [...p, uid];
+        try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
+      // Demo accounts auto-accept after a short delay to simulate a real accept flow
+      setTimeout(() => {
+        setFollowRequestsSent(p => p.filter(id => id !== uid));
+        setFollowing(p => {
+          const next = p.includes(uid) ? p : [...p, uid];
+          try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
+          return next;
+        });
+      }, 2500);
+      return;
+    }
     setFollowing(p => {
       const next = p.includes(uid) ? p : [...p, uid];
       try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
@@ -412,6 +439,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unfollowPlayer = useCallback((uid: string) => {
+    setFollowRequestsSent(p => {
+      if (!p.includes(uid)) return p;
+      const next = p.filter(id => id !== uid);
+      try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
     setFollowing(p => {
       const next = p.filter(id => id !== uid);
       try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
@@ -459,7 +492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
-      following, followPlayer, unfollowPlayer,
+      following, followRequestsSent, followPlayer, unfollowPlayer,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
