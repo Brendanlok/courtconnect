@@ -62,6 +62,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [inviteQuery,   setInviteQuery]  = useState('');
   const [disbandModal,  setDisbandModal] = useState(false);
   const [disbandInput,  setDisbandInput] = useState('');
+  const [leaveModal,    setLeaveModal]   = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -99,6 +100,37 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Disband confirmation modal */}
+      {leaveModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
+              <div>
+                <p className="font-semibold text-red-300">Leave {club.name}?</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  You will lose access to club chat and member features.
+                </p>
+                {club.isPrivate && (
+                  <p className="text-xs text-amber-400 mt-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                    ⚠️ This is a private club — you'll need to send a new join request and get approved again if you want to rejoin.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setLeaveModal(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => { leaveClub(); setLeaveModal(false); }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">
+                Leave Club
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {disbandModal && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
@@ -194,8 +226,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
           </div>
         )}
         {isMember && !isOwner && (
-          <button onClick={leaveClub}
-            className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium text-slate-400 transition-colors">
+          <button onClick={() => setLeaveModal(true)}
+            className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-sm font-semibold transition-colors">
             Leave Club
           </button>
         )}

@@ -486,6 +486,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   const [announceDraft,  setAnnounceDraft]  = useState('');
   const [announceEdit,   setAnnounceEdit]   = useState<string | null>(null);
   const [disbandConfirm, setDisbandConfirm] = useState(false);
+  const [leaveConfirm,   setLeaveConfirm]   = useState(false);
   const [rolesOpen,      setRolesOpen]      = useState(false);
 
   const states  = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
@@ -519,6 +520,32 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
 
   return (
     <div className="space-y-4">
+      {/* Leave club confirmation */}
+      {leaveConfirm && myClub && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setLeaveConfirm(false)}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
+              <div>
+                <p className="font-bold text-sm">Leave {myClub.name}?</p>
+                <p className="text-xs text-slate-400 mt-1">You will lose access to club chat and member features.</p>
+                {myClub.isPrivate && (
+                  <p className="text-xs text-amber-400 mt-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                    ⚠️ This is a private club — you'll need to send a new join request and get approved again if you want to rejoin.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setLeaveConfirm(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+              <button onClick={() => { leaveClub(); setLeaveConfirm(false); }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">Leave Club</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Disband confirmation */}
       {disbandConfirm && myClub && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandConfirm(false)}>
@@ -609,7 +636,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                 </>
               )}
               {!isOwner && (
-                <button onClick={leaveClub}
+                <button onClick={() => setLeaveConfirm(true)}
                   className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
                   <Leave size={11}/> Leave
                 </button>
