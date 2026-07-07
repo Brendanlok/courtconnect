@@ -378,10 +378,15 @@ export default function MatchesPage() {
               }
             />
           ) : (
-            myMatches.map(m => <MatchHistoryCard key={m.id} match={m}/>)
+            myMatches.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)
           )}
         </div>
       )}
+
+      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+      />
 
       {logOpen  && <LogMatchModal  open={true} onClose={() => setLogOpen(false)}/>}
       {liveOpen && (
