@@ -454,9 +454,10 @@ function GenderDot({ gender }: { gender?: 'Male' | 'Female' | null }) {
 
 // ─── Planned match card ───────────────────────────────────────────────────────
 
-function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord }: {
+function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSimulateAccept }: {
   match: PlannedMatch; me: SlotPlayer;
   onEdit: () => void; onLog: () => void; onCancel: () => void; onLiveRecord: () => void;
+  onSimulateAccept: (uid: string) => void;
 }) {
   const { addNotification } = useApp();
   const [removeTarget, setRemoveTarget] = useState<SlotPlayer | null>(null);
