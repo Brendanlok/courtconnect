@@ -164,7 +164,8 @@ export default function MatchesPage() {
   const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
 
   const handleSavePlan = (pm: PlannedMatch) => {
-    const pmFinal = planMode === 'live' ? { ...pm, liveRecord: true } : pm;
+    const base = planMode === 'live' ? { ...pm, liveRecord: true } : pm;
+    const pmFinal = base.status === 'cancelled' ? base : { ...base, status: derivePlanStatus(base.teamA, base.teamB, base.accepted) };
     setPlanned(prev => editId
       ? prev.map(p => p.id === editId ? pmFinal : p)
       : [pmFinal, ...prev]);
