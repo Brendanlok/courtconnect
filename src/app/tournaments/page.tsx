@@ -99,7 +99,7 @@ export default function Tournaments() {
   const [viewParticipants, setViewParticipants] = useState<Tournament | null>(null);
 
   const isPenalty = (t: Tournament) => {
-    const msUntil = new Date(t.date).getTime() - Date.now();
+    const msUntil = new Date(`${t.date}T${t.time ?? '00:00'}`).getTime() - Date.now();
     return t.status === 'Active' || msUntil < 12 * 3600 * 1000;
   };
 
