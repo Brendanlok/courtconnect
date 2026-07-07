@@ -95,6 +95,14 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const canSeeClubMembership = isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer);
   const playerClub = canSeeClubMembership ? clubs.find(c => c.memberIds.includes(player.uid)) : undefined;
 
+  // Event history privacy: same public/followers/private rule
+  const eventHistoryVisibility = player.privacy?.eventHistory ?? 'public';
+  const canSeeEventHistory = isMe || eventHistoryVisibility === 'public' || (eventHistoryVisibility === 'friends' && isFollowingPlayer);
+  const playerEvents = canSeeEventHistory
+    ? tournaments.filter(t => (t.participants ?? []).some(p => p.username === player.username))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : [];
+
   return (
     <>
       <div className="space-y-6">
