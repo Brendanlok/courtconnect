@@ -198,6 +198,10 @@ export default function MatchesPage() {
     const opponent: SlotPlayer = { uid: ch.toId, displayName: ch.toName, username: ch.toUsername };
     const [datePart, timeRaw] = ch.date.split('T');
     const timePart = timeRaw ? timeRaw.slice(0, 5) : '09:00';
+    const teamA = isDoubles ? [me, null] : [me];
+    const teamB = isDoubles ? [opponent, null] : [opponent];
+    // "Simulate accept" means the opponent has accepted the invite right away
+    const accepted = ['me', opponent.uid];
     const pm: PlannedMatch = {
       id: `pm_ch_${Date.now()}`,
       format: ch.format,
@@ -205,13 +209,21 @@ export default function MatchesPage() {
       time: timePart,
       venue: ch.venue,
       notes: ch.message,
-      teamA: isDoubles ? [me, null] : [me],
-      teamB: isDoubles ? [opponent, null] : [opponent],
-      accepted: ['me'],
+      teamA, teamB,
+      accepted,
       declined: [],
-      status: 'pending',
+      status: derivePlanStatus(teamA, teamB, accepted),
     };
     setPlanned(prev => [pm, ...prev]);
+  };
+
+  // Demo: simulate an invited (non-organiser) player accepting their slot in a plan
+  const handleSimulateAccept = (planId: string, uid: string) => {
+    setPlanned(prev => prev.map(m => {
+      if (m.id !== planId || m.status === 'cancelled') return m;
+      const accepted = m.accepted.includes(uid) ? m.accepted : [...m.accepted, uid];
+      return { ...m, accepted, status: derivePlanStatus(m.teamA, m.teamB, accepted) };
+    }));
   };
 
   const handleCancelMatch = (id: string) => {
