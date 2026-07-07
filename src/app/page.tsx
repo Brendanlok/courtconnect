@@ -77,7 +77,11 @@ export default function Home() {
               <div className="text-right shrink-0">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">MMR</p>
                 <p className="text-3xl font-black text-amber-400 leading-none">{avgMMR.toLocaleString()}</p>
-                <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">▲ +42 this week</p>
+                {weeklyMmrDelta !== 0 && (
+                  <p className={`text-[11px] font-semibold mt-0.5 ${weeklyMmrDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {weeklyMmrDelta > 0 ? '▲' : '▼'} {weeklyMmrDelta > 0 ? '+' : ''}{weeklyMmrDelta} this week
+                  </p>
+                )}
               </div>
             </div>
 
