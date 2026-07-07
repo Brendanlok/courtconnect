@@ -59,6 +59,12 @@ export default function PlayersPage() {
     userCountry, userRegion,
   };
 
+  // Club-tab filter state (lifted so it renders inline with the tab strip)
+  const [clubSearch,      setClubSearch]      = useState('');
+  const [clubMyOnly,      setClubMyOnly]      = useState(false);
+  const [clubStateFilter, setClubStateFilter] = useState('All');
+  const clubStates = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
@@ -85,10 +91,30 @@ export default function PlayersPage() {
         ))}
       </div>
 
-      {/* Shared filters — shown for Players + Friends tabs only */}
-      <div className={tab === 'Clubs' ? 'hidden' : ''}>
-        <SharedPlayerFilters f={sharedFilters}/>
-      </div>
+      {/* Filters row — player filters for Leaderboard/Following, club filters for Clubs */}
+      {tab !== 'Clubs' && <SharedPlayerFilters f={sharedFilters}/>}
+      {tab === 'Clubs' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+            <input value={clubSearch} onChange={e => setClubSearch(e.target.value)}
+              placeholder="Search clubs…"
+              className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          </div>
+          <FilterDropdown<string>
+            icon={<MapPin size={11} className="text-emerald-400"/>}
+            label={clubStateFilter === 'All' ? 'All States' : clubStateFilter}
+            value={clubStateFilter}
+            options={clubStates.map(s => ({ value: s, label: s === 'All' ? 'All States' : s }))}
+            onChange={setClubStateFilter}
+          />
+          <button onClick={() => setClubMyOnly(o => !o)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors
+              ${clubMyOnly ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}>
+            <Shield size={11}/> My Clubs
+          </button>
+        </div>
+      )}
 
       <div className={tab !== 'Leaderboard' ? 'hidden' : ''}>
         <PlayersList user={user} following={following} filters={sharedFilters}/>
@@ -99,6 +125,7 @@ export default function PlayersPage() {
       {tab === 'Clubs' && (
         <ClubsTab
           clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
+          clubSearch={clubSearch} clubMyOnly={clubMyOnly} clubStateFilter={clubStateFilter}
           joinClub={joinClub} requestJoinClub={requestJoinClub}
           cancelClubRequest={cancelClubRequest} leaveClub={leaveClub}
           acceptClubMember={acceptClubMember} declineClubMember={declineClubMember}
@@ -250,17 +277,17 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
   const selectedCountryData = isAllCountries ? null : getCountryByName(f.countryFilter);
   const regionOptions = selectedCountryData?.regions ?? [];
   return (
-    <div className="space-y-2">
-      {/* Search */}
-      <div className="relative">
+    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-1.5 md:flex-wrap">
+      {/* Search — full width on mobile, auto on desktop */}
+      <div className="relative md:flex-1 md:min-w-[180px] md:max-w-xs">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
         <input value={f.query} onChange={e => f.setQuery(e.target.value)}
           placeholder="Search by name or @username…"
           className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
       </div>
-      {/* Row 1: Filter icon + Country, Region, Tier */}
+      {/* All filter chips inline */}
       <div className="flex flex-wrap gap-1.5 items-center">
-        <Filter size={13} className="text-slate-500 shrink-0"/>
+        <Filter size={13} className="text-slate-500 shrink-0 hidden md:block"/>
         <FilterDropdown<string>
           label={isAllCountries ? '🌏 All Countries' : `${getCountryByName(f.countryFilter).flag} ${f.countryFilter}`}
           value={f.countryFilter}
@@ -298,9 +325,6 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
           }))}
           onChange={f.setTierFilter}
         />
-      </div>
-      {/* Row 2: MMR, Open to Play, Open to Partner */}
-      <div className="flex flex-wrap gap-1.5 items-center pl-5">
         <FilterDropdown<SortKey>
           icon={<BarChart2 size={11} className="text-amber-400"/>}
           label={SORT_OPTIONS.find(o => o.key === f.sortKey)?.label ?? 'MMR'}
@@ -461,7 +485,7 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId }: {
+function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, clubSearch, clubMyOnly, clubStateFilter }: {
   clubs: Club[];
   myClubId: string | null;
   myClubPendingIds: string[];
@@ -476,10 +500,10 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   disbandClub: (id: string) => void;
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
+  clubSearch: string;
+  clubMyOnly: boolean;
+  clubStateFilter: string;
 }) {
-  const [stateFilter,    setStateFilter]    = useState<string>('All');
-  const [search,         setSearch]         = useState('');
-  const [myClubsOnly,    setMyClubsOnly]    = useState(false);
   const [createOpen,     setCreateOpen]     = useState(false);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
@@ -489,17 +513,23 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   const [leaveConfirm,   setLeaveConfirm]   = useState(false);
   const [rolesOpen,      setRolesOpen]      = useState(false);
 
-  const states  = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
   const myClub  = clubs.find(c => c.id === myClubId);
 
-  const isMyClub = (c: Club) => c.id === myClubId || c.adminId === userId || c.memberIds.includes(userId);
+  const isMyClub = (c: Club) => c.memberIds.includes(userId);
 
-  const filtered = clubs.filter(c => {
-    const q = search.toLowerCase();
-    return (stateFilter === 'All' || c.state === stateFilter) &&
-      (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q)) &&
-      (!myClubsOnly || isMyClub(c));
-  });
+  const filtered = clubs
+    .filter(c => {
+      const q = clubSearch.toLowerCase();
+      return (clubStateFilter === 'All' || c.state === clubStateFilter) &&
+        (c.name.toLowerCase().includes(q) || c.area.toLowerCase().includes(q)) &&
+        (!clubMyOnly || isMyClub(c));
+    })
+    // User's clubs always float to top
+    .sort((a, b) => {
+      const aMe = isMyClub(a) ? 0 : 1;
+      const bMe = isMyClub(b) ? 0 : 1;
+      return aMe - bMe;
+    });
 
   const copyLink = (clubId: string) => {
     const url = `${window.location.origin}/players/?tab=clubs&id=${clubId}`;
@@ -571,17 +601,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
 
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <p className="text-xs text-slate-500">{filtered.length} of {clubs.length} club{clubs.length !== 1 ? 's' : ''}</p>
-          <button
-            onClick={() => setMyClubsOnly(o => !o)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors
-              ${myClubsOnly
-                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'}`}>
-            <Shield size={10}/> My Clubs
-          </button>
-        </div>
+        <p className="text-xs text-slate-500">{filtered.length} of {clubs.length} club{clubs.length !== 1 ? 's' : ''}</p>
         {!myClubId && (
           <button onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
@@ -735,25 +755,6 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
         </div>
       )}
 
-      {/* Search + state filter */}
-      <div className="space-y-2">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search clubs…"
-            className="w-full pl-9 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter size={13} className="text-slate-500"/>
-          <FilterDropdown<string>
-            icon={<MapPin size={11} className="text-emerald-400"/>}
-            label="All States" value={stateFilter}
-            options={states.map(s => ({ value: s, label: s === 'All' ? 'All States' : s }))}
-            onChange={setStateFilter}
-          />
-        </div>
-      </div>
-
       {/* Club cards */}
       <div className="space-y-3">
         {filtered.map(club => {
@@ -765,7 +766,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
 
           return (
             <div key={club.id} className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors
-              ${isMine ? 'border-emerald-500/30' : 'border-slate-800'}`}>
+              ${isMine ? 'border-emerald-500/40 shadow-[0_0_0_1px_rgba(16,185,129,0.15)]' : 'border-slate-800'}`}>
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
