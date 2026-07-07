@@ -135,9 +135,9 @@ export function Topbar() {
         </div>
       </header>
 
-      <QRModal       open={qrOpen}   onClose={() => setQrOpen(false)} />
-      <LogMatchModal open={logOpen}  onClose={() => setLogOpen(false)} />
-      <SettingsModal open={settOpen} onClose={() => setSettOpen(false)} />
+      {qrOpen   && <QRModal       open={true} onClose={() => setQrOpen(false)} />}
+      {logOpen  && <LogMatchModal open={true} onClose={() => setLogOpen(false)} />}
+      {settOpen && <SettingsModal open={true} onClose={() => setSettOpen(false)} />}
     </>
   );
 }
