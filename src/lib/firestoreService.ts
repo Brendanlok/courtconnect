@@ -98,9 +98,9 @@ export async function loadTournamentRegs(uid: string): Promise<Record<string, { 
 
 // ── Club membership ───────────────────────────────────────────────────────────
 
-export async function saveClubMembership(uid: string, clubId: string | null) {
+export async function saveClubMembership(uid: string, clubIds: string[]) {
   if (!uid || uid === 'me') return;
-  await updateDoc(doc(db, 'users', uid), { myClubId: clubId, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'users', uid), { myClubIds: clubIds, updatedAt: serverTimestamp() });
 }
 
 // ── Friends ───────────────────────────────────────────────────────────────────
