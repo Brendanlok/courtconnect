@@ -163,6 +163,8 @@ export default function MatchesPage() {
   const [editId,      setEditId]      = useState<string | null>(null);
   const [cancelId,    setCancelId]    = useState<string | null>(null);
 
+  const { ref: cancelPanelRef, dialogProps: cancelDialogProps } = useModalA11y(!!cancelId, () => setCancelId(null), 'Cancel this match?');
+
   const myMatches = matches.filter(m =>
     m.player1Id === 'me' || m.player2Id === 'me' ||
     m.player1PartnerId === 'me' || m.player2PartnerId === 'me'
