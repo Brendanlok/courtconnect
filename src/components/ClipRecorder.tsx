@@ -94,8 +94,12 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
   }, []);
 
   const closeModal = useCallback(() => {
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.onstop = null;
+      recorderRef.current.stop();
+    }
+    recorderRef.current = null;
     stopStream();
-    recorderRef.current?.stop();
     blobRef.current = null;
     setState('idle');
     setError('');
