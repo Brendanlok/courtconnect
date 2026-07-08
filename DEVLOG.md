@@ -1,5 +1,37 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-08 12:00] — Auto-Dev Session
+
+**Trigger:** Scheduled (12am / 12pm / 6pm)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. The prior session's critical push-failure alert had already resolved (branch was up to date with origin by this session — likely pushed successfully in between). Fixed the previously-logged LogMatchModal incomplete-game bug, and found + fixed a new bug on the leaderboard: rank numbers/medals on the Nationwide tab used stale, MMR-only seed data (`globalRank`) instead of the player's actual position in the currently sorted list, so sorting by Win Rate/Wins/Matches showed ranks that didn't match the visible order.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Check prior session's critical push-failure alert | ✅ | Already resolved — `git log origin/main..main` was empty, branch up to date |
+| 3 | 🟢 | Fix `LogMatchModal.tsx` incomplete-game validation (logged last session) | ✅ | `hasScores` now requires both scores filled in a game (not just one nonzero), and `submit()` filters out any blank game before storing — a half-filled second game can no longer be recorded as a phantom 0-0 |
+| 4 | 🟠 | Audit `tournaments/page.tsx`, `leaderboard/page.tsx`, `chat/page.tsx`, `AppContext.tsx`, `Topbar.tsx` (background agent) | ✅ | Found 1 confirmed 🟠 bug — see below |
+
+### Issues Found
+- 🟠 [src/app/leaderboard/page.tsx](src/app/leaderboard/page.tsx) — the Nationwide tab's rank column and "Your rank" callout used the static, MMR-based `p.globalRank`/`user.globalRank` from seed data instead of `tabRank` (the player's real position in the currently sorted+filtered `list`, already computed correctly for every other tab). Sorting by Win Rate, Wins, or Matches on Nationwide reordered the rows but left the rank numbers and medals pointing at the old MMR order, so a player with more wins could visually sit below a player with fewer wins yet show a smaller rank number.
+
+### Improvements Made
+- [src/components/LogMatchModal.tsx](src/components/LogMatchModal.tsx) — `hasScores` now checks both `p1`/`p2` fields are filled (not just one), and `submit()` filters `games` to only include fully-filled entries before storing, so an abandoned second game never gets silently recorded as 0-0.
+- [src/app/leaderboard/page.tsx](src/app/leaderboard/page.tsx) — both the rank column and the "Your rank" callout now use `tabRank` unconditionally, so the displayed rank always matches the currently selected sort, on every tab including Nationwide.
+- Verified via `npx next build` (clean, no TS errors) after each change. Could not verify live in the browser — the app requires real Firebase auth with no headless/demo login path, consistent with every prior session's notes.
+
+### Feature Ideas / Upcoming Plans
+No new proposals this session — carried-over items (disputed match resolution flow, real per-player Skills radar) are still open from the 05:00 session and unchanged.
+
+### Critical Alerts
+None.
+
+---
+
 ## [2026-07-08 05:00] — Auto-Dev Session
 
 **Trigger:** Scheduled (every 5 hours)
