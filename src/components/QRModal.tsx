@@ -57,10 +57,10 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-sm text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl p-7 w-full max-w-sm text-center shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-lg">My QR Code</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
         </div>
 
         <div className="w-52 h-52 mx-auto bg-white rounded-2xl flex items-center justify-center mb-5 shadow-lg overflow-hidden">
