@@ -51,7 +51,7 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
         <p className="text-xs font-semibold truncate">{selected.displayName}</p>
         <p className="text-[10px] text-slate-500">@{selected.username}</p>
       </div>
-      <button onClick={onClear} className="text-slate-500 hover:text-red-400"><X size={12}/></button>
+      <button onClick={onClear} aria-label={`Remove ${selected.displayName}`} className="text-slate-500 hover:text-red-400"><X size={12}/></button>
     </div>
   );
 
