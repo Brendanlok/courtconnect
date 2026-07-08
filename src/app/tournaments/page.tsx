@@ -677,6 +677,8 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
   // 'me' = individual, otherwise = club id
   const [hostAs,     setHostAs]     = useState<'me' | string>('me');
 
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Host an Event');
+
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
 
   const hostingClub = myKeyClubs.find(c => c.id === hostAs);
