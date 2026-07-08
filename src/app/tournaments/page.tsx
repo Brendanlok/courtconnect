@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOf
 import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 type VisFilter = 'All' | 'Public' | 'Private';
 type EligFilter = 'All' | 'Eligible';
