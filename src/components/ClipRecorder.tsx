@@ -34,15 +34,21 @@ const SETUP_TIPS = [
 type Readiness = 'checking' | 'ready' | 'warn';
 
 // Wireframe guide the player lines the court up against on the live preview.
-// Purely a visual placement aid — not burned into the recording.
+// Purely a visual placement aid — not burned into the recording. Shape matches
+// what an elevated baseline camera actually sees: the court narrows into the
+// distance (near baseline wide at the bottom, far end narrower near the top),
+// with the net crossing horizontally partway up — not a bird's-eye layout.
 function CourtGuideOverlay() {
   return (
     <svg viewBox="0 0 220 100" preserveAspectRatio="none" className="absolute inset-6 sm:inset-10 pointer-events-none">
-      <rect x="2" y="2" width="216" height="96" fill="none" stroke="white" strokeOpacity="0.85" strokeWidth="1.5" strokeDasharray="7 5" rx="2"/>
-      <line x1="110" y1="2" x2="110" y2="98" stroke="#facc15" strokeOpacity="0.9" strokeWidth="1.5"/>
-      <line x1="42" y1="2" x2="42" y2="98" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
-      <line x1="178" y1="2" x2="178" y2="98" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
-      <text x="110" y="13" textAnchor="middle" fill="#facc15" fontSize="7" fontFamily="sans-serif" fontWeight="bold">NET</text>
+      {/* Doubles sidelines — full court outline in perspective */}
+      <polygon points="14,92 206,92 154,14 66,14" fill="none" stroke="white" strokeOpacity="0.85" strokeWidth="1.5" strokeDasharray="7 5"/>
+      {/* Singles sidelines */}
+      <line x1="40" y1="92" x2="78" y2="14" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
+      <line x1="180" y1="92" x2="142" y2="14" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
+      {/* Net — horizontal, partway up the frame */}
+      <line x1="38.6" y1="55" x2="181.4" y2="55" stroke="#facc15" strokeOpacity="0.9" strokeWidth="1.5"/>
+      <text x="110" y="50" textAnchor="middle" fill="#facc15" fontSize="7" fontFamily="sans-serif" fontWeight="bold">NET</text>
     </svg>
   );
 }
