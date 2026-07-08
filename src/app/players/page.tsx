@@ -600,12 +600,12 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                   ) : hasClub ? (
                     <span className="text-[10px] text-slate-600 shrink-0 pt-1">Already in a club</span>
                   ) : club.isPrivate ? (
-                    <button onClick={() => requestJoinClub(club.id)}
+                    <button onClick={e => { e.stopPropagation(); requestJoinClub(club.id); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
                       <UserPlus size={11}/> Request
                     </button>
                   ) : (
-                    <button onClick={() => joinClub(club.id)}
+                    <button onClick={e => { e.stopPropagation(); joinClub(club.id); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
                       <UserPlus size={11}/> Join
                     </button>
