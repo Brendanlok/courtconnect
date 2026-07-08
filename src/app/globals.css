@@ -54,6 +54,13 @@ html.light body {
   color: var(--foreground);
 }
 
+/* Visible keyboard focus ring on any interactive element */
+:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
