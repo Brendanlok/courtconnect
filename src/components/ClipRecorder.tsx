@@ -232,11 +232,11 @@ export default function ClipRecorder({
               className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
               <Upload size={12}/> Upload (+50)
             </button>
-            <button onClick={downloadClip}
+            <button onClick={downloadClip} aria-label="Download clip"
               className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-colors">
               <Download size={12}/>
             </button>
-            <button onClick={() => { blobRef.current = null; setState('idle'); }}
+            <button onClick={() => { blobRef.current = null; setState('idle'); }} aria-label="Discard clip"
               className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-colors">
               <X size={12}/>
             </button>
