@@ -157,7 +157,7 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
             </div>
             <p className="text-xs text-slate-400 mt-0.5 truncate">{message}</p>
           </div>
-          <button type="button" onClick={reset} className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
+          <button type="button" onClick={reset} aria-label="Clear scanned QR result" className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
         </div>
       )}
 
@@ -174,7 +174,7 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
               </div>
               <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{message}</p>
             </div>
-            <button type="button" onClick={reset} className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
+            <button type="button" onClick={reset} aria-label="Clear scanned QR result" className="text-slate-500 hover:text-white shrink-0"><X size={14}/></button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => { reset(); setTimeout(() => cameraRef.current?.click(), 50); }}
