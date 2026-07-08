@@ -544,7 +544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tournaments, addTournament, registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge,
-      clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
+      clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
