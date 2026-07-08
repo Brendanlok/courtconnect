@@ -353,7 +353,7 @@ function PlayerSearch({
           className="w-full pl-8 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"
         />
         {show && query && (
-          <div className="absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+          <div className="popover-anim absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-xs text-slate-500 px-4 py-3 text-center">No players found</p>
             ) : filtered.map(p => (
