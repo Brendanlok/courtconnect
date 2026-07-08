@@ -4,6 +4,7 @@ import { TIER_STYLE } from '@/lib/utils';
 import { X, Share2, Copy, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();
