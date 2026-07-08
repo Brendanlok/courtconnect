@@ -223,7 +223,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 className={`${inp} text-sm`}/>
             </div>
           </div>
-          )}
+          </>)}
 
           {/* Country */}
           {tab === 'location' && (<>
