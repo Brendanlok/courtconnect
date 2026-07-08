@@ -23,7 +23,7 @@ const TABS = ['Leaderboard', 'Following', 'Clubs'] as const;
 export default function PlayersPage() {
   const {
     user, updateUser,
-    clubs, myClubId, joinClub, requestJoinClub, cancelClubRequest, leaveClub,
+    clubs, myClubIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub,
     myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub,
     assignModerator, removeModerator,
     following, followPlayer, unfollowPlayer,
