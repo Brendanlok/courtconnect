@@ -284,7 +284,7 @@ function LocationSearch({ value, onChange }: { value: string; onChange: (v: stri
           className="w-full pl-8 pr-8 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"
         />
         {show && results.length > 0 && (
-          <div className="absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+          <div className="popover-anim absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
             {results.map(r => {
               const name = r.name || r.address?.road || '';
               const area = [r.address?.suburb, r.address?.city, r.address?.state].filter(Boolean).join(', ');
