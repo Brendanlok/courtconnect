@@ -477,17 +477,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Notifications
-  const addNotif = (n: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
-    setNotifications(p => [{
-      ...n, id: `n_${Date.now()}_${Math.random()}`, read: false, createdAt: new Date().toISOString(),
-    }, ...p]);
-    // Fire browser notification if permission granted and page not focused
-    if (typeof window !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-      try { new Notification(n.title, { body: n.body, icon: '/icons/icon-192x192.png' }); } catch { /* ignore */ }
-    }
-  };
-  const addNotification  = useCallback((n: Notification) => setNotifications(p => [n, ...p]), []);
+  // Notifications — single entry point: adds to the bell AND fires a phone/desktop
+  // push notification (via the service worker when available) whenever the app
+  // isn't the focused tab, so nothing that reaches the bell is silently missed.
+  const addNotification = useCallback((n: Notification | Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
+    const full: Notification = {
+      id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      ...n,
+    } as Notification;
+    setNotifications(p => [full, ...p]);
+
+    if (typeof window === 'undefined' || document.visibilityState === 'visible') return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const opts: NotificationOptions = {
+        body: full.body,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-96x96.png',
+        tag: full.id,
+        data: { linkTo: full.linkTo },
+      };
+      if (navigator.serviceWorker?.ready) {
+        navigator.serviceWorker.ready
+          .then(reg => reg.showNotification(full.title, opts))
+          .catch(() => { try { new Notification(full.title, opts); } catch { /* ignore */ } });
+      } else {
+        new Notification(full.title, opts);
+      }
+    } catch { /* ignore */ }
+  }, []);
   const markNotifRead    = useCallback((id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n)), []);
   const markAllNotifsRead = useCallback(() => setNotifications(p => p.map(n => ({ ...n, read: true }))), []);
   const unreadNotifCount  = notifications.filter(n => !n.read).length;
