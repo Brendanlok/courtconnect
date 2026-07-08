@@ -384,27 +384,27 @@ export default function ClipRecorder({
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-4 py-6 bg-black/80 flex-wrap px-4">
-        <button onClick={requestExit}
+        <button onClick={requestExit} aria-label="Close"
           className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0">
           <X size={18}/>
         </button>
 
         {canUndo && onUndo && (state === 'previewing' || state === 'recording') && (
-          <button onClick={onUndo}
+          <button onClick={onUndo} aria-label="Undo last point"
             className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0" title="Undo last point">
             <RotateCcw size={16}/>
           </button>
         )}
 
         {state === 'previewing' && (
-          <button onClick={startRec} disabled={readiness === 'checking'}
+          <button onClick={startRec} disabled={readiness === 'checking'} aria-label="Start recording"
             className={`w-[72px] h-[72px] rounded-full border-4 flex items-center justify-center shrink-0 transition-opacity
               ${readiness === 'checking' ? 'border-slate-600 opacity-40 cursor-not-allowed' : 'border-white'}`}>
             <span className="w-12 h-12 rounded-full bg-red-500"/>
           </button>
         )}
         {state === 'recording' && (
-          <button onClick={stopRec}
+          <button onClick={stopRec} aria-label="Stop recording"
             className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
             <Square size={24} fill="white" className="text-white"/>
           </button>
@@ -415,7 +415,7 @@ export default function ClipRecorder({
               className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-semibold transition-colors">
               <Upload size={16}/> Upload (+50 Credits)
             </button>
-            <button onClick={downloadClip}
+            <button onClick={downloadClip} aria-label="Download clip"
               className="flex items-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl font-semibold transition-colors">
               <Download size={16}/>
             </button>
