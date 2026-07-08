@@ -101,24 +101,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
   const [challenges,       setChallenges]       = useState<Challenge[]>([]);
+  // Migrate the old single-club localStorage key to the new array-based one.
+  const readSavedClubIds = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('cc_myClubIds');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    const legacy = localStorage.getItem('cc_myClubId');
+    return legacy ? [legacy] : [];
+  };
+
   const [clubs,            setClubs]            = useState<Club[]>(() => {
     if (typeof window !== 'undefined') {
-      const savedId = localStorage.getItem('cc_myClubId');
-      if (savedId) {
-        return SEED_CLUBS.map(c => c.id === savedId && !c.memberIds.includes('me')
+      const savedIds = readSavedClubIds();
+      if (savedIds.length) {
+        return SEED_CLUBS.map(c => savedIds.includes(c.id) && !c.memberIds.includes('me')
           ? { ...c, memberIds: [...c.memberIds, 'me'] }
           : c);
       }
     }
     return SEED_CLUBS;
   });
-  const [myClubId,         setMyClubId]         = useState<string | null>(() => {
+  const [myClubIds,        setMyClubIds]        = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cc_myClubId');
-      if (saved) return saved;
+      const savedIds = readSavedClubIds();
+      if (savedIds.length) return savedIds;
     }
     // Derive from seed data (e.g. 'me' seeded into c1)
-    return SEED_CLUBS.find(c => c.memberIds.includes('me'))?.id ?? null;
+    return SEED_CLUBS.filter(c => c.memberIds.includes('me')).map(c => c.id);
   });
   const [clubInvites,      setClubInvites]      = useState<string[]>([]);
   const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>(() => {
