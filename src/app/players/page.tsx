@@ -124,7 +124,7 @@ export default function PlayersPage() {
       </div>
       {tab === 'Clubs' && (
         <ClubsTab
-          clubs={clubs} myClubId={myClubId} myClubPendingIds={myClubPendingIds}
+          clubs={clubs} myClubIds={myClubIds} clubLimit={maxClubsForTier(user.tier)} myClubPendingIds={myClubPendingIds}
           clubSearch={clubSearch} clubMyOnly={clubMyOnly} clubStateFilter={clubStateFilter}
           joinClub={joinClub} requestJoinClub={requestJoinClub}
           cancelClubRequest={cancelClubRequest} leaveClub={leaveClub}
