@@ -425,15 +425,16 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, clubSearch, clubMyOnly, clubStateFilter }: {
+function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, clubSearch, clubMyOnly, clubStateFilter }: {
   clubs: Club[];
-  myClubId: string | null;
+  myClubIds: string[];
+  clubLimit: number;
   myClubPendingIds: string[];
   userId: string;
   joinClub: (id: string) => void;
   requestJoinClub: (id: string) => void;
   cancelClubRequest: (id: string) => void;
-  leaveClub: () => void;
+  leaveClub: (id: string) => void;
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
   updateClub: (id: string, patch: Partial<Club>) => void;
@@ -447,10 +448,10 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   const [createOpen,     setCreateOpen]     = useState(false);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
-  const [disbandConfirm, setDisbandConfirm] = useState(false);
-  const [leaveConfirm,   setLeaveConfirm]   = useState(false);
+  const [disbandTarget,  setDisbandTarget]  = useState<Club | null>(null);
+  const [leaveTarget,    setLeaveTarget]    = useState<Club | null>(null);
 
-  const myClub  = clubs.find(c => c.id === myClubId);
+  const atCap = myClubIds.length >= clubLimit;
 
   const isMyClub = (c: Club) => c.memberIds.includes(userId);
 
