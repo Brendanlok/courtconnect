@@ -424,12 +424,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const followPlayer = useCallback((uid: string, isTargetPrivate?: boolean) => {
+    const targetName = ALL_PLAYERS.find(p => p.uid === uid)?.displayName ?? 'this player';
     if (isTargetPrivate) {
       setFollowRequestsSent(p => {
         const next = p.includes(uid) ? p : [...p, uid];
         try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
         return next;
       });
+      addNotification({ type: 'friend_request', title: 'Follow Request Sent', body: `Your follow request to ${targetName} is pending approval.` });
       // Demo accounts auto-accept after a short delay to simulate a real accept flow
       setTimeout(() => {
         setFollowRequestsSent(p => p.filter(id => id !== uid));
@@ -438,6 +440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
           return next;
         });
+        addNotification({ type: 'friend_accepted', title: 'Follow Request Accepted', body: `${targetName} accepted your follow request.` });
       }, 2500);
       return;
     }
