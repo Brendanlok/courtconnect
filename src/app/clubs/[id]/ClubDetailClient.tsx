@@ -122,7 +122,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                 className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                 Cancel
               </button>
-              <button onClick={() => { leaveClub(); setLeaveModal(false); }}
+              <button onClick={() => { leaveClub(clubId); setLeaveModal(false); }}
                 className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">
                 Leave Club
               </button>
