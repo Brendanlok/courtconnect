@@ -392,34 +392,38 @@ export function PlayerProfileClient({ username }: { username: string }) {
         })()}
 
         {/* ── Club Membership ── */}
-        {playerClub && (
+        {playerClubs.length > 0 && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
-              <Users size={15} className="text-violet-400"/> Club
+              <Users size={15} className="text-violet-400"/> {playerClubs.length > 1 ? 'Clubs' : 'Club'}
             </h2>
-            <a href={`/clubs/${playerClub.id}/`}
-              className="flex items-center gap-4 p-3 bg-slate-800/60 border border-slate-700 hover:border-violet-500/40 rounded-2xl transition-colors group">
-              {/* Club logo */}
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black border ${playerClub.color}`}>
-                {playerClub.logoInitials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm group-hover:text-violet-300 transition-colors">{playerClub.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">{playerClub.area}, {playerClub.state}</p>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-[10px] text-slate-400">
-                    <span className="font-bold text-white">{playerClub.memberIds.length}</span> members
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    Avg MMR <span className="font-bold text-amber-400">{playerClub.avgMMR.toLocaleString()}</span>
-                  </span>
-                  {playerClub.tags.slice(0, 2).map(t => (
-                    <span key={t} className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-md">{t}</span>
-                  ))}
-                </div>
-              </div>
-              <span className="text-slate-600 group-hover:text-violet-400 transition-colors text-sm shrink-0">›</span>
-            </a>
+            <div className="space-y-2">
+              {playerClubs.map(club => (
+                <a key={club.id} href={`/clubs/${club.id}/`}
+                  className="flex items-center gap-4 p-3 bg-slate-800/60 border border-slate-700 hover:border-violet-500/40 rounded-2xl transition-colors group">
+                  {/* Club logo */}
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black border ${club.color}`}>
+                    {club.logoInitials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm group-hover:text-violet-300 transition-colors">{club.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{club.area}, {club.state}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[10px] text-slate-400">
+                        <span className="font-bold text-white">{club.memberIds.length}</span> members
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Avg MMR <span className="font-bold text-amber-400">{club.avgMMR.toLocaleString()}</span>
+                      </span>
+                      {club.tags.slice(0, 2).map(t => (
+                        <span key={t} className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-md">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-slate-600 group-hover:text-violet-400 transition-colors text-sm shrink-0">›</span>
+                </a>
+              ))}
+            </div>
           </div>
         )}
 
