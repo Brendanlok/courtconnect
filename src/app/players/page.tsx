@@ -582,12 +582,12 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
                   {isMine ? (
                     isOwner ? (
-                      <button onClick={e => { e.stopPropagation(); setDisbandConfirm(true); }}
+                      <button onClick={e => { e.stopPropagation(); setDisbandTarget(club); }}
                         className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
                         <Trash2 size={11}/> Disband
                       </button>
                     ) : (
-                      <button onClick={e => { e.stopPropagation(); setLeaveConfirm(true); }}
+                      <button onClick={e => { e.stopPropagation(); setLeaveTarget(club); }}
                         className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
                         <Leave size={11}/> Leave
                       </button>
@@ -599,8 +599,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
                     </button>
                   ) : full ? (
                     <span className="text-[10px] text-slate-600 shrink-0 pt-1">Club Full</span>
-                  ) : hasClub ? (
-                    <span className="text-[10px] text-slate-600 shrink-0 pt-1">Already in a club</span>
+                  ) : atCap ? (
+                    <span className="text-[10px] text-slate-600 shrink-0 pt-1">Club limit reached ({myClubIds.length}/{clubLimit})</span>
                   ) : club.isPrivate ? (
                     <button onClick={e => { e.stopPropagation(); requestJoinClub(club.id); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
