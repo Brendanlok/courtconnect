@@ -1,5 +1,19 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-09] — Interactive Session (Claude Code)
+
+Distilled several bloated modals (Settings, MMR Info → tabs; Host Event / Create
+Club → collapsed "Advanced options"), merged the Leaderboard's country chip row
+into its filter dropdowns, and did an accessibility pass across every modal
+(Escape-to-close, focus trap, aria-labels, visible focus ring) plus extracted a
+shared `Button` component. Then implemented multi-club membership: users can now
+belong to more than one club at once, capped by MMR tier (Beginner/Bronze 1,
+Silver/Gold 2, Platinum 3, Diamond 4, Elite 5) — see CHANGELOG for details.
+`myClubId` (singular) is fully replaced by `myClubIds` (array) across
+`AppContext`, the Clubs tab, club detail page, and public profile. Verified with
+`npx next build` after each change; could not exercise live in a browser since
+the app requires real Firebase auth with no demo/guest path.
+
 ## [2026-07-08 18:00] — Auto-Dev Session
 
 **Trigger:** Scheduled (12am / 12pm / 6pm)
