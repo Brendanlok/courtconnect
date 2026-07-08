@@ -418,6 +418,8 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
   const [games,    setGames]    = useState([{ p1:'', p2:'' }, { p1:'', p2:'' }]);
   const [loc,      setLoc]      = useState('');
 
+  const { ref: panelRef, dialogProps } = useModalA11y(open && !done, onClose, 'Log a Match');
+
   if (!open) return null;
 
   const isDoubles = DOUBLES.includes(type);
