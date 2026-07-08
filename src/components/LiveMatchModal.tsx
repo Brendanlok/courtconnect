@@ -8,8 +8,11 @@ import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCod
 import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer } from '@/types';
 import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,
-  Wifi, WifiOff, Radio, Search, Check,
+  Wifi, WifiOff, Radio, Search, Check, Camera, Hand,
 } from 'lucide-react';
+import ClipRecorder from '@/components/ClipRecorder';
+
+type RecordMode = 'manual' | 'video';
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 const FORMAT_LABELS: Record<MatchType, string> = {
@@ -94,7 +97,7 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
 
 function SetupView({ me, onStart, onJoin }: {
   me: LiveMatchPlayer;
-  onStart: (match: LiveMatch) => void;
+  onStart: (match: LiveMatch, recordMode: RecordMode) => void;
   onJoin: (match: LiveMatch) => void;
 }) {
   const [mode, setMode] = useState<'create' | 'join'>('create');
@@ -122,7 +125,7 @@ function SetupView({ me, onStart, onJoin }: {
 
   const canStart = venue.trim() && teamBSlots.some(Boolean);
 
-  const handleStart = () => {
+  const handleStart = (recordMode: RecordMode) => {
     if (!canStart) return;
     const aPlayers = teamASlots.map(p => p ?? me);
     const bPlayers = teamBSlots.filter(Boolean) as LiveMatchPlayer[];
@@ -139,7 +142,7 @@ function SetupView({ me, onStart, onJoin }: {
       createdAt: new Date().toISOString(),
     };
     createLiveMatch(match).catch(() => {});
-    onStart(match);
+    onStart(match, recordMode);
   };
 
   const handleJoin = async () => {
@@ -246,10 +249,16 @@ function SetupView({ me, onStart, onJoin }: {
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500"/>
           </div>
 
-          <button onClick={handleStart} disabled={!canStart}
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-            <Radio size={14}/> Start Live Scoring
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => handleStart('manual')} disabled={!canStart}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 border border-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+              <Hand size={13}/> Manual Score
+            </button>
+            <button onClick={() => handleStart('video')} disabled={!canStart}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+              <Camera size={13}/> Video Record
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -281,11 +290,13 @@ function checkMatchEnd(gameWins: { a: number; b: number }, bestOf: number): 'A' 
   return null;
 }
 
-function ScorerView({ initialMatch, isHost, onComplete }: {
+function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
   initialMatch: LiveMatch;
   isHost: boolean;
+  recordMode: RecordMode;
   onComplete: (match: LiveMatch) => void;
 }) {
+  const { awardClipCredits } = useApp();
   const [match, setMatch] = useState<LiveMatch>(initialMatch);
   const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number }[]>([]);
   const [connected, setConnected] = useState(true);
@@ -462,11 +473,14 @@ function ScorerView({ initialMatch, isHost, onComplete }: {
 
       {/* Controls */}
       {isHost && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={undoLast} disabled={history.length === 0}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
             <RotateCcw size={12}/> Undo
           </button>
+          {recordMode === 'video' && match.status !== 'completed' && (
+            <ClipRecorder match={match} onUploaded={() => awardClipCredits(50)}/>
+          )}
           <div className="flex-1"/>
           {match.status === 'completed' && (
             <button onClick={() => onComplete(match)}
@@ -527,7 +541,7 @@ function CompletionView({ match, onLogMatch, onClose }: {
 
 function PlannedMatchStart({ pm, me, onStart, onJoin }: {
   pm: PlannedMatchRef; me: LiveMatchPlayer;
-  onStart: () => void; onJoin: (m: LiveMatch) => void;
+  onStart: (recordMode: RecordMode) => void; onJoin: (m: LiveMatch) => void;
 }) {
   const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
   const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
@@ -567,10 +581,19 @@ function PlannedMatchStart({ pm, me, onStart, onJoin }: {
         ))}
       </div>
 
-      <button onClick={onStart}
-        className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-        <Radio size={14}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Start Live Scoring
-      </button>
+      <div className="space-y-2">
+        <p className="text-[11px] text-slate-500 font-semibold">How do you want to record this match?</p>
+        <div className="flex gap-2">
+          <button onClick={() => onStart('manual')}
+            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+            <Hand size={13}/> Manual Score
+          </button>
+          <button onClick={() => onStart('video')}
+            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+            <Camera size={13}/> Video Record
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -593,16 +616,17 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
+  const [recordMode, setRecordMode] = useState<RecordMode>('manual');
 
   if (!open) return null;
 
   const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
 
-  const handleStart = (m: LiveMatch) => { setLiveMatch(m); setIsHost(true); setView('scoring'); };
-  const handleJoin  = (m: LiveMatch) => { setLiveMatch(m); setIsHost(false); setView('scoring'); };
+  const handleStart = (m: LiveMatch, mode: RecordMode = 'manual') => { setLiveMatch(m); setIsHost(true); setRecordMode(mode); setView('scoring'); };
+  const handleJoin  = (m: LiveMatch) => { setLiveMatch(m); setIsHost(false); setRecordMode('manual'); setView('scoring'); };
 
   // If coming from a planned match, auto-build and start immediately
-  const handleStartFromPlanned = (pm: PlannedMatchRef) => {
+  const handleStartFromPlanned = (pm: PlannedMatchRef, mode: RecordMode) => {
     const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
     const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
     const buildName = (slots: LiveMatchPlayer[]) =>
@@ -620,7 +644,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
       createdAt: new Date().toISOString(),
     };
     createLiveMatch(m).catch(() => {});
-    handleStart(m);
+    handleStart(m, mode);
   };
   const handleComplete = (m: LiveMatch) => { setLiveMatch(m); setView('complete'); };
 
@@ -656,20 +680,15 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-2">
-            {view !== 'setup' && (
-              <button onClick={() => setView('setup')} className="text-slate-400 hover:text-white p-1"><X size={14}/></button>
-            )}
-            <p className="font-bold text-sm">{titles[view]}</p>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
+          <p className="font-bold text-sm">{titles[view]}</p>
+          <button onClick={onClose} className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
         </div>
         <div className="overflow-y-auto p-4 flex-1">
           {view === 'setup' && plannedMatch && (
-            <PlannedMatchStart pm={plannedMatch} me={me} onStart={() => handleStartFromPlanned(plannedMatch)} onJoin={handleJoin}/>
+            <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
           )}
           {view === 'setup' && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
-          {view === 'scoring'  && liveMatch && <ScorerView initialMatch={liveMatch} isHost={isHost} onComplete={handleComplete}/>}
+          {view === 'scoring'  && liveMatch && <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode} onComplete={handleComplete}/>}
           {view === 'complete' && liveMatch && <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}/>}
         </div>
       </div>
