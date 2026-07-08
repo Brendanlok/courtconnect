@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { timeAgo } from '@/lib/utils';
+import { timeAgo, maxClubsForTier } from '@/lib/utils';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
   Send, ArrowLeft, Megaphone, UserPlus, Trash2, ChevronRight,
