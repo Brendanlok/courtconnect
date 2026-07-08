@@ -4,6 +4,7 @@ import { X, MapPin, Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 interface Props {
   match: Match | null;
@@ -156,20 +157,18 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Pr
         <div className="px-5 pb-5 flex gap-3">
           {isPending && onConfirm && onDispute ? (
             <>
-              <button onClick={onConfirm}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
-                <CheckCircle size={15} /> Confirm Result
-              </button>
+              <Button onClick={onConfirm} icon={<CheckCircle size={15}/>} className="flex-1">
+                Confirm Result
+              </Button>
               <button onClick={onDispute}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-300 rounded-xl font-semibold text-sm transition-colors">
-                <XCircle size={15} /> Dispute
+                <XCircle size={15}/> Dispute
               </button>
             </>
           ) : (
-            <button onClick={onClose}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+            <Button variant="secondary" onClick={onClose} className="w-full">
               Close
-            </button>
+            </Button>
           )}
         </div>
       </div>

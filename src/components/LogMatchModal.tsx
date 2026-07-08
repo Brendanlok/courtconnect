@@ -7,6 +7,7 @@ import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/firestoreService';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
@@ -595,14 +596,14 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
             </div>
 
             <div className="p-5 pt-0 flex gap-3">
-              <button onClick={submit} disabled={!canSubmit}
+              <Button onClick={submit} disabled={!canSubmit}
                 title={!opp1 ? 'Select an opponent first' : !hasScores ? 'Enter at least one game score' : undefined}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-semibold text-sm transition-colors">
+                className="flex-1">
                 Submit Match
-              </button>
-              <button onClick={onClose} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl font-semibold text-sm transition-colors">
+              </Button>
+              <Button variant="secondary" onClick={onClose} className="flex-1">
                 Cancel
-              </button>
+              </Button>
             </div>
           </>
         )}

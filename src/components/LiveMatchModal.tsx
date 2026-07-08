@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 type RecordMode = 'manual' | 'video';
 
@@ -618,14 +619,12 @@ function CompletionView({ match, onLogMatch, onClose }: {
         </div>
       </div>
       <div className="flex gap-2">
-        <button onClick={onClose}
-          className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+        <Button variant="secondary" onClick={onClose} className="flex-1 border border-slate-700 font-medium">
           Close
-        </button>
-        <button onClick={() => onLogMatch(match)}
-          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-bold transition-colors">
+        </Button>
+        <Button onClick={() => onLogMatch(match)} className="flex-1 font-bold">
           Log to Profile
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -832,14 +831,12 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setExitConfirm(false)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+              <Button variant="secondary" onClick={() => setExitConfirm(false)} className="flex-1 py-2 font-medium">
                 Keep Playing
-              </button>
-              <button onClick={() => { setExitConfirm(false); onClose(); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
+              </Button>
+              <Button variant="danger" onClick={() => { setExitConfirm(false); onClose(); }} className="flex-1 py-2 font-bold">
                 Quit Match
-              </button>
+              </Button>
             </div>
           </div>
         </div>

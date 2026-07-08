@@ -9,6 +9,7 @@ import { storage, auth } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 type PrivacyLevel = 'public' | 'friends' | 'private';
 type PrivacySettings = NonNullable<UserProfile['privacy']>;
@@ -36,10 +37,19 @@ const PRIVACY_ITEMS: { key: keyof PrivacySettings; label: string }[] = [
 ];
 
 type DeleteStep = 'idle' | 'warn' | 'confirm';
+type SettingsTab = 'profile' | 'location' | 'availability' | 'privacy' | 'account';
+const TABS: { key: SettingsTab; label: string }[] = [
+  { key: 'profile',      label: 'Profile' },
+  { key: 'location',     label: 'Location' },
+  { key: 'availability', label: 'Schedule' },
+  { key: 'privacy',      label: 'Privacy' },
+  { key: 'account',      label: 'Account' },
+];
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, updateUser } = useApp();
 
+  const [tab, setTab] = useState<SettingsTab>('profile');
   const [displayName, setDisplayName] = useState(user.displayName);
   const [bio,         setBio]         = useState(user.bio ?? '');
   const [gender,      setGender]      = useState<'Male' | 'Female' | undefined>(user.gender);
@@ -141,9 +151,20 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={18}/></button>
         </div>
 
-        <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto">
+        <div className="flex gap-1 overflow-x-auto px-5 pt-3 pb-1 border-b border-slate-800 [&::-webkit-scrollbar]:hidden">
+          {TABS.map(t => (
+            <button key={t.key} type="button" onClick={() => setTab(t.key)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap
+                ${tab === t.key ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
 
           {/* Profile picture */}
+          {tab === 'profile' && (<>
           <div className="flex flex-col items-center gap-2">
             <div className="relative cursor-pointer group" onClick={() => fileRef.current?.click()}>
               <Avatar name={displayName} size="lg" photoURL={photoURL} className="ring-4 ring-slate-700 group-hover:ring-emerald-500/50 transition-all"/>
@@ -202,8 +223,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 className={`${inp} text-sm`}/>
             </div>
           </div>
+          )}
 
           {/* Country */}
+          {tab === 'location' && (<>
           <div>
             <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Country</p>
             <select value={countryCode}
@@ -297,8 +320,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               )}
             </div>
           </div>
+          </>)}
 
           {/* Availability grid: 7 days × 6 time slots */}
+          {tab === 'availability' && (
           <div>
             <p className="text-[11px] text-slate-500 font-semibold mb-2">Availability</p>
             <div className="space-y-1">
@@ -332,18 +357,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <p className="text-[10px] text-slate-600 mt-1.5">{availability.length} slot{availability.length !== 1 ? 's' : ''} selected</p>
             )}
           </div>
+          )}
 
-          {/* Push notifications */}
-          <NotificationPermissionRow/>
-
-          {/* Username (read-only) */}
-          <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
-            <span className="text-xs text-slate-500">Username</span>
-            <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
-          </div>
-
-          {/* Account privacy */}
-          <div className="border-t border-slate-800/80 pt-3 space-y-2">
+          {/* Privacy */}
+          {tab === 'privacy' && (<>
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 {isPrivate ? <Lock size={13} className="text-amber-400"/> : <Globe size={13} className="text-emerald-400"/>}
@@ -363,7 +381,6 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             </div>
           </div>
 
-          {/* Privacy */}
           <div className="border-t border-slate-800/80 pt-3 space-y-3">
             <div>
               <p className="text-[11px] text-slate-500 font-semibold mb-0.5">Privacy</p>
@@ -385,6 +402,16 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </div>
               </div>
             ))}
+          </div>
+          </>)}
+
+          {/* Push notifications + username */}
+          {tab === 'account' && (<>
+          <NotificationPermissionRow/>
+
+          <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
+            <span className="text-xs text-slate-500">Username</span>
+            <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
           </div>
 
           {/* Delete account */}
@@ -437,17 +464,16 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               </div>
             )}
           </div>
+          </>)}
         </div>
 
         <div className="px-5 pb-5 flex gap-3 border-t border-slate-800 pt-4">
-          <button onClick={save} disabled={!!postcodeInvalid}
-            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-semibold text-sm transition-colors">
-            <Save size={14}/> Save
-          </button>
-          <button onClick={onClose}
-            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-semibold text-sm transition-colors">
+          <Button onClick={save} disabled={!!postcodeInvalid} icon={<Save size={14}/>} className="flex-1">
+            Save
+          </Button>
+          <Button variant="secondary" onClick={onClose} className="flex-1">
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

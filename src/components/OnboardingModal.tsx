@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { postcodeToLocation, COUNTRIES, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS } from '@/lib/utils';
 import type { CountryCode, Tier } from '@/types';
 import { ChevronRight, Check } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 const SKILL_OPTIONS: { tier: Tier; label: string; desc: string; mmr: number }[] = [
   { tier: 'Beginner',  label: 'Just Starting',     desc: 'I\'m new to badminton or still learning the basics.',       mmr: 600  },
@@ -219,28 +220,24 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
           {/* Actions */}
           <div className="flex gap-3">
             {step > 0 && step < STEPS.length - 1 && (
-              <button onClick={() => setStep(s => s - 1)}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+              <Button variant="secondary" onClick={() => setStep(s => s - 1)} className="px-4 font-medium">
                 Back
-              </button>
+              </Button>
             )}
             {step < STEPS.length - 2 && (
-              <button onClick={next}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
+              <Button onClick={next} className="flex-1">
                 Continue <ChevronRight size={15}/>
-              </button>
+              </Button>
             )}
             {step === STEPS.length - 2 && (
-              <button onClick={() => { next(); finish(); }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
+              <Button onClick={() => { next(); finish(); }} className="flex-1">
                 Finish Setup <ChevronRight size={15}/>
-              </button>
+              </Button>
             )}
             {step === STEPS.length - 1 && (
-              <button onClick={onComplete}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
+              <Button onClick={onComplete} className="flex-1">
                 Start Playing 🏸
-              </button>
+              </Button>
             )}
           </div>
 

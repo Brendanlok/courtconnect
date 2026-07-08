@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { UserProfile, MatchType, Challenge } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 
@@ -120,10 +121,9 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
               className={`${inp} resize-none`}/>
           </label>
 
-          <button type="submit"
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-sm transition-colors">
-            <Swords size={14}/> Send Challenge
-          </button>
+          <Button type="submit" variant="amber" icon={<Swords size={14}/>} className="w-full font-bold">
+            Send Challenge
+          </Button>
         </form>
       </div>
     </div>

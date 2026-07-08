@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowLeft, Globe, MapPin } from 'lucide-react';
 import { COUNTRIES, getCountryByName } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 
 type Tab = 'login' | 'signup';
 type View = 'main' | 'forgot' | 'google-onboarding';
@@ -162,10 +163,9 @@ export function AuthModal() {
                   />
                 </div>
               </div>
-              <button type="submit" disabled={loading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
+              <Button type="submit" disabled={loading} className="w-full font-bold">
                 {loading ? 'Setting up…' : 'Finish Setup'}
-              </button>
+              </Button>
             </form>
           </>
         )}
@@ -188,10 +188,9 @@ export function AuthModal() {
                   type="email" placeholder="Your email address" autoComplete="email"
                   className={`${inp} pl-10`}/>
               </div>
-              <button type="submit" disabled={loading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
+              <Button type="submit" disabled={loading} className="w-full font-bold">
                 {loading ? 'Sending…' : 'Send Reset Link'}
-              </button>
+              </Button>
             </form>
           </>
         )}
@@ -253,10 +252,9 @@ export function AuthModal() {
                   className="text-xs text-emerald-400 hover:underline">
                   Forgot password?
                 </button>
-                <button type="submit" disabled={loading}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
+                <Button type="submit" disabled={loading} className="w-full font-bold">
                   {loading ? 'Signing in…' : 'Log In'}
-                </button>
+                </Button>
               </form>
             ) : (
               <form onSubmit={handleSignup} className="space-y-3">
@@ -298,10 +296,9 @@ export function AuthModal() {
                     />
                   </div>
                 </div>
-                <button type="submit" disabled={loading}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 font-bold rounded-xl text-sm transition-colors">
+                <Button type="submit" disabled={loading} className="w-full font-bold">
                   {loading ? 'Creating account…' : 'Create Account'}
-                </button>
+                </Button>
               </form>
             )}
 

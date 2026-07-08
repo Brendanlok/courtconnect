@@ -15,6 +15,7 @@ import { auth } from '@/lib/firebase';
 import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
 import type { UserProfile, MatchType, Match } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1001,12 +1002,10 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-800 flex gap-2 shrink-0">
-          <button onClick={onClose}
-            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-          <button onClick={save} disabled={!date || !time || !venue}
-            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl text-sm font-bold transition-colors">
+          <Button variant="secondary" onClick={onClose} className="flex-1 py-2 font-medium">Cancel</Button>
+          <Button onClick={save} disabled={!date || !time || !venue} className="flex-1 py-2 font-bold">
             {existing ? 'Save Changes' : 'Send Invites'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

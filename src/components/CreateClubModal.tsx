@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { MY_STATES } from '@/lib/utils';
 import type { Club, ClubPurpose, MalaysiaState } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 const PURPOSES: ClubPurpose[] = ['Competitive', 'Training', 'Recreational', 'Social', 'Youth'];
 const COLORS = [
@@ -165,10 +166,9 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          <button type="submit"
-            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-sm transition-colors">
+          <Button type="submit" className="w-full font-bold">
             Create Club
-          </button>
+          </Button>
         </form>
       </div>
     </div>

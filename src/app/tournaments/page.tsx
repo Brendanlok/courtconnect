@@ -7,6 +7,7 @@ import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 type VisFilter = 'All' | 'Public' | 'Private';
 type EligFilter = 'All' | 'Eligible';
@@ -532,14 +533,12 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+            <Button variant="secondary" onClick={onClose} className="flex-1">
               Cancel
-            </button>
-            <button onClick={onConfirm}
-              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors">
+            </Button>
+            <Button onClick={onConfirm} className="flex-1">
               I Understand — Register
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -583,14 +582,19 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
           )}
 
           <div className="flex gap-2">
-            <button onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+            <Button variant="secondary" onClick={onClose} className="flex-1">
               Keep my spot
-            </button>
-            <button onClick={onConfirm}
-              className={`flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors ${isPenalty ? 'bg-red-600 hover:bg-red-500' : 'bg-slate-700 hover:bg-slate-600'}`}>
-              {isPenalty ? 'Withdraw (−25 MMR)' : 'Withdraw'}
-            </button>
+            </Button>
+            {isPenalty ? (
+              <Button onClick={onConfirm} variant="danger" className="flex-1">
+                Withdraw (−25 MMR)
+              </Button>
+            ) : (
+              <button onClick={onConfirm}
+                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                Withdraw
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -858,14 +862,13 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
         </div>
 
         <div className="px-5 pb-5 flex gap-3 shrink-0 border-t border-slate-800 pt-4">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+          <Button variant="secondary" onClick={onClose} className="flex-1">
             Cancel
-          </button>
-          <button onClick={submit} disabled={!name.trim() || !date || !venue.trim()}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-black rounded-xl text-sm font-bold transition-colors">
-            <Trophy size={14}/> Create Event
-          </button>
+          </Button>
+          <Button variant="amber" onClick={submit} disabled={!name.trim() || !date || !venue.trim()}
+            icon={<Trophy size={14}/>} className="flex-1 font-bold">
+            Create Event
+          </Button>
         </div>
       </div>
     </div>

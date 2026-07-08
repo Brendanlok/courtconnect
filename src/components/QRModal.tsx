@@ -5,6 +5,7 @@ import { X, Share2, Copy, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();
@@ -75,13 +76,12 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
         <p className="text-slate-500 text-xs mt-1">#{user.globalRank} National · {user.area}, {user.state}</p>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={handleShare}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold text-sm transition-colors">
+          <Button onClick={handleShare} className="flex-1">
             {copied ? <><Check size={15}/> Copied!</> : <><Share2 size={15}/> Share</>}
-          </button>
-          <button onClick={onClose} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl font-semibold text-sm transition-colors">
+          </Button>
+          <Button variant="secondary" onClick={onClose} className="flex-1">
             Close
-          </button>
+          </Button>
         </div>
         <p className="text-slate-500 text-xs mt-4">Scan to open this profile · Tap Share to copy link</p>
       </div>
