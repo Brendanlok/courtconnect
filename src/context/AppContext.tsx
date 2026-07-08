@@ -208,9 +208,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user.openToPlay]);
 
   useEffect(() => {
-    if (myClubId) localStorage.setItem('cc_myClubId', myClubId);
-    else localStorage.removeItem('cc_myClubId');
-  }, [myClubId]);
+    localStorage.setItem('cc_myClubIds', JSON.stringify(myClubIds));
+    localStorage.removeItem('cc_myClubId'); // fully migrated off the old singular key
+  }, [myClubIds]);
 
   useEffect(() => {
     localStorage.setItem('cc_myClubPendingIds', JSON.stringify(myClubPendingIds));
