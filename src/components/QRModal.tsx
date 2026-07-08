@@ -29,6 +29,7 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'My QR Code');
 
   useEffect(() => {
     if (!canvasRef.current) return;
