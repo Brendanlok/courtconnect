@@ -83,7 +83,7 @@ html.light body {
    (Tailwind `active:` utilities) win over this via specificity, so this is
    purely the default for buttons that don't already define their own. */
 button:not(:disabled) {
-  transition: transform 120ms var(--ease-out);
+  transition: transform 120ms var(--motion-ease-out);
 }
 button:not(:disabled):active {
   transform: scale(0.97);
@@ -92,7 +92,7 @@ button:not(:disabled):active {
 /* Modal panels — every modal in the app carries role="dialog" via useModalA11y,
    so this single rule animates all of them without per-file wiring. */
 [role="dialog"] {
-  animation: modal-panel-in 200ms var(--ease-out) both;
+  animation: modal-panel-in 200ms var(--motion-ease-out) both;
   transform-origin: center;
 }
 .modal-backdrop {
@@ -106,7 +106,7 @@ button:not(:disabled):active {
 }
 /* Bottom sheets (no role="dialog") slide up rather than scale */
 .sheet-panel {
-  animation: sheet-panel-in 220ms var(--ease-in-out) both;
+  animation: sheet-panel-in 220ms var(--motion-ease-in-out) both;
 }
 @keyframes sheet-panel-in {
   from { transform: translateY(100%); }
@@ -114,7 +114,7 @@ button:not(:disabled):active {
 
 /* Popovers (dropdowns, menus) — scale in from where they're anchored, not center. */
 .popover-anim {
-  animation: popover-in 160ms var(--ease-out) both;
+  animation: popover-in 160ms var(--motion-ease-out) both;
 }
 .popover-anim.origin-top-left  { transform-origin: top left; }
 .popover-anim.origin-top-right { transform-origin: top right; }
