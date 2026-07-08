@@ -80,6 +80,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     );
   };
 
+  const { ref: panelRef, dialogProps } = useModalA11y(open, onClose, 'Settings');
+
   if (!open) return null;
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
