@@ -36,6 +36,12 @@ Auth reliability fix (no more double Google popup), one navigation consistency f
 ### Critical Alerts
 🔴 **Push to GitHub failed this session** — network to github.com was unreachable (connection timeout on port 443). Commit `ec27ce6` is sitting locally on `main`, 3 commits ahead of `origin/main` now. **Next session must push this before doing anything else**, or the user should push manually if urgent.
 
+### 📊 Daily Summary (18:00, Munich time)
+- Sessions run: 2 (05:00 full audit session; ~09:46 session)
+- Total fixes deployed: 6
+- Build status: ✅ Healthy — confirmed via a fresh `npx next build` at 18:00. Note: earlier today (~09:46) the build was briefly broken by an in-progress `ClubsTab` Roles/Announcement panel (`players/page.tsx`) that referenced `announceDraft`/`announceEdit`/`canManage`/`isMod`/`rolesOpen` state that was never declared. That session's fix removed the unfinished panel (~165 lines: My Club summary card, Roles management, pending-member accept/decline, announcement post/edit) rather than completing it — club roles/announcements/pending-member UI is currently gone from the Players page pending a follow-up session to reimplement it properly.
+- Telegram summary: ✅ Sent
+
 ---
 
 ## [2026-07-07 20:37] — Auto-Dev Session
