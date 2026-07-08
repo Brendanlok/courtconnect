@@ -2,6 +2,7 @@
 import { X, TrendingUp, Shield, Users, Star, Info } from 'lucide-react';
 import { TIER_STYLE } from '@/lib/utils';
 import type { Tier } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const TIERS: { tier: Tier; range: string; desc: string }[] = [
   { tier: 'Beginner', range: '0 – 799',    desc: 'Just starting out. Learning the basics.' },
