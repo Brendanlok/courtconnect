@@ -90,16 +90,20 @@ button:not(:disabled):active {
 }
 
 /* Modal panels — every modal in the app carries role="dialog" via useModalA11y,
-   so this single rule animates all of them without per-file wiring. */
+   so this single rule animates all of them without per-file wiring.
+   Opacity-only (no transform): a couple of modals (Live Match's video-record
+   view) nest position:fixed full-screen children, and animating `transform`
+   on the ancestor — even scaling to 1 — makes browsers treat it as a
+   permanent new containing block, trapping those fixed children inside the
+   small modal box instead of the viewport. Fade avoids that footgun entirely. */
 [role="dialog"] {
-  animation: modal-panel-in 200ms var(--motion-ease-out) both;
-  transform-origin: center;
+  animation: modal-panel-in 200ms ease both;
 }
 .modal-backdrop {
   animation: modal-backdrop-in 200ms ease both;
 }
 @keyframes modal-panel-in {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; }
 }
 @keyframes modal-backdrop-in {
   from { opacity: 0; }
