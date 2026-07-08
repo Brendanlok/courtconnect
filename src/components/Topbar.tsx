@@ -113,15 +113,16 @@ export function Topbar() {
                     <Settings size={15} className="text-slate-400" /> Settings
                   </button>
                   {/* Theme toggle */}
-                  <div className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer" onClick={toggleTheme}>
+                  <button type="button" onClick={toggleTheme} role="switch" aria-checked={!isDark}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-3 text-sm">
                       {isDark ? <Moon size={15} className="text-slate-400"/> : <Sun size={15} className="text-amber-400"/>}
                       <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
                     </div>
-                    <div className={`relative w-8 h-4 rounded-full transition-colors ${isDark ? 'bg-slate-600' : 'bg-amber-400'}`}>
+                    <div className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${isDark ? 'bg-slate-600' : 'bg-amber-400'}`}>
                       <span className={`absolute top-[2px] left-[2px] w-3 h-3 bg-white rounded-full shadow transition-transform ${isDark ? '' : 'translate-x-4'}`}/>
                     </div>
-                  </div>
+                  </button>
                 </div>
                 <div className="p-2 border-t border-slate-800">
                   <button onClick={() => { setMenuOpen(false); logout(); }}
