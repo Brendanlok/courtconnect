@@ -47,7 +47,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Pr
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
         </div>
 
         {/* Pending verification notice */}
