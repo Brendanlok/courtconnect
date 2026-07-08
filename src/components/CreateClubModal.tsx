@@ -4,6 +4,7 @@ import { X, Shield } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { MY_STATES } from '@/lib/utils';
 import type { Club, ClubPurpose, MalaysiaState } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const PURPOSES: ClubPurpose[] = ['Competitive', 'Training', 'Recreational', 'Social', 'Youth'];
 const COLORS = [
