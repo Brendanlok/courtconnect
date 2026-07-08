@@ -476,20 +476,18 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const isOwner = myClub?.adminId === userId;
-
   return (
     <div className="space-y-4">
       {/* Leave club confirmation */}
-      {leaveConfirm && myClub && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setLeaveConfirm(false)}>
+      {leaveTarget && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setLeaveTarget(null)}>
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
               <div>
-                <p className="font-bold text-sm">Leave {myClub.name}?</p>
+                <p className="font-bold text-sm">Leave {leaveTarget.name}?</p>
                 <p className="text-xs text-slate-400 mt-1">You will lose access to club chat and member features.</p>
-                {myClub.isPrivate && (
+                {leaveTarget.isPrivate && (
                   <p className="text-xs text-amber-400 mt-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                     ⚠️ This is a private club — you'll need to send a new join request and get approved again if you want to rejoin.
                   </p>
@@ -497,9 +495,9 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setLeaveConfirm(false)}
+              <button onClick={() => setLeaveTarget(null)}
                 className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-              <button onClick={() => { leaveClub(); setLeaveConfirm(false); }}
+              <button onClick={() => { leaveClub(leaveTarget.id); setLeaveTarget(null); }}
                 className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">Leave Club</button>
             </div>
           </div>
@@ -507,22 +505,22 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       )}
 
       {/* Disband confirmation */}
-      {disbandConfirm && myClub && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandConfirm(false)}>
+      {disbandTarget && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandTarget(null)}>
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
                 <Trash2 size={18} className="text-red-400"/>
               </div>
               <div>
-                <p className="font-bold text-sm">Disband {myClub.name}?</p>
-                <p className="text-xs text-slate-400 mt-1">This permanently closes the club and removes all {myClub.memberIds.length} members. This cannot be undone.</p>
+                <p className="font-bold text-sm">Disband {disbandTarget.name}?</p>
+                <p className="text-xs text-slate-400 mt-1">This permanently closes the club and removes all {disbandTarget.memberIds.length} members. This cannot be undone.</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setDisbandConfirm(false)}
+              <button onClick={() => setDisbandTarget(null)}
                 className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-              <button onClick={() => { disbandClub(myClub.id); setDisbandConfirm(false); }}
+              <button onClick={() => { disbandClub(disbandTarget.id); setDisbandTarget(null); }}
                 className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Disband Club</button>
             </div>
           </div>
@@ -531,8 +529,11 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-slate-500">{filtered.length} of {clubs.length} club{clubs.length !== 1 ? 's' : ''}</p>
-        {!myClubId && (
+        <p className="text-xs text-slate-500">
+          {filtered.length} of {clubs.length} club{clubs.length !== 1 ? 's' : ''}
+          <span className="text-slate-600"> · {myClubIds.length}/{clubLimit} joined</span>
+        </p>
+        {!atCap && (
           <button onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors">
             <Plus size={13}/> Create Club
