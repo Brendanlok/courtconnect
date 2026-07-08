@@ -60,8 +60,8 @@ export function Topbar() {
 
           {/* Notification bell */}
           <div className="relative">
-            <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }}
-              className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-slate-800 transition-colors">
+            <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} aria-label="Notifications"
+              className="relative w-11 h-11 flex items-center justify-center rounded-xl hover:bg-slate-800 transition-colors">
               <Bell size={17} className="text-slate-400"/>
               {unreadNotifCount > 0 && (
                 <span className="absolute top-1 right-1 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white px-0.5 leading-none">
