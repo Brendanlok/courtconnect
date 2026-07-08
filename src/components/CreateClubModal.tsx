@@ -83,10 +83,10 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
           <h2 className="font-bold flex items-center gap-2"><Shield size={16} className="text-emerald-400"/> Create Club</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
 
         <form onSubmit={submit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
