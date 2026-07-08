@@ -18,6 +18,8 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
   const [message, setMessage] = useState('');
   const [sent,    setSent]    = useState(false);
 
+  const { ref: panelRef, dialogProps } = useModalA11y(!sent, onClose, `Challenge ${opponent.displayName}`);
+
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors';
 
   const submit = (e: React.FormEvent) => {
