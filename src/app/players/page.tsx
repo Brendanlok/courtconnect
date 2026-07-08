@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
