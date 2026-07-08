@@ -39,11 +39,12 @@ interface AppCtx {
   declineChallenge: (id: string) => void;
   // Clubs
   clubs: Club[];
-  myClubId: string | null;
+  myClubIds: string[];
+  clubLimit: number;                     // max clubs allowed at the user's current tier
   joinClub: (id: string) => void;        // join public club
   requestJoinClub: (id: string) => void; // request to join private club
   cancelClubRequest: (id: string) => void;
-  leaveClub: () => void;
+  leaveClub: (id: string) => void;
   createClub: (c: Club) => void;
   updateClub: (id: string, patch: Partial<Club>) => void;
   acceptClubMember: (clubId: string, uid: string) => void;
