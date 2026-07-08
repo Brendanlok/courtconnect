@@ -37,15 +37,16 @@ const VENUE_SUGGESTIONS = [
 
 function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament; onClose: () => void }) {
   const participants = t.participants ?? [];
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, `${t.name} participants`);
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
           <div>
             <h3 className="font-bold text-sm">{t.name}</h3>
             <p className="text-xs text-slate-400 mt-0.5">{participants.length} / {t.maxPlayers} players signed up</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
         <div className="p-4 max-h-[60vh] overflow-y-auto">
           {participants.length === 0 ? (
