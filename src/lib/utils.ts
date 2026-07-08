@@ -46,6 +46,15 @@ export const TIER_STYLE: Record<Tier, { bg: string; text: string; border: string
   Elite:    { bg:'bg-red-600/20',     text:'text-red-400',     border:'border-red-600/40',     icon:'★' },
 };
 
+// Higher-tier players can belong to more clubs at once — same thresholds as the tier system.
+const CLUB_LIMIT_BY_TIER: Record<Tier, number> = {
+  Beginner: 1, Bronze: 1, Silver: 2, Gold: 2, Platinum: 3, Diamond: 4, Elite: 5,
+};
+
+export function maxClubsForTier(tier: Tier): number {
+  return CLUB_LIMIT_BY_TIER[tier] ?? 1;
+}
+
 export function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
