@@ -6,6 +6,7 @@ import { PLAYERS, ME } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/firestoreService';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
