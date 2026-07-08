@@ -4,6 +4,7 @@ import { X, Swords, MapPin, Calendar, MessageSquare } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { UserProfile, MatchType, Challenge } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 
