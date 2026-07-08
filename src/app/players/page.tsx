@@ -447,11 +447,8 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
   const [createOpen,     setCreateOpen]     = useState(false);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
-  const [announceDraft,  setAnnounceDraft]  = useState('');
-  const [announceEdit,   setAnnounceEdit]   = useState<string | null>(null);
   const [disbandConfirm, setDisbandConfirm] = useState(false);
   const [leaveConfirm,   setLeaveConfirm]   = useState(false);
-  const [rolesOpen,      setRolesOpen]      = useState(false);
 
   const myClub  = clubs.find(c => c.id === myClubId);
 
@@ -478,15 +475,7 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const saveAnnouncement = (clubId: string) => {
-    updateClub(clubId, { announcement: announceDraft.trim() || undefined });
-    setAnnounceEdit(null);
-    setAnnounceDraft('');
-  };
-
   const isOwner = myClub?.adminId === userId;
-  const isMod   = myClub ? (myClub.moderatorIds ?? []).includes(userId) : false;
-  const canManage = isOwner || isMod;
 
   return (
     <div className="space-y-4">
@@ -550,151 +539,6 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
         )}
       </div>
 
-      {/* My Club summary card */}
-      {myClub && (
-        <div className="rounded-2xl border border-emerald-500/25 bg-slate-900 overflow-hidden">
-          <div className="p-4 flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl ${myClub.color} flex items-center justify-center font-bold text-white text-lg shrink-0`}>
-              {myClub.logoInitials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-bold text-sm">{myClub.name}</p>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-semibold">My Club</span>
-                {isOwner && (
-                  <span className="flex items-center gap-1 text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full font-semibold">
-                    <Crown size={9}/> Owner
-                  </span>
-                )}
-                {!isOwner && isMod && (
-                  <span className="flex items-center gap-1 text-[10px] bg-violet-500/15 text-violet-400 border border-violet-500/25 px-1.5 py-0.5 rounded-full font-semibold">
-                    <ShieldCheck size={9}/> Moderator
-                  </span>
-                )}
-                {myClub.isPrivate ? <Lock size={10} className="text-violet-400"/> : <Globe size={10} className="text-slate-500"/>}
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {myClub.memberIds.length}/{myClub.maxMembers} members · Avg {myClub.avgMMR.toLocaleString()} MMR
-                {myClub.minMMR && ` · Min ${myClub.minMMR.toLocaleString()} MMR`}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-              <button onClick={() => copyLink(myClub.id)}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] font-medium transition-colors">
-                {copiedId === myClub.id ? <><CheckCheck size={11} className="text-emerald-400"/> Copied</> : <><Copy size={11}/> Share</>}
-              </button>
-              {isOwner && (
-                <>
-                  <button onClick={() => setRolesOpen(o => !o)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/25 text-violet-400 rounded-xl text-[11px] font-medium transition-colors">
-                    <ShieldCheck size={11}/> Roles
-                  </button>
-                  <button onClick={() => setDisbandConfirm(true)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
-                    <Trash2 size={11}/> Disband
-                  </button>
-                </>
-              )}
-              {!isOwner && (
-                <button onClick={() => setLeaveConfirm(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors">
-                  <Leave size={11}/> Leave
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Role management panel — owner only */}
-          {isOwner && rolesOpen && (
-            <div className="border-t border-slate-800 px-4 py-3 space-y-2">
-              <p className="text-[11px] text-slate-400 font-semibold flex items-center gap-1 mb-2">
-                <ShieldCheck size={11} className="text-violet-400"/> Assign Moderator Rights
-              </p>
-              <p className="text-[10px] text-slate-500 mb-2">Moderators can accept/decline join requests and post announcements.</p>
-              {myClub.memberIds.filter(uid => uid !== userId).length === 0 ? (
-                <p className="text-xs text-slate-600 italic">No other members yet.</p>
-              ) : (
-                myClub.memberIds.filter(uid => uid !== userId).map(uid => {
-                  const isModerator = (myClub.moderatorIds ?? []).includes(uid);
-                  return (
-                    <div key={uid} className="flex items-center justify-between bg-slate-800 rounded-xl px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-slate-300 font-medium">@{uid}</p>
-                        {isModerator && (
-                          <span className="text-[9px] bg-violet-500/15 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-0.5">
-                            <ShieldCheck size={8}/> Mod
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => isModerator ? removeModerator(myClub.id, uid) : assignModerator(myClub.id, uid)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
-                          isModerator
-                            ? 'bg-slate-700 hover:bg-red-500/20 text-slate-400 hover:text-red-400'
-                            : 'bg-violet-600 hover:bg-violet-500 text-white'
-                        }`}>
-                        {isModerator ? 'Remove Mod' : 'Make Mod'}
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-
-          {/* Admin/mod panel — pending requests */}
-          {canManage && myClub.pendingIds.length > 0 && (
-            <div className="border-t border-slate-800 px-4 py-3 space-y-2">
-              <p className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
-                <Clock size={11}/> {myClub.pendingIds.length} join request{myClub.pendingIds.length !== 1 ? 's' : ''}
-              </p>
-              {myClub.pendingIds.map(uid => (
-                <div key={uid} className="flex items-center justify-between gap-2 bg-slate-800 rounded-xl px-3 py-2">
-                  <p className="text-xs text-slate-300 font-medium">@{uid}</p>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => acceptClubMember(myClub.id, uid)}
-                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold transition-colors">Accept</button>
-                    <button onClick={() => declineClubMember(myClub.id, uid)}
-                      className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-medium transition-colors">Decline</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Announcement — owner or mod */}
-          <div className="border-t border-slate-800 px-4 py-3">
-            {announceEdit === myClub.id ? (
-              <div className="space-y-2">
-                <textarea value={announceDraft} onChange={e => setAnnounceDraft(e.target.value)} rows={2}
-                  placeholder="Post an announcement to your club members…"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-500 transition-colors resize-none"/>
-                <div className="flex gap-2">
-                  <button onClick={() => saveAnnouncement(myClub.id)}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors">Post</button>
-                  <button onClick={() => setAnnounceEdit(null)}
-                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs transition-colors">Cancel</button>
-                </div>
-              </div>
-            ) : myClub.announcement ? (
-              <div className="flex items-start gap-2">
-                <Megaphone size={12} className="text-amber-400 shrink-0 mt-0.5"/>
-                <p className="text-xs text-slate-300 flex-1 leading-relaxed">{myClub.announcement}</p>
-                {canManage && (
-                  <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(myClub.announcement ?? ''); }}
-                    className="text-slate-500 hover:text-slate-300 shrink-0"><Settings size={12}/></button>
-                )}
-              </div>
-            ) : canManage ? (
-              <button onClick={() => { setAnnounceEdit(myClub.id); setAnnounceDraft(''); }}
-                className="text-[11px] text-slate-500 hover:text-emerald-400 flex items-center gap-1 transition-colors">
-                <Megaphone size={11}/> Post an announcement
-              </button>
-            ) : null}
-          </div>
-        </div>
-      )}
-
       {/* Club cards */}
       <div className="space-y-3">
         {filtered.map(club => {
@@ -705,8 +549,10 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
           const full      = club.memberIds.length >= club.maxMembers;
 
           return (
-            <div key={club.id} className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors
-              ${isMine ? 'border-emerald-500/40 shadow-[0_0_0_1px_rgba(16,185,129,0.15)]' : 'border-slate-800'}`}>
+            <div key={club.id}
+              onClick={() => { window.location.href = `/clubs/${club.id}/`; }}
+              className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors cursor-pointer hover:border-slate-600
+              ${isMine ? 'border-emerald-500/40 shadow-[0_0_0_1px_rgba(16,185,129,0.15)] hover:border-emerald-500/60' : 'border-slate-800'}`}>
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl ${club.color} flex items-center justify-center font-bold text-white text-sm shrink-0`}>
@@ -714,7 +560,13 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <a href={`/clubs/${club.id}/`} className="font-bold text-sm hover:text-emerald-400 transition-colors">{club.name}</a>
+                      <span className="font-bold text-sm">{club.name}</span>
+                      {isMine && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-semibold">My Club</span>}
+                      {isMine && isOwner && (
+                        <span className="flex items-center gap-1 text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/25 px-1.5 py-0.5 rounded-full font-semibold">
+                          <Crown size={9}/> Owner
+                        </span>
+                      )}
                       {club.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-400 px-1 py-0.5 rounded">DEMO</span>}
                       {club.isPrivate
                         ? <Lock size={10} className="text-violet-400"/>
@@ -726,8 +578,20 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                     </p>
                   </div>
 
-                  {isMine ? null : isPending ? (
-                    <button onClick={() => cancelClubRequest(club.id)}
+                  {isMine ? (
+                    isOwner ? (
+                      <button onClick={e => { e.stopPropagation(); setDisbandConfirm(true); }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
+                        <Trash2 size={11}/> Disband
+                      </button>
+                    ) : (
+                      <button onClick={e => { e.stopPropagation(); setLeaveConfirm(true); }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
+                        <Leave size={11}/> Leave
+                      </button>
+                    )
+                  ) : isPending ? (
+                    <button onClick={e => { e.stopPropagation(); cancelClubRequest(club.id); }}
                       className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500/10 border border-violet-500/30 text-violet-400 rounded-xl text-[11px] font-medium transition-colors shrink-0">
                       <Clock size={11}/> Pending · Cancel
                     </button>
