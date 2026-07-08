@@ -714,12 +714,22 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const [recordMode, setRecordMode] = useState<RecordMode>('manual');
   const [exitConfirm, setExitConfirm] = useState(false);
 
-  if (!open) return null;
+  const titles: Record<ModalView, string> = {
+    setup: plannedMatch ? 'Record Live' : 'Live Match',
+    scoring: liveMatch ? `${liveMatch.teamAName} vs ${liveMatch.teamBName}` : 'Live Scoring',
+    complete: 'Match Complete',
+  };
 
   const requestClose = () => {
     if (view === 'scoring') { setExitConfirm(true); return; }
     onClose();
   };
+
+  const { ref: panelRef, dialogProps } = useModalA11y(
+    open, exitConfirm ? () => setExitConfirm(false) : requestClose, titles[view],
+  );
+
+  if (!open) return null;
 
   const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
 
