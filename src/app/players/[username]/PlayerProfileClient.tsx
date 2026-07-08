@@ -99,7 +99,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
   // Club membership privacy: same public/followers/private rule
   const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
   const canSeeClubMembership = canSeeFullProfile && (isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer));
-  const playerClub = canSeeClubMembership ? clubs.find(c => c.memberIds.includes(player.uid)) : undefined;
+  const playerClubs = canSeeClubMembership ? clubs.filter(c => c.memberIds.includes(player.uid)) : [];
 
   // Event history privacy: same public/followers/private rule
   const eventHistoryVisibility = player.privacy?.eventHistory ?? 'public';
