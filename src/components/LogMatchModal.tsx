@@ -580,7 +580,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
                       <input type="number" min="0" max="30" placeholder="Opp" value={g.p2} onChange={e => setScore(i, 'p2', e.target.value)}
                         className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
                       {i >= 2 && (
-                        <button onClick={() => setGames(g => g.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 ml-auto"><X size={14}/></button>
+                        <button onClick={() => setGames(g => g.filter((_, idx) => idx !== i))} aria-label={`Remove game ${i + 1}`} className="text-slate-500 hover:text-red-400 ml-auto"><X size={14}/></button>
                       )}
                     </div>
                   ))}
