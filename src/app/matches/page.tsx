@@ -783,7 +783,7 @@ function SlotPicker({ slot, label, genderRequired, exclude, selfPlayer, isSelfSl
             <p className="text-[10px] text-slate-500">@{slot.username}</p>
           </div>
           {slot.gender && <GenderDot gender={slot.gender}/>}
-          <button onClick={onClear} className="text-slate-500 hover:text-red-400 shrink-0"><X size={12}/></button>
+          <button onClick={onClear} aria-label={`Remove ${slot.displayName}`} className="text-slate-500 hover:text-red-400 shrink-0"><X size={12}/></button>
         </div>
       ) : (
         <button onClick={() => setOpen(o => !o)}
