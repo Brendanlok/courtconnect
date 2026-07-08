@@ -74,7 +74,7 @@ export function Topbar() {
 
           {/* User menu */}
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(o => !o)}
+            <button onClick={() => setMenuOpen(o => !o)} aria-label="Account menu" aria-expanded={menuOpen}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-800 transition-colors">
               <Avatar name={user.displayName} size="sm" />
               <div className="text-left hidden sm:block">
