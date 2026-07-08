@@ -3,6 +3,7 @@ import type { Match } from '@/types';
 import { X, MapPin, Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 interface Props {
   match: Match | null;
