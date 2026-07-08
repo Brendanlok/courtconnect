@@ -840,6 +840,8 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   const [teamA, setTeamA] = useState<(SlotPlayer | null)[]>(initTeamA);
   const [teamB, setTeamB] = useState<(SlotPlayer | null)[]>(initTeamB);
 
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, existing ? 'Edit Match' : 'Plan a Match');
+
   // Derive available formats based on currently-selected players' genders
   const allSelected = [...teamA, ...teamB].filter((s): s is SlotPlayer => s !== null);
   const hasMale   = allSelected.some(s => s.gender === 'Male');
