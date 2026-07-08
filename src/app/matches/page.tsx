@@ -897,10 +897,10 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center sm:items-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] flex flex-col outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <p className="font-bold text-sm">{existing ? 'Edit Match' : 'Plan a Match'}</p>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-500 hover:text-white"><X size={16}/></button>
         </div>
 
         <div className="overflow-y-auto p-4 space-y-4 flex-1">
