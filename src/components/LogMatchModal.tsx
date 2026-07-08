@@ -491,7 +491,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         {done ? (
           <div className="p-12 text-center">
             <div className="text-5xl mb-4">✅</div>
@@ -502,7 +502,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
           <>
             <div className="flex items-center justify-between p-5 border-b border-slate-800">
               <h2 className="font-bold text-lg">Log a Match</h2>
-              <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
+              <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
             </div>
 
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
