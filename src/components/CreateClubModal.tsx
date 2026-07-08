@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { X, Shield } from 'lucide-react';
+import { X, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { MY_STATES } from '@/lib/utils';
 import type { Club, ClubPurpose, MalaysiaState } from '@/types';
@@ -34,6 +34,7 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
   const [color,      setColor]      = useState('bg-emerald-600');
   const [error,      setError]      = useState('');
   const [done,       setDone]       = useState(false);
+  const [advOpen,    setAdvOpen]    = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(!done, onClose, 'Create Club');
 
@@ -131,40 +132,54 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Max Members</span>
-              <input type="number" min={2} max={200} value={maxMembers} onChange={e => setMaxMembers(Number(e.target.value))} className={`mt-1 ${inp}`}/>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Min MMR <span className="text-slate-600 font-normal">(optional)</span></span>
-              <input type="number" min={0} value={minMMR} onChange={e => setMinMMR(e.target.value)}
-                placeholder="No minimum" className={`mt-1 ${inp}`}/>
-            </label>
-          </div>
+          {/* Advanced options — capacity, MMR gate, colour, privacy */}
+          <button type="button" onClick={() => setAdvOpen(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors">
+            <span className="text-xs font-semibold text-slate-300">Advanced options</span>
+            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+              {!advOpen && (isPrivate ? 'Private' : 'Public')}
+              {advOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+            </span>
+          </button>
 
-          {/* Color picker */}
-          <div>
-            <p className="text-[11px] text-slate-500 font-semibold mb-2">Club Colour</p>
-            <div className="flex gap-2 flex-wrap">
-              {COLORS.map(c => (
-                <button key={c.value} type="button" onClick={() => setColor(c.value)}
-                  className={`w-7 h-7 rounded-lg ${c.value} transition-all ${color === c.value ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110' : 'opacity-60 hover:opacity-100'}`}/>
-              ))}
-            </div>
-          </div>
+          {advOpen && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Max Members</span>
+                  <input type="number" min={2} max={200} value={maxMembers} onChange={e => setMaxMembers(Number(e.target.value))} className={`mt-1 ${inp}`}/>
+                </label>
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Min MMR <span className="text-slate-600 font-normal">(optional)</span></span>
+                  <input type="number" min={0} value={minMMR} onChange={e => setMinMMR(e.target.value)}
+                    placeholder="No minimum" className={`mt-1 ${inp}`}/>
+                </label>
+              </div>
 
-          {/* Privacy toggle */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-800 rounded-xl">
-            <div>
-              <p className="text-sm font-medium">{isPrivate ? 'Private — Request to Join' : 'Public — Open to Join'}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{isPrivate ? 'You approve each member manually' : 'Anyone meeting the MMR requirement can join instantly'}</p>
+              {/* Color picker */}
+              <div>
+                <p className="text-[11px] text-slate-500 font-semibold mb-2">Club Colour</p>
+                <div className="flex gap-2 flex-wrap">
+                  {COLORS.map(c => (
+                    <button key={c.value} type="button" onClick={() => setColor(c.value)}
+                      className={`w-7 h-7 rounded-lg ${c.value} transition-all ${color === c.value ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110' : 'opacity-60 hover:opacity-100'}`}/>
+                  ))}
+                </div>
+              </div>
+
+              {/* Privacy toggle */}
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-800 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium">{isPrivate ? 'Private — Request to Join' : 'Public — Open to Join'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{isPrivate ? 'You approve each member manually' : 'Anyone meeting the MMR requirement can join instantly'}</p>
+                </div>
+                <button type="button" onClick={() => setIsPrivate(p => !p)}
+                  className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-violet-500' : 'bg-emerald-500'}`}>
+                  <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-0'}`}/>
+                </button>
+              </div>
             </div>
-            <button type="button" onClick={() => setIsPrivate(p => !p)}
-              className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-violet-500' : 'bg-emerald-500'}`}>
-              <span className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${isPrivate ? 'translate-x-5' : 'translate-x-0'}`}/>
-            </button>
-          </div>
+          )}
 
           <Button type="submit" className="w-full font-bold">
             Create Club

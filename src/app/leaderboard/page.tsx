@@ -32,6 +32,7 @@ export default function Leaderboard() {
   const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
   const userCountry = user.country ?? 'Malaysia';
   const [countryFilter, setCountryFilter]= useState<string>(userCountry);
+  const countryData = COUNTRIES.find(c => c.name === countryFilter);
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
   const all: UserProfile[] = [user, ...PLAYERS];
@@ -66,7 +67,7 @@ export default function Leaderboard() {
       <div>
         <h1 className="text-2xl font-bold">Leaderboard</h1>
         <p className="text-slate-400 text-sm mt-1 flex items-center gap-1">
-          <span>🇲🇾</span> Malaysia — {list.length} players ranked
+          <span>{countryData?.flag ?? '🌐'}</span> {countryFilter} — {list.length} players ranked
         </p>
       </div>
 
@@ -92,21 +93,6 @@ export default function Leaderboard() {
         )}
       </div>
 
-      {/* Country filter */}
-      <div className="flex gap-1.5 flex-wrap">
-        {[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)].map(name => {
-          const c = COUNTRIES.find(x => x.name === name);
-          if (!c) return null;
-          return (
-            <button key={name} onClick={() => setCountryFilter(name)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors
-                ${countryFilter === name ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
-              {c.flag} {name}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Search + filters row */}
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
@@ -115,6 +101,17 @@ export default function Leaderboard() {
             placeholder="Search player or @username…"
             className="w-full pl-8 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
         </div>
+
+        <FilterDropdown<string>
+          label={`${COUNTRIES.find(c => c.name === userCountry)?.flag ?? ''} ${userCountry}`}
+          value={countryFilter}
+          defaultValue={userCountry}
+          options={[userCountry, ...COUNTRIES.filter(c => c.name !== userCountry).map(c => c.name)]
+            .map(name => COUNTRIES.find(c => c.name === name))
+            .filter((c): c is NonNullable<typeof c> => !!c)
+            .map(c => ({ value: c.name, label: c.name, prefix: <span>{c.flag}</span> }))}
+          onChange={setCountryFilter}
+        />
 
         <FilterDropdown<SortKey>
           icon={<ArrowUpDown size={11} className="text-slate-400"/>}

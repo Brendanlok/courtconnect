@@ -161,7 +161,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           ))}
         </div>
 
-        <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="p-5 space-y-4 h-[60vh] overflow-y-auto">
 
           {/* Profile picture */}
           {tab === 'profile' && (<>

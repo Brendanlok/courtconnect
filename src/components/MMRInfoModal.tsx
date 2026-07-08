@@ -1,8 +1,18 @@
 'use client';
+import { useState } from 'react';
 import { X, TrendingUp, Shield, Users, Star, Info } from 'lucide-react';
 import { TIER_STYLE } from '@/lib/utils';
 import type { Tier } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+
+type InfoTab = 'formula' | 'calibration' | 'tiers' | 'fairplay' | 'doubles';
+const TABS: { key: InfoTab; label: string }[] = [
+  { key: 'formula',     label: 'Formula' },
+  { key: 'calibration', label: 'Calibration' },
+  { key: 'tiers',       label: 'Tiers' },
+  { key: 'fairplay',    label: 'Fair Play' },
+  { key: 'doubles',     label: 'Doubles' },
+];
 
 const TIERS: { tier: Tier; range: string; desc: string }[] = [
   { tier: 'Beginner', range: '0 – 799',    desc: 'Just starting out. Learning the basics.' },
@@ -18,6 +28,7 @@ interface Props { open: boolean; onClose: () => void }
 
 export function MMRInfoModal({ open, onClose }: Props) {
   const { ref: panelRef, dialogProps } = useModalA11y(open, onClose, 'How MMR Works');
+  const [tab, setTab] = useState<InfoTab>('formula');
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
@@ -30,9 +41,20 @@ export function MMRInfoModal({ open, onClose }: Props) {
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
 
+        <div className="flex gap-1 overflow-x-auto px-5 pt-3 pb-1 border-b border-slate-800 shrink-0 [&::-webkit-scrollbar]:hidden">
+          {TABS.map(t => (
+            <button key={t.key} type="button" onClick={() => setTab(t.key)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap
+                ${tab === t.key ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <div className="overflow-y-auto p-5 space-y-6">
 
           {/* Formula */}
+          {tab === 'formula' && (
           <section>
             <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2 mb-3">
               <TrendingUp size={14}/> The Formula (Elo-based)
@@ -57,8 +79,10 @@ export function MMRInfoModal({ open, onClose }: Props) {
               </div>
             </div>
           </section>
+          )}
 
           {/* Calibration */}
+          {tab === 'calibration' && (
           <section>
             <h3 className="text-sm font-bold text-amber-400 flex items-center gap-2 mb-3">
               <Star size={14}/> New Player Calibration
@@ -80,8 +104,10 @@ export function MMRInfoModal({ open, onClose }: Props) {
               <p className="text-xs text-slate-500">If you're an experienced player, you can self-report your approximate level during sign-up to start with a higher base MMR (800–1800), reducing calibration time.</p>
             </div>
           </section>
+          )}
 
           {/* Tiers */}
+          {tab === 'tiers' && (
           <section>
             <h3 className="text-sm font-bold text-violet-400 flex items-center gap-2 mb-3">
               <Info size={14}/> Tier Thresholds
@@ -101,8 +127,10 @@ export function MMRInfoModal({ open, onClose }: Props) {
               })}
             </div>
           </section>
+          )}
 
           {/* Anti-cheat */}
+          {tab === 'fairplay' && (
           <section>
             <h3 className="text-sm font-bold text-red-400 flex items-center gap-2 mb-3">
               <Shield size={14}/> Fair Play Guiderails
@@ -132,8 +160,10 @@ export function MMRInfoModal({ open, onClose }: Props) {
               </div>
             </div>
           </section>
+          )}
 
           {/* Doubles */}
+          {tab === 'doubles' && (
           <section>
             <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-3">
               <Users size={14}/> Doubles MMR
@@ -146,6 +176,7 @@ export function MMRInfoModal({ open, onClose }: Props) {
               <p className="text-xs">Each player on the winning team gains MMR; each player on the losing team loses MMR. The change amount is the same for all 4 players.</p>
             </div>
           </section>
+          )}
 
         </div>
       </div>

@@ -678,6 +678,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
   const [isPrivate,  setIsPrivate]  = useState(false);
   const [visInfoOpen,setVisInfoOpen]= useState(false);
   const [desc,       setDesc]       = useState('');
+  const [advOpen,    setAdvOpen]    = useState(false);
   // 'me' = individual, otherwise = club id
   const [hostAs,     setHostAs]     = useState<'me' | string>('me');
 
@@ -822,43 +823,57 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
             </label>
           </div>
 
-          {/* Capacity + Entry fee + Prize */}
-          <div className="grid grid-cols-3 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Max Players</span>
-              <select value={maxPlayers} onChange={e => setMaxPlayers(Number(e.target.value) as 8|16|32)} className={`mt-1 ${inp}`}>
-                {[8,16,32].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Entry (RM)</span>
-              <input type="number" min={0} value={entryFee} onChange={e => setEntryFee(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Prize Pool (RM)</span>
-              <input type="number" min={0} value={prize} onChange={e => setPrize(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
-            </label>
-          </div>
+          {/* Advanced options — fees, prize, MMR limits, description */}
+          <button type="button" onClick={() => setAdvOpen(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors">
+            <span className="text-xs font-semibold text-slate-300">Advanced options</span>
+            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+              {!advOpen && [entryFee && `RM${entryFee}`, prize && `RM${prize} prize`, minMMR && `${minMMR}+ MMR`, desc && 'notes'].filter(Boolean).join(' · ')}
+              {advOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+            </span>
+          </button>
 
-          {/* MMR limits */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Min MMR (optional)</span>
-              <input type="number" min={0} value={minMMR} onChange={e => setMinMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
-            </label>
-            <label className="block">
-              <span className="text-[11px] text-slate-500 font-semibold">Max MMR (optional)</span>
-              <input type="number" min={0} value={maxMMR} onChange={e => setMaxMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
-            </label>
-          </div>
+          {advOpen && (
+            <div className="space-y-3">
+              {/* Capacity + Entry fee + Prize */}
+              <div className="grid grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Max Players</span>
+                  <select value={maxPlayers} onChange={e => setMaxPlayers(Number(e.target.value) as 8|16|32)} className={`mt-1 ${inp}`}>
+                    {[8,16,32].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Entry (RM)</span>
+                  <input type="number" min={0} value={entryFee} onChange={e => setEntryFee(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
+                </label>
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Prize Pool (RM)</span>
+                  <input type="number" min={0} value={prize} onChange={e => setPrize(e.target.value)} placeholder="0" className={`mt-1 ${inp}`}/>
+                </label>
+              </div>
 
-          {/* Description */}
-          <label className="block">
-            <span className="text-[11px] text-slate-500 font-semibold">Description (optional)</span>
-            <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
-              placeholder="Format, rules, notes for participants…"
-              className={`mt-1 ${inp} resize-none`}/>
-          </label>
+              {/* MMR limits */}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Min MMR (optional)</span>
+                  <input type="number" min={0} value={minMMR} onChange={e => setMinMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
+                </label>
+                <label className="block">
+                  <span className="text-[11px] text-slate-500 font-semibold">Max MMR (optional)</span>
+                  <input type="number" min={0} value={maxMMR} onChange={e => setMaxMMR(e.target.value)} placeholder="No limit" className={`mt-1 ${inp}`}/>
+                </label>
+              </div>
+
+              {/* Description */}
+              <label className="block">
+                <span className="text-[11px] text-slate-500 font-semibold">Description (optional)</span>
+                <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
+                  placeholder="Format, rules, notes for participants…"
+                  className={`mt-1 ${inp} resize-none`}/>
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="px-5 pb-5 flex gap-3 shrink-0 border-t border-slate-800 pt-4">
