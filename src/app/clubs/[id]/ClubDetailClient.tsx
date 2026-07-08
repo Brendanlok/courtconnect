@@ -28,7 +28,7 @@ type Tab = 'Overview' | 'Members' | 'Chat' | 'Admin';
 
 export function ClubDetailClient({ clubId }: { clubId: string }) {
   const {
-    user, clubs, myClubId, myClubPendingIds,
+    user, clubs, myClubIds, myClubPendingIds,
     joinClub, requestJoinClub, cancelClubRequest, leaveClub,
     acceptClubMember, declineClubMember,
     updateClub, disbandClub,
