@@ -73,7 +73,7 @@ interface AppCtx {
   // Notifications
   notifications: Notification[];
   unreadNotifCount: number;
-  addNotification: (n: Notification) => void;
+  addNotification: (n: Notification | Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
   markNotifRead: (id: string) => void;
   markAllNotifsRead: () => void;
 }
