@@ -390,7 +390,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                   onKeyDown={e => e.key === 'Enter' && sendMessage()}
                   placeholder="Message the club…"
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors"/>
-                <button onClick={sendMessage} disabled={!chatInput.trim()}
+                <button onClick={sendMessage} disabled={!chatInput.trim()} aria-label="Send message"
                   className="w-10 h-10 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors shrink-0">
                   <Send size={16}/>
                 </button>
