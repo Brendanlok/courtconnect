@@ -347,7 +347,7 @@ export default function ClipRecorder({
           <>
             <CourtGuideOverlay/>
             <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1">
-              Line the court up inside the dashed outline
+              Fit both baselines and the net inside the dashed guide
             </p>
             <div className="absolute top-3 inset-x-3 flex justify-center">
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
