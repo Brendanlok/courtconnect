@@ -544,9 +544,9 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       {/* Club cards */}
       <div className="space-y-3">
         {filtered.map(club => {
-          const isMine    = club.id === myClubId;
+          const isMine    = myClubIds.includes(club.id);
+          const isOwner   = club.adminId === userId;
           const isPending = myClubPendingIds.includes(club.id);
-          const hasClub   = myClubId !== null;
           const isExpanded= expandedId === club.id;
           const full      = club.memberIds.length >= club.maxMembers;
 
