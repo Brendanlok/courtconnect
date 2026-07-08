@@ -34,6 +34,8 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
   const [error,      setError]      = useState('');
   const [done,       setDone]       = useState(false);
 
+  const { ref: panelRef, dialogProps } = useModalA11y(!done, onClose, 'Create Club');
+
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors';
 
   const submit = (e: React.FormEvent) => {
