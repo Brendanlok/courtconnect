@@ -201,8 +201,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
         {/* Join / Leave button */}
         {!isMember && (
           <div>
-            {myClubId && myClubId !== clubId ? (
-              <p className="text-xs text-slate-500 text-center">Leave your current club first to join this one.</p>
+            {myClubIds.length >= maxClubsForTier(user.tier) ? (
+              <p className="text-xs text-slate-500 text-center">
+                You've reached your club limit for your tier ({maxClubsForTier(user.tier)}). Climb to a higher tier to join more.
+              </p>
             ) : isFull ? (
               <p className="text-xs text-slate-500 text-center">Club is full.</p>
             ) : club.isPrivate ? (
