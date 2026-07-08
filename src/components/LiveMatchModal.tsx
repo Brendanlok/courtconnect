@@ -290,13 +290,44 @@ function checkMatchEnd(gameWins: { a: number; b: number }, bestOf: number): 'A' 
   return null;
 }
 
-// Visual point-by-point progress — two rows of tiny boxes per team, filled as points land
-function PointTrack({ score, color }: { score: number; color: string }) {
+// ── Point log table — one row per side, one column per rally, cell shows the
+// running tally + side letter at that point (e.g. 1-0 → "1a", 1-1 → "1b", 2-1 → "2a")
+const POINT_COLS = 30;
+
+function pointLabel(log: ('a' | 'b')[], idx: number): string {
+  const side = log[idx];
+  let tally = 0;
+  for (let i = 0; i <= idx; i++) if (log[i] === side) tally++;
+  return `${tally}${side}`;
+}
+
+function PointLogTable({ log, teamAName, teamBName, active }: {
+  log: ('a' | 'b')[]; teamAName: string; teamBName: string; active: boolean;
+}) {
+  const rowCell = (side: 'a' | 'b', i: number, borderClass: string) => {
+    const filled = log[i] === side;
+    return (
+      <div key={`${side}-${i}`}
+        className={`h-5 w-5 shrink-0 flex items-center justify-center text-[8px] font-bold ${borderClass}
+          ${filled ? (side === 'a' ? 'bg-emerald-500/25 text-emerald-300' : 'bg-rose-500/25 text-rose-300') : ''}`}>
+        {filled ? pointLabel(log, i) : ''}
+      </div>
+    );
+  };
   return (
-    <div className="grid grid-cols-12 gap-[3px]">
-      {Array.from({ length: 60 }).map((_, i) => (
-        <div key={i} className={`h-[5px] rounded-[1px] transition-colors ${i < score ? color : 'bg-slate-800'}`}/>
-      ))}
+    <div className={`rounded-xl border overflow-hidden ${active ? 'border-emerald-500/30' : 'border-slate-800'}`}>
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full">
+          <div className="flex">
+            <div className="h-5 w-6 shrink-0 flex items-center justify-center text-[9px] font-bold text-emerald-400 bg-slate-900" title={teamAName}>A</div>
+            {Array.from({ length: POINT_COLS }).map((_, i) => rowCell('a', i, 'border-t border-r border-slate-800 bg-slate-900/60'))}
+          </div>
+          <div className="flex">
+            <div className="h-5 w-6 shrink-0 flex items-center justify-center text-[9px] font-bold text-rose-400 bg-slate-900" title={teamBName}>B</div>
+            {Array.from({ length: POINT_COLS }).map((_, i) => rowCell('b', i, 'border-t border-r border-b border-slate-800 bg-slate-900/60'))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -310,7 +341,8 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
 }) {
   const { awardClipCredits } = useApp();
   const [match, setMatch] = useState<LiveMatch>(initialMatch);
-  const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number }[]>([]);
+  const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number; pointLog: ('a' | 'b')[][] }[]>([]);
+  const [pointLog, setPointLog] = useState<('a' | 'b')[][]>([[]]);
   const [connected, setConnected] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
 
@@ -332,7 +364,14 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
       games: match.games.map(g => ({ ...g })),
       gameWins: { ...match.gameWins },
       currentGame: match.currentGame,
+      pointLog: pointLog.map(arr => [...arr]),
     }]);
+
+    setPointLog(prev => {
+      const next = prev.map(arr => [...arr]);
+      next[match.currentGame] = [...(next[match.currentGame] ?? []), side];
+      return next;
+    });
 
     setMatch(prev => {
       const games = prev.games.map(g => ({ ...g }));
@@ -368,12 +407,24 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
       if (status === 'completed' && recordMode !== 'video') setTimeout(() => onComplete(next), 800);
       return next;
     });
-  }, [isHost, currentGame, match, onComplete, recordMode]);
+  }, [isHost, currentGame, match, onComplete, recordMode, pointLog]);
+
+  // New game started — make sure pointLog has a slot for it (covers the case
+  // where match state syncs in from Firestore, e.g. a watcher's view)
+  useEffect(() => {
+    setPointLog(prev => {
+      if (match.currentGame < prev.length) return prev;
+      const next = [...prev];
+      while (next.length <= match.currentGame) next.push([]);
+      return next;
+    });
+  }, [match.currentGame]);
 
   const undoLast = () => {
     if (!isHost || history.length === 0) return;
     const prev = history[history.length - 1];
     setHistory(h => h.slice(0, -1));
+    setPointLog(prev.pointLog);
     setMatch(m => {
       const next = { ...m, games: prev.games, gameWins: prev.gameWins, currentGame: prev.currentGame, status: 'active' as const, winningSide: undefined };
       updateLiveMatch(m.id, { games: prev.games, gameWins: prev.gameWins, currentGame: prev.currentGame, status: 'active' } as Partial<LiveMatch>).catch(() => {});
@@ -504,15 +555,17 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
         )}
       </div>
 
-      {/* Point-by-point progress */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-[10px] font-semibold">
-          <span className="text-emerald-400 truncate max-w-[45%]">{match.teamAName}</span>
-          <span className="text-rose-400 truncate max-w-[45%]">{match.teamBName}</span>
+      {/* Point-by-point log — one table per set */}
+      {isHost && (
+        <div className="space-y-2">
+          {Array.from({ length: Math.min(match.bestOf, 3) }).map((_, i) => (
+            <div key={i} className="space-y-1">
+              <p className="text-[10px] text-slate-500 font-semibold">Game {i + 1}{i === match.currentGame && match.status === 'active' ? ' · live' : ''}</p>
+              <PointLogTable log={pointLog[i] ?? []} teamAName={match.teamAName} teamBName={match.teamBName} active={i === match.currentGame}/>
+            </div>
+          ))}
         </div>
-        <PointTrack score={currentGame.a} color="bg-emerald-500"/>
-        <PointTrack score={currentGame.b} color="bg-rose-500"/>
-      </div>
+      )}
 
       {/* Controls */}
       {isHost && (

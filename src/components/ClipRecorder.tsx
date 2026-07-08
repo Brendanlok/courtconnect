@@ -31,6 +31,22 @@ const SETUP_TIPS = [
   { icon: '🔋', title: 'Battery + storage', text: 'A full match can run 15–30+ minutes of video — check you have charge and space free.' },
 ];
 
+type Readiness = 'checking' | 'ready' | 'warn';
+
+// Wireframe guide the player lines the court up against on the live preview.
+// Purely a visual placement aid — not burned into the recording.
+function CourtGuideOverlay() {
+  return (
+    <svg viewBox="0 0 220 100" preserveAspectRatio="none" className="absolute inset-6 sm:inset-10 pointer-events-none">
+      <rect x="2" y="2" width="216" height="96" fill="none" stroke="white" strokeOpacity="0.85" strokeWidth="1.5" strokeDasharray="7 5" rx="2"/>
+      <line x1="110" y1="2" x2="110" y2="98" stroke="#facc15" strokeOpacity="0.9" strokeWidth="1.5"/>
+      <line x1="42" y1="2" x2="42" y2="98" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
+      <line x1="178" y1="2" x2="178" y2="98" stroke="white" strokeOpacity="0.5" strokeWidth="1" strokeDasharray="3 3"/>
+      <text x="110" y="13" textAnchor="middle" fill="#facc15" fontSize="7" fontFamily="sans-serif" fontWeight="bold">NET</text>
+    </svg>
+  );
+}
+
 export default function ClipRecorder({
   match, onUploaded, autoStart = false, canScore = false, onAddPoint,
   onUndo, canUndo = false, onRequestExit, matchComplete = false, onLogResult,
@@ -40,6 +56,7 @@ export default function ClipRecorder({
   const [progress, setProgress] = useState(0);
   const [elapsed,  setElapsed]  = useState(0);
   const [nativeMode, setNativeMode] = useState(false); // iOS fallback: native file input
+  const [readiness, setReadiness]   = useState<Readiness>('checking');
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
@@ -67,6 +84,22 @@ export default function ClipRecorder({
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
+  // Readiness check — confirms the stream is actually live and in landscape
+  // orientation before letting the user hit record. Not real computer vision:
+  // it can't tell if the court is actually in frame, just that the camera is
+  // set up sensibly (landscape, live track) before recording starts.
+  useEffect(() => {
+    if (state !== 'previewing') return;
+    const t = setTimeout(() => {
+      const track = streamRef.current?.getVideoTracks()[0];
+      const settings = track?.getSettings();
+      const live = track?.readyState === 'live';
+      const landscape = settings?.width && settings?.height ? settings.width >= settings.height : true;
+      setReadiness(live && landscape ? 'ready' : 'warn');
+    }, 1100);
+    return () => clearTimeout(t);
+  }, [state]);
+
   const openCamera = useCallback(async () => {
     // Check if MediaRecorder is available; if not, fall back to native file input (iOS Safari)
     if (typeof MediaRecorder === 'undefined') {
@@ -86,6 +119,7 @@ export default function ClipRecorder({
         await videoRef.current.play();
       }
       setState('previewing');
+      setReadiness('checking');
     } catch {
       // Permission denied or no camera → native file input
       setNativeMode(true);
@@ -303,6 +337,24 @@ export default function ClipRecorder({
             <p className="text-slate-400 text-sm">Requesting camera…</p>
           </div>
         )}
+        {state === 'previewing' && (
+          <>
+            <CourtGuideOverlay/>
+            <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1">
+              Line the court up inside the dashed outline
+            </p>
+            <div className="absolute top-3 inset-x-3 flex justify-center">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
+                ${readiness === 'checking' ? 'bg-slate-800/90 text-slate-300'
+                : readiness === 'ready' ? 'bg-emerald-500/90 text-white'
+                : 'bg-amber-500/90 text-black'}`}>
+                {readiness === 'checking' && <>⏳ Checking camera…</>}
+                {readiness === 'ready' && <>✓ Looks good — you&apos;re set to record</>}
+                {readiness === 'warn' && <>⚠ Rotate to landscape for full court coverage</>}
+              </div>
+            </div>
+          </>
+        )}
         {(state === 'done' || state === 'uploaded') && (
           <div className="flex flex-col items-center gap-4 px-6 text-center">
             <Check size={40} className="text-emerald-400"/>
@@ -345,8 +397,9 @@ export default function ClipRecorder({
         )}
 
         {state === 'previewing' && (
-          <button onClick={startRec}
-            className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
+          <button onClick={startRec} disabled={readiness === 'checking'}
+            className={`w-[72px] h-[72px] rounded-full border-4 flex items-center justify-center shrink-0 transition-opacity
+              ${readiness === 'checking' ? 'border-slate-600 opacity-40 cursor-not-allowed' : 'border-white'}`}>
             <span className="w-12 h-12 rounded-full bg-red-500"/>
           </button>
         )}
