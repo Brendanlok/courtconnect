@@ -42,3 +42,6 @@ next-env.d.ts
 
 # telegram bot downloaded screenshots
 /telegram-bot/screenshots/
+
+# locally-installed Claude skills (not part of the app)
+/.agents/
