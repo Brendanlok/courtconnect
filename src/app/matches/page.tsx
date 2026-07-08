@@ -14,6 +14,7 @@ import {
 import { auth } from '@/lib/firebase';
 import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
 import type { UserProfile, MatchType, Match } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
