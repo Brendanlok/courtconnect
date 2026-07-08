@@ -458,7 +458,7 @@ export default function MatchesPage() {
       {/* Cancel match confirmation */}
       {cancelId && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCancelId(null)}>
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={cancelPanelRef} {...cancelDialogProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
                 <AlertTriangle size={18} className="text-red-400"/>
