@@ -13,6 +13,7 @@ interface Props {
 }
 
 export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Props) {
+  const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   if (!m) return null;
 
   const isWin     = m.winnerId === 'me';
