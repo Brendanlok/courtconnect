@@ -1,5 +1,36 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-08 18:00] — Auto-Dev Session
+
+**Trigger:** Scheduled (12am / 12pm / 6pm)
+**Daily Summary:** No Telegram commands pending. Build was clean at session start. This session's user commit (`726bb44`) added the video/manual record-mode choice and camera recording to Live Scoring — audited that new feature area and found + fixed a real bug in the camera modal's close button.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Check for unpushed commits | ✅ | None — `git log origin/main..main` empty, tree clean |
+| 3 | 🟠 | Audit newly-added camera recording feature (`ClipRecorder.tsx`, `LiveMatchModal.tsx`) | ✅ | Found 1 confirmed 🟠 bug — see below |
+
+### Issues Found
+- 🟠 [src/components/ClipRecorder.tsx](src/components/ClipRecorder.tsx) — `closeModal` (the X button on the full-screen camera UI) unconditionally called `recorderRef.current?.stop()`. Two failure modes: (1) while actively recording, `stop()` is async — the deferred `onstop` handler fired *after* `closeModal` had already reset state to `'idle'`, flipping it back to `'done'` and silently reopening the full-screen "recording complete" UI with Upload/Download buttons for a clip the user had just tried to discard; (2) after a recording had already finished (state `'done'`, not yet uploaded), the recorder is already `inactive` — calling `.stop()` again on an inactive `MediaRecorder` throws `InvalidStateError`, which aborted the rest of `closeModal` before it could reset state, so the X button silently failed to close the modal at all.
+
+### Improvements Made
+- [src/components/ClipRecorder.tsx](src/components/ClipRecorder.tsx) — `closeModal` now only calls `.stop()` when the recorder isn't already `inactive`, and clears `onstop` first so the deferred completion callback can never re-open the modal after the user has chosen to cancel.
+- Verified via `npx next build` (clean, no TS errors). Could not verify live in the browser — the app requires real Firebase auth with no headless/demo login path (consistent with every prior session's notes), and `getUserMedia`/camera recording specifically can't be exercised in an automated preview regardless.
+- Change was captured and pushed by the periodic snapshot-commit process (`970fc07`) before this session's own commit step ran — already live/deploying, no separate push needed.
+
+### Feature Ideas / Upcoming Plans
+No new proposals this session — carried-over items (disputed match resolution flow, real per-player Skills radar) are still open and unchanged.
+
+### Critical Alerts
+None.
+
+---
+
 ## [2026-07-08 12:00] — Auto-Dev Session
 
 **Trigger:** Scheduled (12am / 12pm / 6pm)
