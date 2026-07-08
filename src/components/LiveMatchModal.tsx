@@ -11,6 +11,7 @@ import {
   Wifi, WifiOff, Radio, Search, Check, Camera, Hand, AlertTriangle,
 } from 'lucide-react';
 import ClipRecorder from '@/components/ClipRecorder';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 type RecordMode = 'manual' | 'video';
 
