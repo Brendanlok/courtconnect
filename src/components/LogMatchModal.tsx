@@ -432,7 +432,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
     ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor)
     : null;
 
-  const hasScores   = games.some(g => Number(g.p1) > 0 || Number(g.p2) > 0);
+  const hasScores   = games.some(g => g.p1 !== '' && g.p2 !== '' && (Number(g.p1) > 0 || Number(g.p2) > 0));
   const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
   const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !cheatBlock;
 
