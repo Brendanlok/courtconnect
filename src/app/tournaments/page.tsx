@@ -552,12 +552,13 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
 function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
   tournament: Tournament; isPenalty: boolean; onClose: () => void; onConfirm: () => void;
 }) {
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Withdraw from Event');
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
           <h3 className="font-bold">Withdraw from Event</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18}/></button>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-slate-800 rounded-xl p-3">
