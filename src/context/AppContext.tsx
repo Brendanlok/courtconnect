@@ -16,7 +16,7 @@ interface AppCtx {
   user: UserProfile;
   matches: Match[];
   addMatch: (m: Match) => void;
-  confirmMatch: (id: string) => void;
+  confirmMatch: (id: string, uid?: string) => void;
   disputeMatch: (id: string) => void;
   updateUser: (patch: Partial<UserProfile>) => void;
   conversations: Conversation[];
@@ -208,16 +208,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uid = auth.currentUser?.uid;
     if (uid) saveMatch(uid, m).catch(() => {});
   }, []);
-  const confirmMatch  = useCallback((id: string) => {
+  const confirmMatch  = useCallback((id: string, uid?: string) => {
     setMatches(prev => prev.map(m => {
       if (m.id !== id || m.status !== 'Pending') return m;
+
+      // Multi-party confirmation: remove this uid from the pending list.
+      // If others are still outstanding, stay Pending — don't apply MMR yet.
+      if (uid && m.pendingConfirmations && m.pendingConfirmations.length > 0) {
+        const remaining = m.pendingConfirmations.filter(u => u !== uid);
+        if (remaining.length > 0) {
+          return { ...m, pendingConfirmations: remaining };
+        }
+      }
+
       const iWon = m.winnerId === 'me';
       const delta = m.mmrChange ?? 0;
       setUser(u => ({
         ...u, mmr: u.mmr + delta,
         stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
       }));
-      return { ...m, status: 'Confirmed' as const };
+      return { ...m, status: 'Confirmed' as const, pendingConfirmations: [] };
     }));
   }, []);
   const disputeMatch  = useCallback((id: string) => setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m)), []);

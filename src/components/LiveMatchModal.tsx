@@ -8,7 +8,7 @@ import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCod
 import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer } from '@/types';
 import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,
-  Wifi, WifiOff, Radio, Search, Check, Camera, Hand,
+  Wifi, WifiOff, Radio, Search, Check, Camera, Hand, AlertTriangle,
 } from 'lucide-react';
 import ClipRecorder from '@/components/ClipRecorder';
 
@@ -290,10 +290,22 @@ function checkMatchEnd(gameWins: { a: number; b: number }, bestOf: number): 'A' 
   return null;
 }
 
-function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
+// Visual point-by-point progress — two rows of tiny boxes per team, filled as points land
+function PointTrack({ score, color }: { score: number; color: string }) {
+  return (
+    <div className="grid grid-cols-12 gap-[3px]">
+      {Array.from({ length: 60 }).map((_, i) => (
+        <div key={i} className={`h-[5px] rounded-[1px] transition-colors ${i < score ? color : 'bg-slate-800'}`}/>
+      ))}
+    </div>
+  );
+}
+
+function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplete }: {
   initialMatch: LiveMatch;
   isHost: boolean;
   recordMode: RecordMode;
+  onRequestExit: () => void;
   onComplete: (match: LiveMatch) => void;
 }) {
   const { awardClipCredits } = useApp();
@@ -351,10 +363,12 @@ function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
 
       const next: LiveMatch = { ...prev, games, gameWins, currentGame: nextGame, winningSide, status };
       updateLiveMatch(prev.id, { games, gameWins, currentGame: nextGame, winningSide, status }).catch(() => {});
-      if (status === 'completed') setTimeout(() => onComplete(next), 800);
+      // In video mode, stay on screen so the recording isn't cut off — the Log Result
+      // button inside the camera view lets the user finish saving the clip first.
+      if (status === 'completed' && recordMode !== 'video') setTimeout(() => onComplete(next), 800);
       return next;
     });
-  }, [isHost, currentGame, match, onComplete]);
+  }, [isHost, currentGame, match, onComplete, recordMode]);
 
   const undoLast = () => {
     if (!isHost || history.length === 0) return;
@@ -374,6 +388,25 @@ function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
   };
 
   const gameWinsNeeded = Math.ceil(match.bestOf / 2);
+
+  // ── Video mode: full-screen camera is the entire scoring experience ──
+  // No separate tap-to-score grid — scoring happens by tapping the score in the camera header.
+  if (recordMode === 'video') {
+    return (
+      <ClipRecorder
+        match={match}
+        autoStart
+        canScore={isHost}
+        onAddPoint={addPoint}
+        onUndo={undoLast}
+        canUndo={isHost && history.length > 0}
+        onUploaded={() => awardClipCredits(50)}
+        onRequestExit={onRequestExit}
+        matchComplete={match.status === 'completed'}
+        onLogResult={() => onComplete(match)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -471,6 +504,16 @@ function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
         )}
       </div>
 
+      {/* Point-by-point progress */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[10px] font-semibold">
+          <span className="text-emerald-400 truncate max-w-[45%]">{match.teamAName}</span>
+          <span className="text-rose-400 truncate max-w-[45%]">{match.teamBName}</span>
+        </div>
+        <PointTrack score={currentGame.a} color="bg-emerald-500"/>
+        <PointTrack score={currentGame.b} color="bg-rose-500"/>
+      </div>
+
       {/* Controls */}
       {isHost && (
         <div className="flex flex-wrap gap-2">
@@ -478,9 +521,6 @@ function ScorerView({ initialMatch, isHost, recordMode, onComplete }: {
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
             <RotateCcw size={12}/> Undo
           </button>
-          {recordMode === 'video' && match.status !== 'completed' && (
-            <ClipRecorder match={match} onUploaded={() => awardClipCredits(50)}/>
-          )}
           <div className="flex-1"/>
           {match.status === 'completed' && (
             <button onClick={() => onComplete(match)}
@@ -609,16 +649,23 @@ interface PlannedMatchRef {
   teamB: ({ uid: string; displayName: string; username: string } | null)[];
 }
 
-export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
+export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogged }: {
   open: boolean; onClose: () => void; plannedMatch?: PlannedMatchRef | null;
+  onMatchLogged?: (plannedMatchId: string) => void;
 }) {
-  const { user, addMatch } = useApp();
+  const { user, addMatch, addNotification } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
   const [recordMode, setRecordMode] = useState<RecordMode>('manual');
+  const [exitConfirm, setExitConfirm] = useState(false);
 
   if (!open) return null;
+
+  const requestClose = () => {
+    if (view === 'scoring') { setExitConfirm(true); return; }
+    onClose();
+  };
 
   const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
 
@@ -653,6 +700,8 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
     const iWon = m.winningSide === 'A'; // team A is always host's team
     const gameScores = m.games.filter(g => g.done).map(g => ({ p1: g.a, p2: g.b }));
     const opp = m.teamB[0];
+    // Everyone on the opposing team must confirm before the result is finalized
+    const opponentUids = m.teamB.filter(Boolean).map(p => p.uid).filter(uid => uid !== 'me');
     const newMatch = {
       id: `m_${Date.now()}`,
       type: m.format,
@@ -660,12 +709,27 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
       player2Id: opp?.uid ?? 'opp', player2Name: opp?.displayName ?? 'Opponent', player2Username: opp?.username ?? 'opponent',
       winnerId: iWon ? me.uid : opp?.uid ?? 'opp',
       games: gameScores,
-      status: 'Confirmed' as const,
+      status: opponentUids.length > 0 ? 'Pending' as const : 'Confirmed' as const,
+      pendingConfirmations: opponentUids,
       playedAt: new Date().toISOString(),
       venue: m.venue,
       mmrChange: iWon ? 18 : -15,
+      plannedMatchId: plannedMatch?.id,
     };
     addMatch(newMatch as import('@/types').Match);
+    opponentUids.forEach(uid => {
+      const player = m.teamB.find(p => p?.uid === uid);
+      addNotification({
+        id: `notif_confirm_${Date.now()}_${uid}`,
+        type: 'match_pending',
+        title: 'Confirm Match Result',
+        body: `${me.displayName} logged the result of your ${FORMAT_LABELS[m.format]} match — please confirm it's correct.`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        meta: { matchId: newMatch.id, opponentUid: uid, opponentName: player?.displayName ?? '' },
+      });
+    });
+    if (plannedMatch) onMatchLogged?.(plannedMatch.id);
     onClose();
   };
 
@@ -676,22 +740,52 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={() => view === 'setup' && onClose()}>
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={requestClose}>
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <p className="font-bold text-sm">{titles[view]}</p>
-          <button onClick={onClose} className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
+          <button onClick={requestClose} className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
         </div>
         <div className="overflow-y-auto p-4 flex-1">
           {view === 'setup' && plannedMatch && (
             <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
           )}
           {view === 'setup' && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
-          {view === 'scoring'  && liveMatch && <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode} onComplete={handleComplete}/>}
+          {view === 'scoring'  && liveMatch && (
+            <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode}
+              onRequestExit={() => setExitConfirm(true)} onComplete={handleComplete}/>
+          )}
           {view === 'complete' && liveMatch && <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}/>}
         </div>
       </div>
+
+      {/* Exit warning — match still in progress */}
+      {exitConfirm && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={e => { e.stopPropagation(); setExitConfirm(false); }}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-red-400"/>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Match still in progress</p>
+                <p className="text-xs text-slate-400 mt-1">If you quit now, the score{recordMode === 'video' ? ' and any unsaved recording' : ''} won&apos;t be saved.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setExitConfirm(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                Keep Playing
+              </button>
+              <button onClick={() => { setExitConfirm(false); onClose(); }}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
+                Quit Match
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

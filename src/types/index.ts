@@ -77,6 +77,8 @@ export interface Match {
   playedAt: string;
   location?: string;
   venue?: string;
+  pendingConfirmations?: string[]; // opponent uids who still need to confirm this result
+  plannedMatchId?: string;         // links back to the PlannedMatch this was logged from, if any
 }
 
 export interface Tournament {

@@ -1,22 +1,40 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle } from 'lucide-react';
+import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 import type { LiveMatch } from '@/types';
 
-type State = 'idle' | 'requesting' | 'previewing' | 'recording' | 'done' | 'uploading' | 'uploaded';
+type State = 'idle' | 'instructions' | 'requesting' | 'previewing' | 'recording' | 'done' | 'uploading' | 'uploaded';
 
 interface Props {
   match: LiveMatch;
   onUploaded?: (url: string) => void;
+  autoStart?: boolean;
+  canScore?: boolean;
+  onAddPoint?: (side: 'a' | 'b') => void;
+  onUndo?: () => void;
+  canUndo?: boolean;
+  onRequestExit?: () => void;
+  matchComplete?: boolean;
+  onLogResult?: () => void;
 }
 
 function fmt(s: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function ClipRecorder({ match, onUploaded }: Props) {
+const SETUP_TIPS = [
+  { icon: '📱', title: 'Landscape, elevated', text: 'Turn your phone sideways and prop it up high — a tripod, chair, or shelf works — behind the baseline.' },
+  { icon: '📏', title: 'Back up 3–4 metres', text: 'Stand it far enough back that both players and the full court fit in frame.' },
+  { icon: '🎯', title: 'Keep it steady', text: 'Lean the phone against something solid rather than holding it — shaky footage is hard to review later.' },
+  { icon: '🔋', title: 'Battery + storage', text: 'A full match can run 15–30+ minutes of video — check you have charge and space free.' },
+];
+
+export default function ClipRecorder({
+  match, onUploaded, autoStart = false, canScore = false, onAddPoint,
+  onUndo, canUndo = false, onRequestExit, matchComplete = false, onLogResult,
+}: Props) {
   const [state,    setState]    = useState<State>('idle');
   const [error,    setError]    = useState('');
   const [progress, setProgress] = useState(0);
@@ -30,6 +48,12 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const blobRef     = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // autoStart skips the small idle button and opens straight to setup instructions
+  useEffect(() => {
+    if (autoStart && state === 'idle') setState('instructions');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   // Cleanup stream on unmount
   useEffect(() => () => {
@@ -106,6 +130,11 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
     setElapsed(0);
   }, [stopStream]);
 
+  const requestExit = useCallback(() => {
+    if (onRequestExit) onRequestExit();
+    else closeModal();
+  }, [onRequestExit, closeModal]);
+
   const uploadClip = useCallback(async () => {
     const blob = blobRef.current;
     if (!blob) return;
@@ -149,7 +178,7 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
   }, []);
 
   // ── Uploaded confirmation chip ──
-  if (state === 'uploaded') {
+  if (state === 'uploaded' && !matchComplete) {
     return (
       <div className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs font-semibold text-emerald-400">
         <Check size={12}/> Clip saved · +50 Credits
@@ -195,10 +224,43 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
   // ── Idle ──
   if (state === 'idle') {
     return (
-      <button onClick={openCamera}
+      <button onClick={() => setState('instructions')}
         className="flex items-center gap-1.5 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium text-slate-400 transition-colors">
         <Camera size={14}/> Record
       </button>
+    );
+  }
+
+  // ── Setup instructions ──
+  if (state === 'instructions') {
+    return (
+      <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
+          <p className="font-bold text-white">Set up your camera</p>
+          <button onClick={requestExit} className="text-slate-400 hover:text-white p-1"><X size={18}/></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
+          <p className="text-sm text-slate-300">A few tips so the footage is actually usable:</p>
+          {SETUP_TIPS.map(tip => (
+            <div key={tip.title} className="flex items-start gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3">
+              <span className="text-xl shrink-0">{tip.icon}</span>
+              <div>
+                <p className="text-sm font-semibold text-white">{tip.title}</p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{tip.text}</p>
+              </div>
+            </div>
+          ))}
+          {canScore && (
+            <p className="text-[11px] text-slate-500 text-center pt-1">Once recording, tap either score in the header to add a point.</p>
+          )}
+        </div>
+        <div className="px-5 py-4 border-t border-slate-800 shrink-0">
+          <button onClick={openCamera}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold text-sm transition-colors">
+            I&apos;m set up — Start Camera
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -207,15 +269,17 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       {/* Score header */}
       <div className="flex items-center justify-between px-5 py-3 bg-black/80">
-        <span className="text-sm font-bold text-emerald-400">{match.teamAName}</span>
+        <span className="text-sm font-bold text-emerald-400 truncate max-w-[25%]">{match.teamAName}</span>
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-black text-white tabular-nums">
+          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
+            className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
             {match.games[match.currentGame]?.a ?? 0}
-          </span>
+          </button>
           <span className="text-slate-500 text-sm">vs</span>
-          <span className="text-2xl font-black text-white tabular-nums">
+          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
+            className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
             {match.games[match.currentGame]?.b ?? 0}
-          </span>
+          </button>
           {state === 'recording' && (
             <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
@@ -223,8 +287,11 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
             </span>
           )}
         </div>
-        <span className="text-sm font-bold text-blue-400">{match.teamBName}</span>
+        <span className="text-sm font-bold text-blue-400 truncate max-w-[25%]">{match.teamBName}</span>
       </div>
+      {canScore && !matchComplete && (
+        <p className="text-center text-[10px] text-slate-500 pb-1.5 bg-black/80">Tap a score to add a point</p>
+      )}
 
       {/* Camera preview / done state */}
       <div className="flex-1 relative bg-black flex items-center justify-center">
@@ -236,11 +303,14 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
             <p className="text-slate-400 text-sm">Requesting camera…</p>
           </div>
         )}
-        {state === 'done' && (
+        {(state === 'done' || state === 'uploaded') && (
           <div className="flex flex-col items-center gap-4 px-6 text-center">
             <Check size={40} className="text-emerald-400"/>
-            <p className="text-lg font-bold">Recording complete</p>
+            <p className="text-lg font-bold">{state === 'uploaded' ? 'Clip saved · +50 Credits' : 'Recording complete'}</p>
             <p className="text-slate-400 text-sm">{fmt(elapsed)} recorded</p>
+            {matchComplete && (
+              <p className="text-slate-500 text-xs">Match finished — log the result below when ready.</p>
+            )}
           </div>
         )}
         {state === 'uploading' && (
@@ -261,26 +331,33 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-6 py-6 bg-black/80">
-        <button onClick={closeModal}
-          className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors">
+      <div className="flex items-center justify-center gap-4 py-6 bg-black/80 flex-wrap px-4">
+        <button onClick={requestExit}
+          className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0">
           <X size={18}/>
         </button>
 
+        {canUndo && onUndo && (state === 'previewing' || state === 'recording') && (
+          <button onClick={onUndo}
+            className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0" title="Undo last point">
+            <RotateCcw size={16}/>
+          </button>
+        )}
+
         {state === 'previewing' && (
           <button onClick={startRec}
-            className="w-18 h-18 w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center">
+            className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
             <span className="w-12 h-12 rounded-full bg-red-500"/>
           </button>
         )}
         {state === 'recording' && (
           <button onClick={stopRec}
-            className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center">
+            className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
             <Square size={24} fill="white" className="text-white"/>
           </button>
         )}
         {state === 'done' && (
-          <div className="flex gap-4">
+          <div className="flex gap-3 flex-wrap justify-center">
             <button onClick={uploadClip}
               className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-semibold transition-colors">
               <Upload size={16}/> Upload (+50 Credits)
@@ -290,6 +367,13 @@ export default function ClipRecorder({ match, onUploaded }: Props) {
               <Download size={16}/>
             </button>
           </div>
+        )}
+
+        {matchComplete && onLogResult && (state === 'done' || state === 'uploaded') && (
+          <button onClick={onLogResult}
+            className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl font-bold transition-colors">
+            <Check size={16}/> Log Result
+          </button>
         )}
       </div>
     </div>

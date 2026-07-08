@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
@@ -28,6 +28,9 @@ interface SlotPlayer {
   country?: string;
 }
 
+// Extra lifecycle state layered on top of `status` once live scoring starts
+type LiveState = 'live' | 'confirming' | 'completed';
+
 interface PlannedMatch {
   id: string;
   format: MatchType;
@@ -43,6 +46,22 @@ interface PlannedMatch {
   declined: string[];
   status: PlannedStatus;
   liveRecord?: boolean; // created via Record Live — live scoring enabled once all confirmed
+  liveState?: LiveState; // set once the match has actually been played
+}
+
+// Friendly status vocabulary shown to the user
+function displayStatus(m: PlannedMatch): { label: string; className: string } {
+  if (m.status === 'cancelled')
+    return { label: 'Cancelled', className: 'bg-red-500/15 text-red-400 border-red-500/25' };
+  if (m.liveState === 'completed')
+    return { label: 'Completed', className: 'bg-slate-700 text-slate-300 border-slate-600' };
+  if (m.liveState === 'confirming')
+    return { label: 'Confirming Result', className: 'bg-blue-500/15 text-blue-400 border-blue-500/25' };
+  if (m.liveState === 'live')
+    return { label: 'Live Now', className: 'bg-rose-500/15 text-rose-400 border-rose-500/25 animate-pulse' };
+  if (m.status === 'confirmed')
+    return { label: 'Ready to Play', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' };
+  return { label: 'Awaiting RSVPs', className: 'bg-amber-500/15 text-amber-400 border-amber-500/25' };
 }
 
 const FORMAT_LABELS: Record<MatchType, string> = {
@@ -248,6 +267,31 @@ export default function MatchesPage() {
     });
   };
 
+  // A confirmed match becomes "Live Now" the moment recording/scoring actually starts
+  const handleOpenLiveRecord = (id: string) => {
+    setPlanned(prev => prev.map(m => m.id === id ? { ...m, liveState: 'live' } : m));
+    setLiveMatchId(id);
+    setLiveOpen(true);
+  };
+
+  // Once the host taps Log Result, the planned match moves to "Confirming Result"
+  // until every opponent has confirmed the score (handled via confirmMatch in AppContext)
+  const handleMatchLogged = (plannedMatchId: string) => {
+    setPlanned(prev => prev.map(m => m.id === plannedMatchId ? { ...m, liveState: 'confirming' } : m));
+  };
+
+  // Once the logged Match flips to Confirmed (all opponents confirmed), mark the
+  // linked planned match as fully Completed.
+  useEffect(() => {
+    const confirmedIds = new Set(
+      matches.filter(m => m.status === 'Confirmed' && m.plannedMatchId).map(m => m.plannedMatchId!)
+    );
+    if (confirmedIds.size === 0) return;
+    setPlanned(prev => prev.map(m =>
+      m.liveState === 'confirming' && confirmedIds.has(m.id) ? { ...m, liveState: 'completed' } : m
+    ));
+  }, [matches]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -355,7 +399,7 @@ export default function MatchesPage() {
                 onEdit={() => openPlan(m.id)}
                 onLog={() => setLogOpen(true)}
                 onCancel={() => setCancelId(m.id)}
-                onLiveRecord={() => { setLiveMatchId(m.id); setLiveOpen(true); }}
+                onLiveRecord={() => handleOpenLiveRecord(m.id)}
                 onSimulateAccept={uid => handleSimulateAccept(m.id, uid)}
               />
             ))
@@ -393,6 +437,7 @@ export default function MatchesPage() {
         <LiveMatchModal
           open={true}
           onClose={() => { setLiveOpen(false); setLiveMatchId(null); }}
+          onMatchLogged={handleMatchLogged}
           plannedMatch={liveMatchId ? planned.find(m => m.id === liveMatchId) ?? null : null}
         />
       )}
@@ -472,6 +517,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
   const isPast  = dateObj < new Date();
   const dateStr = dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
   const borderClass = m.status === 'confirmed' ? 'border-emerald-500/25' : m.status === 'cancelled' ? 'border-red-500/20 opacity-60' : 'border-slate-800';
+  const status = displayStatus(m);
 
   return (
     <div className={`bg-slate-900 border rounded-2xl overflow-hidden ${borderClass}`}>
@@ -480,11 +526,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold">{FORMAT_LABELS[m.format]}</span>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
-                m.status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
-                : m.status === 'cancelled' ? 'bg-red-500/15 text-red-400 border-red-500/25'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-              }`}>{m.status === 'confirmed' ? 'Confirmed' : m.status === 'cancelled' ? 'Cancelled' : 'Pending'}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${status.className}`}>{status.label}</span>
               {isPast && m.status !== 'cancelled' && <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">Past</span>}
             </div>
             <p className="text-xs text-slate-400 flex items-center gap-1"><CalendarDays size={10}/> {dateStr} · {m.time}</p>
@@ -534,8 +576,8 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
           </div>
         )}
 
-        {/* Actions — only on confirmed matches */}
-        {m.status === 'confirmed' && (
+        {/* Actions — only on confirmed matches that haven't been played yet */}
+        {m.status === 'confirmed' && !m.liveState && (
           <div className="flex gap-2 pt-0.5 flex-wrap">
             <button onClick={onLog}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-xl text-xs font-bold transition-colors">
@@ -546,6 +588,11 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
               <Radio size={11}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
             </button>
           </div>
+        )}
+        {m.liveState === 'confirming' && (
+          <p className="text-[11px] text-blue-400 flex items-center gap-1.5 pt-0.5">
+            <Clock size={11}/> Waiting on the other player{m.teamB.filter(Boolean).length > 1 ? 's' : ''} to confirm the score.
+          </p>
         )}
       </div>
     </div>
