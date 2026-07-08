@@ -458,7 +458,7 @@ export default function MatchesPage() {
 
       {/* Cancel match confirmation */}
       {cancelId && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCancelId(null)}>
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCancelId(null)}>
           <div ref={cancelPanelRef} {...cancelDialogProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
@@ -897,7 +897,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center sm:items-center p-4" onClick={onClose}>
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-end justify-center sm:items-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] flex flex-col outline-none" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <p className="font-bold text-sm">{existing ? 'Edit Match' : 'Plan a Match'}</p>

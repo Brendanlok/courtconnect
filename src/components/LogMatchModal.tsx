@@ -491,7 +491,7 @@ export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () =>
   const excludeFromTeam = [opp1?.uid, opp2?.uid].filter(Boolean) as string[];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
         {done ? (
           <div className="p-12 text-center">

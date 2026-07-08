@@ -32,7 +32,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Pr
   const oppGamesWon = gameScores.filter(g => g.p2 > g.p1).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
 
         {/* Header */}

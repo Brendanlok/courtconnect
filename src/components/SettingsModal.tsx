@@ -134,7 +134,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   };
 
   if (saved) return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-10 text-center">
         <div className="text-4xl mb-3">✅</div>
         <p className="text-lg font-bold">Saved!</p>
@@ -143,7 +143,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">

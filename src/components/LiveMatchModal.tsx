@@ -66,7 +66,7 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
         <p className="text-[11px] text-slate-400">{label}</p>
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+        <div className="popover-anim absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
           <div className="p-2 border-b border-slate-700">
             <div className="relative">
               <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
@@ -797,7 +797,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={requestClose}>
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={requestClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col outline-none"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
@@ -819,7 +819,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
 
       {/* Exit warning — match still in progress */}
       {exitConfirm && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={e => { e.stopPropagation(); setExitConfirm(false); }}>
+        <div className="modal-backdrop fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={e => { e.stopPropagation(); setExitConfirm(false); }}>
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">

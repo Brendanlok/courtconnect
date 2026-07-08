@@ -523,8 +523,8 @@ export default function LivePage() {
 
       {/* Court position tracker sheet */}
       {courtOpen && (
-        <div className="fixed inset-0 z-40 bg-black/80 flex items-end" onClick={() => setCourtOpen(false)}>
-          <div className="w-full max-w-lg mx-auto bg-slate-900 border-t border-slate-800 rounded-t-2xl p-5 space-y-3"
+        <div className="modal-backdrop fixed inset-0 z-40 bg-black/80 flex items-end" onClick={() => setCourtOpen(false)}>
+          <div className="sheet-panel w-full max-w-lg mx-auto bg-slate-900 border-t border-slate-800 rounded-t-2xl p-5 space-y-3"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold flex items-center gap-2">

@@ -101,7 +101,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Disband confirmation modal */}
       {leaveModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
@@ -132,7 +132,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
       )}
 
       {disbandModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>

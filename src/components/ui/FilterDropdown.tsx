@@ -35,7 +35,7 @@ export function FilterDropdown<T extends string>({
         <ChevronDown size={11} className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`}/>
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+        <div className="popover-anim origin-top-left absolute top-full mt-1 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
           {options.map(o => (
             <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors

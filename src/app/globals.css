@@ -3,6 +3,10 @@
 :root {
   --background: #020817;
   --foreground: #f1f5f9;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 html {
@@ -69,3 +73,59 @@ html.light body {
 
 /* Recharts tooltip */
 .recharts-tooltip-wrapper { outline: none; }
+
+/* ── Motion ───────────────────────────────────────────────────────────────────
+   Key-interaction animations: button press feedback, modal/popover entrances.
+   Everything here is enter-only (elements fully unmount on close) and skips
+   keyboard-repeated actions by design — see prefers-reduced-motion below. */
+
+/* Buttons feel pressed, not just clicked. Component-level active states
+   (Tailwind `active:` utilities) win over this via specificity, so this is
+   purely the default for buttons that don't already define their own. */
+button:not(:disabled) {
+  transition: transform 120ms var(--ease-out);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Modal panels — every modal in the app carries role="dialog" via useModalA11y,
+   so this single rule animates all of them without per-file wiring. */
+[role="dialog"] {
+  animation: modal-panel-in 200ms var(--ease-out) both;
+  transform-origin: center;
+}
+.modal-backdrop {
+  animation: modal-backdrop-in 200ms ease both;
+}
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: scale(0.95); }
+}
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+}
+/* Bottom sheets (no role="dialog") slide up rather than scale */
+.sheet-panel {
+  animation: sheet-panel-in 220ms var(--ease-in-out) both;
+}
+@keyframes sheet-panel-in {
+  from { transform: translateY(100%); }
+}
+
+/* Popovers (dropdowns, menus) — scale in from where they're anchored, not center. */
+.popover-anim {
+  animation: popover-in 160ms var(--ease-out) both;
+}
+.popover-anim.origin-top-left  { transform-origin: top left; }
+.popover-anim.origin-top-right { transform-origin: top right; }
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active { transform: none; }
+  [role="dialog"], .modal-backdrop, .popover-anim, .sheet-panel {
+    animation-duration: 1ms;
+    animation-name: none;
+  }
+}

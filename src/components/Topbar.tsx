@@ -85,7 +85,7 @@ export function Topbar() {
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
+              <div className="popover-anim origin-top-right absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
                 <div className="p-4 border-b border-slate-800">
                   <div className="flex items-center gap-3">
                     <Avatar name={user.displayName} />
