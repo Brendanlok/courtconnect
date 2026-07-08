@@ -271,7 +271,7 @@ export default function ClipRecorder({
       <div className="fixed inset-0 z-50 bg-black flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
           <p className="font-bold text-white">Set up your camera</p>
-          <button onClick={requestExit} className="text-slate-400 hover:text-white p-1"><X size={18}/></button>
+          <button onClick={requestExit} aria-label="Close" className="text-slate-400 hover:text-white p-1"><X size={18}/></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
           <p className="text-sm text-slate-300">A few tips so the footage is actually usable:</p>
