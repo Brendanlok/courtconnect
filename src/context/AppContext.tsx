@@ -391,15 +391,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const acceptClubInvite = useCallback((clubId: string) => {
+    if (!myClubIds.includes(clubId) && myClubIds.length >= clubLimit) return;
+    const next = myClubIds.includes(clubId) ? myClubIds : [...myClubIds, clubId];
     setClubInvites(p => p.filter(id => id !== clubId));
     setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes('me')
       ? { ...c, memberIds: [...c.memberIds, 'me'] }
       : c));
-    setMyClubId(clubId);
+    setMyClubIds(next);
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
     const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, clubId).catch(() => {});
-  }, []);
+    if (uid) saveClubMembership(uid, next).catch(() => {});
+  }, [myClubIds, clubLimit]);
 
   const declineClubInvite = useCallback((clubId: string) => {
     setClubInvites(p => p.filter(id => id !== clubId));
