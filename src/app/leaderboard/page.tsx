@@ -172,7 +172,7 @@ export default function Leaderboard() {
             </div>
             <div className="divide-y divide-slate-800/60">
               {(query ? list : rest).map(p => {
-                const displayRank = tab === 'Nationwide' ? p.globalRank : (p as any).tabRank;
+                const displayRank = p.tabRank;
                 const isMe = p.uid === 'me';
                 return (
                   <Link key={p.uid} href={profileHref(p.username)}
@@ -220,7 +220,7 @@ export default function Leaderboard() {
               <Avatar name={user.displayName} size="sm"/>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-emerald-300">
-                  {tab === 'Nationwide' ? `National Rank #${user.globalRank}` : `${tab} Rank #${meInList.tabRank}`}
+                  {tab === 'Nationwide' ? `National Rank #${meInList.tabRank}` : `${tab} Rank #${meInList.tabRank}`}
                 </p>
                 <p className="text-xs text-slate-400">
                   {tab === 'By State' ? `Top ${meInList.tabRank} in ${selState}` :
