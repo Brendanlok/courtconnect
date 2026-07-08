@@ -797,19 +797,13 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     onClose();
   };
 
-  const titles: Record<ModalView, string> = {
-    setup: plannedMatch ? 'Record Live' : 'Live Match',
-    scoring: liveMatch ? `${liveMatch.teamAName} vs ${liveMatch.teamBName}` : 'Live Scoring',
-    complete: 'Match Complete',
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-black/75 flex items-end justify-center sm:items-center p-4" onClick={requestClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[92vh] flex flex-col outline-none"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
           <p className="font-bold text-sm">{titles[view]}</p>
-          <button onClick={requestClose} className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
+          <button onClick={requestClose} aria-label="Close" className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
         </div>
         <div className="overflow-y-auto p-4 flex-1">
           {view === 'setup' && plannedMatch && (
