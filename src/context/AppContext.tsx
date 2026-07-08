@@ -256,7 +256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentPlayers: t.currentPlayers + 1,
       participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
     } : t));
-    addNotif({ type: 'event_registered', title: 'Event Registration', body: 'You have registered for the event!' });
+    addNotification({ type: 'event_registered', title: 'Event Registration', body: 'You have registered for the event!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveTournamentReg(uid, id, reg).catch(() => {});
   }, [user.displayName, user.username]);
@@ -275,11 +275,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const sendChallenge    = useCallback((c: Challenge) => {
     setChallenges(p => [c, ...p]);
-    addNotif({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
+    addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
   }, []);
   const acceptChallenge  = useCallback((id: string) => {
     setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'accepted' as const } : c));
-    addNotif({ type: 'challenge_accepted', title: 'Challenge Accepted', body: 'Your match challenge was accepted!' });
+    addNotification({ type: 'challenge_accepted', title: 'Challenge Accepted', body: 'Your match challenge was accepted!' });
   }, []);
   const declineChallenge = useCallback((id: string) => {
     setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c));
@@ -292,7 +292,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: [...c.memberIds, 'me'] } : c));
       return id;
     });
-    addNotif({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
+    addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
     const uid = auth.currentUser?.uid;
     if (uid) saveClubMembership(uid, id).catch(() => {});
   }, []);
@@ -300,7 +300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const requestJoinClub = useCallback((id: string) => {
     setMyClubPendingIds(p => [...p, id]);
     setClubs(cs => cs.map(c => c.id === id ? { ...c, pendingIds: [...c.pendingIds, 'me'] } : c));
-    addNotif({ type: 'club_request', title: 'Request Sent', body: 'Your request to join the club has been sent.' });
+    addNotification({ type: 'club_request', title: 'Request Sent', body: 'Your request to join the club has been sent.' });
   }, []);
 
   const cancelClubRequest = useCallback((id: string) => {
@@ -347,7 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClubs(cs => cs.map(c => c.id === clubId
       ? { ...c, memberIds: [...c.memberIds, uid], pendingIds: c.pendingIds.filter(x => x !== uid) }
       : c));
-    addNotif({ type: 'club_accepted', title: 'Member Accepted', body: 'A new member joined your club.' });
+    addNotification({ type: 'club_accepted', title: 'Member Accepted', body: 'A new member joined your club.' });
   }, []);
 
   const declineClubMember = useCallback((clubId: string, uid: string) => {
@@ -360,13 +360,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (targetUid === 'me') {
       // Being invited by someone else — add pending invite + notification
       setClubInvites(p => [...p, clubId]);
-      addNotif({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
+      addNotification({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
     } else {
       // Admin inviting another player — simulate acceptance immediately (demo)
       setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes(targetUid)
         ? { ...c, memberIds: [...c.memberIds, targetUid] }
         : c));
-      addNotif({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
+      addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
     }
   }, []);
 
@@ -376,14 +376,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? { ...c, memberIds: [...c.memberIds, 'me'] }
       : c));
     setMyClubId(clubId);
-    addNotif({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
+    addNotification({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveClubMembership(uid, clubId).catch(() => {});
   }, []);
 
   const declineClubInvite = useCallback((clubId: string) => {
     setClubInvites(p => p.filter(id => id !== clubId));
-    addNotif({ type: 'club_declined', title: 'Invitation Declined', body: 'You declined the club invitation.' });
+    addNotification({ type: 'club_declined', title: 'Invitation Declined', body: 'You declined the club invitation.' });
   }, []);
 
   const sendClubMessage = useCallback((clubId: string, text: string) => {

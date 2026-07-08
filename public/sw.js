@@ -27,6 +27,24 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Notification click: focus an existing tab if open, otherwise open one
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const targetUrl = e.notification.data?.linkTo || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) client.navigate(targetUrl);
+          return;
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
+  );
+});
+
 // Fetch: network-first for navigation, cache-first for assets
 self.addEventListener('fetch', e => {
   const { request } = e;
