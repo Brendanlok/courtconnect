@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-09] — Multi-Club Membership (MMR-Tiered)
+
+### 🟠 Clubs — Multi-Club Membership Gated by MMR Tier
+**Why:** Users could only belong to one club at a time. Product decision: allow multiple, with higher-MMR players earning the ability to join more.
+
+- Club limit by tier: Beginner/Bronze = 1, Silver/Gold = 2, Platinum = 3, Diamond = 4, Elite = 5.
+- Replaced the single `myClubId` model with `myClubIds: string[]` throughout — `AppContext`, the Clubs tab, club detail page, and the public profile's club card (now shows all of a player's clubs, not just one).
+- `leaveClub` now takes a club ID (was global/no-arg). `joinClub`, `requestJoinClub`, and `acceptClubInvite` all check the tier limit (pending requests count toward the limit too, so you can't queue past your cap).
+- "Create Club" and "Join"/"Request" buttons now disable with a "club limit reached" message instead of "already in a club" once at cap; a running "X/Y clubs joined" count shows on the Clubs tab.
+- Migrated the old single-club localStorage/Firestore key (`cc_myClubId` / `myClubId`) to the new array-based one (`cc_myClubIds` / `myClubIds`) with a fallback read so existing users don't lose their club on upgrade.
+
+**Files changed:** `src/lib/utils.ts`, `src/lib/firestoreService.ts`, `src/context/AppContext.tsx`, `src/app/players/page.tsx`, `src/app/clubs/[id]/ClubDetailClient.tsx`, `src/app/players/[username]/PlayerProfileClient.tsx`
+
+---
+
 ## [2026-07-04] — Session 4: Tournament Overhaul + Home Redesign + QR Scan + PWA
 
 ### 🟠 Tournament Page — Full Overhaul
