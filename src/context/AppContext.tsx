@@ -298,51 +298,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c));
   }, []);
 
-  // Club actions
+  // Club actions — how many clubs the user is allowed at once scales with MMR tier
+  const clubLimit = maxClubsForTier(user.tier);
+
   const joinClub = useCallback((id: string) => {
-    setMyClubId(prev => {
-      if (prev) setClubs(cs => cs.map(c => c.id === prev ? { ...c, memberIds: c.memberIds.filter(m => m !== 'me') } : c));
-      setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: [...c.memberIds, 'me'] } : c));
-      return id;
-    });
+    if (myClubIds.includes(id) || myClubIds.length >= clubLimit) return;
+    const next = [...myClubIds, id];
+    setMyClubIds(next);
+    setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: [...c.memberIds, 'me'] } : c));
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
     const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, id).catch(() => {});
-  }, []);
+    if (uid) saveClubMembership(uid, next).catch(() => {});
+  }, [myClubIds, clubLimit]);
 
   const requestJoinClub = useCallback((id: string) => {
+    if (myClubIds.length + myClubPendingIds.length >= clubLimit) return;
     setMyClubPendingIds(p => [...p, id]);
     setClubs(cs => cs.map(c => c.id === id ? { ...c, pendingIds: [...c.pendingIds, 'me'] } : c));
     addNotification({ type: 'club_request', title: 'Request Sent', body: 'Your request to join the club has been sent.' });
-  }, []);
+  }, [myClubIds, myClubPendingIds, clubLimit]);
 
   const cancelClubRequest = useCallback((id: string) => {
     setMyClubPendingIds(p => p.filter(x => x !== id));
     setClubs(cs => cs.map(c => c.id === id ? { ...c, pendingIds: c.pendingIds.filter(x => x !== 'me') } : c));
   }, []);
 
-  const leaveClub = useCallback(() => {
-    setMyClubId(prev => {
-      if (prev) setClubs(cs => cs.map(c => c.id === prev ? { ...c, memberIds: c.memberIds.filter(m => m !== 'me') } : c));
-      return null;
-    });
+  const leaveClub = useCallback((id: string) => {
+    const next = myClubIds.filter(x => x !== id);
+    setMyClubIds(next);
+    setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: c.memberIds.filter(m => m !== 'me') } : c));
     const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, null).catch(() => {});
-  }, []);
+    if (uid) saveClubMembership(uid, next).catch(() => {});
+  }, [myClubIds]);
 
   const createClub = useCallback((c: Club) => {
+    const next = myClubIds.includes(c.id) ? myClubIds : [...myClubIds, c.id];
     setClubs(cs => [c, ...cs]);
-    setMyClubId(c.id);
-  }, []);
+    setMyClubIds(next);
+    const uid = auth.currentUser?.uid;
+    if (uid) saveClubMembership(uid, next).catch(() => {});
+  }, [myClubIds]);
 
   const updateClub = useCallback((id: string, patch: Partial<Club>) => {
     setClubs(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
   }, []);
 
   const disbandClub = useCallback((id: string) => {
+    const next = myClubIds.filter(x => x !== id);
     setClubs(cs => cs.filter(c => c.id !== id));
-    setMyClubId(null);
-  }, []);
+    setMyClubIds(next);
+    const uid = auth.currentUser?.uid;
+    if (uid) saveClubMembership(uid, next).catch(() => {});
+  }, [myClubIds]);
 
   const assignModerator = useCallback((clubId: string, uid: string) => {
     setClubs(cs => cs.map(c => c.id === clubId
