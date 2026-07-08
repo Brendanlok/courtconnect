@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth } from '@/lib/firebase';
+import { maxClubsForTier } from '@/lib/utils';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
