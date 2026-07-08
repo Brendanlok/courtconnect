@@ -244,6 +244,7 @@ export function AuthModal() {
                     type={showPw ? 'text' : 'password'} placeholder="Password" autoComplete="current-password"
                     className={`${inp} pl-10 pr-10`}/>
                   <button type="button" onClick={() => setShowPw(p => !p)}
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
                   </button>
@@ -283,6 +284,7 @@ export function AuthModal() {
                     type={showPw ? 'text' : 'password'} placeholder="Password (min 6 chars)" autoComplete="new-password"
                     className={`${inp} pl-10 pr-10`}/>
                   <button type="button" onClick={() => setShowPw(p => !p)}
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
                   </button>
