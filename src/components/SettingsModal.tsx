@@ -8,6 +8,7 @@ import type { UserProfile } from '@/types';
 import { storage, auth } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Avatar } from '@/components/ui/Avatar';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 type PrivacyLevel = 'public' | 'friends' | 'private';
 type PrivacySettings = NonNullable<UserProfile['privacy']>;
