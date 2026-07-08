@@ -632,11 +632,11 @@ function ClubsTab({ clubs, myClubId, myClubPendingIds, joinClub, requestJoinClub
                     {club.minMMR && <span className="flex items-center gap-1 text-amber-400/80">Min {club.minMMR.toLocaleString()}</span>}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => copyLink(club.id)}
+                    <button onClick={e => { e.stopPropagation(); copyLink(club.id); }}
                       className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] text-slate-400 transition-colors">
                       {copiedId === club.id ? <><CheckCheck size={10} className="text-emerald-400"/> Copied</> : <><Copy size={10}/> Share</>}
                     </button>
-                    <button onClick={() => setExpandedId(isExpanded ? null : club.id)}
+                    <button onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : club.id); }}
                       className="text-[10px] text-slate-500 hover:text-slate-300 px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
                       {isExpanded ? 'Less ▲' : 'More ▼'}
                     </button>
