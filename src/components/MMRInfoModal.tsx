@@ -51,7 +51,7 @@ export function MMRInfoModal({ open, onClose }: Props) {
           ))}
         </div>
 
-        <div className="overflow-y-auto p-5 space-y-6">
+        <div className="overflow-y-auto p-5 space-y-6 h-[65vh]">
 
           {/* Formula */}
           {tab === 'formula' && (
