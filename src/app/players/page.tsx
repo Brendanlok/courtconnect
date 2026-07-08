@@ -677,7 +677,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
         })}
       </div>
 
-      {!myClubId && !createOpen && (
+      {!atCap && !createOpen && (
         <div className="text-center py-4 space-y-2">
           <p className="text-xs text-slate-500">Don't see your club? Create one.</p>
           <button onClick={() => setCreateOpen(true)}
@@ -685,6 +685,11 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
             <Plus size={14}/> Create Club
           </button>
         </div>
+      )}
+      {atCap && (
+        <p className="text-center text-xs text-slate-600 py-2">
+          You've reached your club limit for your tier ({clubLimit}). Climb to a higher tier to join more.
+        </p>
       )}
 
       {createOpen && <CreateClubModal onClose={() => setCreateOpen(false)}/>}
