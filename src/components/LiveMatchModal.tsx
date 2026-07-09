@@ -848,9 +848,10 @@ interface PlannedMatchRef {
   teamB: ({ uid: string; displayName: string; username: string } | null)[];
 }
 
-export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogged }: {
+export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogged, onMatchCancelled }: {
   open: boolean; onClose: () => void; plannedMatch?: PlannedMatchRef | null;
   onMatchLogged?: (plannedMatchId: string) => void;
+  onMatchCancelled?: (plannedMatchId: string) => void;
 }) {
   const { user, matches, addMatch, addNotification } = useApp();
   const [view, setView] = useState<ModalView>('setup');
