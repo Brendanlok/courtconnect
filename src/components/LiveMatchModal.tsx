@@ -583,7 +583,7 @@ function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onReques
 
       {/* Elapsed time */}
       <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 font-mono tabular-nums">
-        <Clock className="hidden"/>
+        <Clock size={12}/>
         {Math.floor(elapsedDisplaySec / 60)}:{String(Math.floor(elapsedDisplaySec % 60)).padStart(2, '0')} elapsed
       </div>
 
