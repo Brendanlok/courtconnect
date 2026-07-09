@@ -863,6 +863,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const [recordMode, setRecordMode] = useState<RecordMode>('manual');
   const [exitConfirm, setExitConfirm] = useState(false);
   const [resumedPlannedId, setResumedPlannedId] = useState<string | undefined>(undefined);
+  const [liveElapsedSec, setLiveElapsedSec] = useState(0); // kept fresh by ScorerView so Pause & Quit persists an accurate value
 
   // Paused-match resume banner — only relevant on the plain setup screen
   const [pausedMatch, setPausedMatch] = useState<LiveMatch | null>(null);
