@@ -1008,7 +1008,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
             <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode}
               onRequestExit={() => setExitConfirm(true)} onComplete={handleComplete}/>
           )}
-          {view === 'complete' && liveMatch && <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}/>}
+          {view === 'complete' && liveMatch && (
+            <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}
+              blockReason={logBlockReason} bonusEligible={logBonusEligible}/>
+          )}
         </div>
       </div>
 
