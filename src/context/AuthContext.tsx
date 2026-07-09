@@ -2,20 +2,26 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, signOut, updateProfile, sendPasswordResetEmail, User,
+  signInWithPopup, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification, User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
+import { lookupUserByUsername } from '@/lib/firestoreService';
 
 interface AuthCtx {
   authUser: User | null;
   isLoading: boolean;
-  // null = no pending onboarding; User = google user awaiting username/name
-  pendingGoogleUser: User | null;
+  // authUser exists but hasn't confirmed their email yet (password accounts only — Google is pre-verified)
+  needsEmailVerification: boolean;
+  // authUser is verified/Google but has no Firestore profile yet — needs username + details
+  needsProfileSetup: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (displayName: string, username: string, email: string, password: string, country: string, region: string) => Promise<string | null>;
+  signUp: (email: string, password: string) => Promise<string | null>;
   loginWithGoogle: () => Promise<string | null>;
-  completeGoogleOnboarding: (displayName: string, username: string, country: string, region: string) => Promise<string | null>;
+  resendVerificationEmail: () => Promise<string | null>;
+  refreshVerificationStatus: () => Promise<void>;
+  checkUsernameAvailable: (username: string) => Promise<boolean>;
+  completeProfile: (displayName: string, username: string, country: string, region: string) => Promise<string | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
 }
@@ -27,7 +33,7 @@ async function userDocExists(uid: string): Promise<boolean> {
   return snap.exists();
 }
 
-async function createUserDoc(user: User, extra: { username: string; displayName: string; country?: string; region?: string }) {
+async function createUserDoc(user: User, extra: { username: string; displayName: string; country: string; region: string }) {
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
     email: user.email,
@@ -35,8 +41,8 @@ async function createUserDoc(user: User, extra: { username: string; displayName:
     username: extra.username,
     photoURL: user.photoURL ?? null,
     mmr: 1200,
-    country: extra.country ?? 'Malaysia',
-    region: extra.region ?? '',
+    country: extra.country,
+    region: extra.region,
     stats: { wins: 0, losses: 0, totalMatches: 0 },
     openToPlay: false,
     createdAt: serverTimestamp(),
@@ -57,17 +63,55 @@ function friendlyError(code: string): string {
   }
 }
 
+const isGoogleUser = (u: User) => u.providerData.some(p => p.providerId === 'google.com');
+
+const verificationRedirectUrl = () =>
+  typeof window !== 'undefined' ? `${window.location.origin}/` : 'https://courtconnectcc.netlify.app/';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authUser,           setAuthUser]           = useState<User | null>(null);
-  const [isLoading,          setIsLoading]          = useState(true);
-  const [pendingGoogleUser,  setPendingGoogleUser]  = useState<User | null>(null);
+  const [authUser,               setAuthUser]               = useState<User | null>(null);
+  const [isLoading,               setIsLoading]              = useState(true);
+  const [needsEmailVerification,  setNeedsEmailVerification] = useState(false);
+  const [needsProfileSetup,       setNeedsProfileSetup]      = useState(false);
+
+  const evaluateUser = async (user: User | null) => {
+    if (!user) {
+      setNeedsEmailVerification(false);
+      setNeedsProfileSetup(false);
+      return;
+    }
+    const verified = isGoogleUser(user) || user.emailVerified;
+    setNeedsEmailVerification(!verified);
+    if (!verified) { setNeedsProfileSetup(false); return; }
+    const exists = await userDocExists(user.uid);
+    setNeedsProfileSetup(!exists);
+  };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, user => {
+    const unsub = onAuthStateChanged(auth, async user => {
       setAuthUser(user);
+      await evaluateUser(user);
       setIsLoading(false);
     });
     return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-check email verification when the user comes back to the tab (e.g. after
+  // clicking the confirmation link in their email app) — no server needed.
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible' && auth.currentUser && !isGoogleUser(auth.currentUser)) {
+        refreshVerificationStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    window.addEventListener('focus', handler);
+    return () => {
+      document.removeEventListener('visibilitychange', handler);
+      window.removeEventListener('focus', handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
@@ -79,13 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (displayName: string, username: string, email: string, password: string, country: string, region: string): Promise<string | null> => {
-    if (!displayName.trim()) return 'Name is required.';
-    if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
+  const signUp = async (email: string, password: string): Promise<string | null> => {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(user, { displayName: displayName.trim() });
-      await createUserDoc(user, { username, displayName: displayName.trim(), country, region });
+      await sendEmailVerification(user, { url: verificationRedirectUrl() });
+      await evaluateUser(user);
       return null;
     } catch (e: unknown) {
       return friendlyError((e as { code?: string }).code ?? '');
@@ -95,29 +137,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async (): Promise<string | null> => {
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
-      const exists = await userDocExists(user.uid);
-      if (!exists) {
-        // New Google user — need username & display name before entering app
-        setPendingGoogleUser(user);
-        // Sign them back out so AuthGate still shows the modal
-        await signOut(auth);
-      }
-      // If exists, onAuthStateChanged already set authUser — they're in
+      await evaluateUser(user);
       return null;
     } catch (e: unknown) {
-      const code = (e as { code?: string }).code ?? '';
-      return friendlyError(code);
+      return friendlyError((e as { code?: string }).code ?? '');
     }
   };
 
-  const completeGoogleOnboarding = async (displayName: string, username: string, country: string, region: string): Promise<string | null> => {
-    if (!pendingGoogleUser) return 'Session expired. Please try signing in again.';
-    if (!displayName.trim()) return 'Name is required.';
-    if (!/^[a-z0-9_]{3,20}$/.test(username)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
+  const resendVerificationEmail = async (): Promise<string | null> => {
+    if (!auth.currentUser) return 'You need to be signed in.';
     try {
-      await updateProfile(pendingGoogleUser, { displayName: displayName.trim() });
-      await createUserDoc(pendingGoogleUser, { username, displayName: displayName.trim(), country, region });
-      setPendingGoogleUser(null);
+      await sendEmailVerification(auth.currentUser, { url: verificationRedirectUrl() });
+      return null;
+    } catch (e: unknown) {
+      return friendlyError((e as { code?: string }).code ?? '');
+    }
+  };
+
+  const refreshVerificationStatus = async () => {
+    if (!auth.currentUser) return;
+    await auth.currentUser.reload().catch(() => {});
+    await evaluateUser(auth.currentUser);
+  };
+
+  const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+    const existing = await lookupUserByUsername(username.toLowerCase());
+    return !existing;
+  };
+
+  const completeProfile = async (displayName: string, username: string, country: string, region: string): Promise<string | null> => {
+    if (!auth.currentUser) return 'Session expired. Please sign in again.';
+    if (!displayName.trim()) return 'Name is required.';
+    if (!country) return 'Country is required.';
+    if (!region.trim()) return 'State / region is required.';
+    const cleanUsername = username.toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
+    try {
+      const available = await checkUsernameAvailable(cleanUsername);
+      if (!available) return 'That username is already taken.';
+      await updateProfile(auth.currentUser, { displayName: displayName.trim() });
+      await createUserDoc(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim() });
+      setNeedsProfileSetup(false);
       return null;
     } catch (e: unknown) {
       return friendlyError((e as { code?: string }).code ?? '');
@@ -134,14 +194,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    setPendingGoogleUser(null);
     await signOut(auth);
   };
 
   return (
     <Ctx.Provider value={{
-      authUser, isLoading, pendingGoogleUser,
-      signIn, signUp, loginWithGoogle, completeGoogleOnboarding, logout, resetPassword,
+      authUser, isLoading, needsEmailVerification, needsProfileSetup,
+      signIn, signUp, loginWithGoogle, resendVerificationEmail, refreshVerificationStatus,
+      checkUsernameAvailable, completeProfile, logout, resetPassword,
     }}>
       {children}
     </Ctx.Provider>

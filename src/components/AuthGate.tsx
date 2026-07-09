@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { OnboardingModal } from '@/components/OnboardingModal';
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { authUser, isLoading } = useAuth();
+  const { authUser, isLoading, needsEmailVerification, needsProfileSetup } = useAuth();
   const [onboardingDone, setOnboardingDone] = useState(() => {
     if (typeof window === 'undefined') return true;
     return !!localStorage.getItem('cc_onboarded');
@@ -23,7 +23,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!authUser) {
+  if (!authUser || needsEmailVerification || needsProfileSetup) {
     return <AuthModal />;
   }
 
