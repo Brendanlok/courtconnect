@@ -13,7 +13,7 @@ import {
 import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
-import { savePausedMatch, loadPausedMatch, clearPausedMatch } from '@/lib/pausedMatch';
+import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
 
 type RecordMode = 'manual' | 'video';
 
