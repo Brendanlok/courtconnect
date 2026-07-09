@@ -90,20 +90,30 @@ export default function ClipRecorder({
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
-  // Readiness check — confirms the stream is actually live and in landscape
-  // orientation before letting the user hit record. Not real computer vision:
-  // it can't tell if the court is actually in frame, just that the camera is
-  // set up sensibly (landscape, live track) before recording starts.
+  // Readiness check — confirms the stream is actually live and the phone is
+  // physically held in landscape before letting the user hit record. Not real
+  // computer vision: it can't tell if the court is actually in frame, just that
+  // the camera is set up sensibly (landscape, live track) before recording starts.
+  // Landscape is read from the viewport (window dimensions), not the camera
+  // track's getSettings() — the track's reported width/height is the sensor's
+  // fixed capture format and does NOT change when the phone is rotated, so
+  // checking it made "rotate to landscape" impossible to satisfy.
   useEffect(() => {
     if (state !== 'previewing') return;
-    const t = setTimeout(() => {
+    const check = () => {
       const track = streamRef.current?.getVideoTracks()[0];
-      const settings = track?.getSettings();
       const live = track?.readyState === 'live';
-      const landscape = settings?.width && settings?.height ? settings.width >= settings.height : true;
+      const landscape = window.innerWidth >= window.innerHeight;
       setReadiness(live && landscape ? 'ready' : 'warn');
-    }, 1100);
-    return () => clearTimeout(t);
+    };
+    const t = setTimeout(check, 1100);
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
   }, [state]);
 
   const openCamera = useCallback(async () => {
@@ -309,32 +319,43 @@ export default function ClipRecorder({
   // overlay the bottom of the court area instead of taking their own strip.
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Score section — 1/3 of screen */}
-      <div className="flex-[1] min-h-0 flex flex-col items-center justify-center gap-1.5 px-5 bg-black/80">
-        <div className="flex items-center justify-between w-full">
-          <span className="text-sm font-bold text-emerald-400 truncate max-w-[25%]">{match.teamAName}</span>
-          <div className="flex items-center gap-3">
-            <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
-              className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
+      {/* Score section — 1/3 of screen, each side is one big tap target */}
+      <div className="flex-[1] min-h-0 flex flex-col bg-black/80">
+        <div className="flex-1 min-h-0 flex items-stretch relative">
+          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
+              ${canScore && !matchComplete ? 'active:scale-[0.97] active:bg-emerald-500/15' : ''}`}>
+            <span className="text-xs font-bold text-emerald-400 truncate max-w-[90%]">{match.teamAName}</span>
+            <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
               {match.games[match.currentGame]?.a ?? 0}
-            </button>
-            <span className="text-slate-500 text-sm">vs</span>
-            <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
-              className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
-              {match.games[match.currentGame]?.b ?? 0}
-            </button>
-            {state === 'recording' && (
-              <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                {fmt(elapsed)}
-              </span>
-            )}
+            </span>
+          </button>
+
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-800/90 border border-slate-700 rounded-full px-2 py-0.5 pointer-events-none">
+            vs
           </div>
-          <span className="text-sm font-bold text-blue-400 truncate max-w-[25%]">{match.teamBName}</span>
+
+          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
+              ${canScore && !matchComplete ? 'active:scale-[0.97] active:bg-blue-500/15' : ''}`}>
+            <span className="text-xs font-bold text-blue-400 truncate max-w-[90%]">{match.teamBName}</span>
+            <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
+              {match.games[match.currentGame]?.b ?? 0}
+            </span>
+          </button>
         </div>
-        {canScore && !matchComplete && (
-          <p className="text-center text-[10px] text-slate-500">Tap a score to add a point</p>
-        )}
+
+        <div className="flex items-center justify-center gap-2 pb-1.5 shrink-0">
+          {state === 'recording' && (
+            <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+              {fmt(elapsed)}
+            </span>
+          )}
+          {canScore && !matchComplete && (
+            <p className="text-center text-[10px] text-slate-500">Tap a score to add a point</p>
+          )}
+        </div>
       </div>
 
       {/* Court / camera area — 2/3 of screen, controls overlaid at the bottom */}

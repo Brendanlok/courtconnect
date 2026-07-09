@@ -756,9 +756,13 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
 
   useEffect(() => {
-    if (!open || view !== 'setup' || plannedMatch) return;
+    if (!open || view !== 'setup') return;
     const ref = loadPausedMatch();
     if (!ref) { setPausedMatch(null); setPausedRef(null); return; }
+    // A paused match tied to a specific planned match only counts as "this" paused
+    // match when we're reopening that same planned match — otherwise it belongs
+    // to a different Record Live entry point and shouldn't hijack this one.
+    if (plannedMatch && ref.plannedMatchId !== plannedMatch.id) { setPausedMatch(null); setPausedRef(null); return; }
     getLiveMatchByCode(ref.joinCode).then(m => {
       if (m && m.status === 'paused' && m.hostUid === me.uid) {
         setPausedMatch(m);
@@ -770,7 +774,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       }
     }).catch(() => { setPausedMatch(null); setPausedRef(null); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, view]);
+  }, [open, view, plannedMatch?.id]);
 
   if (!open) return null;
 
@@ -878,11 +882,8 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
           <button onClick={requestClose} aria-label="Close" className="text-slate-500 hover:text-white p-1"><X size={16}/></button>
         </div>
         <div className="overflow-y-auto p-4 flex-1">
-          {view === 'setup' && plannedMatch && (
-            <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
-          )}
-          {view === 'setup' && !plannedMatch && pausedMatch && (
-            <div className="mb-4 bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 space-y-3">
+          {view === 'setup' && pausedMatch && (
+            <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 space-y-3">
               <div>
                 <p className="text-sm font-bold text-amber-300">Paused match</p>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -899,7 +900,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
               </div>
             </div>
           )}
-          {view === 'setup' && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
+          {view === 'setup' && !pausedMatch && plannedMatch && (
+            <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
+          )}
+          {view === 'setup' && !pausedMatch && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
           {view === 'scoring'  && liveMatch && (
             <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode}
               onRequestExit={() => setExitConfirm(true)} onComplete={handleComplete}/>
