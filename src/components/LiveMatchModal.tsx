@@ -8,7 +8,7 @@ import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCod
 import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer, LiveMatchStats } from '@/types';
 import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,
-  Wifi, WifiOff, Radio, Search, Check, Camera, Hand, AlertTriangle, Clock,
+  Wifi, WifiOff, Radio, Search, Check, Hand, AlertTriangle, Clock,
 } from 'lucide-react';
 import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
