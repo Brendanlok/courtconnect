@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-09 13:03] — Auto-Dev Session
+
+**Trigger:** Scheduled (12am / 12pm / 6pm)
+**Daily Summary:** Processed one pending Telegram command with three related asks about Live Match (`LiveMatchModal.tsx` + shared `ClipRecorder.tsx`): quitting mid-match now pauses and can be resumed instead of just warning it'll be lost, the video camera view is now 1/3 score / 2/3 court instead of a big fixed header, and the manual-scoring point log table shows plain tallies ("1", "2", "3") instead of "1a"/"1b"/"2a" since color already distinguishes sides.
+
+### Telegram Commands Processed
+1. "For the live record: (1) pause-not-discard on quit-camera/manual-recording confirm, (2) 2/3 court / 1/3 score camera layout, (3) plain number point-log labels instead of 1a/1b" — ✅ all three implemented, build clean, pushed.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟢 | Check for unpushed commits | ✅ | None — already in sync with origin/main |
+| 3 | 🟠 | Implement Telegram-requested Live Match changes | ✅ | See Improvements Made |
+| 4 | 🟢 | Broader code audit | ⏭️ | Skipped this session — time went to the 3-part Telegram request; no TODO/FIXME markers found in a quick sweep |
+
+### Issues Found
+None new this session (focus was the Telegram request, not a fresh audit).
+
+### Improvements Made
+- [src/types/index.ts](src/types/index.ts) — `LiveMatch.status` now includes `'paused'`.
+- [src/components/LiveMatchModal.tsx](src/components/LiveMatchModal.tsx) — Quitting a live match (host, video or manual mode) now marks it `paused` in Firestore and remembers the join code + record mode locally; the plain Live Match setup screen shows a "Paused match" card with Continue/Discard. Non-host viewers still get a plain Quit (no pause — not their match to pause). Point log cells (`pointLabel`) now render just the tally number, not `{tally}{side}`.
+- [src/components/ClipRecorder.tsx](src/components/ClipRecorder.tsx) — Full-screen camera view restructured to `flex-[1]` (score) / `flex-[2]` (court/camera) instead of an auto-height header eating unpredictable space; recording controls now float over the bottom of the court area on a gradient scrim instead of reserving their own strip.
+- Verified via `npx next build` (clean, no TS errors). Could not verify the resume flow live in a browser — same recurring limitation as prior sessions (real Firebase auth required, no demo/guest login path); attempted a throwaway sign-up but the form didn't actually submit (no network call fired), so no test account was created. Layout and logic changes were confirmed by careful code read-through instead.
+- One design call made without asking: paused-match resume restores score/game state exactly, but the *point-by-point log* for the game in progress at pause time resets empty on resume (it's client-side-only, never persisted to Firestore) — final score is unaffected, only the granular per-rally history for that one game. Flagging in case that history matters enough to persist later.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Persist point-by-point log to Firestore | Currently client-only, so a page refresh or the new pause/resume loses per-rally history (final score still correct) | Store `pointLog` alongside `games` on the `LiveMatch` doc; small, isolated change |
+| "My paused matches" indicator elsewhere in the app | Right now a paused match only surfaces if the user reopens the Live Match modal on the plain setup screen; a badge on the Matches tab or a push notification would surface it more reliably | Small — read the same `cc_paused_live_match` local flag from the Matches page header |
+
+### Critical Alerts
+None.
+
+---
+
 ## [2026-07-09] — Interactive Session (Claude Code)
 
 Distilled several bloated modals (Settings, MMR Info → tabs; Host Event / Create
