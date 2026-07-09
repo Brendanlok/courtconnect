@@ -917,7 +917,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const logBonusEligible = liveBonusEligible(matches, user.uid);
 
   const handleLogMatch = (m: LiveMatch) => {
-    if (!m.winningSide) return;
+    if (!m.winningSide || logBlockReason) return;
     const iWon = m.winningSide === 'A'; // team A is always host's team
     const gameScores = m.games.filter(g => g.done).map(g => ({ p1: g.a, p2: g.b }));
     const opp = m.teamB[0];
