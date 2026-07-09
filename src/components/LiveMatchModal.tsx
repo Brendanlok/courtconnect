@@ -493,7 +493,7 @@ function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onReques
         const allPoints = updatedPointLog.flat();
         const gaps = [...pointGapsSec, gapSec];
         const liveStats: LiveMatchStats = {
-          durationSec: (now - matchStartRef.current) / 1000,
+          durationSec: currentElapsedSec(),
           gameDurationsSec: finishedGameDurations,
           pointGapsSec: gaps,
           avgPointGapSec: gaps.reduce((s, x) => s + x, 0) / gaps.length,
