@@ -839,7 +839,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       playedAt: new Date().toISOString(),
       venue: m.venue,
       mmrChange: iWon ? 18 : -15,
-      plannedMatchId: plannedMatch?.id,
+      plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
     opponentUids.forEach(uid => {
@@ -854,7 +854,18 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
         meta: { matchId: newMatch.id, opponentUid: uid, opponentName: player?.displayName ?? '' },
       });
     });
-    if (plannedMatch) onMatchLogged?.(plannedMatch.id);
+    clearPausedMatch();
+    const loggedPlannedId = plannedMatch?.id ?? resumedPlannedId;
+    if (loggedPlannedId) onMatchLogged?.(loggedPlannedId);
+    onClose();
+  };
+
+  const handlePauseAndQuit = () => {
+    if (liveMatch && isHost && view === 'scoring') {
+      updateLiveMatch(liveMatch.id, { status: 'paused' }).catch(() => {});
+      savePausedMatch({ joinCode: liveMatch.joinCode, recordMode, plannedMatchId: plannedMatch?.id ?? resumedPlannedId });
+    }
+    setExitConfirm(false);
     onClose();
   };
 
