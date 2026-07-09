@@ -79,6 +79,22 @@ export interface Match {
   venue?: string;
   pendingConfirmations?: string[]; // opponent uids who still need to confirm this result
   plannedMatchId?: string;         // links back to the PlannedMatch this was logged from, if any
+  recordedLive?: boolean;          // scored point-by-point in real time via Live Match, not typed in after the fact
+  liveStats?: LiveMatchStats;      // only present when recordedLive is true
+}
+
+// Point-by-point telemetry captured while a match is scored live. Everything
+// here is derived purely from timestamps + the point log — no video/motion
+// analysis involved.
+export interface LiveMatchStats {
+  durationSec: number;          // start to finish, whole match
+  gameDurationsSec: number[];   // one entry per completed game
+  pointGapsSec: number[];       // time between each point, across the whole match
+  avgPointGapSec: number;
+  longestGapSec: number;
+  shortestGapSec: number;
+  maxWinStreak: { side: 'a' | 'b'; count: number };
+  biggestComebackPoints: number; // largest point deficit overcome within a single won game
 }
 
 export interface Tournament {
