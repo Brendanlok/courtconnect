@@ -238,6 +238,7 @@ export interface LiveMatch {
   createdAt: string;
   completedAt?: string;
   clipUrl?: string;
+  recordMode?: 'manual' | 'video'; // how the host chose to record — camera session itself can't survive a pause
 }
 
 export interface Conversation {
