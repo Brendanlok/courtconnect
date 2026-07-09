@@ -230,7 +230,7 @@ export interface LiveMatch {
   venue: string;
   hostUid: string;
   bestOf: 1 | 3 | 5;
-  status: 'active' | 'completed';
+  status: 'active' | 'paused' | 'completed';
   currentGame: number;        // 0-indexed
   games: LiveGame[];          // scores per game
   gameWins: { a: number; b: number };
