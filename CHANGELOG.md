@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-07-09] — Live Match: Pause/Resume, Camera Layout, Point Log
+
+### 🟠 Live Match — Pause & Resume Instead of Discard on Quit
+**Why:** Telegram feedback — quitting mid-match (video or manual) only warned that progress would be lost; the user wanted an actual pause/resume instead of a dead end.
+
+- Added `'paused'` to `LiveMatch.status`. Quitting a live match in progress (video or manual scoring) now sets the match to `paused` in Firestore instead of abandoning it — dialog copy updated to explain this.
+- The join code + record mode are remembered locally so the plain "Live Match" setup screen shows a "Paused match" card (score, game, teams) with **Continue Match** / **Discard** — Continue restores the exact score state and drops straight back into scoring.
+- Non-host viewers still get a plain "Quit" with no pause (pausing is a host-only action).
+
+### 🟡 Live Match Camera — 1/3 Score, 2/3 Court
+**Why:** Telegram feedback — the score header ate a large fixed slice of the screen, leaving too little room for the court in view.
+
+- Video-record camera view now splits 1/3 (score header) / 2/3 (camera/court), instead of a fixed-height header. Playback controls now overlay the bottom of the court area (gradient backdrop) rather than reserving their own strip.
+
+### 🟢 Live Match — Simplified Point Log Labels
+**Why:** Telegram feedback — the per-rally point log table's "1a"/"1b"/"2a" labels were redundant since row color already shows the side.
+
+- Point log cells now show just the running tally ("1", "2", "3"...); row color (emerald/rose) still distinguishes teams.
+
+**Files changed:** `src/types/index.ts`, `src/components/LiveMatchModal.tsx`, `src/components/ClipRecorder.tsx`
+
+---
+
 ## [2026-07-09] — Multi-Club Membership (MMR-Tiered)
 
 ### 🟠 Clubs — Multi-Club Membership Gated by MMR Tier
