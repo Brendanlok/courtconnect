@@ -581,6 +581,12 @@ function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onReques
         </div>
       </div>
 
+      {/* Elapsed time */}
+      <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 font-mono tabular-nums">
+        <Clock className="hidden"/>
+        {Math.floor(elapsedDisplaySec / 60)}:{String(Math.floor(elapsedDisplaySec % 60)).padStart(2, '0')} elapsed
+      </div>
+
       {/* Game wins strip */}
       {match.bestOf > 1 && (
         <div className="flex items-center justify-center gap-3">
