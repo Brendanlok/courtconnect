@@ -1055,7 +1055,9 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
           {view === 'setup' && !pausedMatch && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
           {view === 'scoring'  && liveMatch && (
             <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode}
-              onRequestExit={() => setExitConfirm(true)} onComplete={handleComplete}/>
+              plannedMatchId={plannedMatch?.id ?? resumedPlannedId}
+              onRequestExit={() => setExitConfirm(true)} onComplete={handleComplete}
+              onElapsedTick={setLiveElapsedSec}/>
           )}
           {view === 'complete' && liveMatch && (
             <CompletionView match={liveMatch} onLogMatch={handleLogMatch} onClose={onClose}
