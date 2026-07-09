@@ -455,6 +455,7 @@ export default function MatchesPage() {
           open={true}
           onClose={() => { setLiveOpen(false); setLiveMatchId(null); }}
           onMatchLogged={handleMatchLogged}
+          onMatchCancelled={handleCancelMatch}
           plannedMatch={liveMatchId ? planned.find(m => m.id === liveMatchId) ?? null : null}
         />
       )}
