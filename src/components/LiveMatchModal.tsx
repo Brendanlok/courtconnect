@@ -401,11 +401,15 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
       pointLog: pointLog.map(arr => [...arr]),
     }]);
 
-    setPointLog(prev => {
-      const next = prev.map(arr => [...arr]);
-      next[match.currentGame] = [...(next[match.currentGame] ?? []), side];
-      return next;
-    });
+    // Timing: gap since the last point, tracked regardless of how the game/match ends up.
+    const now = Date.now();
+    const gapSec = (now - lastPointAtRef.current) / 1000;
+    lastPointAtRef.current = now;
+    setPointGapsSec(prev => [...prev, gapSec]);
+
+    const updatedPointLog = pointLog.map(arr => [...arr]);
+    updatedPointLog[match.currentGame] = [...(updatedPointLog[match.currentGame] ?? []), side];
+    setPointLog(updatedPointLog);
 
     setMatch(prev => {
       const games = prev.games.map(g => ({ ...g }));
@@ -421,9 +425,13 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
       let nextGame = prev.currentGame;
       let winningSide = prev.winningSide;
       let status = prev.status;
+      let finishedGameDurations = gameDurationsSec;
 
       if (done && winner) {
         gameWins[winner.toLowerCase() as 'a' | 'b'] += 1;
+        finishedGameDurations = [...gameDurationsSec, (now - gameStartRef.current) / 1000];
+        setGameDurationsSec(finishedGameDurations);
+        gameStartRef.current = now;
         const matchWinner = checkMatchEnd(gameWins, prev.bestOf);
         if (matchWinner) {
           winningSide = matchWinner;
@@ -434,14 +442,34 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
         }
       }
 
-      const next: LiveMatch = { ...prev, games, gameWins, currentGame: nextGame, winningSide, status };
-      updateLiveMatch(prev.id, { games, gameWins, currentGame: nextGame, winningSide, status }).catch(() => {});
+      let next: LiveMatch = { ...prev, games, gameWins, currentGame: nextGame, winningSide, status };
+      let updatePatch: Partial<LiveMatch> = { games, gameWins, currentGame: nextGame, winningSide, status };
+
+      if (status === 'completed') {
+        const allPoints = updatedPointLog.flat();
+        const gaps = [...pointGapsSec, gapSec];
+        const liveStats: LiveMatchStats = {
+          durationSec: (now - matchStartRef.current) / 1000,
+          gameDurationsSec: finishedGameDurations,
+          pointGapsSec: gaps,
+          avgPointGapSec: gaps.reduce((s, x) => s + x, 0) / gaps.length,
+          longestGapSec: Math.max(...gaps),
+          shortestGapSec: Math.min(...gaps),
+          maxWinStreak: computeMaxStreak(allPoints),
+          biggestComebackPoints: games.filter(gm => gm.done && gm.winningSide).reduce((max, gm, i) =>
+            Math.max(max, biggestComebackInGame(updatedPointLog[i] ?? [], gm.winningSide!)), 0),
+        };
+        next = { ...next, liveStats };
+        updatePatch = { ...updatePatch, liveStats };
+      }
+
+      updateLiveMatch(prev.id, updatePatch).catch(() => {});
       // In video mode, stay on screen so the recording isn't cut off — the Log Result
       // button inside the camera view lets the user finish saving the clip first.
       if (status === 'completed' && recordMode !== 'video') setTimeout(() => onComplete(next), 800);
       return next;
     });
-  }, [isHost, currentGame, match, onComplete, recordMode, pointLog]);
+  }, [isHost, currentGame, match, onComplete, recordMode, pointLog, pointGapsSec, gameDurationsSec]);
 
   // New game started — make sure pointLog has a slot for it (covers the case
   // where match state syncs in from Firestore, e.g. a watcher's view)
