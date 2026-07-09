@@ -293,14 +293,15 @@ function checkMatchEnd(gameWins: { a: number; b: number }, bestOf: number): 'A' 
 }
 
 // ── Point log table — one row per side, one column per rally, cell shows the
-// running tally + side letter at that point (e.g. 1-0 → "1a", 1-1 → "1b", 2-1 → "2a")
+// running tally for that side at that point (e.g. 1-0 → "1", 1-1 → "1", 2-1 → "2").
+// Row color already distinguishes the side, so no letter suffix is needed.
 const POINT_COLS = 30;
 
 function pointLabel(log: ('a' | 'b')[], idx: number): string {
   const side = log[idx];
   let tally = 0;
   for (let i = 0; i <= idx; i++) if (log[i] === side) tally++;
-  return `${tally}${side}`;
+  return `${tally}`;
 }
 
 function PointLogTable({ log, teamAName, teamBName, active }: {
