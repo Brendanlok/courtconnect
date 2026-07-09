@@ -821,15 +821,15 @@ function PlannedMatchStart({ pm, me, onStart, onJoin, onCancel }: {
       </div>
 
       <div className="space-y-2">
-        <p className="text-[11px] text-slate-500 font-semibold">How do you want to record this match?</p>
+        <p className="text-[11px] text-slate-500 font-semibold">Ready to play?</p>
         <div className="flex gap-2">
           <button onClick={() => onStart('manual')}
-            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
             <Hand size={13}/> Manual Score
           </button>
-          <button onClick={() => onStart('video')}
-            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
-            <Camera size={13}/> Video Record
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+            <X size={13}/> Cancel Match
           </button>
         </div>
       </div>
