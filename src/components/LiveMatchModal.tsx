@@ -653,11 +653,17 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
 
 // ── Completion view ───────────────────────────────────────────────────────────
 
-function CompletionView({ match, onLogMatch, onClose }: {
+function CompletionView({ match, onLogMatch, onClose, blockReason, bonusEligible }: {
   match: LiveMatch; onLogMatch: (m: LiveMatch) => void; onClose: () => void;
+  blockReason: string | null; bonusEligible: boolean;
 }) {
   const winner = match.winningSide === 'A' ? match.teamAName : match.teamBName;
   const totalGames = match.games.filter(g => g.done).length;
+  const stats = match.liveStats;
+  const fmtDuration = (sec: number) => {
+    const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
   return (
     <div className="space-y-4 text-center">
       <div className="text-4xl">🏆</div>
@@ -680,11 +686,45 @@ function CompletionView({ match, onLogMatch, onClose }: {
           <span className="text-xs font-bold text-slate-300">{match.gameWins.a} – {match.gameWins.b}</span>
         </div>
       </div>
+
+      {stats && (
+        <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3.5 text-left space-y-1.5">
+          <p className="text-xs font-semibold text-slate-400 mb-1.5">Match Insights</p>
+          <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+            <span className="text-slate-500">Duration</span>
+            <span className="text-slate-200 text-right font-semibold tabular-nums">{fmtDuration(stats.durationSec)}</span>
+            <span className="text-slate-500">Longest streak</span>
+            <span className="text-slate-200 text-right font-semibold">
+              {stats.maxWinStreak.count} pts ({stats.maxWinStreak.side === 'a' ? match.teamAName : match.teamBName})
+            </span>
+            {stats.biggestComebackPoints > 0 && (
+              <>
+                <span className="text-slate-500">Biggest comeback</span>
+                <span className="text-amber-400 text-right font-semibold">{stats.biggestComebackPoints} pts</span>
+              </>
+            )}
+            <span className="text-slate-500">Avg. gap between points</span>
+            <span className="text-slate-200 text-right font-semibold">{Math.round(stats.avgPointGapSec)}s</span>
+          </div>
+        </div>
+      )}
+
+      {!blockReason && bonusEligible && (
+        <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-xl py-2">
+          <Radio size={12}/> Live-verified — +{Math.round((LIVE_BONUS_MULTIPLIER - 1) * 100)}% MMR bonus on log
+        </div>
+      )}
+      {blockReason && (
+        <div className="bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2.5 text-xs text-red-300 text-left">
+          {blockReason}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Button variant="secondary" onClick={onClose} className="flex-1 border border-slate-700 font-medium">
           Close
         </Button>
-        <Button onClick={() => onLogMatch(match)} className="flex-1 font-bold">
+        <Button onClick={() => onLogMatch(match)} disabled={!!blockReason} className="flex-1 font-bold">
           Log to Profile
         </Button>
       </div>
