@@ -5,7 +5,7 @@ import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { auth } from '@/lib/firebase';
 import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCode } from '@/lib/firestoreService';
-import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer } from '@/types';
+import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer, LiveMatchStats } from '@/types';
 import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,
   Wifi, WifiOff, Radio, Search, Check, Camera, Hand, AlertTriangle,
