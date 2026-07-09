@@ -606,6 +606,14 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onSi
             </button>
           </div>
         )}
+        {m.liveState === 'live' && (
+          <div className="flex gap-2 pt-0.5 flex-wrap">
+            <button onClick={onLiveRecord}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
+              <Radio size={11}/> Continue Recording
+            </button>
+          </div>
+        )}
         {m.liveState === 'confirming' && (
           <p className="text-[11px] text-blue-400 flex items-center gap-1.5 pt-0.5">
             <Clock size={11}/> Waiting on the other player{m.teamB.filter(Boolean).length > 1 ? 's' : ''} to confirm the score.
