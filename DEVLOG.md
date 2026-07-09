@@ -35,6 +35,12 @@ None new this session (focus was the Telegram request, not a fresh audit).
 ### Critical Alerts
 None.
 
+### 📊 Daily Summary (06:00)
+- Sessions run: 3
+- Total fixes deployed: 7
+- Build status: ✅ Healthy
+- Telegram summary: ✅ Sent
+
 ---
 
 ## [2026-07-09] — Interactive Session (Claude Code)
