@@ -373,6 +373,13 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
   const [connected, setConnected] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
 
+  // Match-insight capture — timing only; streak/comeback are derived from pointLog at completion.
+  const matchStartRef = useRef(Date.now());
+  const lastPointAtRef = useRef(Date.now());
+  const gameStartRef = useRef(Date.now());
+  const [pointGapsSec, setPointGapsSec] = useState<number[]>([]);
+  const [gameDurationsSec, setGameDurationsSec] = useState<number[]>([]);
+
   // Subscribe to live updates
   useEffect(() => {
     const unsub = subscribeLiveMatch(match.id, updated => {
