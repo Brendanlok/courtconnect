@@ -305,36 +305,40 @@ export default function ClipRecorder({
   }
 
   // ── Camera modal (requesting / previewing / recording / done / uploading) ──
+  // Screen is split 1/3 score (top) / 2/3 court + controls (bottom) — controls
+  // overlay the bottom of the court area instead of taking their own strip.
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Score header */}
-      <div className="flex items-center justify-between px-5 py-3 bg-black/80">
-        <span className="text-sm font-bold text-emerald-400 truncate max-w-[25%]">{match.teamAName}</span>
-        <div className="flex items-center gap-3">
-          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
-            className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
-            {match.games[match.currentGame]?.a ?? 0}
-          </button>
-          <span className="text-slate-500 text-sm">vs</span>
-          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
-            className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
-            {match.games[match.currentGame]?.b ?? 0}
-          </button>
-          {state === 'recording' && (
-            <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-              {fmt(elapsed)}
-            </span>
-          )}
+      {/* Score section — 1/3 of screen */}
+      <div className="flex-[1] min-h-0 flex flex-col items-center justify-center gap-1.5 px-5 bg-black/80">
+        <div className="flex items-center justify-between w-full">
+          <span className="text-sm font-bold text-emerald-400 truncate max-w-[25%]">{match.teamAName}</span>
+          <div className="flex items-center gap-3">
+            <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
+              className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
+              {match.games[match.currentGame]?.a ?? 0}
+            </button>
+            <span className="text-slate-500 text-sm">vs</span>
+            <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
+              className={`text-2xl font-black text-white tabular-nums transition-transform ${canScore && !matchComplete ? 'active:scale-90' : ''}`}>
+              {match.games[match.currentGame]?.b ?? 0}
+            </button>
+            {state === 'recording' && (
+              <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                {fmt(elapsed)}
+              </span>
+            )}
+          </div>
+          <span className="text-sm font-bold text-blue-400 truncate max-w-[25%]">{match.teamBName}</span>
         </div>
-        <span className="text-sm font-bold text-blue-400 truncate max-w-[25%]">{match.teamBName}</span>
+        {canScore && !matchComplete && (
+          <p className="text-center text-[10px] text-slate-500">Tap a score to add a point</p>
+        )}
       </div>
-      {canScore && !matchComplete && (
-        <p className="text-center text-[10px] text-slate-500 pb-1.5 bg-black/80">Tap a score to add a point</p>
-      )}
 
-      {/* Camera preview / done state */}
-      <div className="flex-1 relative bg-black flex items-center justify-center">
+      {/* Court / camera area — 2/3 of screen, controls overlaid at the bottom */}
+      <div className="flex-[2] min-h-0 relative bg-black flex items-center justify-center">
         {(state === 'requesting' || state === 'previewing' || state === 'recording') && (
           <video ref={videoRef} className="w-full h-full object-cover" muted playsInline/>
         )}
@@ -382,58 +386,58 @@ export default function ClipRecorder({
           </div>
         )}
         {error && (
-          <div className="absolute bottom-4 inset-x-4 flex items-center gap-2 bg-red-950 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">
+          <div className="absolute bottom-24 inset-x-4 flex items-center gap-2 bg-red-950 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">
             <AlertCircle size={14}/> {error}
           </div>
         )}
-      </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-center gap-4 py-6 bg-black/80 flex-wrap px-4">
-        <button onClick={requestExit} aria-label="Close"
-          className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0">
-          <X size={18}/>
-        </button>
+        {/* Controls — overlaid on the bottom of the court area */}
+        <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-4 py-5 bg-gradient-to-t from-black/90 via-black/70 to-transparent flex-wrap px-4">
+          <button onClick={requestExit} aria-label="Close"
+            className="w-12 h-12 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0">
+            <X size={18}/>
+          </button>
 
-        {canUndo && onUndo && (state === 'previewing' || state === 'recording') && (
-          <button onClick={onUndo} aria-label="Undo last point"
-            className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0" title="Undo last point">
-            <RotateCcw size={16}/>
-          </button>
-        )}
-
-        {state === 'previewing' && (
-          <button onClick={startRec} disabled={readiness === 'checking'} aria-label="Start recording"
-            className={`w-[72px] h-[72px] rounded-full border-4 flex items-center justify-center shrink-0 transition-opacity
-              ${readiness === 'checking' ? 'border-slate-600 opacity-40 cursor-not-allowed' : 'border-white'}`}>
-            <span className="w-12 h-12 rounded-full bg-red-500"/>
-          </button>
-        )}
-        {state === 'recording' && (
-          <button onClick={stopRec} aria-label="Stop recording"
-            className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
-            <Square size={24} fill="white" className="text-white"/>
-          </button>
-        )}
-        {state === 'done' && (
-          <div className="flex gap-3 flex-wrap justify-center">
-            <button onClick={uploadClip}
-              className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-semibold transition-colors">
-              <Upload size={16}/> Upload (+50 Credits)
+          {canUndo && onUndo && (state === 'previewing' || state === 'recording') && (
+            <button onClick={onUndo} aria-label="Undo last point"
+              className="w-12 h-12 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0" title="Undo last point">
+              <RotateCcw size={16}/>
             </button>
-            <button onClick={downloadClip} aria-label="Download clip"
-              className="flex items-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl font-semibold transition-colors">
-              <Download size={16}/>
-            </button>
-          </div>
-        )}
+          )}
 
-        {matchComplete && onLogResult && (state === 'done' || state === 'uploaded') && (
-          <button onClick={onLogResult}
-            className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl font-bold transition-colors">
-            <Check size={16}/> Log Result
-          </button>
-        )}
+          {state === 'previewing' && (
+            <button onClick={startRec} disabled={readiness === 'checking'} aria-label="Start recording"
+              className={`w-[72px] h-[72px] rounded-full border-4 flex items-center justify-center shrink-0 transition-opacity
+                ${readiness === 'checking' ? 'border-slate-600 opacity-40 cursor-not-allowed' : 'border-white'}`}>
+              <span className="w-12 h-12 rounded-full bg-red-500"/>
+            </button>
+          )}
+          {state === 'recording' && (
+            <button onClick={stopRec} aria-label="Stop recording"
+              className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
+              <Square size={24} fill="white" className="text-white"/>
+            </button>
+          )}
+          {state === 'done' && (
+            <div className="flex gap-3 flex-wrap justify-center">
+              <button onClick={uploadClip}
+                className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-semibold transition-colors">
+                <Upload size={16}/> Upload (+50 Credits)
+              </button>
+              <button onClick={downloadClip} aria-label="Download clip"
+                className="flex items-center gap-2 px-4 py-3 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 rounded-2xl font-semibold transition-colors">
+                <Download size={16}/>
+              </button>
+            </div>
+          )}
+
+          {matchComplete && onLogResult && (state === 'done' || state === 'uploaded') && (
+            <button onClick={onLogResult}
+              className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-2xl font-bold transition-colors">
+              <Check size={16}/> Log Result
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
