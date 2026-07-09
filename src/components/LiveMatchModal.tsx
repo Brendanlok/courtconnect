@@ -1047,7 +1047,8 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
             </div>
           )}
           {view === 'setup' && !pausedMatch && plannedMatch && (
-            <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
+            <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}
+              onCancel={() => { onMatchCancelled?.(plannedMatch.id); onClose(); }}/>
           )}
           {view === 'setup' && !pausedMatch && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
           {view === 'scoring'  && liveMatch && (
