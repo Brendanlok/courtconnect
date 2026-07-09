@@ -1015,7 +1015,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
 
   const handlePauseAndQuit = () => {
     if (liveMatch && isHost && view === 'scoring') {
-      updateLiveMatch(liveMatch.id, { status: 'paused' }).catch(() => {});
+      updateLiveMatch(liveMatch.id, { status: 'paused', activeSecondsAccumulated: liveElapsedSec } as Partial<LiveMatch>).catch(() => {});
       savePausedMatch({ joinCode: liveMatch.joinCode, recordMode, plannedMatchId: plannedMatch?.id ?? resumedPlannedId });
     }
     setExitConfirm(false);
