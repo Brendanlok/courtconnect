@@ -408,7 +408,7 @@ export default function MatchesPage() {
             </div>
           ))}
 
-          {planned.length === 0 && challenges.filter(c => c.fromId === 'me' && c.status === 'pending').length === 0 ? (
+          {visiblePlanned.length === 0 && challenges.filter(c => c.fromId === 'me' && c.status === 'pending').length === 0 ? (
             <EmptyState
               icon={<CalendarDays size={32} className="text-slate-700"/>}
               title="No planned matches"
@@ -416,7 +416,7 @@ export default function MatchesPage() {
               action={<button onClick={() => openPlan()} className="text-xs text-emerald-400 font-semibold">+ Plan your first match</button>}
             />
           ) : (
-            planned.map(m => (
+            visiblePlanned.map(m => (
               <PlannedCard key={m.id} match={m} me={me}
                 onEdit={() => openPlan(m.id)}
                 onLog={() => setLogOpen(true)}
@@ -431,7 +431,7 @@ export default function MatchesPage() {
 
       {tab === 'history' && (
         <div className="space-y-3">
-          {myMatches.length === 0 ? (
+          {myMatches.length === 0 && cancelledPlanned.length === 0 ? (
             <EmptyState
               icon={<Swords size={32} className="text-slate-700"/>}
               title="No matches logged yet"
@@ -444,7 +444,10 @@ export default function MatchesPage() {
               }
             />
           ) : (
-            myMatches.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)
+            <>
+              {myMatches.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)}
+              {cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
+            </>
           )}
         </div>
       )}
