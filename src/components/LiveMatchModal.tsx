@@ -881,6 +881,24 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
           {view === 'setup' && plannedMatch && (
             <PlannedMatchStart pm={plannedMatch} me={me} onStart={mode => handleStartFromPlanned(plannedMatch, mode)} onJoin={handleJoin}/>
           )}
+          {view === 'setup' && !plannedMatch && pausedMatch && (
+            <div className="mb-4 bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 space-y-3">
+              <div>
+                <p className="text-sm font-bold text-amber-300">Paused match</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {pausedMatch.teamAName} vs {pausedMatch.teamBName} · Game {pausedMatch.currentGame + 1} · {pausedMatch.games[pausedMatch.currentGame]?.a ?? 0}–{pausedMatch.games[pausedMatch.currentGame]?.b ?? 0}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={handleDiscardPaused} className="flex-1 py-2 text-xs font-medium">
+                  Discard
+                </Button>
+                <Button onClick={handleResumePaused} className="flex-1 py-2 text-xs font-bold">
+                  Continue Match
+                </Button>
+              </div>
+            </div>
+          )}
           {view === 'setup' && !plannedMatch && <SetupView me={me} onStart={handleStart} onJoin={handleJoin}/>}
           {view === 'scoring'  && liveMatch && (
             <ScorerView initialMatch={liveMatch} isHost={isHost} recordMode={recordMode}
