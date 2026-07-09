@@ -199,6 +199,11 @@ export default function MatchesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cancelled and completed plans move to History — a completed one is already
+  // represented there by its real logged Match, a cancelled one shows as its own row.
+  const visiblePlanned   = planned.filter(m => m.status !== 'cancelled' && m.liveState !== 'completed');
+  const cancelledPlanned = planned.filter(m => m.status === 'cancelled');
+
   const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
 
   const handleSavePlan = (pm: PlannedMatch) => {
