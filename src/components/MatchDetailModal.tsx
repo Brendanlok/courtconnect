@@ -46,6 +46,11 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Pr
                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'}`}>
                 {m.status}
               </span>
+              {m.recordedLive && (
+                <span className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border bg-rose-500/10 text-rose-400 border-rose-500/30">
+                  <Radio size={10}/> Live Verified
+                </span>
+              )}
             </div>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={20}/></button>
