@@ -305,6 +305,29 @@ function pointLabel(log: ('a' | 'b')[], idx: number): string {
   return `${tally}`;
 }
 
+// ── Derived match insights — computed purely from the point log + timestamps
+// already being tracked, no extra capture needed.
+function computeMaxStreak(allPoints: ('a' | 'b')[]): { side: 'a' | 'b'; count: number } {
+  let best: { side: 'a' | 'b'; count: number } = { side: 'a', count: 0 };
+  let cur: { side: 'a' | 'b' | null; count: number } = { side: null, count: 0 };
+  for (const p of allPoints) {
+    cur = p === cur.side ? { side: p, count: cur.count + 1 } : { side: p, count: 1 };
+    if (cur.count > best.count) best = { side: p, count: cur.count };
+  }
+  return best;
+}
+
+function biggestComebackInGame(log: ('a' | 'b')[], winner: 'A' | 'B'): number {
+  let a = 0, b = 0, maxDeficit = 0;
+  const winSide = winner === 'A' ? 'a' : 'b';
+  for (const p of log) {
+    if (p === 'a') a++; else b++;
+    const deficit = winSide === 'a' ? (b - a) : (a - b);
+    if (deficit > maxDeficit) maxDeficit = deficit;
+  }
+  return maxDeficit;
+}
+
 function PointLogTable({ log, teamAName, teamBName, active }: {
   log: ('a' | 'b')[]; teamAName: string; teamBName: string; active: boolean;
 }) {
