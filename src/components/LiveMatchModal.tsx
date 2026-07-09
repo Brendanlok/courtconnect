@@ -918,15 +918,19 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
               </div>
               <div>
                 <p className="font-bold text-sm">Match still in progress</p>
-                <p className="text-xs text-slate-400 mt-1">If you quit now, the score{recordMode === 'video' ? ' and any unsaved recording' : ''} won&apos;t be saved.</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {isHost
+                    ? `Quitting now will pause the match${recordMode === 'video' ? ' (recording stops)' : ''} — you can pick up scoring again later from Live Match.`
+                    : 'You’ll stop watching, but the match keeps going for the scorer.'}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => setExitConfirm(false)} className="flex-1 py-2 font-medium">
                 Keep Playing
               </Button>
-              <Button variant="danger" onClick={() => { setExitConfirm(false); onClose(); }} className="flex-1 py-2 font-bold">
-                Quit Match
+              <Button variant="danger" onClick={handlePauseAndQuit} className="flex-1 py-2 font-bold">
+                {isHost ? 'Pause & Quit' : 'Quit'}
               </Button>
             </div>
           </div>
