@@ -732,6 +732,11 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const [isHost, setIsHost] = useState(true);
   const [recordMode, setRecordMode] = useState<RecordMode>('manual');
   const [exitConfirm, setExitConfirm] = useState(false);
+  const [resumedPlannedId, setResumedPlannedId] = useState<string | undefined>(undefined);
+
+  // Paused-match resume banner — only relevant on the plain setup screen
+  const [pausedMatch, setPausedMatch] = useState<LiveMatch | null>(null);
+  const [pausedRef, setPausedRef] = useState<PausedMatchRef | null>(null);
 
   const titles: Record<ModalView, string> = {
     setup: plannedMatch ? 'Record Live' : 'Live Match',
@@ -748,12 +753,49 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     open, exitConfirm ? () => setExitConfirm(false) : requestClose, titles[view],
   );
 
-  if (!open) return null;
-
   const me: LiveMatchPlayer = { uid: auth.currentUser?.uid ?? 'me', displayName: user.displayName, username: user.username };
+
+  useEffect(() => {
+    if (!open || view !== 'setup' || plannedMatch) return;
+    const ref = loadPausedMatch();
+    if (!ref) { setPausedMatch(null); setPausedRef(null); return; }
+    getLiveMatchByCode(ref.joinCode).then(m => {
+      if (m && m.status === 'paused' && m.hostUid === me.uid) {
+        setPausedMatch(m);
+        setPausedRef(ref);
+      } else {
+        clearPausedMatch();
+        setPausedMatch(null);
+        setPausedRef(null);
+      }
+    }).catch(() => { setPausedMatch(null); setPausedRef(null); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, view]);
+
+  if (!open) return null;
 
   const handleStart = (m: LiveMatch, mode: RecordMode = 'manual') => { setLiveMatch(m); setIsHost(true); setRecordMode(mode); setView('scoring'); };
   const handleJoin  = (m: LiveMatch) => { setLiveMatch(m); setIsHost(false); setRecordMode('manual'); setView('scoring'); };
+
+  const handleResumePaused = () => {
+    if (!pausedMatch || !pausedRef) return;
+    const resumed: LiveMatch = { ...pausedMatch, status: 'active' };
+    updateLiveMatch(resumed.id, { status: 'active' }).catch(() => {});
+    setLiveMatch(resumed);
+    setIsHost(true);
+    setRecordMode(pausedRef.recordMode);
+    setResumedPlannedId(pausedRef.plannedMatchId);
+    clearPausedMatch();
+    setPausedMatch(null);
+    setPausedRef(null);
+    setView('scoring');
+  };
+
+  const handleDiscardPaused = () => {
+    clearPausedMatch();
+    setPausedMatch(null);
+    setPausedRef(null);
+  };
 
   // If coming from a planned match, auto-build and start immediately
   const handleStartFromPlanned = (pm: PlannedMatchRef, mode: RecordMode) => {
