@@ -254,16 +254,11 @@ function SetupView({ me, onStart, onJoin }: {
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500"/>
           </div>
 
-          <div className="flex gap-2">
-            <button onClick={() => handleStart('manual')} disabled={!canStart}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 border border-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
-              <Hand size={13}/> Manual Score
-            </button>
-            <button onClick={() => handleStart('video')} disabled={!canStart}
-              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
-              <Camera size={13}/> Video Record
-            </button>
-          </div>
+          {/* Video Record temporarily hidden — manual scoring only for now */}
+          <button onClick={() => handleStart('manual')} disabled={!canStart}
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+            <Hand size={13}/> Manual Score
+          </button>
         </div>
       )}
     </div>
