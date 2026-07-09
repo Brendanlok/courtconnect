@@ -187,6 +187,18 @@ export default function MatchesPage() {
     }))
   );
 
+  // liveState only lives in this page's memory — a paused live match, however,
+  // is remembered in localStorage (see LiveMatchModal). Reconcile the two on
+  // mount so switching tabs and coming back doesn't make a paused match look
+  // like it never started.
+  useEffect(() => {
+    const ref = loadPausedMatch();
+    if (!ref?.plannedMatchId) return;
+    setPlanned(prev => prev.map(m =>
+      m.id === ref.plannedMatchId && !m.liveState ? { ...m, liveState: 'live' } : m));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
 
   const handleSavePlan = (pm: PlannedMatch) => {
