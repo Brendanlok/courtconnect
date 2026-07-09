@@ -361,12 +361,14 @@ function PointLogTable({ log, teamAName, teamBName, active }: {
   );
 }
 
-function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplete }: {
+function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onRequestExit, onComplete, onElapsedTick }: {
   initialMatch: LiveMatch;
   isHost: boolean;
   recordMode: RecordMode;
+  plannedMatchId?: string;
   onRequestExit: () => void;
   onComplete: (match: LiveMatch) => void;
+  onElapsedTick: (sec: number) => void;
 }) {
   const { awardClipCredits } = useApp();
   const [match, setMatch] = useState<LiveMatch>(initialMatch);
@@ -376,11 +378,51 @@ function ScorerView({ initialMatch, isHost, recordMode, onRequestExit, onComplet
   const [codeCopied, setCodeCopied] = useState(false);
 
   // Match-insight capture — timing only; streak/comeback are derived from pointLog at completion.
-  const matchStartRef = useRef(Date.now());
+  // accumulatedBeforeMountRef carries forward whatever elapsed time was already
+  // banked before a pause/resume (or before this specific mount), so the total
+  // duration is continuous across a Pause & Quit rather than resetting to zero.
+  const accumulatedBeforeMountRef = useRef(initialMatch.activeSecondsAccumulated ?? 0);
+  const mountedAtRef = useRef(Date.now());
+  const currentElapsedSec = () => accumulatedBeforeMountRef.current + (Date.now() - mountedAtRef.current) / 1000;
   const lastPointAtRef = useRef(Date.now());
   const gameStartRef = useRef(Date.now());
   const [pointGapsSec, setPointGapsSec] = useState<number[]>([]);
   const [gameDurationsSec, setGameDurationsSec] = useState<number[]>([]);
+  const [elapsedDisplaySec, setElapsedDisplaySec] = useState(currentElapsedSec());
+
+  // Elapsed-time ticker — paused automatically whenever the match itself isn't 'active'
+  // (e.g. it just got marked paused), and reported up to the parent so a Pause & Quit
+  // triggered from the parent's exit dialog persists an accurate, up-to-date value.
+  useEffect(() => {
+    if (match.status !== 'active') return;
+    const id = setInterval(() => {
+      const sec = currentElapsedSec();
+      setElapsedDisplaySec(sec);
+      onElapsedTick(sec);
+    }, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.status]);
+
+  // Best-effort auto-pause if the app is backgrounded/closed mid-match instead of
+  // an explicit Pause & Quit — persists both the Firestore status and the local
+  // "paused match" pointer so Live Match can still offer to resume it later.
+  useEffect(() => {
+    const persistAutoPause = () => {
+      if (!isHost || match.status !== 'active') return;
+      const sec = currentElapsedSec();
+      updateLiveMatch(match.id, { status: 'paused', activeSecondsAccumulated: sec } as Partial<LiveMatch>).catch(() => {});
+      savePausedMatch({ joinCode: match.joinCode, recordMode, plannedMatchId });
+    };
+    const handler = () => { if (document.visibilityState === 'hidden') persistAutoPause(); };
+    document.addEventListener('visibilitychange', handler);
+    window.addEventListener('pagehide', persistAutoPause);
+    return () => {
+      document.removeEventListener('visibilitychange', handler);
+      window.removeEventListener('pagehide', persistAutoPause);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.id, match.joinCode, match.status, isHost, recordMode, plannedMatchId]);
 
   // Subscribe to live updates
   useEffect(() => {
