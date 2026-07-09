@@ -906,6 +906,16 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   };
   const handleComplete = (m: LiveMatch) => { setLiveMatch(m); setView('complete'); };
 
+  // Computed reactively (not just at click time) so CompletionView can show the
+  // block reason / bonus eligibility before the user even taps "Log to Profile".
+  const opponentUidsForLog = liveMatch ? liveMatch.teamB.filter(Boolean).map(p => p!.uid).filter(uid => uid !== 'me') : [];
+  const totalPointsForLog = liveMatch ? liveMatch.games.reduce((s, g) => s + g.a + g.b, 0) : 0;
+  const logBlockReason = liveMatch
+    ? antiCheatCheck(matches, user.uid, opponentUidsForLog)
+      ?? (liveMatch.liveStats ? liveMatchIntegrityCheck(liveMatch.liveStats.durationSec, totalPointsForLog) : null)
+    : null;
+  const logBonusEligible = liveBonusEligible(matches, user.uid);
+
   const handleLogMatch = (m: LiveMatch) => {
     if (!m.winningSide) return;
     const iWon = m.winningSide === 'A'; // team A is always host's team
@@ -913,6 +923,12 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const opp = m.teamB[0];
     // Everyone on the opposing team must confirm before the result is finalized
     const opponentUids = m.teamB.filter(Boolean).map(p => p.uid).filter(uid => uid !== 'me');
+
+    const oppMMR = PLAYERS.find(p => p.uid === opp?.uid)?.mmr ?? user.mmr;
+    const { gain, loss } = calcMMRChange(iWon ? user.mmr : oppMMR, iWon ? oppMMR : user.mmr);
+    const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
+    const mmrChange = Math.round((iWon ? gain : loss) * bonus);
+
     const newMatch = {
       id: `m_${Date.now()}`,
       type: m.format,
@@ -924,7 +940,9 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       pendingConfirmations: opponentUids,
       playedAt: new Date().toISOString(),
       venue: m.venue,
-      mmrChange: iWon ? 18 : -15,
+      mmrChange,
+      recordedLive: true,
+      liveStats: m.liveStats,
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
