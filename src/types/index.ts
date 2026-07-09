@@ -256,6 +256,7 @@ export interface LiveMatch {
   clipUrl?: string;
   recordMode?: 'manual' | 'video'; // how the host chose to record — camera session itself can't survive a pause
   liveStats?: LiveMatchStats;
+  activeSecondsAccumulated?: number; // running elapsed time banked so far, carried across a pause/resume
 }
 
 export interface Conversation {
