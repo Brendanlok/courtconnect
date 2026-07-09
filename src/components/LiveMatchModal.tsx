@@ -777,9 +777,10 @@ function CompletionView({ match, onLogMatch, onClose, blockReason, bonusEligible
 
 // ── Planned match start view ──────────────────────────────────────────────────
 
-function PlannedMatchStart({ pm, me, onStart, onJoin }: {
+function PlannedMatchStart({ pm, me, onStart, onJoin, onCancel }: {
   pm: PlannedMatchRef; me: LiveMatchPlayer;
   onStart: (recordMode: RecordMode) => void; onJoin: (m: LiveMatch) => void;
+  onCancel: () => void;
 }) {
   const aPlayers = pm.teamA.filter(Boolean) as LiveMatchPlayer[];
   const bPlayers = pm.teamB.filter(Boolean) as LiveMatchPlayer[];
