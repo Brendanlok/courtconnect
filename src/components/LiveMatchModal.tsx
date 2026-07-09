@@ -13,6 +13,7 @@ import {
 import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { savePausedMatch, loadPausedMatch, clearPausedMatch } from '@/lib/pausedMatch';
 
 type RecordMode = 'manual' | 'video';
 
@@ -27,25 +28,6 @@ function genCode(): string {
 }
 function genId(): string {
   return `lm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-}
-
-// ── Paused-match handoff — remembers the in-progress match across a quit/resume
-// so the setup screen can offer to pick scoring back up.
-const PAUSED_MATCH_KEY = 'cc_paused_live_match';
-
-interface PausedMatchRef { joinCode: string; recordMode: RecordMode; plannedMatchId?: string }
-
-function savePausedMatch(ref: PausedMatchRef) {
-  try { localStorage.setItem(PAUSED_MATCH_KEY, JSON.stringify(ref)); } catch { /* ignore */ }
-}
-function loadPausedMatch(): PausedMatchRef | null {
-  try {
-    const raw = localStorage.getItem(PAUSED_MATCH_KEY);
-    return raw ? JSON.parse(raw) as PausedMatchRef : null;
-  } catch { return null; }
-}
-function clearPausedMatch() {
-  try { localStorage.removeItem(PAUSED_MATCH_KEY); } catch { /* ignore */ }
 }
 
 function teamSize(f: MatchType) { return f === 'MS' || f === 'WS' ? 1 : 2; }
