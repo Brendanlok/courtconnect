@@ -141,6 +141,31 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Pr
             </div>
           )}
 
+          {/* Live match insights */}
+          {m.liveStats && (
+            <div className="mb-4 bg-slate-800/60 border border-slate-700 rounded-xl p-3.5">
+              <p className="text-xs font-semibold text-slate-400 mb-1.5">Match Insights</p>
+              <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                <span className="text-slate-500">Duration</span>
+                <span className="text-slate-200 text-right font-semibold tabular-nums">
+                  {Math.floor(m.liveStats.durationSec / 60)}:{String(Math.round(m.liveStats.durationSec % 60)).padStart(2, '0')}
+                </span>
+                <span className="text-slate-500">Longest streak</span>
+                <span className="text-slate-200 text-right font-semibold">
+                  {m.liveStats.maxWinStreak.count} pts ({m.liveStats.maxWinStreak.side === 'a' ? myName : oppName})
+                </span>
+                {m.liveStats.biggestComebackPoints > 0 && (
+                  <>
+                    <span className="text-slate-500">Biggest comeback</span>
+                    <span className="text-amber-400 text-right font-semibold">{m.liveStats.biggestComebackPoints} pts</span>
+                  </>
+                )}
+                <span className="text-slate-500">Avg. gap between points</span>
+                <span className="text-slate-200 text-right font-semibold">{Math.round(m.liveStats.avgPointGapSec)}s</span>
+              </div>
+            </div>
+          )}
+
           {/* Meta */}
           <div className="space-y-2 text-sm text-slate-400 border-t border-slate-800 pt-4">
             {(m.venue || m.location) && (
