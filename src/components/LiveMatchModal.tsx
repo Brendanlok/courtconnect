@@ -14,6 +14,8 @@ import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
+import { calcMMRChange } from '@/lib/utils';
+import { antiCheatCheck, liveMatchIntegrityCheck, liveBonusEligible, LIVE_BONUS_MULTIPLIER } from '@/lib/antiCheat';
 
 type RecordMode = 'manual' | 'video';
 
