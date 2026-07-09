@@ -808,7 +808,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   open: boolean; onClose: () => void; plannedMatch?: PlannedMatchRef | null;
   onMatchLogged?: (plannedMatchId: string) => void;
 }) {
-  const { user, addMatch, addNotification } = useApp();
+  const { user, matches, addMatch, addNotification } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
