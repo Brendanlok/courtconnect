@@ -1069,7 +1069,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
                 <Button onClick={handleResumePaused} className="flex-1 py-2 text-xs font-bold">
                   Continue Match
                 </Button>
-                <Button variant="danger" onClick={handleDiscardPaused} className="flex-1 py-2 text-xs font-medium">
+                <Button variant="danger" onClick={() => setDiscardConfirm(true)} className="flex-1 py-2 text-xs font-medium">
                   Discard
                 </Button>
               </div>
