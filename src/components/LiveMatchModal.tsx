@@ -953,6 +953,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     clearPausedMatch();
     setPausedMatch(null);
     setPausedRef(null);
+    setDiscardConfirm(false);
   };
 
   // If coming from a planned match, auto-build and start immediately
