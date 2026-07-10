@@ -664,8 +664,8 @@ export function PlayerProfileClient({ username }: { username: string }) {
             </div>
           );
         })()}
-        {/* ── Court Analytics ── */}
-        {(() => {
+        {/* ── Court Analytics (hidden for now, not relevant yet) ── */}
+        {false && (() => {
           const profile = isMe ? courtProfile : (player.courtProfile ?? null);
           const positions = profile?.positions ?? [];
           const credits   = isMe ? clipCredits : (player.clipCredits ?? 0);
