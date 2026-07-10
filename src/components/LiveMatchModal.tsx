@@ -1121,6 +1121,33 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
           </div>
         </div>
       )}
+
+      {/* Discard warning — paused match will be permanently lost */}
+      {discardConfirm && (
+        <div className="modal-backdrop fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={e => { e.stopPropagation(); setDiscardConfirm(false); }}>
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-red-400"/>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Discard this match?</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  All scores{recordMode === 'video' ? ' and the recording' : ''} will be permanently removed. This can't be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setDiscardConfirm(false)} className="flex-1 py-2 font-medium">
+                Keep It
+              </Button>
+              <Button variant="danger" onClick={handleDiscardPaused} className="flex-1 py-2 font-bold">
+                Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
