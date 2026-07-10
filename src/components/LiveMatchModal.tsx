@@ -887,6 +887,24 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     onClose();
   };
 
+  // Mobile back-gesture / hardware back button fires a `popstate`, not a click —
+  // without this it silently navigates away mid-match instead of warning.
+  // We push a guard history entry while scoring so that back-nav lands on it
+  // first; allowPopRef lets an actual confirmed quit through without re-showing
+  // the dialog it already passed.
+  const allowPopRef = useRef(false);
+  useEffect(() => {
+    if (view !== 'scoring') return;
+    history.pushState({ liveMatchGuard: true }, '');
+    const onPopState = () => {
+      if (allowPopRef.current) { allowPopRef.current = false; return; }
+      history.pushState({ liveMatchGuard: true }, '');
+      setExitConfirm(true);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [view]);
+
   const { ref: panelRef, dialogProps } = useModalA11y(
     open, exitConfirm ? () => setExitConfirm(false) : requestClose, titles[view],
   );
