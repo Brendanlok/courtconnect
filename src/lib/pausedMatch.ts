@@ -1,16 +1,26 @@
-// Paused-live-match handoff — remembers the in-progress match across a quit/resume
-// so both the Live Match modal and the Matches page can tell a match was paused,
-// not lost, and which planned match (if any) it belongs to.
+// Paused-live-match handoff — remembers the in-progress match (score included)
+// across a quit/resume so it's never lost, without depending on a Firestore
+// round-trip. `match`/`pointLog` are kept fresh continuously while scoring
+// (see ScorerView), not just at pause time.
+import type { LiveMatch } from '@/types';
+
 const PAUSED_MATCH_KEY = 'cc_paused_live_match';
 
 export interface PausedMatchRef {
   joinCode: string;
   recordMode: 'manual' | 'video';
   plannedMatchId?: string;
+  match?: LiveMatch;
+  pointLog?: ('a' | 'b')[][];
 }
 
-export function savePausedMatch(ref: PausedMatchRef) {
-  try { localStorage.setItem(PAUSED_MATCH_KEY, JSON.stringify(ref)); } catch { /* ignore */ }
+// Merges onto whatever's already stored so a partial call (e.g. from a spot
+// that doesn't have the live score handy) never clobbers a fresher snapshot.
+export function savePausedMatch(ref: Partial<PausedMatchRef> & Pick<PausedMatchRef, 'joinCode'>) {
+  try {
+    const existing = loadPausedMatch();
+    localStorage.setItem(PAUSED_MATCH_KEY, JSON.stringify({ ...existing, ...ref }));
+  } catch { /* ignore */ }
 }
 
 export function loadPausedMatch(): PausedMatchRef | null {
