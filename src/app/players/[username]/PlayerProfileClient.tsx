@@ -694,11 +694,11 @@ export function PlayerProfileClient({ username }: { username: string }) {
               {(badge || credits > 0) && (
                 <div className="flex items-center gap-3">
                   {badgeMeta && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold ${badgeMeta.color}`}>
-                      <span>{badgeMeta.icon}</span>
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold ${badgeMeta!.color}`}>
+                      <span>{badgeMeta!.icon}</span>
                       <div>
-                        <p className="text-xs font-bold">{badgeMeta.label}</p>
-                        <p className="text-[10px] opacity-70">{badgeMeta.desc}</p>
+                        <p className="text-xs font-bold">{badgeMeta!.label}</p>
+                        <p className="text-[10px] opacity-70">{badgeMeta!.desc}</p>
                       </div>
                     </div>
                   )}
