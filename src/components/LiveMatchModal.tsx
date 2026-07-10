@@ -1064,11 +1064,11 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={handleDiscardPaused} className="flex-1 py-2 text-xs font-medium">
-                  Discard
-                </Button>
                 <Button onClick={handleResumePaused} className="flex-1 py-2 text-xs font-bold">
                   Continue Match
+                </Button>
+                <Button variant="danger" onClick={handleDiscardPaused} className="flex-1 py-2 text-xs font-medium">
+                  Discard
                 </Button>
               </div>
             </div>
