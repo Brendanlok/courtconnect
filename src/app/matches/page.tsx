@@ -724,6 +724,7 @@ function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Matc
 function CancelledPlanCard({ match: m }: { match: PlannedMatch }) {
   const dateStr = new Date(m.date + 'T' + m.time).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
   const opponent = m.teamB.find(Boolean);
+  const allPlayers = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null);
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1.5 opacity-70">
       <div className="flex items-center justify-between gap-2">
@@ -731,9 +732,13 @@ function CancelledPlanCard({ match: m }: { match: PlannedMatch }) {
           <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-red-500/15 text-red-400">Cancelled</span>
           <span className="text-sm font-semibold">{FORMAT_LABELS[m.format]}{opponent ? ` vs ${opponent.displayName}` : ''}</span>
         </div>
-        <span className="text-xs text-slate-500 shrink-0">{dateStr}</span>
+        <span className="text-xs text-slate-500 shrink-0">{dateStr} · {m.time}</span>
       </div>
       {m.venue && <p className="text-[11px] text-slate-500 flex items-center gap-1"><MapPin size={9}/>{m.venue}</p>}
+      {allPlayers.length > 0 && (
+        <p className="text-[11px] text-slate-500">Players: {allPlayers.map(p => p.displayName).join(', ')}</p>
+      )}
+      {m.notes && <p className="text-[11px] text-slate-500 italic">{m.notes}</p>}
     </div>
   );
 }
