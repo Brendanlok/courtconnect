@@ -895,21 +895,18 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   useEffect(() => {
     if (!open || view !== 'setup') return;
     const ref = loadPausedMatch();
-    if (!ref) { setPausedMatch(null); setPausedRef(null); return; }
+    // Trust the local snapshot directly — it's kept fresh on every point scored,
+    // so resume doesn't depend on a Firestore round-trip succeeding.
+    if (!ref || !ref.match) { setPausedMatch(null); setPausedRef(null); return; }
     // A paused match tied to a specific planned match only counts as "this" paused
     // match when we're reopening that same planned match — otherwise it belongs
     // to a different Record Live entry point and shouldn't hijack this one.
     if (plannedMatch && ref.plannedMatchId !== plannedMatch.id) { setPausedMatch(null); setPausedRef(null); return; }
-    getLiveMatchByCode(ref.joinCode).then(m => {
-      if (m && m.status === 'paused' && m.hostUid === me.uid) {
-        setPausedMatch(m);
-        setPausedRef(ref);
-      } else {
-        clearPausedMatch();
-        setPausedMatch(null);
-        setPausedRef(null);
-      }
-    }).catch(() => { setPausedMatch(null); setPausedRef(null); });
+    if (ref.match.hostUid !== me.uid) { setPausedMatch(null); setPausedRef(null); return; }
+    setPausedMatch(ref.match);
+    setPausedRef(ref);
+    // Best-effort so watchers/other devices see it as paused too; resume never waits on this.
+    updateLiveMatch(ref.match.id, { status: 'paused' } as Partial<LiveMatch>).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, view, plannedMatch?.id]);
 
