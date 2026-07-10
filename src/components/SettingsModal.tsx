@@ -375,8 +375,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <button type="button" onClick={() => setIsPrivate(v => !v)}
                 className={`shrink-0 w-10 h-6 rounded-full border transition-colors relative ${
                   isPrivate ? 'bg-amber-500/30 border-amber-500/50' : 'bg-slate-800 border-slate-700'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-transform ${
-                  isPrivate ? 'translate-x-[18px] bg-amber-400' : 'translate-x-0.5 bg-slate-500'}`}/>
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
+                  isPrivate ? 'translate-x-[16px] bg-amber-400' : 'translate-x-0 bg-slate-500'}`}/>
               </button>
             </div>
           </div>
