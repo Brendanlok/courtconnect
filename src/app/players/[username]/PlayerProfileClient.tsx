@@ -693,12 +693,12 @@ export function PlayerProfileClient({ username }: { username: string }) {
               {/* Clip badge + credits */}
               {(badge || credits > 0) && (
                 <div className="flex items-center gap-3">
-                  {badge && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold ${BADGE_META[badge].color}`}>
-                      <span>{BADGE_META[badge].icon}</span>
+                  {badgeMeta && (
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold ${badgeMeta.color}`}>
+                      <span>{badgeMeta.icon}</span>
                       <div>
-                        <p className="text-xs font-bold">{BADGE_META[badge].label}</p>
-                        <p className="text-[10px] opacity-70">{BADGE_META[badge].desc}</p>
+                        <p className="text-xs font-bold">{badgeMeta.label}</p>
+                        <p className="text-[10px] opacity-70">{badgeMeta.desc}</p>
                       </div>
                     </div>
                   )}
