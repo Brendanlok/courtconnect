@@ -1042,6 +1042,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       savePausedMatch({ joinCode: liveMatch.joinCode, recordMode, plannedMatchId: plannedMatch?.id ?? resumedPlannedId });
     }
     setExitConfirm(false);
+    if (view === 'scoring') { allowPopRef.current = true; history.back(); } // consume the guard entry
     onClose();
   };
 
