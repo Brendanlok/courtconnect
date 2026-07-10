@@ -924,6 +924,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     setIsHost(true);
     setRecordMode(pausedRef.recordMode);
     setResumedPlannedId(pausedRef.plannedMatchId);
+    setResumedPointLog(pausedRef.pointLog);
     clearPausedMatch();
     setPausedMatch(null);
     setPausedRef(null);
