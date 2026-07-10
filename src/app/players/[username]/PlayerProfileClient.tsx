@@ -679,6 +679,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
           };
 
           if (positions.length === 0 && credits === 0) return null;
+          const badgeMeta = badge ? BADGE_META[badge] : null;
 
           return (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
