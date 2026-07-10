@@ -356,8 +356,9 @@ function PointLogTable({ log, teamAName, teamBName, active }: {
   );
 }
 
-function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onRequestExit, onComplete, onElapsedTick }: {
+function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, plannedMatchId, onRequestExit, onComplete, onElapsedTick }: {
   initialMatch: LiveMatch;
+  initialPointLog?: ('a' | 'b')[][];
   isHost: boolean;
   recordMode: RecordMode;
   plannedMatchId?: string;
@@ -368,9 +369,17 @@ function ScorerView({ initialMatch, isHost, recordMode, plannedMatchId, onReques
   const { awardClipCredits } = useApp();
   const [match, setMatch] = useState<LiveMatch>(initialMatch);
   const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number; pointLog: ('a' | 'b')[][] }[]>([]);
-  const [pointLog, setPointLog] = useState<('a' | 'b')[][]>([[]]);
+  const [pointLog, setPointLog] = useState<('a' | 'b')[][]>(initialPointLog ?? [[]]);
   const [connected, setConnected] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
+
+  // Keep a full local snapshot fresh on every point, independent of Firestore —
+  // this is what makes "continue recording" actually resume the real score
+  // instead of restarting at 0-0 when the network round-trip fails/is slow.
+  useEffect(() => {
+    if (!isHost) return;
+    savePausedMatch({ joinCode: match.joinCode, recordMode, plannedMatchId, match, pointLog });
+  }, [match, pointLog, isHost, recordMode, plannedMatchId]);
 
   // Match-insight capture — timing only; streak/comeback are derived from pointLog at completion.
   // accumulatedBeforeMountRef carries forward whatever elapsed time was already
