@@ -868,6 +868,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const [isHost, setIsHost] = useState(true);
   const [recordMode, setRecordMode] = useState<RecordMode>('manual');
   const [exitConfirm, setExitConfirm] = useState(false);
+  const [discardConfirm, setDiscardConfirm] = useState(false);
   const [resumedPlannedId, setResumedPlannedId] = useState<string | undefined>(undefined);
   const [resumedPointLog, setResumedPointLog] = useState<('a' | 'b')[][] | undefined>(undefined);
   const [liveElapsedSec, setLiveElapsedSec] = useState(0); // kept fresh by ScorerView so Pause & Quit persists an accurate value
