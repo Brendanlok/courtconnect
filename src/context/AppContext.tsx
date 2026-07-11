@@ -109,7 +109,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [tournaments,      setTournaments]      = useState<Tournament[]>(SEED_TOURNAMENTS);
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
-  const [challenges,       setChallenges]       = useState<Challenge[]>([]);
+  const [localChallenges,  setLocalChallenges]  = useState<Challenge[]>([]);
+  // Real, cross-account challenges/conversations/endorsements — populated via
+  // Firestore real-time listeners once signed in (see the effect below).
+  const [realChallengeDocs,     setRealChallengeDocs]     = useState<StoredChallenge[]>([]);
+  const [realConversationDocs,  setRealConversationDocs]  = useState<SharedConversation[]>([]);
+  const [realEndorsementCounts, setRealEndorsementCounts] = useState<Record<string, number>>({});
   // Migrate the old single-club localStorage key to the new array-based one.
   const readSavedClubIds = (): string[] => {
     if (typeof window === 'undefined') return [];
