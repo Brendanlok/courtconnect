@@ -1,6 +1,6 @@
 export type Tier = 'Beginner' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond' | 'Elite';
 export type MatchType = 'MS' | 'WS' | 'MD' | 'WD' | 'MX';
-export type MatchStatus = 'Pending' | 'Confirmed' | 'Disputed';
+export type MatchStatus = 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
 
 export type MalaysiaState =
   | 'Kuala Lumpur' | 'Selangor' | 'Penang' | 'Johor' | 'Perak'
