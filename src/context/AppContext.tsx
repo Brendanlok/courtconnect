@@ -20,6 +20,42 @@ import {
 // local demo user ('me') or one of the static seed players from lib/data.ts.
 const isRealUid = (uid: string) => uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && uid !== ME_DATA.uid;
 
+// Normalizes a Firestore-shared challenge into the app's local, 'me'-centric
+// Challenge shape — same convention already used for matches (player1Id: 'me'
+// locally, real uid only on the shared doc).
+function toLocalChallenge(c: StoredChallenge, myUid: string): Challenge {
+  return {
+    id: c.id,
+    fromId: c.fromUid === myUid ? 'me' : c.fromUid, fromName: c.fromName, fromUsername: c.fromUsername,
+    toId: c.toUid === myUid ? 'me' : c.toUid, toName: c.toName, toUsername: c.toUsername,
+    format: c.format as Challenge['format'], venue: c.venue, date: c.date, message: c.message,
+    status: c.status, createdAt: c.createdAt,
+  };
+}
+
+// Normalizes a shared conversation doc into the local Conversation shape.
+// Only the fields chat/page.tsx actually reads (name, username, tier, mmr,
+// photo) are populated with real data; the rest are inert placeholders.
+function toLocalConversation(c: SharedConversation, myUid: string): Conversation {
+  const otherUid = c.participantUids.find(u => u !== myUid) ?? c.participantUids[0];
+  const p = c.participants?.[otherUid];
+  const participant: UserProfile = {
+    uid: otherUid,
+    username: p?.username ?? otherUid,
+    displayName: p?.displayName ?? 'Player',
+    email: '', mmr: p?.mmr ?? 1200, tier: (p?.tier as Tier) ?? 'Beginner',
+    globalRank: 0, state: 'Kuala Lumpur', area: '',
+    stats: { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+    photoURL: p?.photoURL ?? null,
+  };
+  return {
+    id: c.id, participant,
+    lastMessage: c.lastMessage, lastAt: c.lastAt,
+    unread: 0, // real-conversation unread tracking is a scoped-out follow-up
+    messages: c.messages.map(m => ({ id: m.id, senderId: m.senderId === myUid ? 'me' : m.senderId, text: m.text, sentAt: m.sentAt })),
+  };
+}
+
 interface AppCtx {
   user: UserProfile;
   matches: Match[];
