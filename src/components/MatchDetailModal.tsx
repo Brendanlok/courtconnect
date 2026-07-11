@@ -64,8 +64,15 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
         {isPending && (
           <div className="mx-5 mt-4 p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl text-xs text-amber-300 flex items-start gap-2">
             <Clock size={13} className="shrink-0 mt-0.5" />
-            {m.pendingConfirmations && m.pendingConfirmations.length > 0 ? (
-              <span>Waiting on {m.pendingConfirmations.length} more player{m.pendingConfirmations.length > 1 ? 's' : ''} to confirm this result before it's final.</span>
+            {hasOutstandingConfirmers ? (
+              <div>
+                <span>Waiting on {m.pendingConfirmations!.length} more player{m.pendingConfirmations!.length > 1 ? 's' : ''} to confirm this result before it's final.</span>
+                {onCancel && (
+                  <button onClick={onCancel} className="block mt-1.5 text-amber-400/80 hover:text-red-400 underline underline-offset-2 transition-colors">
+                    Stop waiting — withdraw this match
+                  </button>
+                )}
+              </div>
             ) : (
               <span>Waiting for your opponent to confirm this result. You can also confirm or dispute it yourself below.</span>
             )}
