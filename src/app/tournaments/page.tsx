@@ -590,10 +590,9 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
                 Withdraw (−25 MMR)
               </Button>
             ) : (
-              <button onClick={onConfirm}
-                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors">
+              <Button onClick={onConfirm} variant="danger" className="flex-1">
                 Withdraw
-              </button>
+              </Button>
             )}
           </div>
         </div>
