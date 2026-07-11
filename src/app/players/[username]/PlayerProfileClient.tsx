@@ -429,6 +429,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
                 </a>
               ))}
             </div>
+            )}
           </div>
         )}
 
