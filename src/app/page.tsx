@@ -16,7 +16,7 @@ import type { Match, Tournament, Challenge, Club } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
 
 export default function Home() {
-  const { user, matches, updateUser, confirmMatch, disputeMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen, setLogOpen] = useState(false);
 
