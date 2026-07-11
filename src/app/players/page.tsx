@@ -470,7 +470,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
     });
 
   const copyLink = (clubId: string) => {
-    const url = `${window.location.origin}/players/?tab=clubs&id=${clubId}`;
+    const url = `${window.location.origin}/clubs/${clubId}/`;
     navigator.clipboard.writeText(url).catch(() => {});
     setCopiedId(clubId);
     setTimeout(() => setCopiedId(null), 2000);
