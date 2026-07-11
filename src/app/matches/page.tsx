@@ -420,7 +420,7 @@ export default function MatchesPage() {
             visiblePlanned.map(m => (
               <PlannedCard key={m.id} match={m} me={me}
                 onEdit={() => openPlan(m.id)}
-                onLog={() => setLogOpen(true)}
+                onLog={() => { setLogPlannedId(m.id); setLogOpen(true); }}
                 onCancel={() => setCancelId(m.id)}
                 onLiveRecord={() => handleOpenLiveRecord(m.id)}
                 onSimulateAccept={uid => handleSimulateAccept(m.id, uid)}
