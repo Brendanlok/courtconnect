@@ -8,7 +8,7 @@ import {
   query, where, serverTimestamp, updateDoc, Timestamp, onSnapshot, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Match, UserProfile, Tournament, Club, Challenge } from '@/types';
+import type { Match, UserProfile, Tournament, Club } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 
