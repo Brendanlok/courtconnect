@@ -1,26 +1,19 @@
 'use client';
 import { useState } from 'react';
-import { X, Search, Swords, MessageCircle, ThumbsUp, UserX } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { X, Search, UserX } from 'lucide-react';
 import { lookupUserByUsername } from '@/lib/firestoreService';
 import { getTier } from '@/lib/utils';
-import { Avatar } from '@/components/ui/Avatar';
-import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
-import { ChallengeModal } from '@/components/ChallengeModal';
+import { PlayerActionCard } from '@/components/PlayerActionCard';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/types';
 
-const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
-
 export function FindPlayerModal({ onClose }: { onClose: () => void }) {
-  const { myEndorsements, endorsePlayer } = useApp();
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Find a Player');
   const [query,   setQuery]   = useState('');
   const [status,  setStatus]  = useState<'idle' | 'loading' | 'not-found' | 'is-you' | 'found'>('idle');
   const [found,   setFound]   = useState<UserProfile | null>(null);
-  const [challengeOpen, setChallengeOpen] = useState(false);
 
   const search = async () => {
     const clean = query.trim().toLowerCase().replace(/^@/, '');
