@@ -63,53 +63,9 @@ export function FindPlayerModal({ onClose }: { onClose: () => void }) {
             <div className="text-sm text-slate-400 py-3">That's your own username.</div>
           )}
 
-          {status === 'found' && found && (
-            <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <Avatar name={found.displayName} photoURL={found.photoURL} size="lg"/>
-                <div className="min-w-0">
-                  <p className="font-bold truncate">{found.displayName}</p>
-                  <p className="text-xs text-slate-500">@{found.username}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <TierBadge tier={found.tier}/>
-                    <span className="text-xs text-slate-400">{found.mmr.toLocaleString()} MMR</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => setChallengeOpen(true)} variant="amber" icon={<Swords size={14}/>} className="flex-1">
-                  Challenge
-                </Button>
-                <Button variant="secondary" onClick={() => { window.location.href = `/chat/?realUid=${found.uid}`; }}
-                  icon={<MessageCircle size={14}/>} className="flex-1">
-                  Message
-                </Button>
-              </div>
-
-              <div>
-                <p className="text-[11px] text-slate-500 mb-2 flex items-center gap-1"><ThumbsUp size={11}/> Endorse this player</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ENDORSE_SKILLS.map(skill => {
-                    const isGiven = given.includes(skill);
-                    return (
-                      <button key={skill} onClick={() => endorsePlayer(found.uid, skill)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors
-                          ${isGiven
-                            ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
-                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-violet-500/50 hover:text-violet-300'}`}>
-                        {skill}{isGiven && <span className="ml-1 text-[10px] opacity-60">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+          {status === 'found' && found && <PlayerActionCard player={found}/>}
         </div>
       </div>
-
-      {challengeOpen && found && <ChallengeModal opponent={found} onClose={() => setChallengeOpen(false)}/>}
     </div>
   );
 }
