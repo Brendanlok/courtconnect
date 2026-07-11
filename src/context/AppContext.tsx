@@ -246,6 +246,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
   const disputeMatch  = useCallback((id: string) => setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m)), []);
+  // Withdraws a match still waiting on other players' confirmation — for when an
+  // opponent never responds. No MMR was ever applied for a Pending match, so
+  // there's nothing to roll back.
+  const cancelPendingMatch = useCallback((id: string) => setMatches(p => p.map(m =>
+    m.id === id && m.status === 'Pending' ? { ...m, status: 'Cancelled' as const, pendingConfirmations: [] } : m
+  )), []);
   const updateUser    = useCallback((patch: Partial<UserProfile>) => {
     setUser(u => {
       const next = { ...u, ...patch };
