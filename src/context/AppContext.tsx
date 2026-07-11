@@ -604,6 +604,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sendClubMessageDoc(clubId, msg).catch(() => {});
   }, [user.displayName, myRealUid]);
 
+  // New-club-message notifications, scoped to only the clubs I'm actually a
+  // member of — NOT the full clubs collection. One Firestore listener per
+  // club I've joined (bounded by the per-tier club cap, so at most a handful
+  // per user), reconciled as myClubIds changes rather than tearing down and
+  // recreating every subscription on every unrelated re-render: no cleanup
+  // is returned from this effect itself (the ref persists across renders and
+  // add/remove is handled explicitly in the body); a separate mount-only
+  // effect below handles the true-unmount case.
+  const clubMsgUnsubsRef = useRef<Record<string, () => void>>({});
+  const prevClubMsgsRef  = useRef<Record<string, ClubMessage[]>>({});
+  useEffect(() => {
+    if (!myRealUid) return;
+    const wanted = new Set(myClubIds);
+    Object.keys(clubMsgUnsubsRef.current).forEach(id => {
+      if (wanted.has(id)) return;
+      clubMsgUnsubsRef.current[id]();
+      delete clubMsgUnsubsRef.current[id];
+      delete prevClubMsgsRef.current[id];
+    });
+    myClubIds.forEach(id => {
+      if (clubMsgUnsubsRef.current[id]) return;
+      const clubName = clubs.find(c => c.id === id)?.name ?? 'Club';
+      clubMsgUnsubsRef.current[id] = subscribeClubMessages(id, msgs => {
+        const prev = prevClubMsgsRef.current[id] ?? [];
+        if (prev.length > 0) {
+          const newFromOthers = msgs.slice(prev.length).filter(m => m.senderId !== myRealUid);
+          if (newFromOthers.length > 0) {
+            const last = newFromOthers[newFromOthers.length - 1];
+            addNotification({ type: 'club_message', title: clubName, body: `${last.senderName}: ${last.text}` });
+          }
+        }
+        prevClubMsgsRef.current[id] = msgs;
+      }, 10); // only need to detect new arrivals here, not full history
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myClubIds, myRealUid]);
+  useEffect(() => () => { Object.values(clubMsgUnsubsRef.current).forEach(fn => fn()); }, []);
+
   const awardClipCredits = useCallback((amount: number) => {
     setClipCredits(prev => {
       const next = prev + amount;
