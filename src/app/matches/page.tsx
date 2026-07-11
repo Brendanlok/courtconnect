@@ -351,6 +351,10 @@ export default function MatchesPage() {
         </div>
         {watchErr && <p className="text-xs text-red-400 mt-1.5">{watchErr}</p>}
         <p className="text-[11px] text-slate-600 mt-2">Get the code from whoever is scoring the match.</p>
+        <button onClick={() => setTrackJoinOpen(true)}
+          className="w-full mt-3 pt-3 border-t border-slate-800 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors">
+          <MapPinned size={11}/> Join a court-tracking session (other device)
+        </button>
       </div>
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
