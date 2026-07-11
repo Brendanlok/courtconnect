@@ -637,6 +637,10 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
               <Radio size={11}/> Continue Recording
             </button>
+            <button onClick={onCancel}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors">
+              <X size={11}/> Cancel Match
+            </button>
           </div>
         )}
         {m.liveState === 'confirming' && (
