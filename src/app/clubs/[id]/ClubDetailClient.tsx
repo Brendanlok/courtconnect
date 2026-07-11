@@ -15,7 +15,7 @@ import {
   Search, Check, X, AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
-import type { UserProfile } from '@/types';
+import type { UserProfile, ClubMessage } from '@/types';
 
 const ALL_PLAYERS = [ME, ...PLAYERS];
 
