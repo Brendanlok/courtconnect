@@ -37,6 +37,7 @@ interface AppCtx {
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
   declineChallenge: (id: string) => void;
+  cancelChallenge: (id: string) => void;
   // Clubs
   clubs: Club[];
   myClubIds: string[];
