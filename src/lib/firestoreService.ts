@@ -199,6 +199,84 @@ export async function loadConversations(uid: string): Promise<StoredConversation
   return snaps.docs.map(d => d.data() as StoredConversation);
 }
 
+// ── Real chat between two real accounts (one shared doc, not per-user copies) ─
+
+export function chatIdFor(a: string, b: string): string {
+  return [a, b].sort().join('_');
+}
+
+export interface ChatMessage { id: string; senderId: string; text: string; sentAt: string }
+
+export interface SharedConversation {
+  id: string;
+  participantUids: string[];
+  messages: ChatMessage[];
+  lastMessage: string;
+  lastAt: string;
+}
+
+export function subscribeSharedConversation(chatId: string, cb: (c: SharedConversation | null) => void): () => void {
+  return onSnapshot(doc(db, 'conversations', chatId), snap => {
+    cb(snap.exists() ? (snap.data() as SharedConversation) : null);
+  });
+}
+
+export async function sendSharedMessage(chatId: string, participantUids: string[], msg: ChatMessage) {
+  await setDoc(doc(db, 'conversations', chatId), {
+    id: chatId,
+    participantUids,
+    messages: arrayUnion(msg),
+    lastMessage: msg.text,
+    lastAt: msg.sentAt,
+  }, { merge: true });
+}
+
+// ── Real challenges between two real accounts (shared collection) ─────────────
+
+export interface StoredChallenge {
+  id: string;
+  fromUid: string; fromName: string; fromUsername: string;
+  toUid: string; toName: string; toUsername: string;
+  format: string; venue: string; date: string; message?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  createdAt: string;
+}
+
+export function subscribeChallengesFor(field: 'fromUid' | 'toUid', myUid: string, cb: (docs: StoredChallenge[]) => void): () => void {
+  const q = query(collection(db, 'challenges'), where(field, '==', myUid));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data() as StoredChallenge)));
+}
+
+export async function sendChallengeDoc(c: StoredChallenge) {
+  await setDoc(doc(db, 'challenges', c.id), c);
+}
+
+export async function updateChallengeStatus(id: string, status: StoredChallenge['status']) {
+  await updateDoc(doc(db, 'challenges', id), { status });
+}
+
+// ── Real endorsements between real accounts (subcollection per target user) ───
+
+export async function setEndorsementDoc(targetUid: string, fromUid: string, skills: string[]) {
+  await setDoc(doc(db, 'users', targetUid, 'endorsements', fromUid), { skills, updatedAt: serverTimestamp() });
+}
+
+export function subscribeEndorsementsReceived(myUid: string, cb: (bySkill: Record<string, number>) => void): () => void {
+  return onSnapshot(collection(db, 'users', myUid, 'endorsements'), snap => {
+    const counts: Record<string, number> = {};
+    snap.docs.forEach(d => {
+      const skills = (d.data().skills as string[] | undefined) ?? [];
+      skills.forEach(s => { counts[s] = (counts[s] ?? 0) + 1; });
+    });
+    cb(counts);
+  });
+}
+
+export async function loadEndorsementGiven(targetUid: string, fromUid: string): Promise<string[]> {
+  const snap = await getDoc(doc(db, 'users', targetUid, 'endorsements', fromUid));
+  return snap.exists() ? ((snap.data().skills as string[] | undefined) ?? []) : [];
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 export function toISOString(ts: unknown): string {
