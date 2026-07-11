@@ -9,6 +9,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { Plus, User, Settings, LogOut, QrCode, ChevronDown, Bell, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
+import { ME, PLAYERS } from '@/lib/data';
 
 export function Topbar() {
   const { user, unreadNotifCount } = useApp();
