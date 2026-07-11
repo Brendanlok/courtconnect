@@ -485,7 +485,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       {/* Leave club confirmation */}
       {leaveTarget && (
         <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setLeaveTarget(null)}>
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={leaveModalRef} {...leaveModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
               <div>
@@ -499,10 +499,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setLeaveTarget(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-              <button onClick={() => { leaveClub(leaveTarget.id); setLeaveTarget(null); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">Leave Club</button>
+              <Button variant="secondary" onClick={() => setLeaveTarget(null)} className="flex-1">Cancel</Button>
+              <Button variant="danger" onClick={() => { leaveClub(leaveTarget.id); setLeaveTarget(null); }} className="flex-1">Leave Club</Button>
             </div>
           </div>
         </div>
@@ -511,7 +509,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       {/* Disband confirmation */}
       {disbandTarget && (
         <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandTarget(null)}>
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={disbandModalRef} {...disbandModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
                 <Trash2 size={18} className="text-red-400"/>
@@ -522,10 +520,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setDisbandTarget(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-              <button onClick={() => { disbandClub(disbandTarget.id); setDisbandTarget(null); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">Disband Club</button>
+              <Button variant="secondary" onClick={() => setDisbandTarget(null)} className="flex-1">Cancel</Button>
+              <Button variant="danger" onClick={() => { disbandClub(disbandTarget.id); setDisbandTarget(null); }} className="flex-1">Disband Club</Button>
             </div>
           </div>
         </div>
