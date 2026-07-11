@@ -92,6 +92,15 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'pendingIds']) &&
           selfOnlyChange(resource.data.memberIds, request.resource.data.memberIds) &&
           selfOnlyChange(resource.data.pendingIds, request.resource.data.pendingIds)
+        ) ||
+        (
+          // One-time legacy-chat migration cleanup (migrateLegacyClubMessages):
+          // any member can clear the old embedded clubMessages field — never
+          // re-populate or rewrite it — once its contents are copied into the
+          // messages subcollection.
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clubMessages']) &&
+          !('clubMessages' in request.resource.data) &&
+          request.auth.uid in resource.data.memberIds
         )
       );
 
