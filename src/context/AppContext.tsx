@@ -546,11 +546,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const already = prev[targetUid] ?? [];
       const isGiven = already.includes(skill);
       const next = isGiven ? already.filter(s => s !== skill) : [...already, skill];
-      setPlayerEndorsements(pe => {
-        const existing = pe[targetUid] ?? {};
-        const newCount = Math.max(0, (existing[skill] ?? 0) + (isGiven ? -1 : 1));
-        return { ...pe, [targetUid]: { ...existing, [skill]: newCount } };
-      });
+
+      if (isRealUid(targetUid)) {
+        // Real target: write to their endorsements subcollection. They see the
+        // updated count live via their own subscribeEndorsementsReceived listener.
+        const realUid = auth.currentUser?.uid;
+        if (realUid) setEndorsementDoc(targetUid, realUid, next).catch(() => {});
+      } else {
+        setPlayerEndorsements(pe => {
+          const existing = pe[targetUid] ?? {};
+          const newCount = Math.max(0, (existing[skill] ?? 0) + (isGiven ? -1 : 1));
+          return { ...pe, [targetUid]: { ...existing, [skill]: newCount } };
+        });
+      }
       return { ...prev, [targetUid]: next };
     });
   }, []);
