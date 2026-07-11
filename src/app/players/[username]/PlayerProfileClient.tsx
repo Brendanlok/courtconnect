@@ -761,6 +761,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
       <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
         onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, ctxUser.uid); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+        onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
       {isMe && settOpen && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
