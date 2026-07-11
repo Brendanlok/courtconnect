@@ -8,7 +8,7 @@
 // one-shot start+test+stop wrapper).
 import { readFileSync } from 'fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, deleteDoc, collection, deleteField } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, collection, deleteField, getDocs } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-courtconnect';
 
