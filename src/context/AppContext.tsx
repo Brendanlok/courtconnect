@@ -57,6 +57,20 @@ function toLocalConversation(c: SharedConversation, myUid: string): Conversation
   };
 }
 
+// Same normalization for clubs: real Firebase uids on the shared Firestore
+// doc, translated to the local 'me' convention for display/equality checks.
+function toLocalClub(c: Club, myUid: string): Club {
+  const translate = (uid: string) => uid === myUid ? 'me' : uid;
+  return {
+    ...c,
+    adminId: translate(c.adminId),
+    moderatorIds: (c.moderatorIds ?? []).map(translate),
+    memberIds: c.memberIds.map(translate),
+    pendingIds: c.pendingIds.map(translate),
+  };
+}
+const toRealUid = (localUid: string, myUid: string) => localUid === 'me' ? myUid : localUid;
+
 interface AppCtx {
   user: UserProfile;
   matches: Match[];
