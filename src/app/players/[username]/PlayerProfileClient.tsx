@@ -51,10 +51,10 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const [matchFormat,    setMatchFormat]    = useState<MatchType | 'All'>('All');
   const [matchResult,    setMatchResult]    = useState<ResultFilter>('All');
 
-  if (!staticPlayer) return notFound();
+  if (!staticPlayer && !forceIsMe) return notFound();
 
-  const isMe   = staticPlayer.uid === 'me';
-  const player = isMe ? ctxUser : staticPlayer;
+  const isMe   = forceIsMe || staticPlayer!.uid === 'me';
+  const player = isMe ? ctxUser : staticPlayer!;
 
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
