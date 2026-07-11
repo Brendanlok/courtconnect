@@ -198,7 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const stored = await loadConversations(authUser.uid);
         if (!stored.length) return;
         const allPlayers = [ME_DATA, ...ALL_PLAYERS];
-        setConversations(prev => {
+        setLocalConversations(prev => {
           const merged = [...prev];
           stored.forEach(s => {
             const participant = allPlayers.find(p => p.uid === s.participantUid);
