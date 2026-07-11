@@ -267,15 +267,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (uid) saveOpenToPlay(uid, user.openToPlay ?? false).catch(() => {});
   }, [user.openToPlay]);
 
-  useEffect(() => {
-    localStorage.setItem('cc_myClubIds', JSON.stringify(myClubIds));
-    localStorage.removeItem('cc_myClubId'); // fully migrated off the old singular key
-  }, [myClubIds]);
-
-  useEffect(() => {
-    localStorage.setItem('cc_myClubPendingIds', JSON.stringify(myClubPendingIds));
-  }, [myClubPendingIds]);
-
   const addMatch      = useCallback((m: Match) => {
     setMatches(p => [m, ...p]);
     const uid = auth.currentUser?.uid;
