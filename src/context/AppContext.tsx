@@ -250,11 +250,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const uid = authUser.uid;
+      ensureSeedClubsExist(SEED_CLUBS).catch(() => {});
       realUnsubsRef.current = [
         subscribeChallengesFor('toUid', uid, setRealIncomingChallenges),
         subscribeChallengesFor('fromUid', uid, setRealOutgoingChallenges),
         subscribeMySharedConversations(uid, setRealConversationDocs),
         subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
+        subscribeClubs(setRawClubs),
       ];
     });
     return () => { unsubAuth(); realUnsubsRef.current.forEach(fn => fn()); };
