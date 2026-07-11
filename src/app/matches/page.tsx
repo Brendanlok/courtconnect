@@ -625,6 +625,10 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
               <Radio size={11}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
             </button>
+            <button onClick={onTrack}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-colors">
+              <MapPinned size={11}/>Track &amp; Record (2 Devices)
+            </button>
           </div>
         )}
         {m.liveState === 'live' && (
