@@ -1,3 +1,10 @@
+// Tested against the local Firestore emulator — see tests/firestore-rules.test.mjs
+// (`npm run test:rules`, 22/22 checks passing). NOT auto-deployed: .firebaserc
+// points at the fake "demo-courtconnect" project used only for emulator
+// testing, deliberately, so a stray `firebase deploy` can't accidentally push
+// to a real project. To actually publish these rules, either paste this file
+// into the Firebase Console (Firestore → Rules) for the real project, or run
+// `firebase deploy --only firestore:rules --project <your-real-project-id>`.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
