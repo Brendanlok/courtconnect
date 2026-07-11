@@ -7,7 +7,7 @@ import { maxClubsForTier, getTier } from '@/lib/utils';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
-  saveMatch, saveUserProfile, saveOpenToPlay,
+  saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
   saveTournamentReg, deleteTournamentReg,
   saveClubMembership,
   loadConversations,
