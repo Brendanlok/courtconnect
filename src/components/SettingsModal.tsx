@@ -472,16 +472,17 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <div className="bg-slate-800 border border-red-500/30 rounded-xl p-4 space-y-3">
                 <p className="text-sm font-semibold text-red-300">Type <span className="font-mono bg-slate-700 px-1 rounded">DELETE</span> to confirm</p>
                 <input value={deleteInput} onChange={e => setDeleteInput(e.target.value)}
-                  placeholder="DELETE"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-red-500 transition-colors"/>
+                  placeholder="DELETE" disabled={deleting}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-red-500 transition-colors disabled:opacity-50"/>
+                {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setDeleteStep('idle')}
-                    className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
+                  <button onClick={() => { setDeleteStep('idle'); setDeleteError(''); }} disabled={deleting}
+                    className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
                     Cancel
                   </button>
-                  <button onClick={handleDelete} disabled={deleteInput !== 'DELETE'}
+                  <button onClick={handleDelete} disabled={deleteInput !== 'DELETE' || deleting}
                     className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors">
-                    Delete forever
+                    {deleting ? 'Deleting…' : 'Delete forever'}
                   </button>
                 </div>
               </div>
