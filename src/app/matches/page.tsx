@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
