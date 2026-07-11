@@ -66,6 +66,7 @@ interface AppCtx {
   updateUser: (patch: Partial<UserProfile>) => void;
   conversations: Conversation[];
   setConversations: (c: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
+  sendRealMessage: (otherUid: string, otherProfile: SharedParticipant, text: string) => void;
   totalUnread: number;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
