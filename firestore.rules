@@ -97,20 +97,20 @@ service cloud.firestore {
 
       allow delete: if request.auth != null && resource.data.adminId == request.auth.uid;
 
-      // Chat is create-only (no edit/delete once sent). A message is either
-      // your own (normal send) or attributed to a current member of this
-      // club (covers the one-time legacy-message migration, which runs
-      // under whichever member's session first opens the chat — there's no
-      // admin/Cloud Functions backend to run it as a trusted system write).
-      // Residual tradeoff: any member can technically attribute a message to
-      // another member's name, not just their own — acceptable for a club
-      // chat, not for anything security- or payment-sensitive.
+      // Chat is create-only (no edit/delete once sent), members-only to
+      // write OR read. Deliberately doesn't also require
+      // senderId == request.auth.uid: the one-time legacy-message migration
+      // (see migrateLegacyClubMessages) writes messages authored by OTHER
+      // past members under whichever member's session first opens the chat
+      // — there's no admin/Cloud Functions backend to run it as a trusted
+      // system write instead. Residual tradeoff: a member can technically
+      // attribute a message to a fellow member's name, not just their own —
+      // acceptable for a club chat, not for anything security-sensitive.
       match /messages/{msgId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null && (
-          request.resource.data.senderId == request.auth.uid ||
-          request.auth.uid in get(/databases/$(database)/documents/clubs/$(clubId)).data.memberIds
-        );
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/clubs/$(clubId)).data.memberIds;
+        allow create: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/clubs/$(clubId)).data.memberIds;
         allow update, delete: if false;
       }
     }
