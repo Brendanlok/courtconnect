@@ -110,6 +110,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [announce,      setAnnounce]     = useState(club.announcement ?? '');
   const [editAnnounce,  setEditAnnounce] = useState(false);
   const [inviteQuery,   setInviteQuery]  = useState('');
+  const [realInviteName, setRealInviteName] = useState('');
+  const [realInviteStatus, setRealInviteStatus] = useState<'idle' | 'loading' | 'not-found' | 'already-member' | 'sent'>('idle');
   const [disbandModal,  setDisbandModal] = useState(false);
   const [disbandInput,  setDisbandInput] = useState('');
   const [leaveModal,    setLeaveModal]   = useState(false);
