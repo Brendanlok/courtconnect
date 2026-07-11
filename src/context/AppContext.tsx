@@ -651,9 +651,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user.displayName, user.username, user.tier, user.mmr, user.photoURL]);
 
   // Combine local/demo state with the real, Firestore-synced cross-account
-  // state. myRealUid is '' when signed out, so isRealUid-keyed lookups just
-  // fall through to nothing rather than mismatching against a stale uid.
-  const myRealUid = auth.currentUser?.uid ?? '';
+  // state. myRealUid (declared above, next to the club logic) is '' when
+  // signed out, so isRealUid-keyed lookups just fall through to nothing
+  // rather than mismatching against a stale uid.
   const challenges: Challenge[] = [
     ...localChallenges,
     ...realIncomingChallenges.map(c => toLocalChallenge(c, myRealUid)),
