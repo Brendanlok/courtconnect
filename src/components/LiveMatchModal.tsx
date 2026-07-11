@@ -1006,9 +1006,9 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const newMatch = {
       id: `m_${Date.now()}`,
       type: m.format,
-      player1Id: me.uid, player1Name: me.displayName, player1Username: me.username,
+      player1Id: user.uid, player1Name: user.displayName, player1Username: user.username,
       player2Id: opp?.uid ?? 'opp', player2Name: opp?.displayName ?? 'Opponent', player2Username: opp?.username ?? 'opponent',
-      winnerId: iWon ? me.uid : opp?.uid ?? 'opp',
+      winnerId: iWon ? user.uid : opp?.uid ?? 'opp',
       games: gameScores,
       status: opponentUids.length > 0 ? 'Pending' as const : 'Confirmed' as const,
       pendingConfirmations: opponentUids,
