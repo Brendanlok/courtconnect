@@ -236,7 +236,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: 'Members',  value: `${club.memberIds.length}/${club.maxMembers}` },
-            { label: 'Avg MMR',  value: club.avgMMR.toLocaleString() },
+            { label: 'Avg MMR',  value: liveAvgMMR.toLocaleString() },
             { label: 'Min MMR',  value: club.minMMR ? club.minMMR.toLocaleString() : 'Open' },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/60 rounded-xl p-3 text-center">
