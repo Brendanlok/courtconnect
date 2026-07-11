@@ -10,36 +10,59 @@ service cloud.firestore {
       // Per-user subcollections — always written by their own owner (uid),
       // never by anyone else. Every function in firestoreService.ts that
       // touches these already only ever writes to auth.currentUser's own uid.
-      match /{sub}/{docId} where sub in ['matches', 'plannedMatches', 'tournamentRegs', 'conversations', 'friends'] {
+      match /matches/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /plannedMatches/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /tournamentRegs/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /conversations/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /friends/{docId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == uid;
       }
 
-      // Endorsements are the one subcollection someone ELSE writes into —
-      // fromUid (the endorser) writes their own doc under the target's uid.
+      // The one subcollection someone ELSE writes into — fromUid (the
+      // endorser) writes their own doc under the target's uid.
       match /endorsements/{fromUid} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == fromUid;
       }
     }
 
-    // Everything else (liveMatches, challenges, conversations, clubs) is
-    // left permissive for now — see the note below on why.
-    match /{collection}/{document=**} {
-      allow read, write: if request.auth != null;
-    }
+    // Shared, multi-party collections — kept permissive for any authenticated
+    // user. NOTE: these are explicitly listed (not a catch-all wildcard) so
+    // that tightening `users/**` above actually takes effect — Firestore
+    // rules are OR'd across every matching `match` block, so a leftover
+    // `match /{collection}/{document=**}` here would silently re-grant
+    // access to the subcollections just locked down above. See the bottom of
+    // this file for why a fuller per-field tightening of these four isn't
+    // applied yet.
+    match /liveMatches/{document=**}   { allow read, write: if request.auth != null; }
+    match /challenges/{document=**}    { allow read, write: if request.auth != null; }
+    match /conversations/{document=**} { allow read, write: if request.auth != null; }
+    match /clubs/{document=**}         { allow read, write: if request.auth != null; }
   }
 }
 
-// ── Not yet applied: proposed tighter rules for the shared, multi-party
-// collections (challenges, conversations, clubs). These need real per-field
-// write validation (e.g. "you can only add your own uid to memberIds", "you
-// can only write a challenge where you're fromUid or toUid") which is harder
-// to get right in rules syntax, and this repo has no Firebase emulator or
-// staging project to test against before it goes live. A wrong rule here
-// fails silently and can lock real users out of features that work today —
-// worse than the current over-permissiveness. Draft below for review before
-// deploying (test in the Firebase emulator first):
+// ── Not yet applied: proposed tighter rules for the 4 shared collections
+// above. These need real per-field write validation (e.g. "you can only add
+// your own uid to memberIds", "you can only write a challenge where you're
+// fromUid or toUid") which is harder to get right in rules syntax, and this
+// repo has no Firebase emulator or staging project to test against before it
+// goes live. A wrong rule here fails silently and can lock real users out of
+// features that work today — worse than the current over-permissiveness.
+// Draft below for review before deploying (test in the Firebase emulator
+// first: `firebase emulators:start`):
 //
 // match /challenges/{id} {
 //   allow read: if request.auth != null;
@@ -59,3 +82,9 @@ service cloud.firestore {
 //   // moderatorIds" check, which needs emulator testing to get right without
 //   // breaking joinClub/leaveClub/acceptClubMember/etc. for real users.
 // }
+//
+// This repo also has no firebase.json / .firebaserc — editing this file does
+// NOT auto-deploy it. It must be manually pasted into the Firebase Console
+// (Firestore → Rules) or pushed with `firebase deploy --only firestore:rules`
+// after `firebase init` is set up, for either the applied or draft rules
+// above to actually take effect.
