@@ -777,7 +777,7 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, 
     .slice(0, showSelf ? 5 : 6);
 
   return (
-    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+    <div ref={ref} className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
       <div className="p-2 border-b border-slate-700">
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
