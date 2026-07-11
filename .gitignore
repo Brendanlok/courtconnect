@@ -45,3 +45,9 @@ next-env.d.ts
 
 # locally-installed Claude skills (not part of the app)
 /.agents/
+
+# Firebase emulator (used for testing firestore.rules — see `npm run test:rules`)
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
