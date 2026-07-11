@@ -458,7 +458,8 @@ export default function MatchesPage() {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
       />
 
-      {logOpen  && <LogMatchModal  open={true} onClose={() => setLogOpen(false)}/>}
+      {logOpen  && <LogMatchModal  open={true} onClose={() => { setLogOpen(false); setLogPlannedId(null); }}
+        plannedMatchId={logPlannedId ?? undefined} onLogged={handleMatchLogged}/>}
       {liveOpen && (
         <LiveMatchModal
           open={true}
