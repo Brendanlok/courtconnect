@@ -340,8 +340,35 @@ export async function setClubModerator(id: string, uid: string, isModerator: boo
   await updateDoc(doc(db, 'clubs', id), { moderatorIds: isModerator ? arrayUnion(uid) : arrayRemove(uid) });
 }
 
-export async function addClubMessageDoc(id: string, msg: ClubMessage) {
-  await updateDoc(doc(db, 'clubs', id), { clubMessages: arrayUnion(msg) });
+// Club chat — a subcollection, not an array field on the club doc. The old
+// `arrayUnion`-on-the-club-doc design grows the SAME document forever with
+// every message from every member, in a collection every signed-in client
+// already subscribes to in full (subscribeClubs) — a genuinely active club
+// would eventually hit Firestore's 1MB single-document limit, and every
+// unrelated club update re-downloads that entire message history to every
+// user. A subcollection has no such document-size ceiling, supports
+// pagination, and isn't touched at all by the club-metadata listener.
+export async function sendClubMessageDoc(clubId: string, msg: ClubMessage) {
+  await setDoc(doc(db, 'clubs', clubId, 'messages', msg.id), msg);
+}
+
+export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) => void, max = 50): () => void {
+  const q = query(collection(db, 'clubs', clubId, 'messages'), orderBy('sentAt', 'desc'), fsLimit(max));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data() as ClubMessage).reverse()));
+}
+
+// One-time migration for clubs created before this change: moves the old
+// embedded `clubMessages` array into the subcollection, then clears the
+// field off the club doc so it stops counting toward that document's size.
+// Idempotent — once the field is cleared, later calls are a no-op — so it's
+// safe to call from every client that opens a club's chat without needing a
+// separate "already migrated" flag or worrying about two clients racing.
+export async function migrateLegacyClubMessages(clubId: string, legacyMessages: ClubMessage[]): Promise<void> {
+  if (legacyMessages.length === 0) return;
+  const batch = writeBatch(db);
+  legacyMessages.forEach(m => batch.set(doc(db, 'clubs', clubId, 'messages', m.id), m));
+  batch.update(doc(db, 'clubs', clubId), { clubMessages: deleteField() });
+  await batch.commit();
 }
 
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
