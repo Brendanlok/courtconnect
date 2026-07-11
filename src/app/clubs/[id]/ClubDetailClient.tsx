@@ -455,10 +455,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                 <span className="text-[10px] text-slate-500 ml-auto">{members.length} members</span>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {(!club.clubMessages || club.clubMessages.length === 0) && (
+                {messages.length === 0 && (
                   <p className="text-center text-sm text-slate-600 py-8">No messages yet. Say hi!</p>
                 )}
-                {(club.clubMessages ?? []).map(msg => {
+                {messages.map(msg => {
                   const isMe = msg.senderId === 'me';
                   const sender = ALL_PLAYERS.find(p => p.uid === msg.senderId);
                   return (
