@@ -207,9 +207,12 @@ export function chatIdFor(a: string, b: string): string {
 
 export interface ChatMessage { id: string; senderId: string; text: string; sentAt: string }
 
+export interface SharedParticipant { displayName: string; username: string; tier: string; mmr: number; photoURL?: string | null }
+
 export interface SharedConversation {
   id: string;
   participantUids: string[];
+  participants: Record<string, SharedParticipant>;
   messages: ChatMessage[];
   lastMessage: string;
   lastAt: string;
@@ -221,10 +224,18 @@ export function subscribeSharedConversation(chatId: string, cb: (c: SharedConver
   });
 }
 
-export async function sendSharedMessage(chatId: string, participantUids: string[], msg: ChatMessage) {
+export function subscribeMySharedConversations(myUid: string, cb: (cs: SharedConversation[]) => void): () => void {
+  const q = query(collection(db, 'conversations'), where('participantUids', 'array-contains', myUid));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data() as SharedConversation)));
+}
+
+export async function sendSharedMessage(
+  chatId: string, participantUids: string[], participants: Record<string, SharedParticipant>, msg: ChatMessage,
+) {
   await setDoc(doc(db, 'conversations', chatId), {
     id: chatId,
     participantUids,
+    participants,
     messages: arrayUnion(msg),
     lastMessage: msg.text,
     lastAt: msg.sentAt,
