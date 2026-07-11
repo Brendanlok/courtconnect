@@ -50,18 +50,26 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const hasRequested = myClubPendingIds.includes(clubId);
   const isFull    = club.memberIds.length >= club.maxMembers;
 
-  const [realProfiles, setRealProfiles] = useState<Record<string, UserProfile>>({});
+  // null = looked up and not found (so a deleted/bad uid isn't retried forever)
+  const [realProfiles, setRealProfiles] = useState<Record<string, UserProfile | null>>({});
 
   // Members/pending requesters may be real accounts (not in the static demo
   // roster) — fetch their profiles on demand so they actually show up.
+  // Deps are joined to primitive strings, not the raw arrays: `club` (and its
+  // array fields) is recomputed fresh on every AppContext render regardless
+  // of whether membership actually changed, so depending on the arrays
+  // directly would re-run this on every unrelated app render.
+  const memberKey  = club.memberIds.join(',');
+  const pendingKey = club.pendingIds.join(',');
   useEffect(() => {
-    const uids = [...club.memberIds, ...club.pendingIds].filter(uid =>
-      uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && !realProfiles[uid]
+    const uids = [...memberKey.split(','), ...pendingKey.split(',')].filter(uid =>
+      uid && uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && !(uid in realProfiles)
     );
     if (uids.length === 0) return;
+    let cancelled = false;
     Promise.all(uids.map(async uid => {
       const data = await lookupUserByUid(uid).catch(() => null);
-      if (!data) return null;
+      if (!data) return [uid, null] as const;
       const profile: UserProfile = {
         uid, username: data.username ?? uid, displayName: data.displayName ?? 'Player',
         email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
@@ -71,13 +79,15 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
       };
       return [uid, profile] as const;
     })).then(results => {
-      const found = results.filter((r): r is [string, UserProfile] => !!r);
-      if (found.length) setRealProfiles(prev => ({ ...prev, ...Object.fromEntries(found) }));
+      if (cancelled) return;
+      setRealProfiles(prev => ({ ...prev, ...Object.fromEntries(results) }));
     });
-  }, [club.memberIds, club.pendingIds, realProfiles]);
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberKey, pendingKey]);
 
   const resolveProfile = (uid: string): UserProfile | undefined =>
-    uid === 'me' ? user : ALL_PLAYERS.find(p => p.uid === uid) ?? realProfiles[uid];
+    uid === 'me' ? user : ALL_PLAYERS.find(p => p.uid === uid) ?? realProfiles[uid] ?? undefined;
 
   const members: UserProfile[] = club.memberIds
     .map(resolveProfile)
