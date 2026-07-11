@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   if (!open) return null;
   const s = TIER_STYLE[user.tier];
 
