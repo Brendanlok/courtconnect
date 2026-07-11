@@ -1,5 +1,46 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-11 14:10] — Interactive Session (real cross-account features)
+
+**Trigger:** User asked to fix the 4 items proposed at the end of the prior session: (1) make challenges/endorsements/club requests/chat actually work between two real accounts, (2) "waiting on N players" messaging now that multi-party confirmation works, (3) the real Delete Account fix, (4) a resolution path for permanently stuck matches.
+
+### Shipped
+
+**#2 — Confirmation messaging.** [MatchDetailModal.tsx](src/components/MatchDetailModal.tsx) now shows "Waiting on N more players to confirm" when a live match still has real opponents outstanding, and hides the (previously no-op) Confirm/Dispute buttons in that case — since the local user already implicitly confirmed by reporting the result, clicking Confirm again did nothing.
+
+**#3 — Real Delete Account.** [SettingsModal.tsx](src/components/SettingsModal.tsx) now actually deletes: wipes every Firestore subcollection (matches, plannedMatches, tournamentRegs, friends, conversations) plus the user doc, calls Firebase `deleteUser`, and clears all `cc_*` localStorage keys — in that order, since Firestore rules require an authenticated request and calling `deleteUser` first would lock out the cleanup. Handles the `auth/requires-recent-login` case with a clear message rather than silently failing.
+
+**#4 — Stuck match resolution.** Added a `Cancelled` match status and `cancelPendingMatch` action — the reporter can withdraw a live match that's stuck waiting on an opponent who'll never confirm (no MMR was ever applied to a Pending match, so nothing to roll back). Surfaced as "Stop waiting — withdraw this match" in the modal. While adding this status, found and fixed a related pre-existing bug: [PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx)'s Wins/Losses filter and [MatchCard.tsx](src/components/MatchCard.tsx)'s W/L badge both used `status !== 'Pending'` instead of `status === 'Confirmed'` to classify a match as won/lost — meaning a Disputed (and now Cancelled) match would have been mislabeled as a loss. Fixed both to require `Confirmed` explicitly.
+
+**#1 — Real cross-account challenges, chat, and endorsements.** This was the big one. Scoped to what could be shipped solidly in one pass:
+- New "Find a Player" search (Players page) looks up a real account by exact username (`lookupUserByUsername`) and shows a card with Challenge / Message / Endorse actions — real accounts aren't discoverable any other way today since Leaderboard/Players list only ever show the static demo roster.
+- Challenges: real challenges write to a shared Firestore `challenges` collection (real Firebase uids) instead of local-only state; each device subscribes via `onSnapshot` for both incoming and outgoing, so accepting/declining/cancelling on one account is reflected live on the other. Demo/static-player challenges are untouched (still local-only, since a demo bot has no account to receive anything).
+- Chat: real conversations use one shared Firestore doc per pair (`conversations/{sortedUidPair}`) instead of each side keeping a private copy, with real-time sync both ways. Demo conversations are untouched.
+- Endorsements: endorsing a real player writes to a Firestore subcollection under their account; they see the updated count live on their own profile via a new listener. Demo endorsements are untouched.
+- Local `Challenge`/`Conversation` objects always normalize "me" the same way matches already do (`fromId`/`participant` use the literal `'me'` locally, the real Firebase uid only lives on the shared Firestore doc) — this meant zero changes were needed to the existing ChallengesSection/chat UI beyond wiring the new data in.
+- **Club requests were cut from this pass.** Clubs are still 100% local demo state (`SEED_CLUBS`, never written to Firestore) — making club join requests real means migrating the whole club data model to a live collection first (membership, moderation, invites, in-club chat all touch this). That's a bigger, riskier project on its own; flagged below rather than rushed.
+
+### Found while implementing #1 (not asked for, but blocking) — fixed
+
+🔴 **A real signed-in user's own profile data was never loaded from Firestore.** `AppContext`'s `user` state was built purely from `localStorage` merged onto the static demo seed (`ME`), with no bridge to the real Firestore profile a user creates during signup (`completeProfile`). In practice this meant: log in on a second device, or clear localStorage, and the app shows the demo seed name/MMR/stats instead of your real account — the entire authenticated experience beyond the login gate was effectively showing demo data. Fixed: the existing sign-in effect now also calls `loadUserProfile(uid)` and merges it into local state (keeping `uid: 'me'` per the app's established convention). This was a prerequisite for challenges/chat/endorsements to mean anything — no point challenging "you" by your real name if the app never knew your real name.
+
+### Found while implementing #1 — NOT fixed, flagging clearly
+
+🔴 **A real user's own profile page 404s**, and so does anyone else's. `output: 'export'` means `/players/[username]/` is only pre-rendered for the usernames baked in at build time (`generateStaticParams` = the static demo roster). A real user's actual username was never in that list, so navigating to their own or another real account's profile page hits a plain 404 — there's no server to fall back to. This doesn't block anything shipped above (Find-a-Player uses a modal card, chat/challenges don't need the route), but it means there's currently no full profile *page* for a real account — only the compact card in the Find-a-Player modal and their own Settings. Proper fix needs a client-side-only profile view (e.g. `/profile/` for your own, `/profile/?uid=X` for someone else's) that doesn't depend on a pre-built static path — same pattern already used for the new real chat entry point.
+
+🟡 **Firestore security rules are looser than they look.** `firestore.rules` has a catch-all `match /{collection}/{document=**} { allow read, write: if request.auth != null }` that (intentionally, for the demo-era app) lets any authenticated user read or write any other user's subcollections — matches, endorsements, tournament regs, etc. This is what made today's real-time features work without a rules change, but it's worth tightening before real users are trusting the app with real data (e.g. anyone could currently overwrite anyone else's match history).
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Real profile page for real accounts | Currently 404s (see above) — needed to actually view a real player's full stats/history, not just the compact search card | Medium — client-side-only route, reusing patterns from the new chat entry point |
+| Migrate clubs to Firestore | Only way to make club join requests, moderation, and invites real between two accounts | Large — full data-model migration, ~10 functions across 3 pages |
+| Tighten Firestore security rules | Any authenticated user can currently write to any other user's data | Medium — needs a considered per-collection rule design, not a quick patch |
+| Real unread-message counts for cross-account chat | Currently always shows 0 for real conversations (scoped out this pass) | Small — local last-read timestamp per chat, same idea as the existing per-conversation unread reset |
+
+### Verification
+Rebuilt (`npx next build`, clean TypeScript) after every change. Re-ran the standalone multi-user logic simulation from the prior session — still 0 failures. Could not exercise any of this live with two real accounts for the same reason as every prior session: no demo/guest auth path, and creating real test accounts or entering passwords isn't something this session does even for the project's own testing.
+
 ## [2026-07-11 09:00] — Interactive Session (user-directed deep audit + simulation)
 
 **Trigger:** User asked to find anything else to fix, propose what's next, and "self simulate real users, test all functions with interactions between real users."
