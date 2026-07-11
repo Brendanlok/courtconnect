@@ -32,8 +32,6 @@ export function FindPlayerModal({ onClose }: { onClose: () => void }) {
     setStatus('found');
   };
 
-  const given = found ? (myEndorsements[found.uid] ?? []) : [];
-
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
