@@ -141,7 +141,7 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch } = useApp();
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch, cancelPendingMatch } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [watchCode, setWatchCode] = useState('');
   const [watchErr,  setWatchErr]  = useState('');
