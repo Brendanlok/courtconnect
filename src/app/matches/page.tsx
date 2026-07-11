@@ -158,6 +158,7 @@ export default function MatchesPage() {
   const [watchErr,  setWatchErr]  = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen,     setLogOpen]     = useState(false);
+  const [logPlannedId, setLogPlannedId] = useState<string | null>(null); // planned match being logged, if any
   const [liveOpen,    setLiveOpen]    = useState(false);
   const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
   const [planOpen,    setPlanOpen]    = useState(false);
