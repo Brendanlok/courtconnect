@@ -213,6 +213,21 @@ export interface CourtProfile {
   lastUpdated: string;
 }
 
+// Two-device shared tracking session — one phone at each end of the court
+// (3/4 angle from the back), both tapping player positions into one combined
+// heatmap and recording their own angle. Manual tap-tracking, not automatic
+// video/CV tracking.
+export interface CourtSession {
+  id: string;
+  joinCode: string;
+  hostUid: string;
+  status: 'active' | 'completed';
+  positions: CourtPosition[];
+  createdAt: string;
+  plannedMatchId?: string;
+  venue?: string;
+}
+
 export interface AuthUser {
   uid: string;
   displayName: string;
