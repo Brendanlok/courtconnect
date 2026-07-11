@@ -9,11 +9,12 @@ import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
   saveTournamentReg, deleteTournamentReg,
-  saveClubMembership,
   loadConversations,
   subscribeChallengesFor, sendChallengeDoc, updateChallengeStatus, type StoredChallenge,
   subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
   subscribeEndorsementsReceived, setEndorsementDoc,
+  subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
+  addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator, addClubMessageDoc,
 } from '@/lib/firestoreService';
 
 // A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
