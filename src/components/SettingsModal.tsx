@@ -7,6 +7,8 @@ import type { CountryCode } from '@/types';
 import type { UserProfile } from '@/types';
 import { storage, auth } from '@/lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { deleteUser } from 'firebase/auth';
+import { deleteAccountData } from '@/lib/firestoreService';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
