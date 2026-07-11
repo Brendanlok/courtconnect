@@ -420,6 +420,7 @@ export default function MatchesPage() {
                 onLog={() => { setLogPlannedId(m.id); setLogOpen(true); }}
                 onCancel={() => setCancelId(m.id)}
                 onLiveRecord={() => handleOpenLiveRecord(m.id)}
+                onTrack={() => { setTrackMatchId(m.id); setTrackOpen(true); }}
                 onSimulateAccept={uid => handleSimulateAccept(m.id, uid)}
               />
             ))
