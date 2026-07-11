@@ -66,6 +66,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [disbandInput,  setDisbandInput] = useState('');
   const [leaveModal,    setLeaveModal]   = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club.name}`);
+  const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club.name}`);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
