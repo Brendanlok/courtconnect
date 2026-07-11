@@ -176,6 +176,33 @@ export function subscribeLiveMatch(id: string, cb: (m: LiveMatch | null) => void
   });
 }
 
+// ── Court tracking sessions (two devices, one shared heatmap) ─────────────────
+
+import type { CourtSession, CourtPosition } from '@/types';
+
+export async function createCourtSession(session: CourtSession): Promise<void> {
+  await setDoc(doc(db, 'courtSessions', session.id), { ...session, createdAt: serverTimestamp() });
+}
+
+export async function addCourtSessionPositions(id: string, positions: CourtPosition[]): Promise<void> {
+  await updateDoc(doc(db, 'courtSessions', id), { positions: arrayUnion(...positions) });
+}
+
+export async function getCourtSessionByCode(code: string): Promise<CourtSession | null> {
+  const q = query(collection(db, 'courtSessions'), where('joinCode', '==', code.toUpperCase()), where('status', '==', 'active'));
+  const snaps = await getDocs(q);
+  if (snaps.empty) return null;
+  return snaps.docs[0].data() as CourtSession;
+}
+
+export function subscribeCourtSession(id: string, cb: (s: CourtSession | null) => void): () => void {
+  return onSnapshot(doc(db, 'courtSessions', id), snap => cb(snap.exists() ? (snap.data() as CourtSession) : null));
+}
+
+export async function completeCourtSession(id: string): Promise<void> {
+  await updateDoc(doc(db, 'courtSessions', id), { status: 'completed' });
+}
+
 // ── Conversations (chat messages) ─────────────────────────────────────────────
 
 interface StoredConversation {
