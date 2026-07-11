@@ -5,7 +5,7 @@
  */
 import {
   doc, setDoc, deleteDoc, getDoc, getDocs, collection,
-  query, where, serverTimestamp, updateDoc, Timestamp, onSnapshot, arrayUnion,
+  query, where, serverTimestamp, updateDoc, Timestamp, arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Match, UserProfile, Tournament, Club } from '@/types';
