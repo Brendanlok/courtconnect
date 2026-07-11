@@ -940,7 +940,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
     if (formatDisabled(f)) return;
     setFormat(f);
     const { teamSize: ts } = slotsForFormat(f);
-    const keptA0 = teamA[0] ?? null; // preserve whoever is in A0
+    const keptA0 = teamA[0] ?? me; // preserve whoever is in A0, defaulting back to the host
     setTeamA(ts === 1 ? [keptA0] : [keptA0, null]);
     setTeamB(ts === 1 ? [null] : [null, null]);
   };
