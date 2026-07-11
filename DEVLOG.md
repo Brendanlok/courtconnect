@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-11 17:50] — Interactive Session (club chat rearchitecture)
+
+**Trigger:** User asked to rearchitect club chat to scale properly — the deferred item from the previous session ("`subscribeClubs` downloads the entire clubs collection, unfiltered, including full embedded chat history, to every signed-in client on every change to any club").
+
+### Shipped
+- **Club chat moved from an embedded array to a subcollection** (`clubs/{id}/messages/{msgId}` instead of `clubs/{id}.clubMessages: [...]`). This removes the unbounded-document-growth risk (a genuinely active club would eventually have hit Firestore's 1MB single-document limit) and means sending a message no longer touches the parent club document at all — the full-collection `subscribeClubs` listener every signed-in client runs no longer carries chat history, only club metadata (name, membership, moderation).
+- **Real-time message delivery rescoped to only the clubs a user is actually in.** Rather than riding on the full-collection club listener, AppContext now maintains one lightweight Firestore listener per club in `myClubIds` (bounded by the per-tier club cap — a handful at most per user), reconciled incrementally as membership changes rather than tearing down and rebuilding every listener on unrelated re-renders.
+- **One-time legacy migration**, run client-side the first time a club's chat is opened: any old embedded `clubMessages` array gets copied into the new subcollection via a batched write, then the array field is cleared off the club doc. Idempotent — the guard is simply "does the legacy field still have data," so it can't double-migrate or lose messages to a race between two people opening the same club's chat at once.
+- **Pagination**: the chat subscription only loads the most recent 50 messages (`orderBy('sentAt','desc').limit(50)`, reversed for chronological display) instead of the full history.
+
+### Found while implementing this — a more serious pre-existing bug, fixed
+While tracing how seed messages would migrate, found that `ensureSeedClubsExist` (added last session) was writing one seed club's data into Firestore **verbatim** — and that seed data hardcodes the literal string `'me'` as a member (`memberIds: ['p1', 'me', 'p3']`) and as a chat message's sender, because it was originally authored for pure local/single-player state where `'me'` unambiguously meant "the current device's user." Written raw into a real shared Firestore document, this meant **every real signed-in user would see themselves as already a member of a demo club they never joined** — a real, user-facing bug, not just a scale concern. Fixed the seeding function to strip any `'me'` placeholder before writing, and added a repair path (idempotent, detects and cleans up if an earlier deploy already wrote the bad data) so this self-heals even if it already happened.
+
+### Still open
+- The clubs collection itself (metadata only, now that chat is out of it) is still a full, unfiltered `subscribeClubs()` — reasonable at demo scale and even into the hundreds of clubs now that each doc is small, but genuinely large-scale club discovery would eventually want pagination/query scoping too. Lower priority than the chat fix since club *creation* is deliberate and slow-growing, unlike chat messages which accumulate automatically through routine use.
+- Full per-field Firestore rules tightening for challenges/conversations/clubs is still drafted, not applied (needs emulator testing — see previous entry).
+
+### Verification
+Rebuilt after every change (`npx next build`, clean). Extended the standalone logic simulation with a scenario covering: seed-data sanitization (confirms the 'me' placeholder is stripped before writing and dropped from migrated messages), the repair-path detection logic, pagination ordering (`orderBy desc + limit` then reverse produces correct chronological order), and two simulated accounts independently translating the same message stream to their own 'me' convention. All 8 scenarios pass, 0 failures. No live two-account testing, same reasoning as every prior session — this repo has no way to create test accounts without a real device.
+
 ## [2026-07-11 16:40] — Interactive Session (self-critical follow-up)
 
 **Trigger:** User asked what else needs fixing, explicitly "be realistic and critical." Re-audited this session's own new code rather than doing a generic sweep, then worked through the prioritized list from that audit.
