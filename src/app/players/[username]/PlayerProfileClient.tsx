@@ -34,7 +34,7 @@ const ACHIEVEMENTS = [
   { icon:'🤝', name:'Centurion',   desc:'Play 100 matches',        done:false },
 ];
 
-export function PlayerProfileClient({ username }: { username: string }) {
+export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
   const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
