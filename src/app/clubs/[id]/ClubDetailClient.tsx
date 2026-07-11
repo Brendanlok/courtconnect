@@ -5,6 +5,8 @@ import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
+import { Button } from '@/components/ui/Button';
+import { useModalA11y } from '@/hooks/useModalA11y';
 import { timeAgo, maxClubsForTier } from '@/lib/utils';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
