@@ -227,10 +227,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  // Load persisted conversations from Firestore on sign-in
+  // Load the real signed-in user's actual profile + conversations from Firestore.
+  // Without this, the app just shows the local demo seed profile forever,
+  // regardless of who's actually logged in — everything a real user set during
+  // signup (username, name, etc.) would never appear anywhere.
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (authUser) => {
       if (!authUser) return;
+      try {
+        const profile = await loadUserProfile(authUser.uid);
+        if (profile) {
+          setUser(u => ({
+            ...u, ...profile,
+            uid: 'me', // keep the app-wide local convention — the real uid lives in auth.currentUser
+            tier: getTier(profile.mmr ?? u.mmr),
+          }));
+        }
+      } catch { /* Firestore unavailable — keep local/seed profile */ }
       try {
         const stored = await loadConversations(authUser.uid);
         if (!stored.length) return;
