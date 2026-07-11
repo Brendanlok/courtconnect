@@ -97,6 +97,14 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     .map(resolveProfile)
     .filter((p): p is UserProfile => !!p);
 
+  // club.avgMMR is set once at creation and never recalculated — compute it
+  // live from actual resolved members instead of trusting the stale field.
+  // Falls back to the stored value only while member profiles are still
+  // loading (members.length can lag club.memberIds.length briefly).
+  const liveAvgMMR = members.length > 0
+    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
+    : club.avgMMR;
+
   const [tab,           setTab]          = useState<Tab>('Overview');
   const [chatInput,     setChatInput]    = useState('');
   const [announce,      setAnnounce]     = useState(club.announcement ?? '');
