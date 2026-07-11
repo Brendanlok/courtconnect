@@ -151,6 +151,9 @@ export default function MatchesPage() {
   const [logPlannedId, setLogPlannedId] = useState<string | null>(null); // planned match being logged, if any
   const [liveOpen,    setLiveOpen]    = useState(false);
   const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
+  const [trackOpen,     setTrackOpen]     = useState(false); // court-tracking session, hosted from a planned match
+  const [trackMatchId,  setTrackMatchId]  = useState<string | null>(null);
+  const [trackJoinOpen, setTrackJoinOpen] = useState(false); // court-tracking session, joined via code (2nd device)
   const [planOpen,    setPlanOpen]    = useState(false);
   const [planMode,    setPlanMode]    = useState<PlanMode>('plan');
   const [editId,      setEditId]      = useState<string | null>(null);
