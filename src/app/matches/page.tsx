@@ -6,10 +6,11 @@ import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { LiveMatchModal } from '@/components/LiveMatchModal';
+import { CourtTrackModal } from '@/components/CourtTrackModal';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
-  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye,
+  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
