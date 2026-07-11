@@ -154,43 +154,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realOutgoingChallenges, setRealOutgoingChallenges] = useState<StoredChallenge[]>([]);
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
   const [realEndorsementCounts,  setRealEndorsementCounts]  = useState<Record<string, number>>({});
-  // Migrate the old single-club localStorage key to the new array-based one.
-  const readSavedClubIds = (): string[] => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('cc_myClubIds');
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    const legacy = localStorage.getItem('cc_myClubId');
-    return legacy ? [legacy] : [];
-  };
-
-  const [clubs,            setClubs]            = useState<Club[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedIds = readSavedClubIds();
-      if (savedIds.length) {
-        return SEED_CLUBS.map(c => savedIds.includes(c.id) && !c.memberIds.includes('me')
-          ? { ...c, memberIds: [...c.memberIds, 'me'] }
-          : c);
-      }
-    }
-    return SEED_CLUBS;
-  });
-  const [myClubIds,        setMyClubIds]        = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const savedIds = readSavedClubIds();
-      if (savedIds.length) return savedIds;
-    }
-    // Derive from seed data (e.g. 'me' seeded into c1)
-    return SEED_CLUBS.filter(c => c.memberIds.includes('me')).map(c => c.id);
-  });
-  const [clubInvites,      setClubInvites]      = useState<string[]>([]);
-  const [myClubPendingIds, setMyClubPendingIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try { return JSON.parse(localStorage.getItem('cc_myClubPendingIds') ?? '[]'); } catch { return []; }
-    }
-    return [];
-  });
+  // Clubs live in Firestore now (real, shared documents — see the real-time
+  // subscription effect below) so two real accounts actually see the same
+  // membership/pending/moderator state. rawClubs holds real Firebase uids;
+  // `clubs` (translated for display) and myClubIds/myClubPendingIds are
+  // derived from it further down, same 'me'-normalization as challenges.
+  const [rawClubs,         setRawClubs]          = useState<Club[]>(SEED_CLUBS);
+  const [clubInvites,      setClubInvites]       = useState<string[]>([]);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
   const [following,              setFollowing]             = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
