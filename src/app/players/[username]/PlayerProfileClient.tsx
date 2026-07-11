@@ -66,8 +66,8 @@ export function PlayerProfileClient({ username }: { username: string }) {
     .filter(m => {
       if (matchResult === 'All')     return true;
       if (matchResult === 'Pending') return m.status === 'Pending';
-      if (matchResult === 'Wins')    return m.winnerId === player.uid;
-      return m.status !== 'Pending' && m.winnerId !== player.uid;
+      if (matchResult === 'Wins')    return m.status === 'Confirmed' && m.winnerId === player.uid;
+      return m.status === 'Confirmed' && m.winnerId !== player.uid;
     })
     .filter(m => {
       if (!matchQuery.trim()) return true;
