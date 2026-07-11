@@ -103,6 +103,22 @@ export async function saveClubMembership(uid: string, clubIds: string[]) {
   await updateDoc(doc(db, 'users', uid), { myClubIds: clubIds, updatedAt: serverTimestamp() });
 }
 
+// ── Account deletion ──────────────────────────────────────────────────────────
+
+// Deletes every known subcollection under this user plus the user doc itself.
+// Firestore doesn't cascade-delete subcollections automatically, so each is
+// cleared explicitly. Call before auth.deleteUser() so data isn't orphaned if
+// the auth deletion succeeds but this fails partway.
+export async function deleteAccountData(uid: string): Promise<void> {
+  if (!uid || uid === 'me') return;
+  const subcollections = ['matches', 'plannedMatches', 'tournamentRegs', 'friends', 'conversations'];
+  for (const sub of subcollections) {
+    const snaps = await getDocs(collection(db, 'users', uid, sub));
+    await Promise.all(snaps.docs.map(d => deleteDoc(d.ref)));
+  }
+  await deleteDoc(doc(db, 'users', uid));
+}
+
 // ── Friends ───────────────────────────────────────────────────────────────────
 
 export async function saveFriend(uid: string, friendUid: string) {
