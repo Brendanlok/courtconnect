@@ -15,6 +15,8 @@ import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MMRInfoModal } from '@/components/MMRInfoModal';
+import { Button } from '@/components/ui/Button';
+import { useModalA11y } from '@/hooks/useModalA11y';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
