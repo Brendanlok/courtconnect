@@ -77,17 +77,6 @@ const FORMAT_LABELS: Record<MatchType, string> = {
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 
-// Gender required for each slot: null = any
-function slotGender(format: MatchType, team: 'A' | 'B', slot: number): 'Male' | 'Female' | null {
-  if (format === 'MD') return 'Male';
-  if (format === 'WD') return 'Female';
-  if (format === 'MS') return null;  // already filtered by user's gender in practice
-  if (format === 'WS') return null;
-  // MX: each team needs 1 male + 1 female; slot 0 = first gender, slot 1 = second
-  // For team A slot 0: pick based on user gender; for simplicity alternate
-  return null;
-}
-
 function slotsForFormat(format: MatchType): { teamSize: number } {
   return { teamSize: format === 'MS' || format === 'WS' ? 1 : 2 };
 }
