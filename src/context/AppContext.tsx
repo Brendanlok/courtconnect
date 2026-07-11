@@ -401,9 +401,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // concurrent edits from real members) and relies on the live subscription
   // above to reflect the change back, rather than managing local copies.
   const myRealUid = auth.currentUser?.uid ?? '';
-  const clubs: Club[] = rawClubs.map(c => toLocalClub(c, myRealUid));
-  const myClubIds = clubs.filter(c => c.memberIds.includes('me')).map(c => c.id);
-  const myClubPendingIds = clubs.filter(c => c.pendingIds.includes('me')).map(c => c.id);
+  // Memoized: without this, `clubs` (and everything derived from it) would be
+  // a brand-new array on every AppContext render — including ones triggered
+  // by totally unrelated state elsewhere in the app — which cascades into
+  // needless re-renders and re-fires any consumer effect keyed on these
+  // arrays (which is exactly what happened in ClubDetailClient's real-member
+  // profile lookup before it was hardened against unstable deps).
+  const clubs: Club[] = useMemo(() => rawClubs.map(c => toLocalClub(c, myRealUid)), [rawClubs, myRealUid]);
+  const myClubIds = useMemo(() => clubs.filter(c => c.memberIds.includes('me')).map(c => c.id), [clubs]);
+  const myClubPendingIds = useMemo(() => clubs.filter(c => c.pendingIds.includes('me')).map(c => c.id), [clubs]);
   const clubLimit = maxClubsForTier(user.tier);
 
   const joinClub = useCallback((id: string) => {
