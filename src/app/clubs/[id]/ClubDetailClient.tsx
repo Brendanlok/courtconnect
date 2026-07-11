@@ -537,6 +537,26 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                   )}
                 </div>
               )}
+
+              {/* Real accounts aren't in the demo roster search above — invite
+                  one by their exact username instead. */}
+              <div className="pt-2 border-t border-slate-800/60">
+                <p className="text-[11px] text-slate-500 mb-1.5">Or invite a real account by exact username</p>
+                <div className="flex gap-2">
+                  <input value={realInviteName}
+                    onChange={e => { setRealInviteName(e.target.value); setRealInviteStatus('idle'); }}
+                    onKeyDown={e => e.key === 'Enter' && inviteRealPlayer()}
+                    placeholder="@username"
+                    className="flex-1 pl-3 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+                  <button onClick={inviteRealPlayer} disabled={!realInviteName.trim() || realInviteStatus === 'loading'}
+                    className="flex items-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-xs font-semibold transition-colors shrink-0">
+                    <UserPlus size={11}/> {realInviteStatus === 'loading' ? 'Inviting…' : 'Invite'}
+                  </button>
+                </div>
+                {realInviteStatus === 'not-found' && <p className="text-xs text-red-400 mt-1.5">No account found with that username.</p>}
+                {realInviteStatus === 'already-member' && <p className="text-xs text-amber-400 mt-1.5">Already a member or has a pending request.</p>}
+                {realInviteStatus === 'sent' && <p className="text-xs text-emerald-400 mt-1.5">Added to the club.</p>}
+              </div>
             </div>
           </div>
 
