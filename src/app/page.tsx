@@ -195,7 +195,7 @@ export default function Home() {
         )}
 
         {/* ── Challenges ─────────────────────────────────────────────────────── */}
-        <ChallengesSection challenges={challenges} userId={user.uid} onAccept={acceptChallenge} onDecline={declineChallenge}/>
+        <ChallengesSection challenges={challenges} userId={user.uid} onAccept={acceptChallenge} onDecline={declineChallenge} onCancel={cancelChallenge}/>
 
         {/* ── Upcoming events you're registered for ────────────────────────── */}
         {upcomingEvents.length > 0 && (
