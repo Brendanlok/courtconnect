@@ -67,6 +67,7 @@ function toLocalClub(c: Club, myUid: string): Club {
     moderatorIds: (c.moderatorIds ?? []).map(translate),
     memberIds: c.memberIds.map(translate),
     pendingIds: c.pendingIds.map(translate),
+    clubMessages: c.clubMessages?.map(m => ({ ...m, senderId: translate(m.senderId) })),
   };
 }
 const toRealUid = (localUid: string, myUid: string) => localUid === 'me' ? myUid : localUid;
