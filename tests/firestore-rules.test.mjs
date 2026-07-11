@@ -203,11 +203,8 @@ console.log('--- club chat messages ---');
     id: 'privclub', name: 'Priv', adminId: 'alice', memberIds: ['alice'], pendingIds: [],
     moderatorIds: [], isPrivate: true, maxMembers: 30,
   }));
-  await check('a non-member cannot even READ a club\'s chat messages',
-    testEnv.assertFails === undefined ? Promise.resolve() : (async () => {
-      const { getDocs } = await import('firebase/firestore');
-      await getDocs(collection(bob, 'clubs', 'privclub', 'messages'));
-    })(), false);
+  await check("a non-member cannot even READ a club's chat messages",
+    getDocs(collection(bob, 'clubs', 'privclub', 'messages')), false);
 }
 
 await testEnv.cleanup();
