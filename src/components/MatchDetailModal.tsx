@@ -46,6 +46,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full border
                 ${isPending   ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                 : isDisputed  ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                : isCancelled ? 'bg-slate-700 text-slate-400 border-slate-600'
                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'}`}>
                 {m.status}
               </span>
