@@ -452,6 +452,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
   const [disbandTarget,  setDisbandTarget]  = useState<Club | null>(null);
   const [leaveTarget,    setLeaveTarget]    = useState<Club | null>(null);
+  const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(!!leaveTarget,   () => setLeaveTarget(null),   leaveTarget ? `Leave ${leaveTarget.name}` : 'Leave club');
+  const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(!!disbandTarget, () => setDisbandTarget(null), disbandTarget ? `Disband ${disbandTarget.name}` : 'Disband club');
 
   const atCap = myClubIds.length >= clubLimit;
 
