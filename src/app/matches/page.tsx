@@ -445,6 +445,7 @@ export default function MatchesPage() {
       <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
         onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, user.uid); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+        onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
       />
 
       {logOpen  && <LogMatchModal  open={true} onClose={() => { setLogOpen(false); setLogPlannedId(null); }}
