@@ -43,10 +43,18 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
 }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const results = PLAYERS
     .filter(p => !excludeUids.includes(p.uid))
     .filter(p => !q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
     .slice(0, 5);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
 
   if (selected) return (
     <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-h-[44px]">
