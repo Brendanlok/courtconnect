@@ -606,7 +606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       text,
       sentAt: new Date().toISOString(),
     };
-    addClubMessageDoc(clubId, msg).catch(() => {});
+    sendClubMessageDoc(clubId, msg).catch(() => {});
   }, [user.displayName, myRealUid]);
 
   const awardClipCredits = useCallback((amount: number) => {
