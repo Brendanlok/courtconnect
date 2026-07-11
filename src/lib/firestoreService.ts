@@ -300,8 +300,37 @@ export function subscribeClubs(cb: (clubs: Club[]) => void): () => void {
 // have two real members who both see each other in it).
 export async function ensureSeedClubsExist(seedClubs: Club[]): Promise<void> {
   await Promise.all(seedClubs.map(async c => {
-    const snap = await getDoc(doc(db, 'clubs', c.id));
-    if (!snap.exists()) await setDoc(doc(db, 'clubs', c.id), c);
+    const ref = doc(db, 'clubs', c.id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      // Seed data (src/lib/data.ts) was authored for pure local/single-player
+      // state, where the literal string 'me' unambiguously meant "the
+      // current device's user" — one seed club hardcodes 'me' into
+      // memberIds and one chat message's senderId. Writing that verbatim
+      // into a real shared Firestore doc would make every real account look
+      // like it's already a member of a demo club it never joined. Strip it.
+      await setDoc(ref, {
+        ...c,
+        memberIds: c.memberIds.filter(uid => uid !== 'me'),
+        pendingIds: (c.pendingIds ?? []).filter(uid => uid !== 'me'),
+        moderatorIds: (c.moderatorIds ?? []).filter(uid => uid !== 'me'),
+        clubMessages: (c.clubMessages ?? []).filter(m => m.senderId !== 'me'),
+      });
+      return;
+    }
+    // Repair path: in case an earlier deploy already seeded the bad 'me'
+    // placeholder before this fix — idempotent, no-ops once cleaned up.
+    const existing = snap.data() as Club;
+    const hasMePlaceholder = existing.memberIds?.includes('me')
+      || existing.pendingIds?.includes('me')
+      || (existing.moderatorIds ?? []).includes('me');
+    if (hasMePlaceholder) {
+      await updateDoc(ref, {
+        memberIds: arrayRemove('me'),
+        pendingIds: arrayRemove('me'),
+        moderatorIds: arrayRemove('me'),
+      });
+    }
   }));
 }
 
