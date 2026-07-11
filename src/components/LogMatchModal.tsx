@@ -371,7 +371,9 @@ function PlayerSearch({
   );
 }
 
-export function LogMatchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
+  open: boolean; onClose: () => void; plannedMatchId?: string; onLogged?: (plannedMatchId: string) => void;
+}) {
   const { user, addMatch, matches, updateUser } = useApp();
   const [done,     setDone]     = useState(false);
   const [type,     setType]     = useState<MatchType>('MS');
