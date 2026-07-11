@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-11 07:10] — Auto-Dev Session
+
+**Trigger:** Scheduled (daily, ~7:10am, after the 6am daily-check)
+**Daily Summary:** No Telegram commands pending. Ran a full audit of the core screens, fixed two real bugs (wrong-MMR skill-match badge, dead club share link) plus two smaller UX/consistency gaps, and shipped a small self-contained feature (cancel a sent challenge) that came out of the audit.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean at session start |
+| 2 | 🟠 | Code audit (Home, Players, Tournaments, Leaderboard, Chat, Player Profile, LogMatchModal, Topbar, AppContext) | ✅ | See Issues Found |
+
+### Issues Found
+- 🔴 [PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — Skill Match % badge was computed from the static seed user's MMR instead of the logged-in user's live MMR, so once your MMR changed from a confirmed match the badge and its own tooltip disagreed. Fixed.
+- 🔴 [players/page.tsx](src/app/players/page.tsx) — Club "Share" button copied a link with an `id` query param nothing reads; opening it just landed on the generic Clubs tab instead of the specific club. Fixed to link straight to the real `/clubs/{id}/` page.
+- 🟠 [PlayerProfileClient.tsx](src/app/players/[username]/PlayerProfileClient.tsx) — Club Membership section silently disappeared when a viewer wasn't allowed to see it, unlike Match History / Event History which explicitly say "hidden." Now shows the same explicit message.
+- 🟡 [tournaments/page.tsx](src/app/tournaments/page.tsx) — The plain-withdraw button in the Unregister modal was a hand-rolled `<button>` instead of the shared `Button` component used everywhere else in that modal; could silently drift from the design system. Switched to `Button` (danger variant, matching the penalty-withdraw case).
+- 🟢 Confirmed still open from prior sessions, not re-flagged: disputed-match resolution has no follow-up UI, Skills radar/Achievements are hardcoded per profile, live-match point log isn't persisted across pause/resume.
+- 🟢 Noted, not touched: `PlayerProfileClient.tsx` has a ~85-line "Court Analytics" block explicitly gated `{false && ...}` with a comment ("hidden for now, not relevant yet") — reads as an intentional staged feature (parallels the shipped "Stage 2" analytics block above it), not dead code to delete.
+
+### Improvements Made
+- Fixed the two 🔴 bugs and two smaller issues above.
+- Added the ability to cancel a challenge you sent: outgoing "Pending" challenges on Home previously had no action and stayed stuck forever. Added a `cancelChallenge` action to `AppContext`, a `Cancel` button on outgoing challenges, and a new `'cancelled'` status (distinct from `'declined'`) so the Recent list shows "✗ Cancelled" instead of misleadingly implying the other player declined.
+- Verified with `npx next build` (clean, no TS errors) after every change. Could not exercise the changed screens live in a browser — the app requires real Firebase auth with no demo/guest login path, same recurring limitation as prior sessions. Reviewed each diff carefully instead; all four fixes mirror patterns already used elsewhere in the same files.
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Persist point-by-point log to Firestore | Still open from 2026-07-09 session — client-only, lost on refresh/pause | Store `pointLog` alongside `games` on the `LiveMatch` doc; small, isolated |
+| Disputed match resolution flow | `disputeMatch` marks a match `Disputed` with no follow-up UI anywhere — permanent dead end today | Needs a product decision first: re-submit vs. admin review, before scoping |
+| Real per-profile Skills radar | `RADAR_DATA`/`ACHIEVEMENTS` are identical hardcoded arrays for every profile — cosmetic but misleading since it looks like real per-player data | Derive radar stats from actual match/endorsement data; needs a product call on what each axis should measure |
+
+### Critical Alerts
+None.
+
 ## [2026-07-11 06:00] — Daily Summary Session
 
 **Note:** No DEVLOG entries existed for the last 24h — 21 "Auto-deploy" commits (2026-07-10 17:52–20:21) touched `LiveMatchModal.tsx`, `pausedMatch.ts`, `matches/page.tsx`, `PlayerProfileClient.tsx`, `SettingsModal.tsx` but came from interactive/ad-hoc sessions, not the scheduled auto-dev run, so no session log was written for them. Ran build health check (clean) and sent the Telegram daily report from commit history alone. Also hit a transient Telegram `getUpdates` Conflict error on first check — no stray local process was holding the poll; a retry cleared it immediately.
