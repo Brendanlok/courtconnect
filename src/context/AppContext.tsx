@@ -304,16 +304,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
         setRealConversationDocs([]); setRealEndorsementCounts({});
+        prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
+        prevConversationsRef.current = []; prevClubsRef.current = [];
         return;
       }
       const uid = authUser.uid;
       ensureSeedClubsExist(SEED_CLUBS).catch(() => {});
       realUnsubsRef.current = [
-        subscribeChallengesFor('toUid', uid, setRealIncomingChallenges),
-        subscribeChallengesFor('fromUid', uid, setRealOutgoingChallenges),
-        subscribeMySharedConversations(uid, setRealConversationDocs),
+        subscribeChallengesFor('toUid', uid, docs => {
+          const prev = prevIncomingChallengesRef.current;
+          docs.filter(d => d.status === 'pending' && !prev.some(p => p.id === d.id))
+            .forEach(c => addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` }));
+          prevIncomingChallengesRef.current = docs;
+          setRealIncomingChallenges(docs);
+        }),
+        subscribeChallengesFor('fromUid', uid, docs => {
+          const prev = prevOutgoingChallengesRef.current;
+          docs.forEach(d => {
+            const old = prev.find(p => p.id === d.id);
+            if (old?.status !== 'pending') return;
+            if (d.status === 'accepted') addNotification({ type: 'challenge_accepted', title: 'Challenge Accepted', body: `${d.toName} accepted your challenge!` });
+            else if (d.status === 'declined') addNotification({ type: 'challenge_declined', title: 'Challenge Declined', body: `${d.toName} declined your challenge.` });
+          });
+          prevOutgoingChallengesRef.current = docs;
+          setRealOutgoingChallenges(docs);
+        }),
+        subscribeMySharedConversations(uid, docs => {
+          const prev = prevConversationsRef.current;
+          docs.forEach(d => {
+            const oldCount = prev.find(p => p.id === d.id)?.messages.length ?? 0;
+            const newFromOther = d.messages.slice(oldCount).filter(m => m.senderId !== uid);
+            if (newFromOther.length === 0) return;
+            const otherUid = d.participantUids.find(u => u !== uid) ?? '';
+            const otherName = d.participants?.[otherUid]?.displayName ?? 'Someone';
+            addNotification({ type: 'new_message', title: `New message from ${otherName}`, body: newFromOther[newFromOther.length - 1].text, linkTo: `/chat/?realUid=${otherUid}` });
+          });
+          prevConversationsRef.current = docs;
+          setRealConversationDocs(docs);
+        }),
         subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
-        subscribeClubs(setRawClubs),
+        subscribeClubs(docs => {
+          const prev = prevClubsRef.current;
+          docs.forEach(c => {
+            const old = prev.find(p => p.id === c.id);
+            if (!old) return; // first load — nothing "changed" yet, don't notify
+
+            const iManage = c.adminId === uid || (c.moderatorIds ?? []).includes(uid);
+            if (iManage) {
+              c.pendingIds.filter(p => !old.pendingIds.includes(p))
+                .forEach(() => addNotification({ type: 'club_join_request', title: 'Join Request', body: `Someone requested to join ${c.name}.`, meta: { clubId: c.id } }));
+            }
+
+            if (c.memberIds.includes(uid)) {
+              const oldMsgCount = old.clubMessages?.length ?? 0;
+              const newFromOthers = (c.clubMessages ?? []).slice(oldMsgCount).filter(m => m.senderId !== uid);
+              if (newFromOthers.length > 0) {
+                const last = newFromOthers[newFromOthers.length - 1];
+                addNotification({ type: 'club_message', title: c.name, body: `${last.senderName}: ${last.text}` });
+              }
+            }
+
+            if (old.pendingIds.includes(uid) && !c.pendingIds.includes(uid)) {
+              if (c.memberIds.includes(uid)) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `Your request to join ${c.name} was accepted!` });
+              else addNotification({ type: 'club_declined', title: 'Request Declined', body: `Your request to join ${c.name} was declined.` });
+            }
+          });
+          prevClubsRef.current = docs;
+          setRawClubs(docs);
+        }),
       ];
     });
     return () => { unsubAuth(); realUnsubsRef.current.forEach(fn => fn()); };
