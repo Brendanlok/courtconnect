@@ -298,6 +298,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const declineChallenge = useCallback((id: string) => {
     setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c));
   }, []);
+  const cancelChallenge  = useCallback((id: string) => {
+    setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c));
+  }, []);
 
   // Club actions — how many clubs the user is allowed at once scales with MMR tier
   const clubLimit = maxClubsForTier(user.tier);
