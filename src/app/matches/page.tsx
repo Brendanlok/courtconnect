@@ -468,6 +468,17 @@ export default function MatchesPage() {
           plannedMatch={liveMatchId ? planned.find(m => m.id === liveMatchId) ?? null : null}
         />
       )}
+      {trackOpen && (
+        <CourtTrackModal
+          open={true}
+          onClose={() => { setTrackOpen(false); setTrackMatchId(null); }}
+          onSessionEnded={handleMatchLogged}
+          plannedMatch={trackMatchId ? planned.find(m => m.id === trackMatchId) ?? null : null}
+        />
+      )}
+      {trackJoinOpen && (
+        <CourtTrackModal open={true} onClose={() => setTrackJoinOpen(false)}/>
+      )}
 
       {planOpen && (
         <PlanMatchModal
