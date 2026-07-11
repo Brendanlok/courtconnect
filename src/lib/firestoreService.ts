@@ -5,10 +5,10 @@
  */
 import {
   doc, setDoc, deleteDoc, getDoc, getDocs, collection,
-  query, where, serverTimestamp, updateDoc, Timestamp, arrayUnion,
+  query, where, serverTimestamp, updateDoc, Timestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Match, UserProfile, Tournament, Club } from '@/types';
+import type { Match, UserProfile, Tournament, Club, ClubMessage } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 
