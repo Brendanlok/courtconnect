@@ -6,15 +6,24 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { ME, PLAYERS } from '@/lib/data';
+import { auth } from '@/lib/firebase';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();
   if (!open) return null;
   const s = TIER_STYLE[user.tier];
 
-  // Encode as profile URL so any QR scanner opens the profile directly
+  // Encode as a profile URL so any QR scanner opens the profile directly.
+  // /players/[username]/ only pre-renders the demo roster (static export) —
+  // a real account's own username 404s there, so point real users at
+  // /profile/?uid=X instead, which works for any signed-in account.
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://courtconnectcc.netlify.app';
-  const qrPayload = `${baseUrl}/players/${user.username}/`;
+  const isDemoUsername = [ME, ...PLAYERS].some(p => p.username === user.username);
+  const realUid = auth.currentUser?.uid;
+  const qrPayload = isDemoUsername || !realUid
+    ? `${baseUrl}/players/${user.username}/`
+    : `${baseUrl}/profile/?uid=${realUid}`;
 
   return (
     <QRModalInner user={user} s={s} qrPayload={qrPayload} onClose={onClose}/>
