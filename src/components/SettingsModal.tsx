@@ -129,12 +129,31 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setTimeout(() => { setSaved(false); onClose(); }, 900);
   };
 
-  const handleDelete = () => {
-    updateUser({ displayName: 'Deleted User', bio: '', mmr: 1000,
-      stats: { wins: 0, losses: 0, totalMatches: 0 }, openToPlay: false });
-    localStorage.removeItem('cc_openToPlay');
-    setDeleteStep('idle');
-    onClose();
+  const handleDelete = async () => {
+    const authUser = auth.currentUser;
+    if (!authUser) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      // Firestore rules require an authenticated request, so data must be wiped
+      // before the auth account is deleted — not after.
+      await deleteAccountData(authUser.uid);
+      await deleteUser(authUser);
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('cc_'))
+        .forEach(k => localStorage.removeItem(k));
+      setDeleteStep('idle');
+      onClose();
+    } catch (e: unknown) {
+      const code = (e as { code?: string }).code ?? '';
+      setDeleteError(
+        code === 'auth/requires-recent-login'
+          ? 'Your data has been deleted, but for security you need to log out and back in, then delete your account once more to fully close it.'
+          : 'Something went wrong deleting your account. Please try again.'
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (saved) return (
