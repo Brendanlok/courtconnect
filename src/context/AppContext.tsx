@@ -216,6 +216,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Real-time cross-account sync: challenges, chat, and endorsements only exist
+  // for genuinely authenticated users — local/demo state is untouched.
+  const realUnsubsRef = useRef<(() => void)[]>([]);
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (authUser) => {
+      realUnsubsRef.current.forEach(fn => fn());
+      realUnsubsRef.current = [];
+      if (!authUser) {
+        setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
+        setRealConversationDocs([]); setRealEndorsementCounts({});
+        return;
+      }
+      const uid = authUser.uid;
+      realUnsubsRef.current = [
+        subscribeChallengesFor('toUid', uid, setRealIncomingChallenges),
+        subscribeChallengesFor('fromUid', uid, setRealOutgoingChallenges),
+        subscribeMySharedConversations(uid, setRealConversationDocs),
+        subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
+      ];
+    });
+    return () => { unsubAuth(); realUnsubsRef.current.forEach(fn => fn()); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
     const uid = auth.currentUser?.uid;
