@@ -307,20 +307,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
   const cancelRequest = useCallback((id: string) => setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; }), []);
 
+  const isRealChallengeId = useCallback((id: string) =>
+    realIncomingChallenges.some(c => c.id === id) || realOutgoingChallenges.some(c => c.id === id),
+  [realIncomingChallenges, realOutgoingChallenges]);
+
   const sendChallenge    = useCallback((c: Challenge) => {
-    setChallenges(p => [c, ...p]);
+    const realUid = auth.currentUser?.uid;
+    if (isRealUid(c.toId) && realUid) {
+      const stored: StoredChallenge = {
+        id: c.id, fromUid: realUid, fromName: c.fromName, fromUsername: c.fromUsername,
+        toUid: c.toId, toName: c.toName, toUsername: c.toUsername,
+        format: c.format, venue: c.venue, date: c.date, message: c.message,
+        status: 'pending', createdAt: new Date().toISOString(),
+      };
+      sendChallengeDoc(stored).catch(() => {});
+      // Optimistic local echo — the listener reconciles once Firestore confirms.
+      setRealOutgoingChallenges(p => [stored, ...p.filter(x => x.id !== stored.id)]);
+      return;
+    }
+    setLocalChallenges(p => [c, ...p]);
     addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
   }, []);
   const acceptChallenge  = useCallback((id: string) => {
-    setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'accepted' as const } : c));
+    if (isRealChallengeId(id)) { updateChallengeStatus(id, 'accepted').catch(() => {}); return; }
+    setLocalChallenges(p => p.map(c => c.id === id ? { ...c, status: 'accepted' as const } : c));
     addNotification({ type: 'challenge_accepted', title: 'Challenge Accepted', body: 'Your match challenge was accepted!' });
-  }, []);
+  }, [isRealChallengeId]);
   const declineChallenge = useCallback((id: string) => {
-    setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c));
-  }, []);
+    if (isRealChallengeId(id)) { updateChallengeStatus(id, 'declined').catch(() => {}); return; }
+    setLocalChallenges(p => p.map(c => c.id === id ? { ...c, status: 'declined' as const } : c));
+  }, [isRealChallengeId]);
   const cancelChallenge  = useCallback((id: string) => {
-    setChallenges(p => p.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c));
-  }, []);
+    if (isRealChallengeId(id)) { updateChallengeStatus(id, 'cancelled').catch(() => {}); return; }
+    setLocalChallenges(p => p.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c));
+  }, [isRealChallengeId]);
 
   // Club actions — how many clubs the user is allowed at once scales with MMR tier
   const clubLimit = maxClubsForTier(user.tier);
