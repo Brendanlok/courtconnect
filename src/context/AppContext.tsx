@@ -14,7 +14,8 @@ import {
   subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
   subscribeEndorsementsReceived, setEndorsementDoc,
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
-  addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator, addClubMessageDoc,
+  addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
+  sendClubMessageDoc, subscribeClubMessages,
 } from '@/lib/firestoreService';
 
 // A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
