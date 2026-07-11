@@ -68,7 +68,7 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
   );
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-2 border border-dashed border-slate-600 hover:border-emerald-500/50 rounded-xl px-3 py-2 min-h-[44px] text-left transition-colors">
         <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
