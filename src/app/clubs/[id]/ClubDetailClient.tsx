@@ -127,12 +127,15 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   // it's normalized here the same way toLocalClub does for membership.
   const [messages, setMessages] = useState<ClubMessage[]>(club.clubMessages ?? []);
   useEffect(() => {
+    // Security rules restrict club chat reads to current members — don't
+    // even attempt the subscription otherwise (it would just fail/no-op).
+    if (!isMember) return;
     const myRealUid = auth.currentUser?.uid;
     const unsub = subscribeClubMessages(clubId, msgs =>
       setMessages(msgs.map(m => m.senderId === myRealUid ? { ...m, senderId: 'me' } : m))
     );
     return unsub;
-  }, [clubId]);
+  }, [clubId, isMember]);
 
   // One-time migration for clubs that still have the old embedded array —
   // idempotent (the field is cleared after migrating, so this naturally
