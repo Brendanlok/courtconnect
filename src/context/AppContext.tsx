@@ -660,20 +660,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // state. myRealUid (declared above, next to the club logic) is '' when
   // signed out, so isRealUid-keyed lookups just fall through to nothing
   // rather than mismatching against a stale uid.
-  const challenges: Challenge[] = [
+  const challenges: Challenge[] = useMemo(() => [
     ...localChallenges,
     ...realIncomingChallenges.map(c => toLocalChallenge(c, myRealUid)),
     ...realOutgoingChallenges.map(c => toLocalChallenge(c, myRealUid)),
-  ];
-  const conversations: Conversation[] = [
+  ], [localChallenges, realIncomingChallenges, realOutgoingChallenges, myRealUid]);
+  const conversations: Conversation[] = useMemo(() => [
     ...localConversations,
     ...realConversationDocs.map(c => toLocalConversation(c, myRealUid)),
-  ].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
-  const meEndorsementCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
-  for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
-    meEndorsementCounts[skill] = (meEndorsementCounts[skill] ?? 0) + cnt;
-  }
-  const combinedPlayerEndorsements = { ...playerEndorsements, me: meEndorsementCounts };
+  ].sort((a, b) => b.lastAt.localeCompare(a.lastAt)), [localConversations, realConversationDocs, myRealUid]);
+  const combinedPlayerEndorsements = useMemo(() => {
+    const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
+    for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
+      meCounts[skill] = (meCounts[skill] ?? 0) + cnt;
+    }
+    return { ...playerEndorsements, me: meCounts };
+  }, [playerEndorsements, realEndorsementCounts]);
 
   return (
     <Ctx.Provider value={{
