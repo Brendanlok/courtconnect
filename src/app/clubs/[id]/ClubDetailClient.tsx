@@ -105,8 +105,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Disband confirmation modal */}
       {leaveModal && (
-        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={() => setLeaveModal(false)}>
+          <div ref={leaveModalRef} {...leaveModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
               <div>
@@ -122,22 +122,20 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setLeaveModal(false)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+              <Button variant="secondary" onClick={() => setLeaveModal(false)} className="flex-1">
                 Cancel
-              </button>
-              <button onClick={() => { leaveClub(clubId); setLeaveModal(false); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">
+              </Button>
+              <Button variant="danger" onClick={() => { leaveClub(clubId); setLeaveModal(false); }} className="flex-1">
                 Leave Club
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {disbandModal && (
-        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={() => { setDisbandModal(false); setDisbandInput(''); }}>
+          <div ref={disbandModalRef} {...disbandModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
               <div>
@@ -148,12 +146,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             <input value={disbandInput} onChange={e => setDisbandInput(e.target.value)}
               placeholder="DISBAND" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-red-500 transition-colors"/>
             <div className="flex gap-2">
-              <button onClick={() => { setDisbandModal(false); setDisbandInput(''); }}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-              <button disabled={disbandInput !== 'DISBAND'} onClick={() => { disbandClub(clubId); setDisbandModal(false); }}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-colors">
+              <Button variant="secondary" onClick={() => { setDisbandModal(false); setDisbandInput(''); }} className="flex-1">Cancel</Button>
+              <Button variant="danger" disabled={disbandInput !== 'DISBAND'} onClick={() => { disbandClub(clubId); setDisbandModal(false); }} className="flex-1">
                 Disband
-              </button>
+              </Button>
             </div>
           </div>
         </div>
