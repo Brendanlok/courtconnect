@@ -1,5 +1,29 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-11 16:40] — Interactive Session (self-critical follow-up)
+
+**Trigger:** User asked what else needs fixing, explicitly "be realistic and critical." Re-audited this session's own new code rather than doing a generic sweep, then worked through the prioritized list from that audit.
+
+### Found in my own recent code — fixed
+- **Unstable effect dependencies + unbounded retry.** [ClubDetailClient.tsx](src/app/clubs/[id]/ClubDetailClient.tsx)'s real-member profile lookup depended on `club.memberIds`/`club.pendingIds` directly — arrays that are recreated fresh on *every* AppContext render regardless of whether membership actually changed, so the effect refired constantly. Worse: a member whose profile lookup failed (deleted account, network hiccup) was never cached, so it got retried against Firestore on every single refire, forever, for as long as the page stayed open. Fixed with stable string-keyed deps and caching failures as `null`.
+- **Root cause of the above, and a real regression this session introduced**: `clubs`, `challenges`, `conversations`, and `playerEndorsements` in AppContext were plain derived values recomputed as brand-new objects on every render — not just when their underlying data changed. Wrapped in `useMemo` so every consumer across the app gets stable references again.
+
+### Shipped
+- **Live notifications for real-time events.** Previously "real-time" only meant "correct next time you looked" — accepting a challenge, a new chat message, a club join request all updated the data silently with no notification. Each real-time subscription in AppContext now diffs against its previous snapshot and fires a notification only on a genuine transition (not on reconnect/initial load): challenge received/accepted/declined, new DM, new club-join-request (to the club's owner/mods), new club chat message, and club request accepted/declined. Added 3 new notification types (`club_join_request`, `club_message`, `new_message`) to the type union and NotificationPanel's icon map.
+- **Firestore security rules tightened** for every collection where the correct rule is unambiguous: `users/{uid}`'s subcollections (matches, plannedMatches, tournamentRegs, conversations, friends) now require the writer to be the owner; `endorsements` requires the writer to be the specific endorser. Rewrote the structure so these nested rules can't be silently overridden by a leftover catch-all wildcard (Firestore ORs every matching rule together — a permissive wildcard elsewhere would have fully negated the tightening). The harder multi-party collections (challenges, conversations, clubs) got a *drafted, not-applied* proposal left as a comment block — this repo has no Firebase emulator or `firebase.json`/deploy pipeline to test rule changes against before they go live, and a wrong rule fails silently and can lock real users out worse than today's over-permissiveness. **This file isn't auto-deployed either way** — someone needs to paste it into the Firebase Console or run `firebase deploy --only firestore:rules` for any of this to take effect.
+- **Real user's own profile page no longer 404s.** Found two concrete places this was already reachable and broken: Topbar's own-profile menu item, and the QR code modal's encoded link (scan a real user's QR code at the court → 404). Added `/profile/` — a static single-path route that shows whoever's currently signed in (`PlayerProfileClient` gained a `forceIsMe` prop so it can skip the static-roster lookup entirely) — and `/profile/?uid=X` for viewing *another* real account (via a new shared `PlayerActionCard` component, extracted from FindPlayerModal so both use the same compact card). Viewing a stranger still isn't a full stats page — there's no remote match-history fetch wired up — so it's honestly the same Challenge/Message/Endorse card as Find-a-Player, not a full profile.
+- **Club `avgMMR` staleness** — it was set once at club creation and never recalculated as real members with different MMRs joined/left. Fixed in the club detail page (the one place all members are already fully resolved) to compute live from actual current members instead of trusting the stored field.
+- **Club invites can now reach real accounts** — added an "invite by exact username" lookup (same pattern as Find-a-Player) alongside the existing demo-roster-only search.
+
+### Still open, clearly not fixed
+- **Club chat / clubs collection doesn't scale.** `subscribeClubs` downloads the *entire* clubs collection, unfiltered, to every signed-in client — including full embedded chat history — on every change to any club by anyone. Chat messages are an ever-growing array on the club doc itself with no pagination; a genuinely active club would eventually hit Firestore's 1MB document limit. Fine at demo scale (5–20 clubs), needs a real redesign (chat as a subcollection, clubs query scoped to membership) before real growth.
+- `avgMMR` is still stale in the two lower-stakes display spots (the players-page club list card, the compact club-membership card on a profile) — only the club detail page was fixed, since it's the only place member data was already fully resolved.
+- Full per-field security rules for challenges/conversations/clubs are drafted, not applied — needs emulator testing first.
+- Real per-account "invites received" list is still local/session-only, not synced.
+
+### Verification
+Rebuilt after every change (`npx next build`, clean). Re-ran the standalone logic simulation — still 0 failures across all 7 scenarios. No live two-account testing, same reasoning as every prior session.
+
 ## [2026-07-11 15:20] — Interactive Session (club migration to Firestore)
 
 **Trigger:** User asked to migrate clubs to Firestore (the item deferred from the prior session) and to use demo accounts to test the interactions.
