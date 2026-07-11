@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth } from '@/lib/firebase';
-import { maxClubsForTier } from '@/lib/utils';
+import { maxClubsForTier, getTier } from '@/lib/utils';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
@@ -11,7 +11,14 @@ import {
   saveTournamentReg, deleteTournamentReg,
   saveClubMembership,
   loadConversations,
+  subscribeChallengesFor, sendChallengeDoc, updateChallengeStatus, type StoredChallenge,
+  subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
+  subscribeEndorsementsReceived, setEndorsementDoc,
 } from '@/lib/firestoreService';
+
+// A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
+// local demo user ('me') or one of the static seed players from lib/data.ts.
+const isRealUid = (uid: string) => uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && uid !== ME_DATA.uid;
 
 interface AppCtx {
   user: UserProfile;
