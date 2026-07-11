@@ -19,6 +19,7 @@ interface AppCtx {
   addMatch: (m: Match) => void;
   confirmMatch: (id: string, uid?: string) => void;
   disputeMatch: (id: string) => void;
+  cancelPendingMatch: (id: string) => void;
   updateUser: (patch: Partial<UserProfile>) => void;
   conversations: Conversation[];
   setConversations: (c: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
