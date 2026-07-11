@@ -39,7 +39,14 @@ export function Topbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const goToProfile = () => { setMenuOpen(false); window.location.href = `/players/${user.username}/`; };
+  // /players/[username]/ only pre-renders the demo roster's usernames (static
+  // export) — a real user's own username 404s there, so route those to the
+  // dedicated /profile/ page instead.
+  const goToProfile = () => {
+    setMenuOpen(false);
+    const isDemoUsername = [ME, ...PLAYERS].some(p => p.username === user.username);
+    window.location.href = isDemoUsername ? `/players/${user.username}/` : '/profile/';
+  };
 
   return (
     <>
