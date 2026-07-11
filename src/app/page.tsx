@@ -396,16 +396,20 @@ function ChallengesSection({ challenges, userId, onAccept, onDecline, onCancel }
             <p className="text-sm text-slate-300 truncate">Challenge sent to <span className="font-semibold">{c.toName}</span></p>
             <p className="text-xs text-slate-500">{MATCH_TYPE_LABEL[c.format]} · {formatDate(c.date)}</p>
           </div>
-          <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full shrink-0">Pending</span>
+          <button onClick={() => onCancel(c.id)}
+            className="text-[10px] text-slate-400 hover:text-red-400 bg-slate-800 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 px-2 py-1 rounded-full shrink-0 transition-colors">
+            Cancel
+          </button>
         </div>
       ))}
 
       {recent.map(c => {
         const isIncoming = c.toId === userId;
+        const label = c.status === 'accepted' ? '✓ Accepted' : c.status === 'cancelled' ? '✗ Cancelled' : '✗ Declined';
         return (
           <div key={c.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
             <span className={`text-xs font-bold px-2 py-0.5 rounded-lg shrink-0 ${c.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-              {c.status === 'accepted' ? '✓ Accepted' : '✗ Declined'}
+              {label}
             </span>
             <p className="text-sm text-slate-400 truncate flex-1">
               {isIncoming ? c.fromName : c.toName} · {MATCH_TYPE_LABEL[c.format]}
