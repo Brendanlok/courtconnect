@@ -134,6 +134,21 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     setChatInput('');
   };
 
+  const inviteRealPlayer = async () => {
+    const clean = realInviteName.trim().toLowerCase().replace(/^@/, '');
+    if (!clean) return;
+    setRealInviteStatus('loading');
+    const data = await lookupUserByUsername(clean).catch(() => null);
+    if (!data || !data.uid) { setRealInviteStatus('not-found'); return; }
+    if (club.memberIds.includes(data.uid) || club.pendingIds.includes(data.uid)) {
+      setRealInviteStatus('already-member');
+      return;
+    }
+    inviteToClub(clubId, data.uid);
+    setRealInviteStatus('sent');
+    setRealInviteName('');
+  };
+
   const saveAnnouncement = () => {
     updateClub(clubId, { announcement: announce || undefined });
     setEditAnnounce(false);
