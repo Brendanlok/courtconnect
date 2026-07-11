@@ -104,7 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return ME;
   });
   const [matches,          setMatches]          = useState<Match[]>(SEED_MATCHES);
-  const [conversations,    setConversations]    = useState<Conversation[]>(SEED_CONVS);
+  const [localConversations, setLocalConversations] = useState<Conversation[]>(SEED_CONVS);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tournaments,      setTournaments]      = useState<Tournament[]>(SEED_TOURNAMENTS);
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
