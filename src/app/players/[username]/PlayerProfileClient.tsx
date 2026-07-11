@@ -392,11 +392,16 @@ export function PlayerProfileClient({ username }: { username: string }) {
         })()}
 
         {/* ── Club Membership ── */}
-        {playerClubs.length > 0 && (
+        {(canSeeClubMembership ? playerClubs.length > 0 : !isMe) && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <Users size={15} className="text-violet-400"/> {playerClubs.length > 1 ? 'Clubs' : 'Club'}
             </h2>
+            {!canSeeClubMembership ? (
+              <p className="text-slate-500 text-sm py-4 text-center">
+                {clubMembershipVisibility === 'private' ? 'This player has hidden their club membership.' : 'Only followers can see this player\'s club membership.'}
+              </p>
+            ) : (
             <div className="space-y-2">
               {playerClubs.map(club => (
                 <a key={club.id} href={`/clubs/${club.id}/`}
