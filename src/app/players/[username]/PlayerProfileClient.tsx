@@ -59,7 +59,7 @@ export function PlayerProfileClient({ username }: { username: string }) {
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
-  const sm  = isMe ? 100 : skillMatch(ME.mmr, player.mmr);
+  const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
   const filteredMatches = playerMatches
     .filter(m => matchFormat === 'All' || m.type === matchFormat)
