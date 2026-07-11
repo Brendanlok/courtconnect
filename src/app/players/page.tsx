@@ -32,6 +32,7 @@ export default function PlayersPage() {
     following, followPlayer, unfollowPlayer,
   } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Leaderboard';
     const t = new URLSearchParams(window.location.search).get('tab');
