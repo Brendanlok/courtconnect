@@ -50,12 +50,41 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const hasRequested = myClubPendingIds.includes(clubId);
   const isFull    = club.memberIds.length >= club.maxMembers;
 
+  const [realProfiles, setRealProfiles] = useState<Record<string, UserProfile>>({});
+
+  // Members/pending requesters may be real accounts (not in the static demo
+  // roster) — fetch their profiles on demand so they actually show up.
+  useEffect(() => {
+    const uids = [...club.memberIds, ...club.pendingIds].filter(uid =>
+      uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && !realProfiles[uid]
+    );
+    if (uids.length === 0) return;
+    Promise.all(uids.map(async uid => {
+      const data = await lookupUserByUid(uid).catch(() => null);
+      if (!data) return null;
+      const profile: UserProfile = {
+        uid, username: data.username ?? uid, displayName: data.displayName ?? 'Player',
+        email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
+        globalRank: 0, state: 'Kuala Lumpur', area: '',
+        stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+        photoURL: data.photoURL ?? null,
+      };
+      return [uid, profile] as const;
+    })).then(results => {
+      const found = results.filter((r): r is [string, UserProfile] => !!r);
+      if (found.length) setRealProfiles(prev => ({ ...prev, ...Object.fromEntries(found) }));
+    });
+  }, [club.memberIds, club.pendingIds, realProfiles]);
+
+  const resolveProfile = (uid: string): UserProfile | undefined =>
+    uid === 'me' ? user : ALL_PLAYERS.find(p => p.uid === uid) ?? realProfiles[uid];
+
   const members: UserProfile[] = club.memberIds
-    .map(uid => ALL_PLAYERS.find(p => p.uid === uid))
+    .map(resolveProfile)
     .filter((p): p is UserProfile => !!p);
 
   const pendingMembers: UserProfile[] = club.pendingIds
-    .map(uid => ALL_PLAYERS.find(p => p.uid === uid))
+    .map(resolveProfile)
     .filter((p): p is UserProfile => !!p);
 
   const [tab,           setTab]          = useState<Tab>('Overview');
