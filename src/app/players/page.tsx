@@ -76,12 +76,19 @@ export default function PlayersPage() {
           <h1 className="text-2xl font-bold">Players</h1>
           <p className="text-slate-400 text-sm mt-0.5">Find players & clubs</p>
         </div>
-        <button onClick={() => setMmrInfoOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium transition-colors shrink-0 mt-1">
-          <TrendingUp size={12}/> How MMR works
-        </button>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <button onClick={() => setFindOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
+            <Search size={12}/> Find a Player
+          </button>
+          <button onClick={() => setMmrInfoOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-medium transition-colors">
+            <TrendingUp size={12}/> How MMR works
+          </button>
+        </div>
       </div>
       <MMRInfoModal open={mmrInfoOpen} onClose={() => setMmrInfoOpen(false)}/>
+      {findOpen && <FindPlayerModal onClose={() => setFindOpen(false)}/>}
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
         {TABS.map(t => (
