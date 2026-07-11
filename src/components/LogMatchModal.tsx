@@ -440,11 +440,14 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
       games: parsed, mmrChange: change,
       playedAt: new Date().toISOString(),
       location: loc || `${user.area}, ${user.state}`,
+      ...(plannedMatchId ? { plannedMatchId } : {}),
     } as Match);
 
     if (!placementDone) {
       updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
     }
+
+    if (plannedMatchId) onLogged?.(plannedMatchId);
 
     setDone(true);
     setTimeout(() => { setDone(false); onClose(); reset(); }, 2000);
