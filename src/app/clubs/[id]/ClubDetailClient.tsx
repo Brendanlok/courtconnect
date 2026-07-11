@@ -142,11 +142,14 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   // becomes a no-op on future loads once it's run once for a given club).
   const legacyMigratedRef = useRef(false);
   useEffect(() => {
+    // Security rules only let members write into the messages subcollection
+    // or clear the legacy field — a non-member's attempt would just fail.
+    if (!isMember) return;
     if (legacyMigratedRef.current) return;
     if (!club.clubMessages || club.clubMessages.length === 0) return;
     legacyMigratedRef.current = true;
     migrateLegacyClubMessages(clubId, club.clubMessages).catch(() => { legacyMigratedRef.current = false; });
-  }, [clubId, club.clubMessages]);
+  }, [clubId, club.clubMessages, isMember]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
