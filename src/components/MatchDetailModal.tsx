@@ -11,15 +11,18 @@ interface Props {
   onClose: () => void;
   onConfirm?: () => void;
   onDispute?: () => void;
+  onCancel?: () => void;
 }
 
-export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute }: Props) {
+export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel }: Props) {
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   if (!m) return null;
 
   const isWin     = m.winnerId === 'me';
   const isPending = m.status === 'Pending';
   const isDisputed = m.status === 'Disputed';
+  const isCancelled = m.status === 'Cancelled';
+  const hasOutstandingConfirmers = !!(m.pendingConfirmations && m.pendingConfirmations.length > 0);
   const myName    = m.player1Id === 'me' ? m.player1Name : m.player2Name;
   const myUser    = m.player1Id === 'me' ? m.player1Username : m.player2Username;
   const oppName   = m.player1Id === 'me' ? m.player2Name : m.player1Name;
