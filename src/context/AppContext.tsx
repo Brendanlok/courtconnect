@@ -458,9 +458,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return next;
       });
       addNotification({ type: 'friend_request', title: 'Follow Request Sent', body: `Your follow request to ${targetName} is pending approval.` });
-      // Demo accounts auto-accept after a short delay to simulate a real accept flow
+      // Demo accounts auto-accept after a short delay to simulate a real accept flow —
+      // but only if the request hasn't been cancelled (unfollowPlayer) in the meantime.
       setTimeout(() => {
-        setFollowRequestsSent(p => p.filter(id => id !== uid));
+        let stillPending = false;
+        setFollowRequestsSent(p => {
+          stillPending = p.includes(uid);
+          if (!stillPending) return p;
+          const next = p.filter(id => id !== uid);
+          try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
+          return next;
+        });
+        if (!stillPending) return;
         setFollowing(p => {
           const next = p.includes(uid) ? p : [...p, uid];
           try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
