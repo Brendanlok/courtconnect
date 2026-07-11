@@ -200,7 +200,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
 
         {/* Action buttons */}
         <div className="px-5 pb-5 flex gap-3">
-          {isPending && onConfirm && onDispute && !(m.pendingConfirmations && m.pendingConfirmations.length > 0) ? (
+          {isPending && onConfirm && onDispute && !hasOutstandingConfirmers ? (
             <>
               <Button onClick={onConfirm} icon={<CheckCircle size={15}/>} className="flex-1">
                 Confirm Result
