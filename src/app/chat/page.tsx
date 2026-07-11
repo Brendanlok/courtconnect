@@ -6,23 +6,51 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { timeAgo } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
-import type { Message } from '@/types';
+import type { Message, Conversation } from '@/types';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
-import { saveConversation } from '@/lib/firestoreService';
+import { saveConversation, lookupUserByUid } from '@/lib/firestoreService';
+import { getTier } from '@/lib/utils';
+
+const isRealUid = (uid: string) => uid !== 'me' && ![ME, ...PLAYERS].some(p => p.uid === uid);
 
 export default function Chat() {
-  const { user, conversations: convs, setConversations: setConvs } = useApp();
+  const { user, conversations: convs, setConversations: setConvs, sendRealMessage } = useApp();
   const [activeId,   setActiveId]   = useState<string | null>(convs[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [input,      setInput]      = useState('');
   const [query,      setQuery]      = useState('');
+  // A real conversation the user just started but hasn't sent a first message
+  // for yet — no Firestore doc exists until then, so it isn't in `convs`.
+  const [pendingRealConv, setPendingRealConv] = useState<Conversation | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Open or create a conversation for a player uid passed via ?uid= query param
+  // Open or create a conversation for a player uid passed via ?uid= (demo
+  // player) or ?realUid= (a real account found via username search) query param.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const uid = new URLSearchParams(window.location.search).get('uid');
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('uid');
+    const realUid = params.get('realUid');
+
+    if (realUid) {
+      const existing = convs.find(c => c.participant.uid === realUid);
+      if (existing) { setActiveId(existing.id); setMobileView('chat'); return; }
+      lookupUserByUid(realUid).then(data => {
+        if (!data) return;
+        const participant = {
+          uid: realUid, username: data.username ?? realUid, displayName: data.displayName ?? 'Player',
+          email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
+          globalRank: 0, state: 'Kuala Lumpur' as const, area: '',
+          stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+          photoURL: data.photoURL ?? null,
+        };
+        setPendingRealConv({ id: `pending_${realUid}`, participant, lastMessage: '', lastAt: new Date().toISOString(), unread: 0, messages: [] });
+        setActiveId(`pending_${realUid}`);
+        setMobileView('chat');
+      }).catch(() => {});
+      return;
+    }
     if (!uid) return;
 
     const existing = convs.find(c => c.participant.uid === uid);
@@ -48,7 +76,15 @@ export default function Chat() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const active = convs.find(c => c.id === activeId) ?? null;
+  // Once the real conversation actually exists (first message sent, from
+  // either side), it shows up in `convs` via the live listener — drop the shell.
+  useEffect(() => {
+    if (!pendingRealConv) return;
+    const real = convs.find(c => c.participant.uid === pendingRealConv.participant.uid);
+    if (real) { setPendingRealConv(null); setActiveId(real.id); }
+  }, [convs, pendingRealConv]);
+
+  const active = (pendingRealConv?.id === activeId ? pendingRealConv : null) ?? convs.find(c => c.id === activeId) ?? null;
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [active?.messages]);
 
@@ -59,7 +95,17 @@ export default function Chat() {
   };
 
   const send = () => {
-    if (!input.trim() || !activeId) return;
+    if (!input.trim() || !active) return;
+
+    if (isRealUid(active.participant.uid)) {
+      sendRealMessage(active.participant.uid, {
+        displayName: active.participant.displayName, username: active.participant.username,
+        tier: active.participant.tier, mmr: active.participant.mmr, photoURL: active.participant.photoURL ?? null,
+      }, input.trim());
+      setInput('');
+      return;
+    }
+
     const msg: Message = { id: `msg-${Date.now()}`, senderId: user.uid, text: input.trim(), sentAt: new Date().toISOString() };
     setConvs(cs => {
       const updated = cs.map(c => c.id === activeId
