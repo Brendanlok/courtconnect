@@ -342,11 +342,12 @@ export default function Home() {
 
 // ─── Challenges Section ───────────────────────────────────────────────────────
 
-function ChallengesSection({ challenges, userId, onAccept, onDecline }: {
+function ChallengesSection({ challenges, userId, onAccept, onDecline, onCancel }: {
   challenges: Challenge[];
   userId: string;
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
+  onCancel: (id: string) => void;
 }) {
   const incoming = challenges.filter(c => c.toId === userId && c.status === 'pending');
   const outgoing = challenges.filter(c => c.fromId === userId && c.status === 'pending');
