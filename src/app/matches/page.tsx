@@ -904,10 +904,13 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
 
   const { teamSize } = slotsForFormat(format);
 
-  // slot A0 starts empty (user can add anyone incl. themselves)
+  // Team A slot 0 always defaults to the host (you) — every format's gender
+  // constraints and slot labels ("Team A (You)") assume this. The user can
+  // still swap it out via the slot picker if they're planning on someone
+  // else's behalf.
   const initTeamA = (): (SlotPlayer | null)[] => {
     if (existing?.format === format) return existing.teamA;
-    return teamSize === 1 ? [null] : [null, null];
+    return teamSize === 1 ? [me] : [me, null];
   };
   const initTeamB = (): (SlotPlayer | null)[] => {
     if (existing?.format === format) return existing.teamB;
