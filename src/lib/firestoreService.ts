@@ -288,6 +288,61 @@ export async function loadEndorsementGiven(targetUid: string, fromUid: string): 
   return snap.exists() ? ((snap.data().skills as string[] | undefined) ?? []) : [];
 }
 
+// ── Clubs (real, shared collection — membership/moderation visible to everyone) ─
+
+export function subscribeClubs(cb: (clubs: Club[]) => void): () => void {
+  return onSnapshot(collection(db, 'clubs'), snap => cb(snap.docs.map(d => d.data() as Club)));
+}
+
+// Seeds the static demo clubs into Firestore once, so real accounts can
+// actually join them (a club that only ever existed in local state can't
+// have two real members who both see each other in it).
+export async function ensureSeedClubsExist(seedClubs: Club[]): Promise<void> {
+  await Promise.all(seedClubs.map(async c => {
+    const snap = await getDoc(doc(db, 'clubs', c.id));
+    if (!snap.exists()) await setDoc(doc(db, 'clubs', c.id), c);
+  }));
+}
+
+export async function createClubDoc(club: Club) {
+  await setDoc(doc(db, 'clubs', club.id), club);
+}
+
+export async function updateClubDoc(id: string, patch: Partial<Club>) {
+  await updateDoc(doc(db, 'clubs', id), patch as Record<string, unknown>);
+}
+
+export async function deleteClubDoc(id: string) {
+  await deleteDoc(doc(db, 'clubs', id));
+}
+
+// Array mutations use arrayUnion/arrayRemove (not read-modify-write) so two
+// people joining/requesting at the same moment can't silently clobber each
+// other's change — a real concern now that clubs have real concurrent users.
+export async function addClubMember(id: string, uid: string) {
+  await updateDoc(doc(db, 'clubs', id), { memberIds: arrayUnion(uid), pendingIds: arrayRemove(uid) });
+}
+
+export async function removeClubMember(id: string, uid: string) {
+  await updateDoc(doc(db, 'clubs', id), { memberIds: arrayRemove(uid), moderatorIds: arrayRemove(uid) });
+}
+
+export async function addClubPending(id: string, uid: string) {
+  await updateDoc(doc(db, 'clubs', id), { pendingIds: arrayUnion(uid) });
+}
+
+export async function removeClubPending(id: string, uid: string) {
+  await updateDoc(doc(db, 'clubs', id), { pendingIds: arrayRemove(uid) });
+}
+
+export async function setClubModerator(id: string, uid: string, isModerator: boolean) {
+  await updateDoc(doc(db, 'clubs', id), { moderatorIds: isModerator ? arrayUnion(uid) : arrayRemove(uid) });
+}
+
+export async function addClubMessageDoc(id: string, msg: ClubMessage) {
+  await updateDoc(doc(db, 'clubs', id), { clubMessages: arrayUnion(msg) });
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 export function toISOString(ts: unknown): string {
