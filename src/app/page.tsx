@@ -179,7 +179,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={e => { e.stopPropagation(); confirmMatch(m.id); }}
+                    <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, user.uid); }}
                       className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
                       <CheckCircle size={12}/> Confirm
                     </button>
