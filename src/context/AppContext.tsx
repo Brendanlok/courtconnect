@@ -658,10 +658,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markAllNotifsRead = useCallback(() => setNotifications(p => p.map(n => ({ ...n, read: true }))), []);
   const unreadNotifCount  = notifications.filter(n => !n.read).length;
 
+  // Sends a message in a real cross-account conversation (shared Firestore doc,
+  // not the per-user demo copy). otherProfile is only needed the first time —
+  // it's what lets the recipient's own client render a header for this chat.
+  const sendRealMessage = useCallback((otherUid: string, otherProfile: SharedParticipant, text: string) => {
+    const realUid = auth.currentUser?.uid;
+    if (!realUid || !text.trim()) return;
+    const chatId = chatIdFor(realUid, otherUid);
+    const msg = { id: `msg_${Date.now()}`, senderId: realUid, text: text.trim(), sentAt: new Date().toISOString() };
+    const participants: Record<string, SharedParticipant> = {
+      [realUid]: { displayName: user.displayName, username: user.username, tier: user.tier, mmr: user.mmr, photoURL: user.photoURL ?? null },
+      [otherUid]: otherProfile,
+    };
+    sendSharedMessage(chatId, [realUid, otherUid], participants, msg).catch(() => {});
+  }, [user.displayName, user.username, user.tier, user.mmr, user.photoURL]);
+
+  // Combine local/demo state with the real, Firestore-synced cross-account
+  // state. myRealUid is '' when signed out, so isRealUid-keyed lookups just
+  // fall through to nothing rather than mismatching against a stale uid.
+  const myRealUid = auth.currentUser?.uid ?? '';
+  const challenges: Challenge[] = [
+    ...localChallenges,
+    ...realIncomingChallenges.map(c => toLocalChallenge(c, myRealUid)),
+    ...realOutgoingChallenges.map(c => toLocalChallenge(c, myRealUid)),
+  ];
+  const conversations: Conversation[] = [
+    ...localConversations,
+    ...realConversationDocs.map(c => toLocalConversation(c, myRealUid)),
+  ].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  const meEndorsementCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
+  for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
+    meEndorsementCounts[skill] = (meEndorsementCounts[skill] ?? 0) + cnt;
+  }
+  const combinedPlayerEndorsements = { ...playerEndorsements, me: meEndorsementCounts };
+
   return (
     <Ctx.Provider value={{
       user, matches, addMatch, confirmMatch, disputeMatch, cancelPendingMatch, updateUser,
-      conversations, setConversations, totalUnread, sidebarCollapsed, toggleSidebar,
+      conversations, setConversations: setLocalConversations, sendRealMessage, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
@@ -670,7 +704,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
-      myEndorsements, playerEndorsements, endorsePlayer,
+      myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
     }}>
       {children}
