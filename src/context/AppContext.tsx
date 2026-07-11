@@ -356,14 +356,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 .forEach(() => addNotification({ type: 'club_join_request', title: 'Join Request', body: `Someone requested to join ${c.name}.`, meta: { clubId: c.id } }));
             }
 
-            if (c.memberIds.includes(uid)) {
-              const oldMsgCount = old.clubMessages?.length ?? 0;
-              const newFromOthers = (c.clubMessages ?? []).slice(oldMsgCount).filter(m => m.senderId !== uid);
-              if (newFromOthers.length > 0) {
-                const last = newFromOthers[newFromOthers.length - 1];
-                addNotification({ type: 'club_message', title: c.name, body: `${last.senderName}: ${last.text}` });
-              }
-            }
+            // New club chat messages are handled by the separate,
+            // per-my-club message subscription below — clubMessages is no
+            // longer embedded on the club doc (see sendClubMessageDoc).
 
             if (old.pendingIds.includes(uid) && !c.pendingIds.includes(uid)) {
               if (c.memberIds.includes(uid)) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `Your request to join ${c.name} was accepted!` });
