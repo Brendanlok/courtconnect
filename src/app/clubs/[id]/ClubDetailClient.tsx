@@ -121,10 +121,14 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
 
   // Club chat lives in a subcollection (clubs/{id}/messages), not embedded on
   // the club doc — scoped to this one club, not the full clubs listener.
+  // Messages carry the real Firebase uid as senderId (written straight to
+  // Firestore, never passed through the app's local 'me' translation), so
+  // it's normalized here the same way toLocalClub does for membership.
   const [messages, setMessages] = useState<ClubMessage[]>(club.clubMessages ?? []);
   useEffect(() => {
+    const myRealUid = auth.currentUser?.uid;
     const unsub = subscribeClubMessages(clubId, msgs =>
-      setMessages(msgs.map(m => m.senderId === (user as { realUid?: string }).realUid ? m : m))
+      setMessages(msgs.map(m => m.senderId === myRealUid ? { ...m, senderId: 'me' } : m))
     );
     return unsub;
   }, [clubId]);
