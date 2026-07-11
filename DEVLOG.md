@@ -1,5 +1,28 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-11 21:35] — Interactive Session (security rules tightened + emulator testing)
+
+**Trigger:** User asked to tighten the challenges/conversations/clubs Firestore rules (drafted-but-not-applied from two sessions ago) and actually test them in the emulator this time, rather than leaving them as an untested comment block.
+
+### Infrastructure added
+- Installed a JDK (Microsoft Build of OpenJDK 21 via winget) — the Firestore emulator needs a JVM and this machine had none. Added `firebase.json` + `.firebaserc` (pointing at the fake `demo-courtconnect` project — the `demo-` prefix means the emulator never touches real Google Cloud or needs real credentials) and `@firebase/rules-unit-testing` + `firebase-tools` as dev dependencies.
+- `tests/firestore-rules.test.mjs` — 22 checks against the real emulator, both "this should succeed" and "this should be denied" for every collection. `npm run test:rules` runs the whole start-emulator/run-tests/stop-emulator cycle in one command (`firebase emulators:exec`) for future rule changes to be re-verified against.
+
+### Rules now enforced (all 22 checks passing)
+- **Challenges**: only creatable by the person listed as `fromUid` (no impersonating who a challenge is "from"); only updatable (accept/decline/cancel) by whichever of `fromUid`/`toUid` you are; nobody can delete one.
+- **Conversations**: only writable by an account listed in that conversation's `participantUids`; nobody can delete one.
+- **Clubs**: creation requires you to list yourself as the sole `adminId`/member. Updates require either being the admin/moderator (full management access) or a self-service change that touches *only* your own uid being added to or removed from `memberIds`/`pendingIds` — verified via Firestore's field-diff, so an attacker authenticated as themselves genuinely cannot add or remove a *different* uid. Only the admin can disband a club. A narrow, explicitly-scoped exception allows any member to clear (never rewrite) the legacy `clubMessages` field, needed for the one-time chat migration from last session.
+- **Club chat messages**: members-only to read or send; immutable once sent (no edit, no delete) — tightened during this pass, since the previous design didn't restrict message *reads* to members at all, and the client wasn't gating its subscription/migration effects on membership either (fixed both).
+
+### A residual, disclosed tradeoff
+The messages rule deliberately doesn't also require `senderId == request.auth.uid` — the one-time legacy-message migration writes messages originally authored by *other* past members, under whichever member's session happens to open the chat first (there's no admin/Cloud-Functions backend to run it as a trusted system operation instead). Net effect: any current club member can technically attribute a chat message to a different member's name, not just their own. Judged acceptable for a club chat; would not be acceptable for anything security- or payment-sensitive.
+
+### Still not deployed
+Emulator-tested ≠ live. `.firebaserc` intentionally points at the fake test-only project so a stray `firebase deploy` can't accidentally push to production — publishing these rules for real still needs a manual step (paste into the Firebase Console, or `firebase deploy --only firestore:rules --project <real-project-id>`), documented directly in a comment at the top of firestore.rules now.
+
+### Verification
+`npm run test:rules` — 22/22 rule checks pass against the actual Firestore emulator (not hand-reasoning this time). `npx next build` clean. Re-ran the standalone logic simulation from prior sessions — still 0 failures across all 8 scenarios.
+
 ## [2026-07-11 17:50] — Interactive Session (club chat rearchitecture)
 
 **Trigger:** User asked to rearchitect club chat to scale properly — the deferred item from the previous session ("`subscribeClubs` downloads the entire clubs collection, unfiltered, including full embedded chat history, to every signed-in client on every change to any club").
