@@ -758,6 +758,14 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, 
   userCountry?: string;
 }) {
   const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [onClose]);
+
   const showSelf = selfPlayer && !exclude.includes(selfPlayer.uid) && (!gender || selfPlayer.gender === gender) &&
     (!q || selfPlayer.displayName.toLowerCase().includes(q.toLowerCase()) || selfPlayer.username.toLowerCase().includes(q.toLowerCase()));
   const candidates = PLAYERS
