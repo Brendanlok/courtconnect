@@ -119,9 +119,30 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club.name}`);
   const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club.name}`);
 
+  // Club chat lives in a subcollection (clubs/{id}/messages), not embedded on
+  // the club doc — scoped to this one club, not the full clubs listener.
+  const [messages, setMessages] = useState<ClubMessage[]>(club.clubMessages ?? []);
+  useEffect(() => {
+    const unsub = subscribeClubMessages(clubId, msgs =>
+      setMessages(msgs.map(m => m.senderId === (user as { realUid?: string }).realUid ? m : m))
+    );
+    return unsub;
+  }, [clubId]);
+
+  // One-time migration for clubs that still have the old embedded array —
+  // idempotent (the field is cleared after migrating, so this naturally
+  // becomes a no-op on future loads once it's run once for a given club).
+  const legacyMigratedRef = useRef(false);
+  useEffect(() => {
+    if (legacyMigratedRef.current) return;
+    if (!club.clubMessages || club.clubMessages.length === 0) return;
+    legacyMigratedRef.current = true;
+    migrateLegacyClubMessages(clubId, club.clubMessages).catch(() => { legacyMigratedRef.current = false; });
+  }, [clubId, club.clubMessages]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [club.clubMessages?.length]);
+  }, [messages.length]);
 
   // Keep announce in sync when club updates
   useEffect(() => {
