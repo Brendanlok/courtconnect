@@ -151,7 +151,7 @@ export interface Challenge {
   venue: string;
   date: string;       // ISO date string for proposed date/time
   message?: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
   createdAt: string;
 }
 
