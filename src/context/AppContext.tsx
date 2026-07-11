@@ -394,110 +394,95 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocalChallenges(p => p.map(c => c.id === id ? { ...c, status: 'cancelled' as const } : c));
   }, [isRealChallengeId]);
 
-  // Club actions — how many clubs the user is allowed at once scales with MMR tier
+  // Clubs — translated to the local 'me' convention for display; how many a
+  // user can belong to at once scales with MMR tier. Every mutation below
+  // writes straight to Firestore (arrayUnion/arrayRemove — safe under
+  // concurrent edits from real members) and relies on the live subscription
+  // above to reflect the change back, rather than managing local copies.
+  const myRealUid = auth.currentUser?.uid ?? '';
+  const clubs: Club[] = rawClubs.map(c => toLocalClub(c, myRealUid));
+  const myClubIds = clubs.filter(c => c.memberIds.includes('me')).map(c => c.id);
+  const myClubPendingIds = clubs.filter(c => c.pendingIds.includes('me')).map(c => c.id);
   const clubLimit = maxClubsForTier(user.tier);
 
   const joinClub = useCallback((id: string) => {
-    if (myClubIds.includes(id) || myClubIds.length >= clubLimit) return;
-    const next = [...myClubIds, id];
-    setMyClubIds(next);
-    setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: [...c.memberIds, 'me'] } : c));
+    if (myClubIds.includes(id) || myClubIds.length >= clubLimit || !myRealUid) return;
+    addClubMember(id, myRealUid).catch(() => {});
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
-    const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, next).catch(() => {});
-  }, [myClubIds, clubLimit]);
+  }, [myClubIds, clubLimit, myRealUid]);
 
   const requestJoinClub = useCallback((id: string) => {
-    if (myClubIds.length + myClubPendingIds.length >= clubLimit) return;
-    setMyClubPendingIds(p => [...p, id]);
-    setClubs(cs => cs.map(c => c.id === id ? { ...c, pendingIds: [...c.pendingIds, 'me'] } : c));
+    if (myClubIds.length + myClubPendingIds.length >= clubLimit || !myRealUid) return;
+    addClubPending(id, myRealUid).catch(() => {});
     addNotification({ type: 'club_request', title: 'Request Sent', body: 'Your request to join the club has been sent.' });
-  }, [myClubIds, myClubPendingIds, clubLimit]);
+  }, [myClubIds, myClubPendingIds, clubLimit, myRealUid]);
 
   const cancelClubRequest = useCallback((id: string) => {
-    setMyClubPendingIds(p => p.filter(x => x !== id));
-    setClubs(cs => cs.map(c => c.id === id ? { ...c, pendingIds: c.pendingIds.filter(x => x !== 'me') } : c));
-  }, []);
+    if (!myRealUid) return;
+    removeClubPending(id, myRealUid).catch(() => {});
+  }, [myRealUid]);
 
   const leaveClub = useCallback((id: string) => {
-    const next = myClubIds.filter(x => x !== id);
-    setMyClubIds(next);
-    setClubs(cs => cs.map(c => c.id === id ? { ...c, memberIds: c.memberIds.filter(m => m !== 'me') } : c));
-    const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, next).catch(() => {});
-  }, [myClubIds]);
+    if (!myRealUid) return;
+    removeClubMember(id, myRealUid).catch(() => {});
+  }, [myRealUid]);
 
   const createClub = useCallback((c: Club) => {
-    const next = myClubIds.includes(c.id) ? myClubIds : [...myClubIds, c.id];
-    setClubs(cs => [c, ...cs]);
-    setMyClubIds(next);
-    const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, next).catch(() => {});
-  }, [myClubIds]);
+    if (!myRealUid) return;
+    const stored: Club = {
+      ...c,
+      adminId: toRealUid(c.adminId, myRealUid),
+      memberIds: c.memberIds.map(u => toRealUid(u, myRealUid)),
+    };
+    createClubDoc(stored).catch(() => {});
+  }, [myRealUid]);
 
   const updateClub = useCallback((id: string, patch: Partial<Club>) => {
-    setClubs(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
+    updateClubDoc(id, patch).catch(() => {});
   }, []);
 
   const disbandClub = useCallback((id: string) => {
-    const next = myClubIds.filter(x => x !== id);
-    setClubs(cs => cs.filter(c => c.id !== id));
-    setMyClubIds(next);
-    const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, next).catch(() => {});
-  }, [myClubIds]);
+    deleteClubDoc(id).catch(() => {});
+  }, []);
 
   const assignModerator = useCallback((clubId: string, uid: string) => {
-    setClubs(cs => cs.map(c => c.id === clubId
-      ? { ...c, moderatorIds: [...(c.moderatorIds ?? []).filter(x => x !== uid), uid] }
-      : c));
-  }, []);
+    setClubModerator(clubId, toRealUid(uid, myRealUid), true).catch(() => {});
+  }, [myRealUid]);
 
   const removeModerator = useCallback((clubId: string, uid: string) => {
-    setClubs(cs => cs.map(c => c.id === clubId
-      ? { ...c, moderatorIds: (c.moderatorIds ?? []).filter(x => x !== uid) }
-      : c));
-  }, []);
+    setClubModerator(clubId, toRealUid(uid, myRealUid), false).catch(() => {});
+  }, [myRealUid]);
 
   const acceptClubMember = useCallback((clubId: string, uid: string) => {
-    setClubs(cs => cs.map(c => c.id === clubId
-      ? { ...c, memberIds: [...c.memberIds, uid], pendingIds: c.pendingIds.filter(x => x !== uid) }
-      : c));
+    addClubMember(clubId, toRealUid(uid, myRealUid)).catch(() => {});
     addNotification({ type: 'club_accepted', title: 'Member Accepted', body: 'A new member joined your club.' });
-  }, []);
+  }, [myRealUid]);
 
   const declineClubMember = useCallback((clubId: string, uid: string) => {
-    setClubs(cs => cs.map(c => c.id === clubId
-      ? { ...c, pendingIds: c.pendingIds.filter(x => x !== uid) }
-      : c));
-  }, []);
+    removeClubPending(clubId, toRealUid(uid, myRealUid)).catch(() => {});
+  }, [myRealUid]);
 
   const inviteToClub = useCallback((clubId: string, targetUid: string) => {
     if (targetUid === 'me') {
-      // Being invited by someone else — add pending invite + notification
+      // Being invited by someone else — add pending invite + notification.
+      // (Kept local/session-only — a real per-account "invites received"
+      // list is a scoped-out follow-up, same as the club migration itself.)
       setClubInvites(p => [...p, clubId]);
       addNotification({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
     } else {
-      // Admin inviting another player — simulate acceptance immediately (demo)
-      setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes(targetUid)
-        ? { ...c, memberIds: [...c.memberIds, targetUid] }
-        : c));
+      // Admin inviting another player — adds them immediately, matching the
+      // existing (consent-free) demo behavior; now persisted for real.
+      addClubMember(clubId, targetUid).catch(() => {});
       addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
     }
   }, []);
 
   const acceptClubInvite = useCallback((clubId: string) => {
-    if (!myClubIds.includes(clubId) && myClubIds.length >= clubLimit) return;
-    const next = myClubIds.includes(clubId) ? myClubIds : [...myClubIds, clubId];
+    if ((!myClubIds.includes(clubId) && myClubIds.length >= clubLimit) || !myRealUid) return;
     setClubInvites(p => p.filter(id => id !== clubId));
-    setClubs(cs => cs.map(c => c.id === clubId && !c.memberIds.includes('me')
-      ? { ...c, memberIds: [...c.memberIds, 'me'] }
-      : c));
-    setMyClubIds(next);
+    addClubMember(clubId, myRealUid).catch(() => {});
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
-    const uid = auth.currentUser?.uid;
-    if (uid) saveClubMembership(uid, next).catch(() => {});
-  }, [myClubIds, clubLimit]);
+  }, [myClubIds, clubLimit, myRealUid]);
 
   const declineClubInvite = useCallback((clubId: string) => {
     setClubInvites(p => p.filter(id => id !== clubId));
@@ -505,17 +490,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const sendClubMessage = useCallback((clubId: string, text: string) => {
+    if (!myRealUid) return;
     const msg: ClubMessage = {
       id: `cm_${Date.now()}`,
-      senderId: 'me',
+      senderId: myRealUid,
       senderName: user.displayName,
       text,
       sentAt: new Date().toISOString(),
     };
-    setClubs(cs => cs.map(c => c.id === clubId
-      ? { ...c, clubMessages: [...(c.clubMessages ?? []), msg] }
-      : c));
-  }, [user.displayName]);
+    addClubMessageDoc(clubId, msg).catch(() => {});
+  }, [user.displayName, myRealUid]);
 
   const awardClipCredits = useCallback((amount: number) => {
     setClipCredits(prev => {
