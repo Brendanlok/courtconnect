@@ -9,8 +9,9 @@ interface Props {
 }
 
 export function MatchCard({ match: m, userId, onClick }: Props) {
-  const isWin     = m.winnerId === userId;
-  const isPending = m.status === 'Pending';
+  const isWin       = m.status === 'Confirmed' && m.winnerId === userId;
+  const isPending   = m.status === 'Pending';
+  const isUnresolved = m.status === 'Disputed' || m.status === 'Cancelled';
   const opponent  = m.player1Id === userId ? m.player2Name : m.player1Name;
   const oppUser   = m.player1Id === userId ? m.player2Username : m.player1Username;
   const scoreStr  = m.games
@@ -22,10 +23,10 @@ export function MatchCard({ match: m, userId, onClick }: Props) {
     <button onClick={onClick}
       className="w-full flex items-center gap-3 py-3 px-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors text-left group">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 border
-        ${isPending ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+        ${isPending || isUnresolved ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
           : isWin   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                     : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
-        {isPending ? '?' : isWin ? 'W' : 'L'}
+        {isPending ? '?' : isUnresolved ? '!' : isWin ? 'W' : 'L'}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -36,13 +37,14 @@ export function MatchCard({ match: m, userId, onClick }: Props) {
       </div>
 
       <div className="text-right shrink-0">
-        {!isPending && scoreStr && <div className="text-xs text-slate-400 font-mono">{scoreStr}</div>}
-        {m.mmrChange !== undefined && m.mmrChange !== 0 && (
+        {m.status === 'Confirmed' && scoreStr && <div className="text-xs text-slate-400 font-mono">{scoreStr}</div>}
+        {m.status === 'Confirmed' && m.mmrChange !== undefined && m.mmrChange !== 0 && (
           <div className={`text-xs font-bold ${m.mmrChange > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {m.mmrChange > 0 ? '+' : ''}{m.mmrChange}
           </div>
         )}
         {isPending && <div className="text-xs text-amber-400 font-medium">Pending</div>}
+        {isUnresolved && <div className="text-xs text-amber-400 font-medium">{m.status}</div>}
       </div>
 
       <ChevronRight size={14} className="text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" />
