@@ -17,8 +17,6 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { loadAllRealUsers } from '@/lib/firestoreService';
-import { auth } from '@/lib/firebase';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
 
 // Real accounts aren't in the static export's pre-rendered /players/[username]/
