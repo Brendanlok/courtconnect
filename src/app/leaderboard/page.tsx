@@ -35,16 +35,9 @@ export default function Leaderboard() {
   const userCountry = user.country ?? 'Malaysia';
   const [countryFilter, setCountryFilter]= useState<string>(userCountry);
   const countryData = COUNTRIES.find(c => c.name === countryFilter);
-  const [realPlayers, setRealPlayers] = useState<UserProfile[]>([]);
-
-  useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-    loadAllRealUsers(uid).then(setRealPlayers).catch(() => {});
-  }, []);
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
-  const all: UserProfile[] = [user, ...PLAYERS, ...realPlayers];
+  const all: UserProfile[] = [user, ...PLAYERS, ...allRealPlayers];
 
   const list = all
     .filter(p => (p.country ?? 'Malaysia') === countryFilter)
