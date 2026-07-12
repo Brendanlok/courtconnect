@@ -427,12 +427,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (uid) saveOpenToPlay(uid, user.openToPlay ?? false).catch(() => {});
   }, [user.openToPlay]);
 
+  const isRealMatchId = useCallback((id: string) => realMatches.some(m => m.id === id), [realMatches]);
+
+  // A match against a real, singles opponent becomes a shared Firestore doc
+  // both accounts can see and confirm, instead of a local-only record only
+  // the reporter ever sees — see toLocalMatch for how each side reads it
+  // back. Doubles (or a demo opponent) keep the original local-only path.
   const addMatch      = useCallback((m: Match) => {
-    setMatches(p => [m, ...p]);
     const uid = auth.currentUser?.uid;
+    if (uid && isRealUid(m.player2Id) && !m.player1PartnerId && !m.player2PartnerId) {
+      const stored: StoredMatch = {
+        id: m.id, type: m.type,
+        participantUids: [uid, m.player2Id],
+        reporterUid: uid,
+        player1Id: uid, player1Name: m.player1Name, player1Username: m.player1Username,
+        player2Id: m.player2Id, player2Name: m.player2Name, player2Username: m.player2Username,
+        winnerId: toRealUid(m.winnerId ?? 'me', uid),
+        games: m.games,
+        status: 'Pending',
+        mmrChange: m.mmrChange,
+        playedAt: m.playedAt,
+        location: m.location,
+        pendingConfirmations: [m.player2Id],
+        mmrAppliedBy: [],
+      };
+      sendMatchDoc(stored).catch(() => {});
+      // Optimistic local echo, same pattern as sendChallenge.
+      setRealMatches(p => [stored, ...p.filter(x => x.id !== stored.id)]);
+      return;
+    }
+    setMatches(p => [m, ...p]);
     if (uid) saveMatch(uid, m).catch(() => {});
   }, []);
   const confirmMatch  = useCallback((id: string, uid?: string) => {
+    const realUid = auth.currentUser?.uid;
+    if (isRealMatchId(id) && realUid) {
+      confirmSharedMatch(id, realUid).catch(() => {});
+      return;
+    }
     setMatches(prev => prev.map(m => {
       if (m.id !== id || m.status !== 'Pending') return m;
 
@@ -453,14 +485,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
       return { ...m, status: 'Confirmed' as const, pendingConfirmations: [] };
     }));
-  }, []);
-  const disputeMatch  = useCallback((id: string) => setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m)), []);
+  }, [isRealMatchId]);
+  const disputeMatch  = useCallback((id: string) => {
+    if (isRealMatchId(id)) { disputeSharedMatch(id).catch(() => {}); return; }
+    setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m));
+  }, [isRealMatchId]);
   // Withdraws a match still waiting on other players' confirmation — for when an
   // opponent never responds. No MMR was ever applied for a Pending match, so
   // there's nothing to roll back.
-  const cancelPendingMatch = useCallback((id: string) => setMatches(p => p.map(m =>
-    m.id === id && m.status === 'Pending' ? { ...m, status: 'Cancelled' as const, pendingConfirmations: [] } : m
-  )), []);
+  const cancelPendingMatch = useCallback((id: string) => {
+    if (isRealMatchId(id)) { cancelSharedMatch(id).catch(() => {}); return; }
+    setMatches(p => p.map(m =>
+      m.id === id && m.status === 'Pending' ? { ...m, status: 'Cancelled' as const, pendingConfirmations: [] } : m
+    ));
+  }, [isRealMatchId]);
   const updateUser    = useCallback((patch: Partial<UserProfile>) => {
     setUser(u => {
       const next = { ...u, ...patch };
