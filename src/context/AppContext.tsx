@@ -416,6 +416,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           prevClubsRef.current = docs;
           setRawClubs(docs);
         }),
+        subscribeMyRealMatches(uid, docs => {
+          const prev = prevMatchesRef.current;
+          docs.forEach(d => {
+            const old = prev.find(p => p.id === d.id);
+            if (!old && d.pendingConfirmations.includes(uid)) {
+              const oppName = d.reporterUid === d.player1Id ? d.player1Name : d.player2Name;
+              addNotification({ type: 'match_pending', title: 'Match Result Reported', body: `${oppName} reported a match result — confirm or dispute it.` });
+            } else if (old?.status === 'Pending' && d.status === 'Confirmed' && d.reporterUid === uid) {
+              addNotification({ type: 'match_confirmed', title: 'Match Confirmed', body: 'Your opponent confirmed the match result.' });
+            }
+          });
+          prevMatchesRef.current = docs;
+          setRealMatches(docs);
+        }),
       ];
     });
     return () => { unsubAuth(); realUnsubsRef.current.forEach(fn => fn()); };
