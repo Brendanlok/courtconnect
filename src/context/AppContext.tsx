@@ -774,6 +774,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sendSharedMessage(chatId, [realUid, otherUid], participants, msg).catch(() => {});
   }, [user.displayName, user.username, user.tier, user.mmr, user.photoURL]);
 
+  const markRealConvRead = useCallback((chatId: string) => {
+    setRealLastRead(prev => {
+      const next = { ...prev, [chatId]: new Date().toISOString() };
+      try { localStorage.setItem('cc_realLastRead', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   // Combine local/demo state with the real, Firestore-synced cross-account
   // state. myRealUid (declared above, next to the club logic) is '' when
   // signed out, so isRealUid-keyed lookups just fall through to nothing
