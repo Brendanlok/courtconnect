@@ -1,5 +1,20 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 (interactive, follow-up)] — Moved builds off Netlify
+
+**Trigger:** Netlify hit 100% of its shared team build-minute quota for July (648 commits to this repo in one month, mostly from the deploy hook firing per file-edit rather than per work session — see the perf entry above, already fixed). To stay unblocked for the rest of the month, moved the actual build step off Netlify entirely.
+
+### Shipped
+- `.github/workflows/deploy.yml` — builds on GitHub Actions (private repo, 2,000 free min/month) and publishes the finished `out/` directory to Netlify via `netlify-cli`, which doesn't consume Netlify build minutes.
+- Netlify's own git-triggered auto-build is now stopped for this project (Build settings → Stopped builds) — GitHub Actions is the only thing that builds and deploys going forward.
+- Rotated the Netlify personal access token used for this (the first one generated got shared in a chat and was treated as compromised — revoked and replaced before use).
+
+### Still open
+- The Telegram bot token in `telegram-bot/config.json` is still committed to this (private) repo in plaintext — lower priority now that the repo isn't going public, but still worth moving to an untracked file at some point.
+
+### Verification
+Test push queued to confirm the GitHub Actions workflow actually builds and deploys successfully end to end — not yet confirmed as of this entry.
+
 ## [2026-07-12 (interactive, follow-up)] — Perf: slow startup + tab switching
 
 **Trigger:** User reported the app feels slow starting up and switching between tabs.
