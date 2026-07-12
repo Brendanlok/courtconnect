@@ -37,15 +37,22 @@ export default function Leaderboard() {
   const userCountry = user.country ?? 'Malaysia';
   const [countryFilter, setCountryFilter]= useState<string>(userCountry);
   const countryData = COUNTRIES.find(c => c.name === countryFilter);
+  const [realPlayers, setRealPlayers] = useState<UserProfile[]>([]);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    loadAllRealUsers(uid).then(setRealPlayers).catch(() => {});
+  }, []);
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
-  const all: UserProfile[] = [user, ...PLAYERS];
+  const all: UserProfile[] = [user, ...PLAYERS, ...realPlayers];
 
   const list = all
     .filter(p => (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => {
       if (tab === 'By State') return p.state === selState;
-      if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : 999)) <= 10;
+      if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : approxDistanceKm(user, p))) <= 10;
       if (tab === 'Following') return following.includes(p.uid) || p.uid === 'me';
       return true;
     })
