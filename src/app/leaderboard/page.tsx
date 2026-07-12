@@ -158,7 +158,7 @@ export default function Leaderboard() {
                 const isFirst = idx === 1;
                 const medal   = ['🥈','🥇','🥉'][idx];
                 return (
-                  <Link key={p.uid} href={profileHref(p.username)}
+                  <Link key={p.uid} href={profileHref(p)}
                     className={`text-center group hover:opacity-90 transition-opacity ${isFirst ? '' : 'mt-6'}`}
                     style={{ width: isFirst ? 140 : 110 }}>
                     <p className="text-2xl mb-2">{medal}</p>
@@ -187,7 +187,7 @@ export default function Leaderboard() {
                 const displayRank = p.tabRank;
                 const isMe = p.uid === 'me';
                 return (
-                  <Link key={p.uid} href={profileHref(p.username)}
+                  <Link key={p.uid} href={profileHref(p)}
                     className={`grid grid-cols-[44px_1fr_auto_auto] gap-3 items-center px-4 py-3 transition-colors
                       ${isMe
                         ? 'bg-emerald-500/5 shadow-[inset_0_0_0_1.5px_rgba(16,185,129,0.35)]'
@@ -210,7 +210,7 @@ export default function Leaderboard() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500">@{p.username} · 📍 {p.area}, {p.state}</p>
+                        <p className="text-xs text-slate-500">@{p.username} · 📍 {p.area ? `${p.area}, ` : ''}{p.state}</p>
                       </div>
                     </div>
                     <TierBadge tier={p.tier}/>
