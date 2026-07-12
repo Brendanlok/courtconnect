@@ -207,6 +207,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
   const [realEndorsementCounts,  setRealEndorsementCounts]  = useState<Record<string, number>>({});
   const [realMatches,            setRealMatches]            = useState<StoredMatch[]>([]);
+  // Every real signed-up account, fetched once per session (not a listener —
+  // see loadAllRealUsers) and shared across every screen that needs the
+  // ranking pool (Leaderboard, Players tab) instead of each page fetching
+  // the whole users collection on its own every time it's visited.
+  const [allRealPlayers,         setAllRealPlayers]         = useState<UserProfile[]>([]);
   // Per-chat "last opened" timestamp for real conversations — device-local,
   // same idea as every other per-device UI preference here (openToPlay, etc.).
   const [realLastRead,           setRealLastRead]           = useState<Record<string, string>>(() => {
