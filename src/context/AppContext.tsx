@@ -205,6 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realOutgoingChallenges, setRealOutgoingChallenges] = useState<StoredChallenge[]>([]);
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
   const [realEndorsementCounts,  setRealEndorsementCounts]  = useState<Record<string, number>>({});
+  const [realMatches,            setRealMatches]            = useState<StoredMatch[]>([]);
   // Per-chat "last opened" timestamp for real conversations — device-local,
   // same idea as every other per-device UI preference here (openToPlay, etc.).
   const [realLastRead,           setRealLastRead]           = useState<Record<string, string>>(() => {
