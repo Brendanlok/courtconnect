@@ -7,7 +7,7 @@ import QRCode from 'qrcode';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { ME, PLAYERS } from '@/lib/data';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/supabase';
 
 export function QRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useApp();

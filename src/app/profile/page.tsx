@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PlayerProfileClient } from '@/app/players/[username]/PlayerProfileClient';
 import { PlayerActionCard } from '@/components/PlayerActionCard';
-import { lookupUserByUid } from '@/lib/firestoreService';
+import { lookupUserByUid } from '@/lib/supabaseService';
 import { getTier } from '@/lib/utils';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/supabase';
 import type { UserProfile } from '@/types';
 
 // A static, single-path "profile" view. /players/[username]/ only

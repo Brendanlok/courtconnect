@@ -1,8 +1,7 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw } from 'lucide-react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import type { LiveMatch } from '@/types';
 
 type State = 'idle' | 'instructions' | 'requesting' | 'previewing' | 'recording' | 'done' | 'uploading' | 'uploaded';
@@ -193,13 +192,15 @@ export default function ClipRecorder({
     setError('');
     try {
       const ext  = blob.type.includes('mp4') ? 'mp4' : 'webm';
-      const path = `clips/${match.id}/recording.${ext}`;
-      const task = uploadBytesResumable(ref(storage, path), blob, { contentType: blob.type });
-      task.on('state_changed', snap => {
-        setProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
-      });
-      await task;
-      const url = await getDownloadURL(ref(storage, path));
+      const path = `${match.id}/recording.${ext}`;
+      // ponytail: supabase-js storage upload has no progress events (unlike
+      // Firebase's uploadBytesResumable) — jump straight to 100 on success
+      // instead of faking intermediate ticks.
+      const { error } = await supabase.storage.from('clips').upload(path, blob, { contentType: blob.type, upsert: true });
+      if (error) throw error;
+      setProgress(100);
+      const { data } = supabase.storage.from('clips').getPublicUrl(path);
+      const url = data.publicUrl;
       blobRef.current = null;
       setState('uploaded');
       onUploaded?.(url);

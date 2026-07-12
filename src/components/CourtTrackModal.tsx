@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/supabase';
 import {
   createCourtSession, addCourtSessionPositions, getCourtSessionByCode,
   subscribeCourtSession, completeCourtSession,
-} from '@/lib/firestoreService';
+} from '@/lib/supabaseService';
 import type { CourtSession, CourtPosition, LiveMatch } from '@/types';
 import { X, Copy, Check, Radio } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';

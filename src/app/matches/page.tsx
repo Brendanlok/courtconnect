@@ -12,8 +12,8 @@ import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
   Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
 } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { savePlannedMatch, deletePlannedMatch } from '@/lib/firestoreService';
+import { auth } from '@/lib/supabase';
+import { savePlannedMatch, deletePlannedMatch } from '@/lib/supabaseService';
 import { loadPausedMatch } from '@/lib/pausedMatch';
 import type { UserProfile, MatchType, Match } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';

@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 (interactive)] — Migrated backend: Firebase → Supabase
+
+**Trigger:** Data had already been migrated to Supabase Postgres (real users, live matches, court sessions); the app code still talked to Firebase Auth/Firestore/Storage. This session swapped the client to match.
+
+### Shipped
+- `src/lib/supabase.ts` (new) replaces `src/lib/firebase.ts` — Supabase client + a small Firebase-Auth-compat shim (`auth.currentUser`, `onAuthStateChanged(auth, cb)`) so call sites needed a one-line import swap instead of a rewrite.
+- `src/lib/supabaseService.ts` (new) replaces `src/lib/firestoreService.ts` — every function reimplemented against Postgres tables + Supabase Realtime (`postgres_changes` channels replace `onSnapshot`).
+- `src/context/AuthContext.tsx` — Supabase Auth (`signInWithPassword`, `signUp`, `signInWithOAuth('google')`, `resetPasswordForEmail`) behind the exact same `AuthCtx` interface/flow (email/password or Google → verify → username/details).
+- `src/context/AppContext.tsx` and every component that touched Firebase/Firestore (chat, clubs, live, matches, profile, ClipRecorder, CourtTrackModal, LiveMatchModal, LogMatchModal, QRModal, SettingsModal) — swapped imports, no logic redesign.
+- Profile photo + clip video upload moved from Firebase Storage to Supabase Storage (`avatars` / `clips` buckets — **need to be created in the Supabase dashboard, public, before upload works**).
+- Removed the `firebase` npm dependency, `src/lib/firebase.ts`, `src/lib/firestoreService.ts`, `firebase.json`, `firestore.rules`, and the now-obsolete `tests/firestore-rules.test.mjs` + its `test:rules` script. Kept `firebase-admin` (devDependency) for `scripts/migrate-to-supabase.mjs` only.
+
+### Known gaps (see report for full list)
+- Demo-opponent match history (`saveMatch`/`loadMatches`) and demo-opponent local conversations (`saveConversation`/`loadConversations`) are now local-only — the shared `matches` table FK-references real `users(uid)` on both player columns, so a seed/demo opponent can't be written there without a schema change.
+- Account deletion wipes app data + signs out, but can't delete the `auth.users` row itself from a static-export client (no service-role key in the browser) — needs a Supabase Edge Function or manual dashboard deletion.
+- The 3 already-migrated real users need to use "Forgot password" on first login (Firebase password hashes don't carry over) — not a new gap, just confirming the existing `resetPassword` flow is now wired to Supabase.
+
+### Verification
+`npx next build` passes clean. Dev server exercised live: sign-up flow creates a real Supabase Auth user and correctly gates on email confirmation; leaderboard/clubs/matches REST queries confirmed against the live Supabase table columns via curl. Not pushed — left as local changes for review (see CHANGELOG + final report).
+
 ## [2026-07-12 (interactive, follow-up)] — Moved builds off Netlify
 
 **Trigger:** Netlify hit 100% of its shared team build-minute quota for July (648 commits to this repo in one month, mostly from the deploy hook firing per file-edit rather than per work session — see the perf entry above, already fixed). To stay unblocked for the rest of the month, moved the actual build step off Netlify entirely.

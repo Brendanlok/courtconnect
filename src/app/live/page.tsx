@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
-import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch } from '@/lib/firestoreService';
+import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch } from '@/lib/supabaseService';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users, MapPin, X } from 'lucide-react';
 import type { LiveMatch, MatchType, CourtPosition } from '@/types';
