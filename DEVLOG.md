@@ -1,5 +1,38 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 07:10] — Auto-Dev Session
+
+**Trigger:** Scheduled (daily, ~7:10am, after the 6am daily-check)
+**Daily Summary:** No Telegram commands pending. Build was already clean. Code audit of the core pages found and fixed 4 real bugs: an empty leaderboard table for small player lists, a confusing self-notification when challenging a demo player, a tier-progress bar that could visually disagree with its own label, and a club-link "Copied" indicator that lied on clipboard failure.
+
+### Telegram Commands Processed
+None pending.
+
+### Agenda & Findings
+| # | Priority | Task | Status | Finding |
+|---|---|---|---|---|
+| 1 | 🔴 | Build health check | ✅ | `npx next build` clean, no errors |
+| 2 | 🟠 | Code audit (Home, Players, Tournaments, Leaderboard, Chat, PlayerProfile, LogMatchModal, Topbar, AppContext) | ✅ | 4 new issues found and fixed (below); one deeper issue (self-confirmable match reports) traced back to the already-documented headline gap that matches are written only to the reporter's own Firestore subcollection, not shared with the opponent — not a new bug, left as-is pending the larger cross-account match sync work |
+
+### Issues Found & Fixed
+- 🔴 [leaderboard/page.tsx](src/app/leaderboard/page.tsx) — With 1–2 players in a filtered view (e.g. the Following tab before you follow anyone, or a sparse state), the podium was skipped (needs ≥3) *and* the table showed nothing (`list.slice(3)` of a short list is empty) — but the list wasn't empty, so the "No players found" message didn't show either. Net: a blank leaderboard with no explanation. Fixed by only slicing off the top 3 for the table when the podium actually rendered.
+- 🟠 [AppContext.tsx](src/context/AppContext.tsx) `sendChallenge` — Challenging a demo/static player fired a "Challenge Received: {your own name} challenged you to a match" notification at yourself, since demo challenges are local-only and `fromName` is always the sender. Removed the erroneous self-notification; the existing "Challenge sent to X" line in the Challenges section already gives correct feedback.
+- 🟡 [page.tsx](src/app/page.tsx) (Home) — The tier-progress bar's fill width was computed from `user.mmr` while the adjacent "N MMR to next tier" label was computed from `avgMMR` (the average across disciplines) — the two numbers are the same headline MMR shown elsewhere on the card, and could visually disagree when discipline MMRs diverge from the overall MMR. Fixed the bar to use `avgMMR` too.
+- 🟡 [players/page.tsx](src/app/players/page.tsx) `copyLink` — showed the "Copied" checkmark unconditionally, even if `navigator.clipboard.writeText` actually failed. Fixed to only show success after the promise resolves.
+
+### Improvements Made
+Same as Issues Found & Fixed above — all 4 are shipped and deployed. Rebuilt clean after every change (`npx next build`).
+
+### Feature Ideas / Upcoming Plans
+| Feature | Why | Rough Scope |
+|---|---|---|
+| Real cross-account match confirmation | Manually-logged matches against a real (non-demo) opponent found via search/QR are written only to your own Firestore subcollection — the opponent never sees them, so "awaiting verification" is really just self-confirmation today. This is the same root cause as the long-documented headline gap (challenges/chat/clubs already made real; match logging wasn't). | Large — needs a shared match doc + opponent-side confirm UI, same pattern already used for challenges/chat |
+| Real distance for "Nearby" leaderboard tab | `distKm` is only ever set on the static demo roster (`src/lib/data.ts`); real players have no distance field, so the Nearby tab can never actually surface a real nearby player, only yourself and demo bots. | Medium — needs real geolocation captured on profile (or area/state-based approximate distance) + distance calc wired into the Firestore player lookup |
+| Real unread counts for cross-account chat | Still hardcoded to 0 for real conversations (known gap, unchanged since it was first flagged) | Small — local last-read timestamp per chat, same idea already used for demo conversations |
+
+### Critical Alerts
+None.
+
 ## [2026-07-12 06:00] — Daily Summary Session
 
 ### 📊 Daily Summary (06:00)
