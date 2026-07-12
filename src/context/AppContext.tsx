@@ -120,6 +120,7 @@ interface AppCtx {
   setConversations: (c: Conversation[] | ((prev: Conversation[]) => Conversation[])) => void;
   sendRealMessage: (otherUid: string, otherProfile: SharedParticipant, text: string) => void;
   markRealConvRead: (chatId: string) => void;
+  allRealPlayers: UserProfile[];
   totalUnread: number;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
