@@ -23,6 +23,13 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const isDisputed = m.status === 'Disputed';
   const isCancelled = m.status === 'Cancelled';
   const hasOutstandingConfirmers = !!(m.pendingConfirmations && m.pendingConfirmations.length > 0);
+  // Whether it's genuinely this viewer's move: true for the original local/
+  // demo flow (no pendingConfirmations at all — self-confirmable, as always)
+  // and for a real match where the outstanding confirmer is specifically
+  // 'me'. False when pendingConfirmations lists someone ELSE still owed — a
+  // real opponent I'm waiting on, or (existing multi-party Live behavior)
+  // other teammates who haven't confirmed yet.
+  const isMyTurn = !m.pendingConfirmations || m.pendingConfirmations.includes('me');
   const myName    = m.player1Id === 'me' ? m.player1Name : m.player2Name;
   const myUser    = m.player1Id === 'me' ? m.player1Username : m.player2Username;
   const oppName   = m.player1Id === 'me' ? m.player2Name : m.player1Name;
