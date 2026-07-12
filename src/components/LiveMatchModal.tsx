@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
-import { auth } from '@/lib/firebase';
-import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCode } from '@/lib/firestoreService';
+import { auth } from '@/lib/supabase';
+import { createLiveMatch, updateLiveMatch, subscribeLiveMatch, getLiveMatchByCode } from '@/lib/supabaseService';
 import type { MatchType, LiveMatch, LiveGame, LiveMatchPlayer, LiveMatchStats } from '@/types';
 import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,

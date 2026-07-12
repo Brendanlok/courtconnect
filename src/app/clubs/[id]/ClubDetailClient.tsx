@@ -8,8 +8,8 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { timeAgo, maxClubsForTier, getTier } from '@/lib/utils';
-import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages } from '@/lib/firestoreService';
-import { auth } from '@/lib/firebase';
+import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages } from '@/lib/supabaseService';
+import { auth } from '@/lib/supabase';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
   Send, ArrowLeft, Megaphone, UserPlus, Trash2, ChevronRight,

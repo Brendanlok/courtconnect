@@ -8,8 +8,8 @@ import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message, Conversation } from '@/types';
 import Link from 'next/link';
-import { auth } from '@/lib/firebase';
-import { saveConversation, lookupUserByUid } from '@/lib/firestoreService';
+import { auth } from '@/lib/supabase';
+import { saveConversation, lookupUserByUid } from '@/lib/supabaseService';
 import { getTier } from '@/lib/utils';
 
 const isRealUid = (uid: string) => uid !== 'me' && ![ME, ...PLAYERS].some(p => p.uid === uid);

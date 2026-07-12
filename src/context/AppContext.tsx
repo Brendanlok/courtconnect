@@ -2,9 +2,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
-import { auth } from '@/lib/firebase';
+import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier } from '@/lib/utils';
-import { onAuthStateChanged } from 'firebase/auth';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
@@ -19,7 +18,7 @@ import {
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
-} from '@/lib/firestoreService';
+} from '@/lib/supabaseService';
 
 // A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
 // local demo user ('me') or one of the static seed players from lib/data.ts.

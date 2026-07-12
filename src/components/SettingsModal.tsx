@@ -5,10 +5,8 @@ import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
 import type { CountryCode } from '@/types';
 import type { UserProfile } from '@/types';
-import { storage, auth } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { deleteUser } from 'firebase/auth';
-import { deleteAccountData } from '@/lib/firestoreService';
+import { supabase, auth } from '@/lib/supabase';
+import { deleteAccountData } from '@/lib/supabaseService';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -80,18 +78,16 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     if (!file) return;
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    const storageRef = ref(storage, `profilePics/${uid}/${Date.now()}_${file.name}`);
-    const task = uploadBytesResumable(storageRef, file);
+    const path = `${uid}/${Date.now()}_${file.name}`;
     setUploadPct(0);
-    task.on('state_changed',
-      snap => setUploadPct(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
-      () => setUploadPct(null),
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        setPhotoURL(url);
-        setUploadPct(null);
-      }
-    );
+    // ponytail: supabase-js storage upload has no progress events (unlike
+    // Firebase's uploadBytesResumable) — jump straight to 100 on success.
+    supabase.storage.from('avatars').upload(path, file, { upsert: true }).then(({ error }) => {
+      if (error) { setUploadPct(null); return; }
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      setPhotoURL(data.publicUrl);
+      setUploadPct(null);
+    });
   };
 
   const { ref: panelRef, dialogProps } = useModalA11y(open, onClose, 'Settings');
@@ -135,22 +131,23 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setDeleting(true);
     setDeleteError('');
     try {
-      // Firestore rules require an authenticated request, so data must be wiped
-      // before the auth account is deleted — not after.
+      // RLS requires an authenticated request, so data must be wiped before
+      // signing out.
+      // ponytail: the anon/publishable client can't delete its own
+      // auth.users row — that needs the Supabase Admin API (service-role
+      // key), which has no home in this static-export app (no server
+      // runtime). This deletes all app data + signs out; the auth account
+      // itself needs a manual admin deletion (Supabase dashboard) or a small
+      // Edge Function, until that's built.
       await deleteAccountData(authUser.uid);
-      await deleteUser(authUser);
+      await supabase.auth.signOut();
       Object.keys(localStorage)
         .filter(k => k.startsWith('cc_'))
         .forEach(k => localStorage.removeItem(k));
       setDeleteStep('idle');
       onClose();
-    } catch (e: unknown) {
-      const code = (e as { code?: string }).code ?? '';
-      setDeleteError(
-        code === 'auth/requires-recent-login'
-          ? 'Your data has been deleted, but for security you need to log out and back in, then delete your account once more to fully close it.'
-          : 'Something went wrong deleting your account. Please try again.'
-      );
+    } catch {
+      setDeleteError('Something went wrong deleting your account. Please try again.');
     } finally {
       setDeleting(false);
     }

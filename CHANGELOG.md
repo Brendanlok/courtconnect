@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-12] — Backend migration: Firebase → Supabase
+
+### 🔴 Full backend cutover (not yet deployed — pending user review)
+**Why:** User data already migrated to Supabase Postgres; app code needed to follow.
+
+- Replaced Firebase Auth + Firestore + Storage with Supabase Auth + Postgres + Storage across the whole app (`src/lib/supabase.ts`, `src/lib/supabaseService.ts`, `AuthContext`, `AppContext`, and every consuming screen/component).
+- Firestore's `onSnapshot` listeners → Supabase Realtime `postgres_changes` channels.
+- Removed the `firebase` dependency and Firestore-only test scaffolding.
+- See DEVLOG for the full list of shipped changes, known gaps, and verification performed.
+
+---
+
 ## [2026-07-09] — Live Match: Pause/Resume, Camera Layout, Point Log
 
 ### 🟠 Live Match — Pause & Resume Instead of Discard on Quit

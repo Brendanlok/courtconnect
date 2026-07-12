@@ -1,20 +1,15 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification, User,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider } from '@/lib/firebase';
-import { lookupUserByUsername } from '@/lib/firestoreService';
+import { supabase, auth, onAuthStateChanged, type CompatUser } from '@/lib/supabase';
+import { lookupUserByUsername } from '@/lib/supabaseService';
 import { BASE_PATH } from '@/lib/utils';
 
 interface AuthCtx {
-  authUser: User | null;
+  authUser: CompatUser | null;
   isLoading: boolean;
   // authUser exists but hasn't confirmed their email yet (password accounts only — Google is pre-verified)
   needsEmailVerification: boolean;
-  // authUser is verified/Google but has no Firestore profile yet — needs username + details
+  // authUser is verified/Google but has no `users` row yet — needs username + details
   needsProfileSetup: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<string | null>;
@@ -29,136 +24,103 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx>({} as AuthCtx);
 
-async function userDocExists(uid: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists();
+async function userRowExists(uid: string): Promise<boolean> {
+  const { data } = await supabase.from('users').select('uid').eq('uid', uid).maybeSingle();
+  return !!data;
 }
 
-async function createUserDoc(user: User, extra: { username: string; displayName: string; country: string; region: string }) {
-  await setDoc(doc(db, 'users', user.uid), {
+async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string }) {
+  await supabase.from('users').insert({
     uid: user.uid,
     email: user.email,
-    displayName: extra.displayName,
+    display_name: extra.displayName,
     username: extra.username,
-    photoURL: user.photoURL ?? null,
+    photo_url: user.photoURL,
     mmr: 1200,
+    tier: 'Beginner',
     country: extra.country,
     region: extra.region,
-    stats: { wins: 0, losses: 0, totalMatches: 0 },
-    openToPlay: false,
-    createdAt: serverTimestamp(),
+    wins: 0, losses: 0, total_matches: 0,
+    open_to_play: false,
   });
 }
 
-function friendlyError(code: string): string {
-  switch (code) {
-    case 'auth/email-already-in-use':    return 'Email already registered.';
-    case 'auth/invalid-email':           return 'Enter a valid email address.';
-    case 'auth/weak-password':           return 'Password must be at least 6 characters.';
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':      return 'Invalid email or password.';
-    case 'auth/too-many-requests':       return 'Too many attempts. Try again later.';
-    case 'auth/popup-closed-by-user':    return 'Sign-in popup was closed.';
-    default: return 'Something went wrong. Please try again.';
-  }
+function friendlyError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('already registered') || m.includes('already exists'))     return 'Email already registered.';
+  if (m.includes('invalid email') || m.includes('unable to validate'))      return 'Enter a valid email address.';
+  if (m.includes('password') && m.includes('character'))                   return 'Password must be at least 6 characters.';
+  if (m.includes('invalid login') || m.includes('invalid credentials'))    return 'Invalid email or password.';
+  if (m.includes('rate limit') || m.includes('too many'))                  return 'Too many attempts. Try again later.';
+  return 'Something went wrong. Please try again.';
 }
 
-const isGoogleUser = (u: User) => u.providerData.some(p => p.providerId === 'google.com');
+// Supabase's compat CompatUser.providerData covers the one thing this app
+// needs: was this account created via Google (pre-verified email)?
+const isGoogleUser = (u: CompatUser) => u.providerData.some(p => p.providerId === 'google.com');
 
 const verificationRedirectUrl = () =>
   typeof window !== 'undefined' ? `${window.location.origin}${BASE_PATH}/` : 'https://brendanlok.github.io/courtconnect/';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authUser,               setAuthUser]               = useState<User | null>(null);
+  const [authUser,               setAuthUser]               = useState<CompatUser | null>(null);
   const [isLoading,               setIsLoading]              = useState(true);
   const [needsEmailVerification,  setNeedsEmailVerification] = useState(false);
   const [needsProfileSetup,       setNeedsProfileSetup]      = useState(false);
 
-  const evaluateUser = async (user: User | null) => {
+  const evaluateUser = async (user: CompatUser | null, confirmed: boolean) => {
     if (!user) {
       setNeedsEmailVerification(false);
       setNeedsProfileSetup(false);
       return;
     }
-    const verified = isGoogleUser(user) || user.emailVerified;
+    const verified = isGoogleUser(user) || confirmed;
     setNeedsEmailVerification(!verified);
     if (!verified) { setNeedsProfileSetup(false); return; }
-    const exists = await userDocExists(user.uid);
+    const exists = await userRowExists(user.uid);
     setNeedsProfileSetup(!exists);
   };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async user => {
       setAuthUser(user);
-      await evaluateUser(user);
+      const { data } = await supabase.auth.getSession();
+      const confirmed = !!data.session?.user?.email_confirmed_at;
+      await evaluateUser(user, confirmed);
       setIsLoading(false);
     });
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-check email verification when the user comes back to the tab (e.g. after
-  // clicking the confirmation link in their email app) — no server needed.
-  useEffect(() => {
-    const handler = () => {
-      if (document.visibilityState === 'visible' && auth.currentUser && !isGoogleUser(auth.currentUser)) {
-        refreshVerificationStatus();
-      }
-    };
-    document.addEventListener('visibilitychange', handler);
-    window.addEventListener('focus', handler);
-    return () => {
-      document.removeEventListener('visibilitychange', handler);
-      window.removeEventListener('focus', handler);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const signIn = async (email: string, password: string): Promise<string | null> => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      return null;
-    } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error ? friendlyError(error.message) : null;
   };
 
   const signUp = async (email: string, password: string): Promise<string | null> => {
-    try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await sendEmailVerification(user, { url: verificationRedirectUrl() });
-      await evaluateUser(user);
-      return null;
-    } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
-    }
+    const { error } = await supabase.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: verificationRedirectUrl() },
+    });
+    return error ? friendlyError(error.message) : null;
   };
 
   const loginWithGoogle = async (): Promise<string | null> => {
-    try {
-      const { user } = await signInWithPopup(auth, googleProvider);
-      await evaluateUser(user);
-      return null;
-    } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
-    }
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
   };
 
   const resendVerificationEmail = async (): Promise<string | null> => {
-    if (!auth.currentUser) return 'You need to be signed in.';
-    try {
-      await sendEmailVerification(auth.currentUser, { url: verificationRedirectUrl() });
-      return null;
-    } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
-    }
+    if (!authUser?.email) return 'You need to be signed in.';
+    const { error } = await supabase.auth.resend({ type: 'signup', email: authUser.email, options: { emailRedirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
   };
 
   const refreshVerificationStatus = async () => {
-    if (!auth.currentUser) return;
-    await auth.currentUser.reload().catch(() => {});
-    await evaluateUser(auth.currentUser);
+    const { data } = await supabase.auth.refreshSession();
+    const confirmed = !!data.session?.user?.email_confirmed_at;
+    await evaluateUser(auth.currentUser, confirmed);
   };
 
   const checkUsernameAvailable = async (username: string): Promise<boolean> => {
@@ -173,29 +135,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!region.trim()) return 'State / region is required.';
     const cleanUsername = username.toLowerCase();
     if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
+    const available = await checkUsernameAvailable(cleanUsername);
+    if (!available) return 'That username is already taken.';
     try {
-      const available = await checkUsernameAvailable(cleanUsername);
-      if (!available) return 'That username is already taken.';
-      await updateProfile(auth.currentUser, { displayName: displayName.trim() });
-      await createUserDoc(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim() });
+      await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
+      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim() });
       setNeedsProfileSetup(false);
       return null;
     } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
+      return friendlyError(e instanceof Error ? e.message : '');
     }
   };
 
   const resetPassword = async (email: string): Promise<string | null> => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      return null;
-    } catch (e: unknown) {
-      return friendlyError((e as { code?: string }).code ?? '');
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: verificationRedirectUrl() });
+    return error ? friendlyError(error.message) : null;
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
   };
 
   return (

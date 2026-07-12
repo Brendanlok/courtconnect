@@ -6,7 +6,7 @@ import { PLAYERS, ME } from '@/lib/data';
 import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
-import { lookupUserByUid, lookupUserByUsername } from '@/lib/firestoreService';
+import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 

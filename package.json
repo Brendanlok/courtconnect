@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-courtconnect \"node tests/firestore-rules.test.mjs\"",
     "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1"
   },
   "dependencies": {
@@ -16,9 +15,9 @@
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@supabase/supabase-js": "^2.110.2",
     "@types/qrcode": "^1.5.6",
     "clsx": "^2.1.1",
-    "firebase": "^12.15.0",
     "jsqr": "^1.4.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
@@ -31,8 +30,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.1",
-    "@supabase/supabase-js": "^2.110.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -40,13 +37,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "firebase-admin": "^14.1.0",
-    "firebase-tools": "^15.23.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "allowScripts": {
-    "@firebase/util@1.15.1": true,
-    "protobufjs@7.6.5": true,
     "unrs-resolver@1.12.2": true
   }
 }
