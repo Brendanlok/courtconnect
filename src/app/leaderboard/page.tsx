@@ -1,13 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm } from '@/lib/utils';
-import { loadAllRealUsers } from '@/lib/firestoreService';
-import { auth } from '@/lib/firebase';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
