@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { useHasPausedMatch } from '@/lib/pausedMatch';
 import { Home, TrendingUp, Trophy, Users, Menu, MessageCircle, CalendarDays } from 'lucide-react';
 
 const LINKS = [
@@ -17,6 +18,7 @@ export function Sidebar() {
   const path = usePathname();
   const { sidebarCollapsed, toggleSidebar, totalUnread } = useApp();
   const collapsed = sidebarCollapsed;
+  const hasPausedMatch = useHasPausedMatch();
 
   return (
     <aside

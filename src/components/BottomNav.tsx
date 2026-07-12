@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, CalendarDays, Trophy, Users, MessageCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useHasPausedMatch } from '@/lib/pausedMatch';
 
 const LINKS = [
   { href: '/',            label: 'Home',     icon: Home },
@@ -17,12 +18,14 @@ const norm = (p: string) => p.replace(/\/$/, '') || '/';
 export function BottomNav() {
   const path = usePathname();
   const { totalUnread } = useApp();
+  const hasPausedMatch = useHasPausedMatch();
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 grid grid-cols-5">
       {LINKS.map(({ href, label, icon: Icon }) => {
-        const active    = norm(path) === norm(href);
-        const showBadge = href === '/chat' && totalUnread > 0;
+        const active     = norm(path) === norm(href);
+        const showBadge  = href === '/chat' && totalUnread > 0;
+        const showPaused = href === '/matches' && hasPausedMatch;
 
         return (
           <Link key={href} href={href}
@@ -34,6 +37,9 @@ export function BottomNav() {
                 <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white leading-none px-0.5">
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
+              )}
+              {showPaused && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full ring-2 ring-slate-900" />
               )}
             </span>
             <span className="text-[10px] font-medium leading-none">{label}</span>
