@@ -38,7 +38,7 @@ function toLocalChallenge(c: StoredChallenge, myUid: string): Challenge {
 // Normalizes a shared conversation doc into the local Conversation shape.
 // Only the fields chat/page.tsx actually reads (name, username, tier, mmr,
 // photo) are populated with real data; the rest are inert placeholders.
-function toLocalConversation(c: SharedConversation, myUid: string): Conversation {
+function toLocalConversation(c: SharedConversation, myUid: string, lastRead: Record<string, string>): Conversation {
   const otherUid = c.participantUids.find(u => u !== myUid) ?? c.participantUids[0];
   const p = c.participants?.[otherUid];
   const participant: UserProfile = {
@@ -50,10 +50,15 @@ function toLocalConversation(c: SharedConversation, myUid: string): Conversation
     stats: { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
     photoURL: p?.photoURL ?? null,
   };
+  const readAt = lastRead[c.id] ?? '';
   return {
     id: c.id, participant,
     lastMessage: c.lastMessage, lastAt: c.lastAt,
-    unread: 0, // real-conversation unread tracking is a scoped-out follow-up
+    // Real conversations have no server-tracked read receipt — "unread" is
+    // just "arrived after the last time this device opened this chat",
+    // stored locally (cc_realLastRead), same as every other per-device UI
+    // preference in this app (openToPlay, following, etc.).
+    unread: c.messages.filter(m => m.senderId !== myUid && m.sentAt > readAt).length,
     messages: c.messages.map(m => ({ id: m.id, senderId: m.senderId === myUid ? 'me' : m.senderId, text: m.text, sentAt: m.sentAt })),
   };
 }
