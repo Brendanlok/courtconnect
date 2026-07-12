@@ -436,6 +436,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Applies each side's own MMR delta exactly once per confirmed real match.
+  // Durable across reloads/devices via mmrAppliedBy on the shared doc (not
+  // just in-memory state) — a match confirmed while this device was offline
+  // still needs its delta applied the next time it's seen.
+  const mmrApplyingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    realMatches.forEach(m => {
+      if (m.status !== 'Confirmed' || m.mmrAppliedBy.includes(uid) || mmrApplyingRef.current.has(m.id)) return;
+      mmrApplyingRef.current.add(m.id);
+      const iWon = m.winnerId === uid;
+      const delta = (m.reporterUid === uid ? m.mmrChange : m.mmrChange !== undefined ? -m.mmrChange : undefined) ?? 0;
+      setUser(u => ({
+        ...u, mmr: u.mmr + delta,
+        stats: { wins: u.stats.wins + (iWon ? 1 : 0), losses: u.stats.losses + (iWon ? 0 : 1), totalMatches: u.stats.totalMatches + 1 },
+      }));
+      markMatchMmrApplied(m.id, uid).catch(() => { mmrApplyingRef.current.delete(m.id); });
+    });
+  }, [realMatches]);
+
   useEffect(() => {
     localStorage.setItem('cc_openToPlay', String(user.openToPlay ?? false));
     const uid = auth.currentUser?.uid;
