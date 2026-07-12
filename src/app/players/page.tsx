@@ -96,7 +96,6 @@ export default function PlayersPage() {
         </div>
       </div>
       <MMRInfoModal open={mmrInfoOpen} onClose={() => setMmrInfoOpen(false)}/>
-      {findOpen && <FindPlayerModal onClose={() => setFindOpen(false)}/>}
 
       <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
         {TABS.map(t => (
