@@ -16,6 +16,8 @@ import {
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
+  subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, cancelSharedMatch,
+  markMatchMmrApplied, type StoredMatch,
 } from '@/lib/firestoreService';
 
 // A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
