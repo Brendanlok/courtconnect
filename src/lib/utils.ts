@@ -87,6 +87,17 @@ export function calcMMRChange(winnerMMR: number, loserMMR: number, k = 32) {
   return { gain: delta, loss: -delta };
 }
 
+// The app doesn't collect precise GPS location, so real distance between two
+// real accounts can't be computed exactly — this uses each player's named
+// area/state as a rough proxy: same area ≈ across town, same state ≈ still a
+// fair drive, different state ≈ not nearby. Demo players keep their seeded
+// exact distKm; this is only ever consulted when that's absent.
+export function approxDistanceKm(a: { area: string; state: MalaysiaState }, b: { area: string; state: MalaysiaState }): number {
+  if (a.area.trim() && a.area.trim().toLowerCase() === b.area.trim().toLowerCase()) return 3;
+  if (a.state === b.state) return 40;
+  return 999;
+}
+
 export function skillMatch(a: number, b: number) {
   return Math.max(0, Math.round(100 - (Math.abs(a - b) / 600) * 100));
 }
