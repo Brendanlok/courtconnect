@@ -169,7 +169,7 @@ export default function Leaderboard() {
                     {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded">DEMO</span>}
                     <p className={`font-bold text-amber-400 ${isFirst ? 'text-lg' : 'text-sm'}`}>{p.mmr.toLocaleString()}</p>
                     <div className="flex justify-center mt-1"><TierBadge tier={p.tier}/></div>
-                    <p className="text-xs text-slate-500 mt-1">📍 {p.area}</p>
+                    <p className="text-xs text-slate-500 mt-1">📍 {p.area || p.state}</p>
                   </Link>
                 );
               })}
