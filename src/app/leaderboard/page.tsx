@@ -169,7 +169,7 @@ export default function Leaderboard() {
               <span className="text-right">{SORT_OPTIONS.find(s => s.key === sortKey)?.label ?? 'MMR'}</span>
             </div>
             <div className="divide-y divide-slate-800/60">
-              {(query ? list : rest).map(p => {
+              {rest.map(p => {
                 const displayRank = p.tabRank;
                 const isMe = p.uid === 'me';
                 return (
