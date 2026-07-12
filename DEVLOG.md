@@ -1,5 +1,16 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 (interactive, follow-up to the feature session above)] — User-reported fixes
+
+**Trigger:** User screenshotted the Players tab and reported two things: the "Find a Player" button looked redundant next to the search bar, and their MMR showed 1847 on Home but 1200 everywhere else.
+
+### Root causes found and fixed
+- **MMR mismatch (real bug, predates today):** a real signed-in account's `disciplineMMR` (per-format MMR breakdown) was never reset on sign-in — only top-level `mmr` gets synced from Firestore (signup never writes `disciplineMMR` at all). Home's header MMR reads `disciplineMMR` when present, so it kept showing the stale demo-seed values (1847/1823/1871) forever, while every other screen correctly read the real top-level `mmr` (1200). Fixed in [AppContext.tsx](src/context/AppContext.tsx): the sign-in profile merge now resets `disciplineMMR` to the real value (or empty) instead of leaving the seed's numbers in place.
+- **"Find a Player" wasn't actually redundant — the Players tab's own player list was demo-only** (`[user, ...PLAYERS]`, no real accounts), same gap the Leaderboard page had before this morning's fix. Rather than just removing the button and leaving a functionality hole, applied the same fix as `/leaderboard/`: [players/page.tsx](src/app/players/page.tsx) now fetches real accounts via `loadAllRealUsers` into the same list the search bar filters, and real players' profile links route through `/profile/?uid=X` (previously would have 404'd). With that, the search bar genuinely covers what Find a Player did — removed the button and deleted the now-unused `FindPlayerModal.tsx`.
+
+### Verification
+`npx next build` clean. Confirmed via a content-hash comparison (chunk filenames from the deployed site vs. local build output) that the live site is running today's earlier commits before starting on the corrected DEVLOG summary above. Not verified live post-fix — same login constraint as every session.
+
 ## [2026-07-12 (interactive, follow-up to the 07:10 auto-dev session)] — Three feature ideas built
 
 **Trigger:** User approved all three feature ideas proposed in the morning auto-dev session ("Go ahead and build all 4 — area-based distance for Nearby"). One (real cross-account match confirmation) is a shared-Firestore-schema change; the permission system correctly paused it mid-build for explicit confirmation before I had that go-ahead — flagged to the user, got the go-ahead, then built it.
