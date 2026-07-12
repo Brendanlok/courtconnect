@@ -138,7 +138,7 @@ export default function Leaderboard() {
       ) : (
         <>
           {/* Podium */}
-          {!query && top3.length >= 3 && (
+          {showPodium && (
             <div className="flex justify-center items-end gap-4 py-4 bg-slate-900/50 border border-slate-800 rounded-2xl">
               {[top3[1], top3[0], top3[2]].map((p, idx) => {
                 const isFirst = idx === 1;
