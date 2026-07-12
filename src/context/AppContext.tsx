@@ -445,7 +445,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (uid) saveUserProfile(uid, patch).catch(() => {});
   }, []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
-  const totalUnread   = localConversations.reduce((s, c) => s + c.unread, 0);
 
   const addTournament       = useCallback((t: Tournament) => setTournaments(ts => [t, ...ts]), []);
   const registerTournament  = useCallback((id: string) => {
