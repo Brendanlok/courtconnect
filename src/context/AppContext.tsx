@@ -175,6 +175,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realOutgoingChallenges, setRealOutgoingChallenges] = useState<StoredChallenge[]>([]);
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
   const [realEndorsementCounts,  setRealEndorsementCounts]  = useState<Record<string, number>>({});
+  // Per-chat "last opened" timestamp for real conversations — device-local,
+  // same idea as every other per-device UI preference here (openToPlay, etc.).
+  const [realLastRead,           setRealLastRead]           = useState<Record<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_realLastRead');
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return {};
+  });
   // Clubs live in Firestore now (real, shared documents — see the real-time
   // subscription effect below) so two real accounts actually see the same
   // membership/pending/moderator state. rawClubs holds real Firebase uids;
