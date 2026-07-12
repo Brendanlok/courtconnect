@@ -57,7 +57,8 @@ export default function Leaderboard() {
     .map((p, i) => ({ ...p, tabRank: i + 1 }));
 
   const top3      = list.slice(0, 3);
-  const rest      = list.slice(3);
+  const showPodium = !query && top3.length >= 3;
+  const rest      = showPodium ? list.slice(3) : list;
   const meInList  = list.find(p => p.uid === 'me');
 
   const profileHref = (username: string) => `/players/${username}/`;
