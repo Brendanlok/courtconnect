@@ -23,13 +23,13 @@ export default function Home() {
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
   const pending    = matches.filter(m => m.status === 'Pending');
   const winRate    = Math.round((user.stats.wins / Math.max(user.stats.totalMatches, 1)) * 100);
-  const progress   = tierProgress(user.mmr, user.tier);
   const { name: nextName, threshold } = nextTier(user.tier);
   const dm         = user.disciplineMMR ?? {};
   const dmEntries  = Object.entries(dm).filter(([,v]) => v != null) as [string, number][];
   const avgMMR     = dmEntries.length > 0
     ? Math.round(dmEntries.reduce((s, [,v]) => s + v, 0) / dmEntries.length)
     : user.mmr;
+  const progress   = tierProgress(avgMMR, user.tier);
 
   let streak = 0;
   for (const m of confirmed) {
