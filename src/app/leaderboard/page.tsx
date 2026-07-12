@@ -72,7 +72,9 @@ export default function Leaderboard() {
   const rest      = showPodium ? list.slice(3) : list;
   const meInList  = list.find(p => p.uid === 'me');
 
-  const profileHref = (username: string) => `/players/${username}/`;
+  // Real accounts aren't in the static export's pre-rendered /players/[username]/
+  // paths (build-time generateStaticParams only covers the demo roster) — route
+  // them through /profile/?uid=X instead, same convention as QRModal.
 
   return (
     <div className="space-y-6">
