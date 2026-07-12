@@ -1,0 +1,33 @@
+name: Deploy to Netlify
+
+# Builds here (GitHub Actions minutes) instead of on Netlify (Netlify build
+# minutes) — courtconnect + classical-reader share one Netlify team's build-
+# minute quota, and courtconnect alone hit 648 pushes in a month, tipping
+# the account to 100% usage. Only the finished static output is handed to
+# Netlify via the CLI, which does not consume Netlify build minutes.
+#
+# Requires (see repo Settings → Secrets and variables → Actions):
+#   NETLIFY_AUTH_TOKEN — personal access token from Netlify → User settings → Applications
+#   NETLIFY_SITE_ID    — from Netlify → Site settings → General → Site details
+# Also requires disabling Netlify's own git-triggered auto-build for this
+# site (Site settings → Build & deploy → Stop builds), otherwise both this
+# workflow AND Netlify's native integration would build on every push.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: npx netlify-cli deploy --prod --dir=out --site="$NETLIFY_SITE_ID"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
