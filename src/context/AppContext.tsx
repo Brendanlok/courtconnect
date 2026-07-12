@@ -475,7 +475,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     setLocalChallenges(p => [c, ...p]);
-    addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
   }, []);
   const acceptChallenge  = useCallback((id: string) => {
     if (isRealChallengeId(id)) { updateChallengeStatus(id, 'accepted').catch(() => {}); return; }
