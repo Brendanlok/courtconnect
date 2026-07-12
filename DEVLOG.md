@@ -1,5 +1,17 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 (interactive, follow-up)] — Perf: slow startup + tab switching
+
+**Trigger:** User reported the app feels slow starting up and switching between tabs.
+
+### Root cause and fix
+Self-inflicted from the same-day feature work: `/leaderboard/` and the Players tab each independently fetched the **entire real-users Firestore collection** on every mount — so switching Leaderboard → Players → Leaderboard re-downloaded every real account 2-3 times over, and it never got cached. Moved the fetch into [AppContext.tsx](src/context/AppContext.tsx) (`allRealPlayers`, fetched once per session on sign-in) — both pages now just read from context, same pattern already used for clubs/challenges/matches.
+
+Also fixed real startup latency: the sign-in effect was awaiting the profile load, then the conversations load, one after the other — two sequential round trips for two completely independent reads. Now fires profile load, conversations load, and the real-users fetch all concurrently instead of serially.
+
+### Verification
+`npx next build` clean.
+
 ## [2026-07-12 (interactive, follow-up to the feature session above)] — User-reported fixes
 
 **Trigger:** User screenshotted the Players tab and reported two things: the "Find a Player" button looked redundant next to the search bar, and their MMR showed 1847 on Home but 1200 everywhere else.
