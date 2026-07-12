@@ -180,7 +180,7 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
   const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : p.mmr.toLocaleString();
   const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
-    <Link href={`/players/${p.username}/`}
+    <Link href={profileHref(p)}
       className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[84px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
       <Avatar name={p.displayName}/>
