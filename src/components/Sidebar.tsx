@@ -74,6 +74,9 @@ export function Sidebar() {
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
+                {href === '/matches' && hasPausedMatch && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full ring-2 ring-slate-900" />
+                )}
               </span>
 
               {/* Label — fades out when collapsed */}
