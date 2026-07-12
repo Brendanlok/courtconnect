@@ -456,6 +456,53 @@ export async function migrateLegacyClubMessages(clubId: string, legacyMessages: 
   await batch.commit();
 }
 
+// ── Real matches between two real accounts (shared doc, both sides can confirm) ─
+// Scoped to singles only — pendingConfirmations always holds exactly the one
+// opponent uid (creation) or the one confirmer's uid (until they act), so
+// arrayRemove can never race against a second confirmer the way doubles would.
+
+export interface StoredMatch {
+  id: string;
+  type: string;
+  participantUids: string[];
+  reporterUid: string;
+  player1Id: string; player1Name: string; player1Username: string;
+  player2Id: string; player2Name: string; player2Username: string;
+  winnerId: string;
+  games: { p1: number; p2: number }[];
+  status: 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
+  mmrChange?: number; // reporter's delta; the other side applies the negated (zero-sum) value
+  playedAt: string;
+  location?: string;
+  pendingConfirmations: string[];
+  mmrAppliedBy: string[]; // uids who've already applied their own MMR delta — guards against re-applying on reload
+}
+
+export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) => void): () => void {
+  const q = query(collection(db, 'matches'), where('participantUids', 'array-contains', myUid));
+  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data() as StoredMatch)));
+}
+
+export async function sendMatchDoc(m: StoredMatch) {
+  await setDoc(doc(db, 'matches', m.id), m);
+}
+
+export async function confirmSharedMatch(id: string, confirmingUid: string) {
+  await updateDoc(doc(db, 'matches', id), { pendingConfirmations: arrayRemove(confirmingUid), status: 'Confirmed' });
+}
+
+export async function disputeSharedMatch(id: string) {
+  await updateDoc(doc(db, 'matches', id), { status: 'Disputed' });
+}
+
+export async function cancelSharedMatch(id: string) {
+  await updateDoc(doc(db, 'matches', id), { status: 'Cancelled', pendingConfirmations: [] });
+}
+
+export async function markMatchMmrApplied(id: string, uid: string) {
+  await updateDoc(doc(db, 'matches', id), { mmrAppliedBy: arrayUnion(uid) });
+}
+
 // ── Timestamp helpers ─────────────────────────────────────────────────────────
 
 export function toISOString(ts: unknown): string {
