@@ -35,14 +35,9 @@ export default function PlayersPage() {
     myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub,
     assignModerator, removeModerator,
     following, followPlayer, unfollowPlayer,
+    allRealPlayers,
   } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
-  const [realPlayers, setRealPlayers] = useState<UserProfile[]>([]);
-  useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-    loadAllRealUsers(uid).then(setRealPlayers).catch(() => {});
-  }, []);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
     if (typeof window === 'undefined') return 'Leaderboard';
     const t = new URLSearchParams(window.location.search).get('tab');
