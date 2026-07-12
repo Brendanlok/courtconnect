@@ -65,6 +65,33 @@ function toLocalConversation(c: SharedConversation, myUid: string, lastRead: Rec
   };
 }
 
+// Normalizes a shared match doc into the local, player1-is-always-'me' shape
+// every existing Match consumer already expects. mmrChange is stored from the
+// reporter's perspective; the other side gets the zero-sum-negated value.
+// pendingConfirmations is translated so 'me' appears only when it's genuinely
+// this viewer's turn to act — an outstanding *opponent* uid (the reporter's
+// view while waiting) is left as their real uid, never 'me'.
+function toLocalMatch(sm: StoredMatch, myUid: string): Match {
+  const amP1 = sm.player1Id === myUid;
+  const my  = amP1 ? { id: 'me', name: sm.player1Name, username: sm.player1Username }
+                   : { id: 'me', name: sm.player2Name, username: sm.player2Username };
+  const opp = amP1 ? { id: sm.player2Id, name: sm.player2Name, username: sm.player2Username }
+                   : { id: sm.player1Id, name: sm.player1Name, username: sm.player1Username };
+  const myDelta = sm.mmrChange === undefined ? undefined : (sm.reporterUid === myUid ? sm.mmrChange : -sm.mmrChange);
+  return {
+    id: sm.id, type: sm.type as Match['type'],
+    player1Id: my.id, player1Name: my.name, player1Username: my.username,
+    player2Id: opp.id, player2Name: opp.name, player2Username: opp.username,
+    winnerId: sm.winnerId === myUid ? 'me' : opp.id,
+    games: amP1 ? sm.games : sm.games.map(g => ({ p1: g.p2, p2: g.p1 })),
+    status: sm.status,
+    mmrChange: myDelta,
+    playedAt: sm.playedAt,
+    location: sm.location,
+    pendingConfirmations: sm.pendingConfirmations.map(u => u === myUid ? 'me' : u),
+  };
+}
+
 // Same normalization for clubs: real Firebase uids on the shared Firestore
 // doc, translated to the local 'me' convention for display/equality checks.
 function toLocalClub(c: Club, myUid: string): Club {
