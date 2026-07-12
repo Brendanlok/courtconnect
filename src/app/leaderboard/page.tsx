@@ -1,14 +1,18 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE, COUNTRIES } from '@/lib/utils';
+import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm } from '@/lib/utils';
+import { loadAllRealUsers } from '@/lib/firestoreService';
+import { auth } from '@/lib/firebase';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
+
+const isRealPlayer = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Following'] as const;
 type Tab = typeof TABS[number];
