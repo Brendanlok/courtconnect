@@ -344,6 +344,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const prevOutgoingChallengesRef = useRef<StoredChallenge[]>([]);
   const prevConversationsRef      = useRef<SharedConversation[]>([]);
   const prevClubsRef              = useRef<Club[]>([]);
+  const prevMatchesRef             = useRef<StoredMatch[]>([]);
   const realUnsubsRef = useRef<(() => void)[]>([]);
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (authUser) => {
@@ -351,9 +352,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       realUnsubsRef.current = [];
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
-        setRealConversationDocs([]); setRealEndorsementCounts({});
+        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
-        prevConversationsRef.current = []; prevClubsRef.current = [];
+        prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = [];
         return;
       }
       const uid = authUser.uid;
