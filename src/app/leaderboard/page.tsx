@@ -26,7 +26,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 
 export default function Leaderboard() {
-  const { user, following } = useApp();
+  const { user, following, allRealPlayers } = useApp();
   const [tab,           setTab]          = useState<Tab>('Nationwide');
   const [query,         setQuery]        = useState('');
   const [selState,      setSelState]     = useState<MalaysiaState>(user.state as MalaysiaState);
