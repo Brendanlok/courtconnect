@@ -372,7 +372,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       realUnsubsRef.current = [];
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
-        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]);
+        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = [];
         return;
