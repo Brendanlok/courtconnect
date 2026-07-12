@@ -936,7 +936,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       user, matches: allMatches, addMatch, confirmMatch, disputeMatch, cancelPendingMatch, updateUser,
-      conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, totalUnread, sidebarCollapsed, toggleSidebar,
+      conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
