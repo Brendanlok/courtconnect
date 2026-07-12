@@ -43,6 +43,10 @@ next-env.d.ts
 # telegram bot downloaded screenshots
 /telegram-bot/screenshots/
 
+# telegram bot token + chat IDs — a live credential, was committed in plaintext
+# (see git history); untracked from here on, see config.example.json for the shape
+/telegram-bot/config.json
+
 # locally-installed Claude skills (not part of the app)
 /.agents/
 
