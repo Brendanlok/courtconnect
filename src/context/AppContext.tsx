@@ -272,41 +272,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // regardless of who's actually logged in — everything a real user set during
   // signup (username, name, etc.) would never appear anywhere.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (authUser) => {
+    const unsub = onAuthStateChanged(auth, (authUser) => {
       if (!authUser) return;
-      try {
-        const profile = await loadUserProfile(authUser.uid);
-        if (profile) {
-          setUser(u => ({
-            ...u, ...profile,
-            uid: 'me', // keep the app-wide local convention — the real uid lives in auth.currentUser
-            tier: getTier(profile.mmr ?? u.mmr),
-            // Signup never writes disciplineMMR (only top-level mmr) — without
-            // this, a real account keeps showing the local demo seed's stale
-            // per-discipline numbers forever (Home's "MMR" header reads
-            // disciplineMMR when present, so it silently diverges from the
-            // real mmr shown everywhere else).
-            disciplineMMR: profile.disciplineMMR ?? {},
-          }));
-        }
-      } catch { /* Firestore unavailable — keep local/seed profile */ }
-      try {
-        const stored = await loadConversations(authUser.uid);
-        if (!stored.length) return;
-        const allPlayers = [ME_DATA, ...ALL_PLAYERS];
-        setLocalConversations(prev => {
-          const merged = [...prev];
-          stored.forEach(s => {
-            const participant = allPlayers.find(p => p.uid === s.participantUid);
-            if (!participant) return;
-            const idx = merged.findIndex(c => c.id === s.id);
-            const conv: Conversation = { id: s.id, participant, lastMessage: s.lastMessage, lastAt: s.lastAt, unread: s.unread, messages: s.messages };
-            if (idx >= 0) merged[idx] = conv;
-            else merged.unshift(conv);
+      // Fired concurrently, not one-after-another — these are independent
+      // reads and awaiting them in sequence used to double+ the time to
+      // first useful render for no reason.
+      (async () => {
+        try {
+          const profile = await loadUserProfile(authUser.uid);
+          if (profile) {
+            setUser(u => ({
+              ...u, ...profile,
+              uid: 'me', // keep the app-wide local convention — the real uid lives in auth.currentUser
+              tier: getTier(profile.mmr ?? u.mmr),
+              // Signup never writes disciplineMMR (only top-level mmr) — without
+              // this, a real account keeps showing the local demo seed's stale
+              // per-discipline numbers forever (Home's "MMR" header reads
+              // disciplineMMR when present, so it silently diverges from the
+              // real mmr shown everywhere else).
+              disciplineMMR: profile.disciplineMMR ?? {},
+            }));
+          }
+        } catch { /* Firestore unavailable — keep local/seed profile */ }
+      })();
+      (async () => {
+        try {
+          const stored = await loadConversations(authUser.uid);
+          if (!stored.length) return;
+          const allPlayers = [ME_DATA, ...ALL_PLAYERS];
+          setLocalConversations(prev => {
+            const merged = [...prev];
+            stored.forEach(s => {
+              const participant = allPlayers.find(p => p.uid === s.participantUid);
+              if (!participant) return;
+              const idx = merged.findIndex(c => c.id === s.id);
+              const conv: Conversation = { id: s.id, participant, lastMessage: s.lastMessage, lastAt: s.lastAt, unread: s.unread, messages: s.messages };
+              if (idx >= 0) merged[idx] = conv;
+              else merged.unshift(conv);
+            });
+            return merged.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
           });
-          return merged.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
-        });
-      } catch { /* Firestore unavailable — keep seed convs */ }
+        } catch { /* Firestore unavailable — keep seed convs */ }
+      })();
+      loadAllRealUsers(authUser.uid).then(setAllRealPlayers).catch(() => {});
     });
     return unsub;
   // eslint-disable-next-line react-hooks/exhaustive-deps
