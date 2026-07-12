@@ -35,6 +35,18 @@ export async function lookupUserByUid(uid: string): Promise<Partial<UserProfile>
   return snap.exists() ? (snap.data() as Partial<UserProfile>) : null;
 }
 
+// One-shot fetch of every real signed-up account, for the leaderboard's
+// ranking pool — read-only, no listener (a full-collection realtime
+// subscription isn't needed for a ranking list the user can just refresh).
+// Same "fine at demo/early scale" tradeoff already accepted for subscribeClubs.
+export async function loadAllRealUsers(excludeUid: string): Promise<UserProfile[]> {
+  const snaps = await getDocs(collection(db, 'users'));
+  return snaps.docs
+    .filter(d => d.id !== excludeUid)
+    .map(d => d.data() as UserProfile)
+    .filter(p => !!p.username && !!p.displayName && typeof p.mmr === 'number');
+}
+
 // ── Logged matches ────────────────────────────────────────────────────────────
 
 export async function saveMatch(uid: string, match: Match) {
