@@ -9,7 +9,8 @@ import {
   Timestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Match, UserProfile, Tournament, Club, ClubMessage } from '@/types';
+import { getTier } from '@/lib/utils';
+import type { Match, UserProfile, Tournament, Club, ClubMessage, MalaysiaState } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 
