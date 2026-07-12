@@ -15,7 +15,7 @@ import { getTier } from '@/lib/utils';
 const isRealUid = (uid: string) => uid !== 'me' && ![ME, ...PLAYERS].some(p => p.uid === uid);
 
 export default function Chat() {
-  const { user, conversations: convs, setConversations: setConvs, sendRealMessage } = useApp();
+  const { user, conversations: convs, setConversations: setConvs, sendRealMessage, markRealConvRead } = useApp();
   const [activeId,   setActiveId]   = useState<string | null>(convs[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [input,      setInput]      = useState('');
