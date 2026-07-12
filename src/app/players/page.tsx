@@ -309,11 +309,11 @@ function SharedPlayerFilters({ f }: { f: PlayerFilters }) {
 
 // ─── Players list ─────────────────────────────────────────────────────────────
 
-function PlayersList({ user, following, filters }: { user: UserProfile; following: string[]; filters: PlayerFilters }) {
+function PlayersList({ user, following, filters, realPlayers }: { user: UserProfile; following: string[]; filters: PlayerFilters; realPlayers: UserProfile[] }) {
   const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
 
-  const all = [user, ...PLAYERS];
+  const all = [user, ...PLAYERS, ...realPlayers];
   const ranked = all
     .filter(p => countryFilter === 'All' || (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
