@@ -88,6 +88,14 @@ export default function Chat() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [active?.messages]);
 
+  // Marks the open conversation read — both on open and as new messages
+  // stream in while it's the active one, so the badge never lingers on a
+  // chat you're actively looking at. No-op for demo conversation ids (real
+  // conversations only — see markRealConvRead).
+  useEffect(() => {
+    if (active) markRealConvRead(active.id);
+  }, [active?.id, active?.messages.length, markRealConvRead]);
+
   const openConv = (id: string) => {
     setActiveId(id);
     setMobileView('chat');
