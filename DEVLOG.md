@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-12 (interactive, follow-up to the 07:10 auto-dev session)] — Three feature ideas built
+
+**Trigger:** User approved all three feature ideas proposed in the morning auto-dev session ("Go ahead and build all 4 — area-based distance for Nearby"). One (real cross-account match confirmation) is a shared-Firestore-schema change; the permission system correctly paused it mid-build for explicit confirmation before I had that go-ahead — flagged to the user, got the go-ahead, then built it.
+
+### Shipped
+
+**Real unread counts for cross-account chat.** Previously hardcoded to 0 (`toLocalConversation`) — the badge never reflected real incoming messages. Now tracks a per-chat "last opened" timestamp locally (`cc_realLastRead`), and [chat/page.tsx](src/app/chat/page.tsx) marks the active conversation read both on open and as new messages stream in while it's on screen. Also fixed `totalUnread` (used for the nav badge), which only ever summed local/demo conversations, never real ones.
+
+**Real distance for the Leaderboard's "Nearby" tab.** Turned out to be a bigger gap than scoped: the leaderboard never fetched real accounts at all (`all = [user, ...PLAYERS]` — demo roster + self only), so no real player could ever appear on any tab, not just Nearby. Added a one-shot Firestore fetch of every real account ([loadAllRealUsers](src/lib/firestoreService.ts)) merged into the ranking pool. Distance itself uses area/state as a proxy per the user's choice (no GPS): same named area ≈ 3km, same state ≈ 40km, otherwise excluded from Nearby. Also fixed profile links for real players, which would have 404'd — the static export only pre-renders `/players/[username]/` for the demo roster, so real accounts now route through `/profile/?uid=X` (the existing convention from QRModal).
+
+**Real cross-account match confirmation (singles).** Closes this morning's self-confirm finding for real reported matches. A match against a real opponent (found via search/QR, singles only — doubles keeps the old local-only behavior) now writes to a shared `matches/{id}` Firestore doc instead of a private local-only record. Both accounts subscribe to it; MMR is applied independently to each side exactly once, gated by `mmrAppliedBy` on the doc so it survives reloads/offline gaps; the reporter can no longer confirm their own report — [MatchDetailModal.tsx](src/components/MatchDetailModal.tsx) and the Home pending-match banner now only show Confirm/Dispute to whoever's turn it actually is, with a "waiting on X — withdraw" state for the reporter. New `firestore.rules` block for `matches/{id}` mirrors the existing `challenges` collection's shape (reporter-only create, either-participant update).
+
+### Not verified live
+Couldn't emulator-test the new `matches` security rules (`npm run test:rules`) — Java isn't on this session's PATH even though a JDK was installed in an earlier session; reviewed the rule block manually against the existing challenges pattern instead. Couldn't exercise any of the three features with two real accounts in a browser, same reasoning as every session before this one: this session doesn't create accounts or enter passwords, even for the project's own testing.
+
+### Verification
+`npx next build` clean after every change, run repeatedly through the session (not just once at the end).
+
 ## [2026-07-12 07:10] — Auto-Dev Session
 
 **Trigger:** Scheduled (daily, ~7:10am, after the 6am daily-check)
