@@ -165,6 +165,11 @@ export default function Home() {
               const isWin   = m.winnerId === user.uid;
               const oppName = m.player1Id === user.uid ? m.player2Name : m.player1Name;
               const oppUser = m.player1Id === user.uid ? m.player2Username : m.player1Username;
+              // Old local/demo matches never set pendingConfirmations — always
+              // self-confirmable, as before. A real match only lets the
+              // outstanding party act: if pendingConfirmations lists someone
+              // else (the opponent I'm waiting on), it's not my turn.
+              const isMyTurn = !m.pendingConfirmations || m.pendingConfirmations.includes('me');
               return (
                 <div key={m.id} className="bg-slate-900/70 rounded-xl p-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
@@ -178,16 +183,23 @@ export default function Home() {
                       )}
                     </p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, user.uid); }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
-                      <CheckCircle size={12}/> Confirm
+                  {isMyTurn ? (
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, user.uid); }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                        <CheckCircle size={12}/> Confirm
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); disputeMatch(m.id); }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 text-xs font-semibold rounded-lg transition-colors">
+                        <XCircle size={12}/> Dispute
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); cancelPendingMatch(m.id); }}
+                      className="shrink-0 text-[11px] text-slate-500 hover:text-red-400 transition-colors">
+                      Waiting on {oppName} — withdraw
                     </button>
-                    <button onClick={e => { e.stopPropagation(); disputeMatch(m.id); }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 text-xs font-semibold rounded-lg transition-colors">
-                      <XCircle size={12}/> Dispute
-                    </button>
-                  </div>
+                  )}
                 </div>
               );
             })}
