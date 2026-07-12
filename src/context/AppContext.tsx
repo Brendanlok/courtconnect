@@ -275,6 +275,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...u, ...profile,
             uid: 'me', // keep the app-wide local convention — the real uid lives in auth.currentUser
             tier: getTier(profile.mmr ?? u.mmr),
+            // Signup never writes disciplineMMR (only top-level mmr) — without
+            // this, a real account keeps showing the local demo seed's stale
+            // per-discipline numbers forever (Home's "MMR" header reads
+            // disciplineMMR when present, so it silently diverges from the
+            // real mmr shown everywhere else).
+            disciplineMMR: profile.disciplineMMR ?? {},
           }));
         }
       } catch { /* Firestore unavailable — keep local/seed profile */ }
