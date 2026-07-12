@@ -40,12 +40,28 @@ export async function lookupUserByUid(uid: string): Promise<Partial<UserProfile>
 // ranking pool — read-only, no listener (a full-collection realtime
 // subscription isn't needed for a ranking list the user can just refresh).
 // Same "fine at demo/early scale" tradeoff already accepted for subscribeClubs.
+//
+// Signup only ever writes username/displayName/mmr/country/region (see
+// createUserDoc in AuthContext) — state/area/tier are filled in later via
+// Settings, if ever. Default them here so every consumer (leaderboard rows,
+// distance calc) can rely on the fields existing rather than re-deriving
+// fallbacks in every place that reads a real player.
 export async function loadAllRealUsers(excludeUid: string): Promise<UserProfile[]> {
   const snaps = await getDocs(collection(db, 'users'));
   return snaps.docs
     .filter(d => d.id !== excludeUid)
-    .map(d => d.data() as UserProfile)
-    .filter(p => !!p.username && !!p.displayName && typeof p.mmr === 'number');
+    .map(d => d.data() as Partial<UserProfile> & { region?: string })
+    .filter((p): p is Partial<UserProfile> & { region?: string; username: string; displayName: string; mmr: number } =>
+      !!p.username && !!p.displayName && typeof p.mmr === 'number')
+    .map(p => ({
+      ...p,
+      tier: p.tier ?? getTier(p.mmr),
+      state: p.state ?? (p.region as MalaysiaState | undefined) ?? 'Kuala Lumpur',
+      area: p.area ?? '',
+      globalRank: p.globalRank ?? 0,
+      joinedAt: p.joinedAt ?? '',
+      stats: p.stats ?? { wins: 0, losses: 0, totalMatches: 0 },
+    } as UserProfile));
 }
 
 // ── Logged matches ────────────────────────────────────────────────────────────
