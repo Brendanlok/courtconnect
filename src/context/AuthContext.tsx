@@ -7,6 +7,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
 import { lookupUserByUsername } from '@/lib/firestoreService';
+import { BASE_PATH } from '@/lib/utils';
 
 interface AuthCtx {
   authUser: User | null;
@@ -66,7 +67,7 @@ function friendlyError(code: string): string {
 const isGoogleUser = (u: User) => u.providerData.some(p => p.providerId === 'google.com');
 
 const verificationRedirectUrl = () =>
-  typeof window !== 'undefined' ? `${window.location.origin}/` : 'https://courtconnectcc.netlify.app/';
+  typeof window !== 'undefined' ? `${window.location.origin}${BASE_PATH}/` : 'https://brendanlok.github.io/courtconnect/';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authUser,               setAuthUser]               = useState<User | null>(null);

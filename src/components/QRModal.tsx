@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { TIER_STYLE } from '@/lib/utils';
+import { TIER_STYLE, BASE_PATH } from '@/lib/utils';
 import { X, Share2, Copy, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -18,7 +18,7 @@ export function QRModal({ open, onClose }: { open: boolean; onClose: () => void 
   // /players/[username]/ only pre-renders the demo roster (static export) —
   // a real account's own username 404s there, so point real users at
   // /profile/?uid=X instead, which works for any signed-in account.
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://courtconnectcc.netlify.app';
+  const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${BASE_PATH}` : 'https://brendanlok.github.io/courtconnect';
   const isDemoUsername = [ME, ...PLAYERS].some(p => p.username === user.username);
   const realUid = auth.currentUser?.uid;
   const qrPayload = isDemoUsername || !realUid

@@ -1,24 +1,30 @@
-name: Deploy to Netlify
+name: Deploy to GitHub Pages
 
-# Builds here (GitHub Actions minutes) instead of on Netlify (Netlify build
-# minutes) — courtconnect + classical-reader share one Netlify team's build-
-# minute quota, and courtconnect alone hit 648 pushes in a month, tipping
-# the account to 100% usage. Only the finished static output is handed to
-# Netlify via the CLI, which does not consume Netlify build minutes.
-#
-# Requires (see repo Settings → Secrets and variables → Actions):
-#   NETLIFY_AUTH_TOKEN — personal access token from Netlify → User settings → Applications
-#   NETLIFY_SITE_ID    — from Netlify → Site settings → General → Site details
-# Also requires disabling Netlify's own git-triggered auto-build for this
-# site (Site settings → Build & deploy → Stop builds), otherwise both this
-# workflow AND Netlify's native integration would build on every push.
+# Superseded the old Netlify-build-minutes workaround (GH Actions build, deploy
+# to Netlify via CLI) — full move off Netlify. Served at
+# https://brendanlok.github.io/courtconnect/, so basePath is set at build time.
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      NEXT_PUBLIC_BASE_PATH: /courtconnect
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,8 +32,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
-      - run: npx netlify-cli deploy --prod --dir=out --site="$NETLIFY_SITE_ID"
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      - run: npx next build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+      - id: deployment
+        uses: actions/deploy-pages@v4

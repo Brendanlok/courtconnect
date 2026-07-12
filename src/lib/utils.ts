@@ -1,5 +1,10 @@
 import type { Tier, MalaysiaState, CountryCode } from '@/types';
 
+// Matches next.config.ts's basePath — needed when building absolute links
+// (QR codes, share links, email redirect URLs) since window.location.origin
+// alone doesn't include a subpath like /courtconnect on GitHub Pages.
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
