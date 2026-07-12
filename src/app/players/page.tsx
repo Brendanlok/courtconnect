@@ -17,8 +17,15 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { FindPlayerModal } from '@/components/FindPlayerModal';
+import { loadAllRealUsers } from '@/lib/firestoreService';
+import { auth } from '@/lib/firebase';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
+
+// Real accounts aren't in the static export's pre-rendered /players/[username]/
+// paths (build-time generateStaticParams only covers the demo roster) — route
+// them through /profile/?uid=X instead, same convention as QRModal.
+const isRealPlayer = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
+const profileHref = (p: UserProfile) => isRealPlayer(p.uid) ? `/profile/?uid=${p.uid}` : `/players/${p.username}/`;
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Leaderboard', 'Following', 'Clubs'] as const;
