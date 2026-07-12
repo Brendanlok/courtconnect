@@ -135,7 +135,7 @@ export default function PlayersPage() {
       )}
 
       <div className={tab !== 'Leaderboard' ? 'hidden' : ''}>
-        <PlayersList user={user} following={following} filters={sharedFilters}/>
+        <PlayersList user={user} following={following} filters={sharedFilters} realPlayers={realPlayers}/>
       </div>
       <div className={tab !== 'Following' ? 'hidden' : ''}>
         <FollowingTab following={following} followPlayer={followPlayer} unfollowPlayer={unfollowPlayer} user={user} filters={sharedFilters}/>
