@@ -793,8 +793,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ], [localChallenges, realIncomingChallenges, realOutgoingChallenges, myRealUid]);
   const conversations: Conversation[] = useMemo(() => [
     ...localConversations,
-    ...realConversationDocs.map(c => toLocalConversation(c, myRealUid)),
-  ].sort((a, b) => b.lastAt.localeCompare(a.lastAt)), [localConversations, realConversationDocs, myRealUid]);
+    ...realConversationDocs.map(c => toLocalConversation(c, myRealUid, realLastRead)),
+  ].sort((a, b) => b.lastAt.localeCompare(a.lastAt)), [localConversations, realConversationDocs, myRealUid, realLastRead]);
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
     for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
