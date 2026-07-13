@@ -90,20 +90,25 @@ export async function loadUserProfile(uid: string): Promise<Partial<UserProfile>
   return data ? userRowToProfile(data) : null;
 }
 
+// Other-player lookups (opponent search, club members, chat contacts, shared
+// profile links) read from the users_public view, not the users table — the
+// table's RLS is owner-only as of migration 0003 since it holds email/
+// birthday/postcode, none of which any of these call sites use.
 export async function lookupUserByUsername(username: string): Promise<Partial<UserProfile> | null> {
-  const { data } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
+  const { data } = await supabase.from('users_public').select('*').eq('username', username).maybeSingle();
   return data ? userRowToProfile(data) : null;
 }
 
 export async function lookupUserByUid(uid: string): Promise<Partial<UserProfile> | null> {
-  return loadUserProfile(uid);
+  const { data } = await supabase.from('users_public').select('*').eq('uid', uid).maybeSingle();
+  return data ? userRowToProfile(data) : null;
 }
 
 // One-shot fetch of every real signed-up account, for the leaderboard's ranking
 // pool — read-only, no realtime subscription (same "fine at current scale"
 // tradeoff already accepted in the Firestore version).
 export async function loadAllRealUsers(excludeUid: string): Promise<UserProfile[]> {
-  const { data } = await supabase.from('users').select('*').neq('uid', excludeUid);
+  const { data } = await supabase.from('users_public').select('*').neq('uid', excludeUid);
   return (data ?? [])
     .map(userRowToProfile)
     .filter((p): p is Partial<UserProfile> & { username: string; displayName: string; mmr: number } =>
