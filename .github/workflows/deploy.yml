@@ -1,14 +1,13 @@
 name: Deploy to GitHub Pages
 
-# Superseded the old Netlify-build-minutes workaround (GH Actions build, deploy
-# to Netlify via CLI) — full move off Netlify. Served at
-# https://brendanlok.github.io/courtconnect/, so basePath is set at build time.
-#
-# Paused (2026-07-12): this fails on every run — most likely GitHub Pages was
-# never enabled for this repo (Settings > Pages > Source: GitHub Actions), so
-# every auto-deploy commit was emailing a failure. Disabled the push trigger
-# until that's confirmed/fixed; run manually via workflow_dispatch to test.
+# Dropped Netlify entirely (2026-07-14): team hit the free plan's build-minutes
+# cap with no way to un-pause it short of paying. Repo made public and GitHub
+# Pages source set to "GitHub Actions" so this workflow can deploy directly.
+# Served at https://brendanlok.github.io/courtconnect/, so basePath is set at
+# build time.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

@@ -2,8 +2,9 @@
 
 # CourtConnect
 
-Badminton matchmaking + MMR ranking app for Malaysia. Live at Netlify, auto-deploys
-on every push to `main` at https://github.com/Brendanlok/courtconnect.
+Badminton matchmaking + MMR ranking app for Malaysia. Live at GitHub Pages, auto-deploys
+on every push to `main` at https://github.com/Brendanlok/courtconnect (public repo —
+required for free GitHub Pages). Site: https://brendanlok.github.io/courtconnect/
 
 # Stage: moving to real users
 
@@ -23,7 +24,8 @@ when touching a feature that uses it.
 # Commands
 
 - Build check (required before every deploy): `npx next build`
-- Deploy: `git add -A && git commit && git push` (Netlify picks it up)
+- Deploy: `git add -A && git commit && git push` (GitHub Actions builds + deploys to
+  GitHub Pages via `.github/workflows/deploy.yml`)
 - Never deploy if the build fails.
 
 # Conventions
