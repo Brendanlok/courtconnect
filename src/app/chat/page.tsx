@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { timeAgo } from '@/lib/utils';
+import { timeAgo, BASE_PATH } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message, Conversation } from '@/types';
@@ -205,7 +205,7 @@ export default function Chat() {
           </div>
         </a>
         <button
-          onClick={() => { window.location.href = `/players/${active.participant.username}/?challenge=1`; }}
+          onClick={() => { window.location.href = `${BASE_PATH}/players/${active.participant.username}/?challenge=1`; }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
           <Zap size={12}/> Challenge
         </button>

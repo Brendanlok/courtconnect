@@ -1,15 +1,18 @@
-const CACHE = 'courtconnect-v1';
+const CACHE = 'courtconnect-v2';
 
+// self.registration.scope is the SW's own base URL (e.g. https://host/courtconnect/),
+// so precache paths work under any basePath without hardcoding it here.
+const SCOPE = self.registration.scope;
 const PRECACHE = [
-  '/',
-  '/players/',
-  '/leaderboard/',
-  '/tournaments/',
-  '/chat/',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-];
+  '',
+  'players/',
+  'leaderboard/',
+  'tournaments/',
+  'chat/',
+  'manifest.json',
+  'icons/icon-192x192.png',
+  'icons/icon-512x512.png',
+].map(p => SCOPE + p);
 
 // Install: precache shell
 self.addEventListener('install', e => {
@@ -30,7 +33,7 @@ self.addEventListener('activate', e => {
 // Notification click: focus an existing tab if open, otherwise open one
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const targetUrl = e.notification.data?.linkTo || '/';
+  const targetUrl = e.notification.data?.linkTo || SCOPE;
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
@@ -62,7 +65,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(request, clone));
           return res;
         })
-        .catch(() => caches.match('/').then(r => r ?? new Response('Offline', { status: 503 })))
+        .catch(() => caches.match(SCOPE).then(r => r ?? new Response('Offline', { status: 503 })))
     );
     return;
   }

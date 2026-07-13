@@ -6,7 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
-import { tierProgress, nextTier, TIER_STYLE } from '@/lib/utils';
+import { tierProgress, nextTier, TIER_STYLE, BASE_PATH } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
@@ -214,7 +214,7 @@ export default function Home() {
           <div className="space-y-2">
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold px-0.5">Your Upcoming Events</p>
             {upcomingEvents.map(t => (
-              <button key={t.id} onClick={() => window.location.href = '/tournaments/'}
+              <button key={t.id} onClick={() => window.location.href = `${BASE_PATH}/tournaments/`}
                 className="w-full flex items-center gap-3 bg-slate-900 border border-amber-500/25 hover:border-amber-500/50 rounded-2xl px-4 py-3 text-left transition-all group">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
                   <Trophy size={16} className="text-amber-400"/>
@@ -516,7 +516,7 @@ function ActivityFeed({ matches, registrations, tournaments, clubs, userId, comm
             </div>
             <p className="text-slate-500 text-sm font-medium">No activity yet</p>
             <p className="text-slate-600 text-xs">Log matches and join events to build your feed</p>
-            <button onClick={() => window.location.href='/tournaments/'}
+            <button onClick={() => window.location.href=`${BASE_PATH}/tournaments/`}
               className="text-xs text-emerald-400 font-semibold hover:text-emerald-300 transition-colors mt-1 inline-block">
               Browse events →
             </button>

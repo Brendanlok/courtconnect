@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
+import { BASE_PATH } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { LogMatchModal } from '@/components/LogMatchModal';
@@ -332,7 +333,7 @@ export default function MatchesPage() {
             onChange={e => { setWatchCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setWatchErr(''); }}
             onKeyDown={e => {
               if (e.key === 'Enter' && watchCode.length === 6) {
-                window.location.href = `/live/?code=${watchCode}`;
+                window.location.href = `${BASE_PATH}/live/?code=${watchCode}`;
               }
             }}
             maxLength={6}
@@ -342,7 +343,7 @@ export default function MatchesPage() {
           <button
             onClick={() => {
               if (watchCode.length !== 6) { setWatchErr('Enter the full 6-character code.'); return; }
-              window.location.href = `/live/?code=${watchCode}`;
+              window.location.href = `${BASE_PATH}/live/?code=${watchCode}`;
             }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition-colors shrink-0"
           >
