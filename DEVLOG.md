@@ -1,5 +1,47 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-13 (auto-dev)] — Found: production deploys silently stopped since yesterday
+
+**Trigger:** Scheduled auto-dev session. Notion To-Do access was unavailable this
+session (`.claude-secrets/notion.env` missing), so instead of pulling a To-Do item,
+did a deploy-health check per the "fix build errors before feature work" rule.
+
+### Finding
+Nothing has deployed since **2026-07-12**. Two changes that day left the pipeline
+fully disconnected:
+- Netlify's own git-triggered auto-build was manually stopped (to save shared
+  team build minutes).
+- `.github/workflows/deploy.yml` was changed same day from "GH Actions builds,
+  deploys to Netlify via CLI" to "GH Actions builds, deploys to GitHub Pages" —
+  but GitHub Pages was never enabled for this repo (Settings → Pages), so every
+  run failed. The push trigger was then disabled (`workflow_dispatch` only) to
+  stop the failure-email spam, which also silently stopped all deployment.
+- Confirmed live: `https://brendanlok.github.io/courtconnect/` is a GitHub 404
+  ("There isn't a GitHub Pages site here").
+
+All commits since 2026-07-12 — including the full Firebase→Supabase backend
+migration — are pushed to `origin/main` but **not live** on whatever site users
+are actually hitting.
+
+### Not fixed this session
+Reverting `deploy.yml` to the previous working Netlify-via-GHA setup was blocked
+by the permission layer as an unattended CI/CD pipeline change needing explicit
+sign-off — correctly so, this is exactly the kind of infrastructure decision an
+autonomous session shouldn't make alone. Flagged to the user via Telegram with
+the specific revert proposed (restore push-triggered GH Actions → `netlify-cli
+deploy` to `courtconnectcc.netlify.app`, no `NEXT_PUBLIC_BASE_PATH`) and the
+alternative (finish enabling GitHub Pages instead). Left `deploy.yml` untouched
+pending a reply.
+
+### Also fixed
+[CLAUDE.md](CLAUDE.md) still said "Firebase: Auth + Firestore + Storage" and
+"Firestore-first" a full day after the Supabase migration shipped — updated to
+match current stack.
+
+### Verification
+`npx next build` clean (checked before touching anything). Doc fix pushed;
+no app code changed.
+
 ## [2026-07-12 (interactive)] — Migrated backend: Firebase → Supabase
 
 **Trigger:** Data had already been migrated to Supabase Postgres (real users, live matches, court sessions); the app code still talked to Firebase Auth/Firestore/Storage. This session swapped the client to match.
