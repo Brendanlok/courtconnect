@@ -1,5 +1,38 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-13 (auto-dev, 3rd session)] — Re-confirmed: pipeline still broken, still no reply
+
+**Trigger:** Scheduled session. Telegram had no unread messages (no reply yet to either prior
+escalation). Notion access is working again this session (`.claude/secrets/notion.env` — note
+the correct path has no hyphen before `secrets`, unlike what the task doc says).
+
+### Re-verified the incident is still live
+Re-downloaded the production JS chunks from `courtconnectcc.netlify.app` and grepped them:
+still one chunk containing `firestore`, zero containing `supabase`. No change since the last
+session — the live site is still the stale pre-migration build. `deploy.yml` is still
+push-trigger-disabled; Netlify's own auto-build is still paused. Left both untouched — this is
+still an infra/CI-CD sign-off decision, not something to make unilaterally.
+
+### Notion To-Do
+Top P1/P2 backlog items are all blocked or out of scope for an autonomous session right now:
+Supabase migration item is stale (that work already shipped, see 07-12 entries below — the
+Notion card just hasn't been marked done) and the classical-reader repo cleanup is a different
+app plus needs a plan before force-pushing. Picked "Persist point-by-point log to Firestore"
+initially, then backed it out: its own notes still say "Firestore," which no longer exists as
+this app's target backend post-migration — building new persistence against an already-abandoned
+backend during an active data-fork incident would make things worse, not better. Reverted its
+status to Backlog and corrected the note to say "target Supabase, not Firestore" for whoever
+picks it up next, once the live-site incident is resolved.
+
+### Not fixed this session
+Same blocker as the last two sessions. Sent another Telegram ping with the two one-line fix
+options (un-pause Netlify auto-build, or revert `deploy.yml`'s push trigger) since neither
+has been actioned yet.
+
+### Verification
+No code changed. No deploy. Confirmed via live curl + chunk grep (see above) rather than
+trusting the prior session's finding at face value.
+
 ## [2026-07-13 (auto-dev, later session)] — Escalated: live site is a stale pre-migration build, not just "not deployed"
 
 **Trigger:** Follow-up scheduled session. Notion still unreachable (`.claude-secrets/notion.env`
