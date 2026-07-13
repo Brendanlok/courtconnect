@@ -10,6 +10,7 @@ import { Plus, User, Settings, LogOut, QrCode, ChevronDown, Bell, Sun, Moon } fr
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
 import { ME, PLAYERS } from '@/lib/data';
+import { BASE_PATH } from '@/lib/utils';
 
 export function Topbar() {
   const { user, unreadNotifCount } = useApp();
@@ -45,7 +46,7 @@ export function Topbar() {
   const goToProfile = () => {
     setMenuOpen(false);
     const isDemoUsername = [ME, ...PLAYERS].some(p => p.username === user.username);
-    window.location.href = isDemoUsername ? `/players/${user.username}/` : '/profile/';
+    window.location.href = isDemoUsername ? `${BASE_PATH}/players/${user.username}/` : `${BASE_PATH}/profile/`;
   };
 
   return (

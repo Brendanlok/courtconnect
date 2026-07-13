@@ -10,7 +10,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
@@ -230,7 +230,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
                   <Swords size={14}/> Challenge
                 </button>
-                <button onClick={() => { window.location.href = `/chat/?uid=${player.uid}`; }}
+                <button onClick={() => { window.location.href = `${BASE_PATH}/chat/?uid=${player.uid}`; }}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
                   <MessageCircle size={14}/> Message
                 </button>

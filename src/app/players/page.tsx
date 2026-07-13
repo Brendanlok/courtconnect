@@ -562,7 +562,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
           return (
             <div key={club.id}
-              onClick={() => { window.location.href = `/clubs/${club.id}/`; }}
+              onClick={() => { window.location.href = `${BASE_PATH}/clubs/${club.id}/`; }}
               className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors cursor-pointer hover:border-slate-600
               ${isMine ? 'border-emerald-500/40 shadow-[0_0_0_1px_rgba(16,185,129,0.15)] hover:border-emerald-500/60' : 'border-slate-800'}`}>
               <div className="p-4 space-y-3">

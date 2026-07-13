@@ -7,6 +7,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import type { UserProfile } from '@/types';
+import { BASE_PATH } from '@/lib/utils';
 
 const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
 
@@ -38,7 +39,7 @@ export function PlayerActionCard({ player }: { player: UserProfile }) {
         <Button onClick={() => setChallengeOpen(true)} variant="amber" icon={<Swords size={14}/>} className="flex-1">
           Challenge
         </Button>
-        <Button variant="secondary" onClick={() => { window.location.href = `/chat/?realUid=${player.uid}`; }}
+        <Button variant="secondary" onClick={() => { window.location.href = `${BASE_PATH}/chat/?realUid=${player.uid}`; }}
           icon={<MessageCircle size={14}/>} className="flex-1">
           Message
         </Button>
