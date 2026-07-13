@@ -51,7 +51,7 @@ function friendlyError(message: string): string {
   if (m.includes('invalid email') || m.includes('unable to validate'))      return 'Enter a valid email address.';
   if (m.includes('password') && m.includes('character'))                   return 'Password must be at least 6 characters.';
   if (m.includes('invalid login') || m.includes('invalid credentials'))    return 'Invalid email or password.';
-  if (m.includes('rate limit') || m.includes('too many'))                  return 'Too many attempts. Try again later.';
+  if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes')) return 'Too many attempts. Try again in a minute.';
   return 'Something went wrong. Please try again.';
 }
 
