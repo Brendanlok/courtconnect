@@ -1,5 +1,33 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-13 (auto-dev, later session)] — Escalated: live site is a stale pre-migration build, not just "not deployed"
+
+**Trigger:** Follow-up scheduled session. Notion still unreachable (`.claude-secrets/notion.env`
+still missing) and no Telegram reply to the previous session's deploy-pipeline question, so
+before picking new work, re-checked whether the situation had changed.
+
+### Finding — worse than previously documented
+`npx next build` still passes clean. But curling the actual production URL
+(`https://courtconnectcc.netlify.app/`, referenced in the prior entry's proposed fix) shows it
+returns **200**, not down — it's serving a build from **before** the Firebase→Supabase
+migration: its JS chunks still contain `firestore` references. Netlify's git auto-build has been
+paused since 2026-07-12 (see prior entry), so the live app real users are hitting has never
+picked up the migration — it's still wired to Firebase while all real data has since moved to
+Supabase. That's an active data-fork risk (writes from the stale build go to Firebase, now
+orphaned from the source of truth), not merely a "commits are queued" situation.
+
+### Not fixed this session
+Same as last entry — reconnecting the pipeline (revert `deploy.yml` to Netlify-via-GHA, or
+simply un-pause Netlify's own auto-build) is an infra/CI-CD change requiring explicit sign-off.
+Sent an updated, more urgent Telegram message with this finding and offered the fastest fix
+(un-pausing Netlify's auto-build directly, no code change, ships everything since 07-12 in
+~2 min) pending a reply. `deploy.yml` and Netlify settings left untouched.
+
+### Verification
+`npx next build` clean. Confirmed live bundle content via curl (chunk list from
+`courtconnectcc.netlify.app/`, grepped for `firestore` vs `supabase.co` markers). No app code
+changed this session.
+
 ## [2026-07-13 (auto-dev)] — Found: production deploys silently stopped since yesterday
 
 **Trigger:** Scheduled auto-dev session. Notion To-Do access was unavailable this
