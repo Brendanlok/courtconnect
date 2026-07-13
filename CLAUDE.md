@@ -7,16 +7,17 @@ on every push to `main` at https://github.com/Brendanlok/courtconnect.
 
 # Stage: moving to real users
 
-Build new features Firestore-first, not localStorage-first. The seed players in
+Build new features Supabase-first, not localStorage-first. The seed players in
 `src/lib/data.ts` and the `cc_*` localStorage keys are legacy demo scaffolding —
-prefer real Firebase data for anything new, and migrate old localStorage state
+prefer real Supabase data for anything new, and migrate old localStorage state
 when touching a feature that uses it.
 
 # Stack
 
 - Next.js 16 App Router, `output: 'export'` (static — no server code, no API routes)
 - Tailwind v4, lucide-react icons, recharts, Radix primitives in `src/components/ui/`
-- Firebase: Auth + Firestore + Storage (`src/lib/firebase.ts`, `firestoreService.ts`)
+- Supabase: Auth + Postgres + Storage (`src/lib/supabase.ts`, `supabaseService.ts`) —
+  migrated from Firebase 2026-07-12, see DEVLOG.md for the cutover details
 - All components are client components (`'use client'`)
 
 # Commands
