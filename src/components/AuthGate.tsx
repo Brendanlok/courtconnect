@@ -6,6 +6,7 @@ import { AppProvider } from '@/context/AppContext';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { BottomNav } from '@/components/BottomNav';
+import { ExitGuard } from '@/components/ExitGuard';
 import { OnboardingModal } from '@/components/OnboardingModal';
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -42,6 +43,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         </div>
       </div>
       <BottomNav />
+      <ExitGuard />
     </AppProvider>
   );
 }

@@ -28,7 +28,7 @@ export function BottomNav() {
         const showPaused = href === '/matches' && hasPausedMatch;
 
         return (
-          <Link key={href} href={href}
+          <Link key={href} href={href} replace
             className={`flex flex-col items-center justify-center py-2.5 gap-1 relative transition-colors
               ${active ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>
             <span className="relative">

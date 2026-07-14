@@ -58,6 +58,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              replace
               title={label}
               className={[
                 'flex items-center rounded-xl text-sm font-medium transition-colors relative overflow-hidden',
