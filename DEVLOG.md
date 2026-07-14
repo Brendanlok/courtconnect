@@ -1,5 +1,22 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev, 2nd session, one more pass)] — Caught a race in the clubs/view fix before it shipped further
+
+**Trigger:** Self-review of the just-committed `/clubs/view/` route (previous entry below) before
+moving on. `AppContext`'s `clubs` state initializes synchronously to demo-only seed data and
+only fills in real clubs a moment later via an async Supabase subscription. That means on a
+fresh page load, `ClubDetailClient`'s `if (!club) return notFound()` would have fired on the
+very first render — before the real club had streamed in — so the previous fix would have shown
+a false "Club not found" almost every time someone actually opened a real club, rather than
+fixing the problem. `/profile/page.tsx` never had this issue since it fetches the target player
+directly instead of trusting a context array that starts out demo-only.
+
+Fixed by waiting for the target club to actually appear in `clubs` before mounting
+`ClubDetailClient` (shows "Loading…" until then). Known ceiling, marked with a `ponytail:`
+comment: a genuinely bad/deleted club id now spins forever instead of showing "not found" —
+traded deliberately, since that's a much rarer case than "real club, just hasn't loaded yet."
+`npx next build` clean.
+
 ## [2026-07-14 (auto-dev, 2nd session, cont'd once more)] — Fixed: real (user-created) clubs were completely unreachable
 
 **Trigger:** Continued self-directed work. While confirming no other instances of the
