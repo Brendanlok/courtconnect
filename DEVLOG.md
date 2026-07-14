@@ -1,5 +1,48 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev, 2nd session cont'd)] — Fixed: live-match stats/point-log never actually reached real matches
+
+**Trigger:** Continuation of the same session, self-directed (no new Telegram/Notion signal —
+user said to keep working until out of budget). While double-checking the point-log
+persistence work just shipped, traced whether anything actually *displays* the data and found
+a bigger, pre-existing gap.
+
+### What was broken
+`MatchDetailModal.tsx` has had a "Match Insights" section (duration, longest streak, biggest
+comeback, avg gap) gated on `m.liveStats` since before this session. It never rendered for a
+real match between two accounts — only for local/demo matches. Root cause: `addMatch` in
+`AppContext.tsx` builds a `StoredMatch` to send to Supabase, and that object simply never
+copied `recordedLive`/`liveStats` off the source `Match` (and `StoredMatch` didn't even have
+those fields). The freshly-added `pointLog` persistence from earlier this session had the same
+gap, plus `toLocalMatch` (converts a Supabase row back into the local `Match` shape for
+display) dropped all three fields entirely when reading back.
+
+### Fix
+- Added `recordedLive`/`liveStats` to `StoredMatch` and the `live_stats` jsonb side-channel in
+  `supabaseService.ts` (`sendMatchDoc`/`matchRowToStored`), same pattern as `pointLog`.
+- `AppContext.tsx`: `addMatch` now copies all three onto `stored`; `toLocalMatch` now maps them
+  back — and correctly re-orients `pointLog`/`maxWinStreak.side` for whichever player is
+  viewing. Sides were captured as 'a' = reporter, 'b' = opponent (reporter is always stored as
+  player1), so the non-reporting viewer needs the same a↔b flip already applied to game scores
+  (p1/p2) — added it here too, since it was silently absent until this was fixed.
+- Exported the live-scorer's existing `PointLogTable` component and added a "Point Log" section
+  to `MatchDetailModal.tsx` (one table per completed game) so the newly-fixed data is actually
+  visible, not just stored.
+
+### Verification
+`npx next build` clean, no TypeScript errors. Tried the browser preview again in case this
+session could get further than prior ones — same result: real Supabase Google OAuth gate,
+stops at login. Did not create a real test account to push past it (would write live data —
+a test user, test matches — into production Supabase; flagging rather than doing that
+unprompted). Verified by code read-through instead: traced the a/b orientation through
+`LiveMatchModal`'s `addPoint` (team A = host = always stored player1) to confirm the flip
+direction is correct for the non-reporting viewer.
+
+### Needs your check
+- Try viewing a completed live-scored real match (both as the reporter and, if possible, from
+  the other player's account) to confirm Match Insights + Point Log render and the streak/point
+  colors are on the correct side for each viewer.
+
 ## [2026-07-14 (auto-dev, 2nd session)] — Point-by-point log now persisted for live-scored matches
 
 **Trigger:** Scheduled session. Telegram had no unread messages. Picked the top actionable
