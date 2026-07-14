@@ -1,5 +1,57 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (interactive)] — Live-verified two of today's earlier fixes; found real club creation was completely broken
+
+**Trigger:** User set up a throwaway test-account session (kept entirely outside this repo, in
+a private location) so verification could actually happen live instead of stopping at the
+login gate — first time this project's live site has been exercised end-to-end rather than
+verified by code read-through alone. Asked to verify the clubs routing fix and the point-log
+display fix from earlier today.
+
+### Point log / live-match stats: not verified this session
+Needs a live-scored match between two REAL accounts to exercise the fixed code path (a demo
+opponent takes the local-only route, which never had the bug). Doing that requires a second
+real account on the other end of a join-code session — the only other real account visible was
+the user's own, which isn't an appropriate stand-in for a throwaway test. Left open; needs
+either a second test account or the user playing one side themselves.
+
+### Clubs: found and fixed a real, separate, more serious bug
+Went to create a real club through the actual UI (with permission) to verify the clubs routing
+fix. It "succeeded" (success screen, modal closed) but never showed up — even after a fresh
+reload, still 0 clubs. Root-caused through several rounds of properly scoped fixes (each one a
+real, separate bug, not throwaway debug code):
+
+1. **`CreateClubModal` always claimed success regardless of outcome** — `createClub(club)` was
+   called fire-and-forget with no result check; the modal showed "Club Created!" and closed
+   unconditionally. Fixed: `createClub` now returns the actual outcome and the modal only
+   shows success once the write actually lands.
+2. **`createClubDoc` never checked Supabase's returned `{error}`** — Supabase JS doesn't
+   reject/throw on a database-level error, it resolves with `{data, error}`; the function
+   awaited the call but never checked or threw on `.error`, so step 1's fix had nothing to
+   catch. Fixed to throw on a non-null error.
+3. **The error-message extraction used `instanceof Error`**, which misses Supabase's
+   PostgrestError (a plain `{message, code, ...}` object, not an `Error` instance) — the UI
+   showed a generic "Something went wrong" instead of the real reason. Fixed the type check.
+
+With all three fixed and (temporary, since-removed) diagnostic logging in place, the actual
+database error surfaced: `invalid input syntax for type uuid: "Test"`, code `22P02`. The
+`clubs.top_players` column was created as `uuid[]` (`supabase/migrations/0001_init.sql`), but
+the app has always treated it as an array of **display-name strings** — seed data
+(`src/lib/data.ts`) uses names like `'Zack Azhar'`, and `CreateClubModal.tsx` sends
+`[user.displayName]`. Every real club creation with a top player populated has been failing
+with this exact error since the schema existed — this isn't new breakage, it's been silently
+broken (thanks to bug #1/#2 above) since clubs supported real accounts at all.
+
+**Needs the user's action** — this is a database schema change I can't and shouldn't apply
+myself: `alter table clubs alter column top_players type text[] using top_players::text[];`
+run via the Supabase SQL editor. Once applied, retry creating a club to confirm both this fix
+and the earlier `/clubs/view/` routing fix work end to end.
+
+### Verification
+`npx next build` clean after every commit in this chain (multiple small commits, each a real
+fix, deployed and retested live via GitHub Pages — first time this project's live site has been
+exercised end-to-end by an agent, not just code read-through).
+
 ## [2026-07-14 (interactive, follow-up)] — Google login fixed (Supabase dashboard config, not code)
 
 **Trigger:** Continuation of the same Google-login report. Confirmed via screenshots that
