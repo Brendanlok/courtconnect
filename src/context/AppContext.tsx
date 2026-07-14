@@ -693,7 +693,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e: unknown) {
       // ponytail: temporary diagnostic log, remove once the underlying
       // club-creation write failure is root-caused and fixed.
-      console.error('createClub failed:', JSON.stringify(e, Object.getOwnPropertyNames(e as object)));
+      const ee = e as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown; status?: unknown } | null;
+      console.error('createClub failed. typeof=' + typeof e + ' isNull=' + (e === null) + ' isUndefined=' + (e === undefined)
+        + ' message=' + String(ee?.message) + ' code=' + String(ee?.code)
+        + ' details=' + String(ee?.details) + ' hint=' + String(ee?.hint) + ' status=' + String(ee?.status));
       // Supabase errors (PostgrestError) are plain {message, code, ...}
       // objects, not Error instances - instanceof Error would miss them.
       const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
