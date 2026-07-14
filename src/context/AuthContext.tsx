@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase, auth, onAuthStateChanged, type CompatUser } from '@/lib/supabase';
+import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
 import { lookupUserByUsername } from '@/lib/supabaseService';
 import { BASE_PATH } from '@/lib/utils';
 
@@ -99,11 +99,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: verificationRedirectUrl() },
     });
-    return error ? friendlyError(error.message) : null;
+    if (error) return friendlyError(error.message);
+    // When email confirmation is required, Supabase returns no active session
+    // for the new (unconfirmed) user, so the auth-state listener below never
+    // fires and the signup form silently looked like nothing happened. Set
+    // the "check your email" state directly from this response instead of
+    // waiting on a listener that may never come.
+    if (data.user && !data.session) {
+      setAuthUser(toCompatUser(data.user));
+      setNeedsEmailVerification(true);
+      setNeedsProfileSetup(false);
+    }
+    return null;
   };
 
   const loginWithGoogle = async (): Promise<string | null> => {

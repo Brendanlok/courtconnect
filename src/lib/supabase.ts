@@ -18,7 +18,7 @@ export interface CompatUser {
   providerData: { providerId: string }[];
 }
 
-function toCompatUser(u: SupaUser | null | undefined): CompatUser | null {
+export function toCompatUser(u: SupaUser | null | undefined): CompatUser | null {
   if (!u) return null;
   const providers = (u.app_metadata?.providers as string[] | undefined) ?? [u.app_metadata?.provider].filter(Boolean) as string[];
   return {
