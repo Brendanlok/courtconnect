@@ -506,6 +506,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         location: m.location,
         pendingConfirmations: [m.player2Id],
         mmrAppliedBy: [],
+        pointLog: m.pointLog,
       };
       sendMatchDoc(stored).catch(() => {});
       // Optimistic local echo, same pattern as sendChallenge.

@@ -637,13 +637,13 @@ export interface StoredMatch {
   player2Id: string; player2Name: string; player2Username: string;
   winnerId: string; games: { p1: number; p2: number }[]; status: 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
   mmrChange?: number; playedAt: string; location?: string;
-  pendingConfirmations: string[]; mmrAppliedBy: string[];
+  pendingConfirmations: string[]; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
 }
 
-// mmrAppliedBy and reporterUid have no columns in the `matches` table (0002) —
-// stored inside `live_stats` jsonb (unused for these plain reported matches)
-// as a small side-channel rather than adding new columns to a live schema.
-interface ExtraMeta { reporterUid: string; mmrAppliedBy: string[] }
+// mmrAppliedBy, reporterUid, and pointLog have no columns in the `matches`
+// table (0002) — stored inside `live_stats` jsonb (unused for these plain
+// reported matches) as a small side-channel rather than adding new columns.
+interface ExtraMeta { reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][] }
 
 function matchRowToStored(row: Record<string, unknown>): StoredMatch {
   const extra = (row.live_stats as ExtraMeta | null) ?? { reporterUid: row.player1_id as string, mmrAppliedBy: [] };
@@ -656,6 +656,7 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
     winnerId: row.winner_id as string, games: row.games as StoredMatch['games'], status: row.status as StoredMatch['status'],
     mmrChange: row.mmr_change as number | undefined, playedAt: row.played_at as string, location: row.location as string | undefined,
     pendingConfirmations: (row.pending_confirmations as string[]) ?? [], mmrAppliedBy: extra.mmrAppliedBy ?? [],
+    pointLog: extra.pointLog,
   };
 }
 
@@ -675,7 +676,7 @@ export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) 
 }
 
 export async function sendMatchDoc(m: StoredMatch) {
-  const extra: ExtraMeta = { reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy };
+  const extra: ExtraMeta = { reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog };
   await supabase.from('matches').insert({
     id: m.id, type: m.type, player1_id: m.player1Id, player1_name: m.player1Name, player1_username: m.player1Username,
     player2_id: m.player2Id, player2_name: m.player2Name, player2_username: m.player2Username, winner_id: m.winnerId,

@@ -81,6 +81,7 @@ export interface Match {
   plannedMatchId?: string;         // links back to the PlannedMatch this was logged from, if any
   recordedLive?: boolean;          // scored point-by-point in real time via Live Match, not typed in after the fact
   liveStats?: LiveMatchStats;      // only present when recordedLive is true
+  pointLog?: ('a' | 'b')[][];      // rally-by-rally winner log, one array per game; only present when recordedLive is true
 }
 
 // Point-by-point telemetry captured while a match is scored live. Everything
@@ -271,6 +272,7 @@ export interface LiveMatch {
   clipUrl?: string;
   recordMode?: 'manual' | 'video'; // how the host chose to record — camera session itself can't survive a pause
   liveStats?: LiveMatchStats;
+  pointLog?: ('a' | 'b')[][];        // rally-by-rally winner log, one array per game — populated on completion
   activeSecondsAccumulated?: number; // running elapsed time banked so far, carried across a pause/resume
 }
 

@@ -515,8 +515,8 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
           biggestComebackPoints: games.filter(gm => gm.done && gm.winningSide).reduce((max, gm, i) =>
             Math.max(max, biggestComebackInGame(updatedPointLog[i] ?? [], gm.winningSide!)), 0),
         };
-        next = { ...next, liveStats };
-        updatePatch = { ...updatePatch, liveStats };
+        next = { ...next, liveStats, pointLog: updatedPointLog };
+        updatePatch = { ...updatePatch, liveStats, pointLog: updatedPointLog };
       }
 
       updateLiveMatch(prev.id, updatePatch).catch(() => {});
@@ -1025,6 +1025,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       mmrChange,
       recordedLive: true,
       liveStats: m.liveStats,
+      pointLog: m.pointLog,
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
