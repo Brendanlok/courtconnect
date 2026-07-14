@@ -35,12 +35,13 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
   const [error,      setError]      = useState('');
   const [done,       setDone]       = useState(false);
   const [advOpen,    setAdvOpen]    = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(!done, onClose, 'Create Club');
 
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors';
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim())      return setError('Club name is required.');
     if (!shortName.trim()) return setError('Short name is required.');
@@ -68,7 +69,10 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
       tags: [purpose, isPrivate ? 'Invite Only' : 'Open'],
       foundedYear: new Date().getFullYear(),
     };
-    createClub(club);
+    setError(''); setSubmitting(true);
+    const err = await createClub(club);
+    setSubmitting(false);
+    if (err) { setError(err); return; }
     setDone(true);
     setTimeout(onClose, 1200);
   };
@@ -181,8 +185,8 @@ export function CreateClubModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          <Button type="submit" className="w-full font-bold">
-            Create Club
+          <Button type="submit" disabled={submitting} className="w-full font-bold">
+            {submitting ? 'Creating…' : 'Create Club'}
           </Button>
         </form>
       </div>

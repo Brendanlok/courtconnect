@@ -154,7 +154,7 @@ interface AppCtx {
   requestJoinClub: (id: string) => void; // request to join private club
   cancelClubRequest: (id: string) => void;
   leaveClub: (id: string) => void;
-  createClub: (c: Club) => void;
+  createClub: (c: Club) => Promise<string | null>;
   updateClub: (id: string, patch: Partial<Club>) => void;
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
@@ -680,14 +680,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeClubMember(id, myRealUid).catch(() => {});
   }, [myRealUid]);
 
-  const createClub = useCallback((c: Club) => {
-    if (!myRealUid) return;
+  const createClub = useCallback(async (c: Club): Promise<string | null> => {
+    if (!myRealUid) return 'Session expired. Please sign in again.';
     const stored: Club = {
       ...c,
       adminId: toRealUid(c.adminId, myRealUid),
       memberIds: c.memberIds.map(u => toRealUid(u, myRealUid)),
     };
-    createClubDoc(stored).catch(() => {});
+    try {
+      await createClubDoc(stored);
+      return null;
+    } catch (e: unknown) {
+      return e instanceof Error ? e.message : 'Something went wrong. Please try again.';
+    }
   }, [myRealUid]);
 
   const updateClub = useCallback((id: string, patch: Partial<Club>) => {
