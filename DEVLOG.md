@@ -1,5 +1,41 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (interactive)] — Fixed: signup looked like it silently failed
+
+**Trigger:** User reported two things directly: Google login not working, and signup not making
+it obvious the account was created (no popup), asking that the user be told to check email and
+confirm.
+
+### Signup — root cause found and fixed
+`AuthModal`'s signup form relied entirely on the background auth-state listener to notice a new
+session and switch to the existing `VerifyEmailView` ("Confirm your email... check your inbox"
+— that screen was already well-written, just unreliably reached). But Supabase returns **no
+active session** for a freshly-created, unconfirmed user — only `data.user`, with
+`data.session` null. The listener has nothing to react to in that case and may never fire, so
+after clicking "Create Account" the button just reverted to idle with zero indication anything
+happened, even though the account genuinely was created.
+
+`signUp()` (`src/context/AuthContext.tsx`) now sets `needsEmailVerification` directly from its
+own response — `data.user` present + `data.session` absent — instead of waiting on the
+listener. The transition to the "check your email" screen now happens immediately and
+deterministically every time.
+
+### Google login — diagnosed, not a code fix
+Not something fixable in this repo. The user's screenshot from the interrupted earlier message
+showed `{"error":"requested path is invalid"}` on the bare Supabase API domain — the classic
+symptom of the OAuth redirect bouncing back to a URL Supabase's dashboard doesn't recognize.
+Strong suspect: Supabase's Authentication → URL Configuration → Redirect URLs allowlist still
+points at the old Netlify domain from before the 2026-07-13 move to GitHub Pages, and never got
+updated to `https://brendanlok.github.io/courtconnect/`. Reported to the user directly with the
+exact dashboard steps rather than guessing at a code change — this needs their Supabase/Google
+Cloud Console access, which this session doesn't have.
+
+### Verification
+`npx next build` clean. Deliberately did not test the signup fix by actually submitting the
+form — doing so would create a real account against production Supabase, which is outside what
+this session does regardless of purpose. Verified by code read-through against Supabase's
+documented signUp() response shape instead.
+
 ## [2026-07-14 (auto-dev, 2nd session, one more pass)] — Caught a race in the clubs/view fix before it shipped further
 
 **Trigger:** Self-review of the just-committed `/clubs/view/` route (previous entry below) before
