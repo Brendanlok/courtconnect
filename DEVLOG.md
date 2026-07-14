@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev, 2nd session, cont'd once more)] — Fixed: real (user-created) clubs were completely unreachable
+
+**Trigger:** Continued self-directed work. While confirming no other instances of the
+static-export 404 bug class remained for player profiles, checked whether clubs had the same
+problem — they did, and worse: there was no fallback route at all, unlike players.
+
+### What was broken
+`/clubs/[id]/page.tsx`'s `generateStaticParams()` only returns the 5 demo club ids
+(`CLUBS` seed data) — `output: 'export'` has no server to fall back to for any id it didn't
+pre-render at build time. Real clubs are a fully-real, cross-account Supabase-backed feature
+(`createClubDoc` inserts into the `clubs` table), but every way of reaching one 404'd: clicking
+a real club from the Players page's Clubs tab, that page's "Copy Link" share action, and a
+player's profile page under their club memberships. Players could create real clubs but could
+never actually open one.
+
+### Fix
+`ClubDetailClient` (the actual page content) already takes a plain `clubId: string` prop and
+looks the club up from context — it was only the routing layer that was broken. Added
+`src/app/clubs/view/page.tsx`, a static param-less route that reads `?id=` client-side and
+renders the same `ClubDetailClient`, mirroring `/profile/page.tsx`'s existing fix for the
+identical problem with real players. Added `clubHref()` next to the existing `profileHref()` in
+`src/lib/utils.ts` and applied it everywhere a club link is built.
+
+### Verification
+`npx next build` clean; confirmed `out/clubs/view/index.html` exists in the static export
+output with the right URL shape. Not verified live — same login constraint as every session.
+This one's worth an extra look since it's the biggest functional gap found today: try creating
+a club (or opening one you already made) and confirm it actually opens instead of 404ing.
+
 ## [2026-07-14 (auto-dev, 2nd session, cont'd further)] — Fixed: real chat partner / club member profile links 404'd
 
 **Trigger:** Continued self-directed work. While checking for other instances of the "silently
