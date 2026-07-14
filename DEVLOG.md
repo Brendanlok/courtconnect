@@ -1,5 +1,37 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev)] — Deploy pipeline confirmed fixed; paused-match banner added to Home
+
+**Trigger:** Scheduled session. Telegram had no unread messages. Notion access working.
+
+### Deploy pipeline incident — resolved, closing out the saga below
+The user fixed this directly overnight (commit `c82190e`, 00:21): repo made public, GitHub
+Pages source set to GitHub Actions, `deploy.yml` push trigger re-enabled, Netlify dropped
+entirely. A follow-up session then fixed remaining hardcoded nav paths that 404'd under the
+`/courtconnect` GH Pages subpath (`708d7cf`). Verified live this session: fetched
+`https://brendanlok.github.io/courtconnect/` — 200, matches current HEAD (`708d7cf`), GitHub
+Actions run for that commit shows `success`, page renders the Supabase-era login screen
+(Google OAuth) with zero console errors. Marked the Notion P0 card Done.
+
+### Feature: paused live match now surfaces on Home, not just a nav dot
+`useHasPausedMatch()` already drove a small amber dot on the Matches nav icon
+(BottomNav/Sidebar), but a paused match was easy to miss — the dot is subtle and you had to
+already be heading to Matches to notice it, then find the right card in a list. Added a
+`usePausedMatch()` hook (`src/lib/pausedMatch.ts`) returning the full paused-match ref instead
+of just a boolean, and a Home-page banner (`src/app/page.tsx`, same visual style as the
+existing "Upcoming Events" card) showing the two team names, current game number, and game
+score, with a Resume button that routes to `/matches/` where the existing reconciliation
+`useEffect` picks it up. `useHasPausedMatch()` now just wraps the new hook — no behavior
+change for existing callers.
+
+### Verification
+`npx next build` clean, no TypeScript errors. Could not verify live in the browser — same
+recurring limitation as every prior session: real Supabase auth with no demo/guest login path,
+so the dev server stops at the login screen. Confirmed the banner's data flow via code
+read-through and by writing a matching `cc_paused_live_match` shape into `localStorage` and
+inspecting via devtools that `loadPausedMatch()` parses it correctly (couldn't get past login
+to see it render).
+
 ## [2026-07-13 (auto-dev, 3rd session)] — Re-confirmed: pipeline still broken, still no reply
 
 **Trigger:** Scheduled session. Telegram had no unread messages (no reply yet to either prior

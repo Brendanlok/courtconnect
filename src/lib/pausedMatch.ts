@@ -42,12 +42,12 @@ export function clearPausedMatch() {
   } catch { /* ignore */ }
 }
 
-// Drives the paused-match nav badge (BottomNav/Sidebar) so it's visible from
-// anywhere in the app, not just the Matches tab.
-export function useHasPausedMatch(): boolean {
-  const [has, setHas] = useState(false);
+// Drives the paused-match nav badge and resume banner (BottomNav/Sidebar/Home)
+// so it's visible from anywhere in the app, not just the Matches tab.
+export function usePausedMatch(): PausedMatchRef | null {
+  const [ref, setRef] = useState<PausedMatchRef | null>(null);
   useEffect(() => {
-    const check = () => setHas(!!loadPausedMatch());
+    const check = () => setRef(loadPausedMatch());
     check();
     window.addEventListener(CHANGE_EVENT, check);
     window.addEventListener('storage', check);
@@ -56,5 +56,9 @@ export function useHasPausedMatch(): boolean {
       window.removeEventListener('storage', check);
     };
   }, []);
-  return has;
+  return ref;
+}
+
+export function useHasPausedMatch(): boolean {
+  return !!usePausedMatch();
 }

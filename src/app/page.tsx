@@ -7,10 +7,11 @@ import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { tierProgress, nextTier, TIER_STYLE, BASE_PATH } from '@/lib/utils';
+import { usePausedMatch } from '@/lib/pausedMatch';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
-  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone,
+  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone, Radio,
 } from 'lucide-react';
 import type { Match, Tournament, Challenge, Club } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -19,6 +20,7 @@ export default function Home() {
   const { user, matches, updateUser, confirmMatch, disputeMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const pausedMatch = usePausedMatch();
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
   const pending    = matches.filter(m => m.status === 'Pending');
@@ -151,6 +153,28 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* ── Paused live match banner ─────────────────────────────────────── */}
+        {pausedMatch?.match && (
+          <button
+            onClick={() => window.location.href = `${BASE_PATH}/matches/`}
+            className="w-full flex items-center gap-3 bg-rose-500/8 border border-rose-500/30 hover:border-rose-500/50 rounded-2xl px-4 py-3 text-left transition-all group">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center shrink-0">
+              <Radio size={16} className="text-rose-400"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-rose-300">Live match paused</p>
+              <p className="text-xs text-slate-400 truncate mt-0.5">
+                {pausedMatch.match.teamAName} vs {pausedMatch.match.teamBName}
+                {' · '}Game {pausedMatch.match.currentGame + 1}
+                {' · '}{pausedMatch.match.gameWins.a}-{pausedMatch.match.gameWins.b}
+              </p>
+            </div>
+            <span className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 group-hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
+              Resume
+            </span>
+          </button>
+        )}
 
         {/* ── Pending verification banner ────────────────────────────────────── */}
         {pending.length > 0 && (
