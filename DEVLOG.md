@@ -1,5 +1,29 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev, 2nd session)] — Point-by-point log now persisted for live-scored matches
+
+**Trigger:** Scheduled session. Telegram had no unread messages. Picked the top actionable
+Notion To-Do item: "Persist point-by-point log to Firestore" (title predates the Supabase
+migration — treated as "to Supabase").
+
+### What changed
+Live-scored matches (Live Match modal) already tracked a rally-by-rally `pointLog` in memory
+to derive stats (streaks, comebacks) and to survive a pause/resume via localStorage, but the
+raw log was discarded once the match completed — only the derived aggregate stats made it into
+the match record, and even those weren't reaching Supabase. Added `pointLog` to the `LiveMatch`
+and `Match` types, attached it to the live-match state at the moment a match completes
+(`LiveMatchModal.tsx`), threaded it through `handleLogMatch` into the reported match object, and
+extended the existing `live_stats` jsonb side-channel in the `matches` table (`supabaseService.ts`)
+to carry it — same pattern already used there for `reporterUid`/`mmrAppliedBy`, no schema
+migration needed. Only applies to real singles matches (the `sendMatchDoc`-backed path);
+doubles/demo-opponent matches stay local-only as before, unaffected by this change.
+
+### Verification
+`npx next build` clean, no TypeScript errors. No new UI surface to check in the browser — this
+purely widens what data rides along on an existing write path. Not yet exercised end-to-end
+against live Supabase (would need to play a full match through the login-gated flow); flagged
+in case something in the jsonb round-trip needs adjusting after a real match reports.
+
 ## [2026-07-14 (auto-dev)] — Deploy pipeline confirmed fixed; paused-match banner added to Home
 
 **Trigger:** Scheduled session. Telegram had no unread messages. Notion access working.
