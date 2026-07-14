@@ -1,5 +1,44 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (interactive)] — Tab-switch back-button behavior: no history growth from tab taps, "tap again to exit" at tab roots
+
+**Trigger:** User asked for two things: (1) switching bottom-nav/sidebar tabs should not push a
+new browser-history entry, so repeatedly flipping between tabs doesn't force many back-presses
+later, and (2) drilling into a page within a tab should still be a normal one-step back-undo,
+and (3) pressing back while resting on a tab's root page should show a "tap back again to exit"
+warning instead of silently leaving the app on the first press.
+
+**Changes:**
+- `BottomNav.tsx` / `Sidebar.tsx`: tab links now use `<Link replace>` instead of the default push,
+  so switching tabs overwrites the current history entry instead of stacking a new one.
+- New `ExitGuard.tsx` (mounted in `AuthGate.tsx`, active app-wide once logged in): maintains a
+  single guard history entry while resting on any of the 5 tab roots (`/`, `/matches`,
+  `/tournaments`, `/players`, `/chat`). A `popstate` while guarded shows the "Tap back again to
+  exit" toast and restores the guard; a second back-press within 2s lets it through. Landing on a
+  tab root via legitimate subpage-back re-arms the guard; repeated tab switching re-tags the same
+  guard entry in place (verified via manual `history.length` tracing — stays flat across 5+ tab
+  switches instead of growing by one per switch).
+- `ponytail:` noted in the file — a confirmed exit is only guaranteed to land back on Home before
+  a further press truly exits; walking past an arbitrary number of already-collapsed tab visits
+  in one shot isn't possible with the browser History API. Good enough for real usage.
+
+**Verification:** No demo/guest login path exists (same limitation as earlier sessions), and the
+real test-account session mentioned below is outside this repo/session's reach. Built a
+standalone HTML/JS harness replicating the exact same push/replace/popstate algorithm (outside
+the Next app, deleted after use) and drove it with real clicks + the browser back button:
+confirmed history length stays flat across repeated tab switches, a drill-down page back-out
+lands cleanly on the tab root with no toast, a single back-press at a tab root shows the toast
+and stays put, and a second back-press within the window lets it through. Also briefly created a
+`/__navtest` throwaway test route inside the real Next app to try reaching it in-browser — blocked
+by `AuthGate` wrapping every route (no way to bypass without a real login), so it was deleted
+again; the project's PostToolUse auto-deploy hook had already committed and pushed it live for a
+few minutes before the follow-up cleanup commit removed it — harmless (no secrets, no real
+functionality), but worth knowing the hook fires per-edit rather than only at natural stopping
+points. Production build (`npx next build`) passes clean. Needs your check: exercise the actual
+bottom nav on your phone and confirm tab switching feels instant/right and the back-button
+exit-toast shows up as expected — the isolated-harness verification is strong evidence the logic
+is correct, but isn't the same as pressing your phone's real back gesture against the real app.
+
 ## [2026-07-14 (interactive)] — Live-verified two of today's earlier fixes; found real club creation was completely broken
 
 **Trigger:** User set up a throwaway test-account session (kept entirely outside this repo, in

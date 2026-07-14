@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 
 // The 5 BottomNav tab roots. Landing on one of these collapses history to a
 // single guarded entry (see below) instead of stacking one per tab visited.
-const TAB_ROOTS = new Set(['/', '/matches', '/tournaments', '/players', '/chat', '/__navtest', '/__navtest/matches', '/__navtest/players']); // TEMP-TEST-LINE
+const TAB_ROOTS = new Set(['/', '/matches', '/tournaments', '/players', '/chat']);
 const norm = (p: string) => p.replace(/\/+$/, '') || '/';
 const TOAST_MS = 2000;
 
