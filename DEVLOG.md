@@ -1,5 +1,28 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (interactive, follow-up)] — Google login fixed (Supabase dashboard config, not code)
+
+**Trigger:** Continuation of the same Google-login report. Confirmed via screenshots that
+`Site URL` was still the Supabase default (`http://localhost:3000`) and `Redirect URLs` was
+completely empty, and separately that the Google provider's Client ID/Secret in Supabase had
+never been filled in at all — Google sign-in was never fully wired up, not just broken by the
+Netlify→GitHub Pages move.
+
+### What the user fixed (dashboard-only, no commit)
+- Supabase → Authentication → URL Configuration: Site URL and a Redirect URL entry both set to
+  `https://brendanlok.github.io/courtconnect/`.
+- Reused the OAuth 2.0 client Google auto-created back when this project used Firebase Auth
+  ("Web client (auto created by Google Service)") instead of creating a new one — added
+  `https://brendanlok.github.io` as an authorized origin and Supabase's callback URL
+  (`https://lzwalydwpruhldydgjjc.supabase.co/auth/v1/callback`) as an authorized redirect URI,
+  then pasted that client's ID/secret into Supabase's Google provider settings and enabled it.
+
+### Verified live
+Clicked "Continue with Google" on the real deployed site — now correctly lands on a normal
+Google sign-in prompt ("Sign in to continue to lzwalydwpruhldydgjjc.supabase.co"), no
+`redirect_uri_mismatch`, none of the earlier "requested path is invalid" breakage. Stopped
+there deliberately rather than completing a real sign-in.
+
 ## [2026-07-14 (interactive)] — Fixed: signup looked like it silently failed
 
 **Trigger:** User reported two things directly: Google login not working, and signup not making
