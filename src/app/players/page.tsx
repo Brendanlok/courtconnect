@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -18,12 +18,6 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
-
-// Real accounts aren't in the static export's pre-rendered /players/[username]/
-// paths (build-time generateStaticParams only covers the demo roster) — route
-// them through /profile/?uid=X instead, same convention as QRModal.
-const isRealPlayer = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
-const profileHref = (p: UserProfile) => isRealPlayer(p.uid) ? `/profile/?uid=${p.uid}` : `/players/${p.username}/`;
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 const TABS = ['Leaderboard', 'Following', 'Clubs'] as const;

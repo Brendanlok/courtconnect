@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { timeAgo, BASE_PATH } from '@/lib/utils';
+import { timeAgo, BASE_PATH, profileHref } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message, Conversation } from '@/types';
@@ -186,7 +186,7 @@ export default function Chat() {
         <button onClick={() => setMobileView('list')} className="md:hidden text-slate-400 hover:text-white mr-1">
           <ArrowLeft size={18}/>
         </button>
-        <a href={`/players/${active.participant.username}/`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+        <a href={profileHref(active.participant)} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
             <Avatar name={active.participant.displayName} size="sm"/>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
@@ -205,7 +205,10 @@ export default function Chat() {
           </div>
         </a>
         <button
-          onClick={() => { window.location.href = `${BASE_PATH}/players/${active.participant.username}/?challenge=1`; }}
+          onClick={() => {
+            const href = profileHref(active.participant);
+            window.location.href = `${BASE_PATH}${href}${href.includes('?') ? '&' : '?'}challenge=1`;
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold transition-colors">
           <Zap size={12}/> Challenge
         </button>

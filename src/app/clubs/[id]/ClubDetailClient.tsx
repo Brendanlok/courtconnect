@@ -7,7 +7,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { timeAgo, maxClubsForTier, getTier } from '@/lib/utils';
+import { timeAgo, maxClubsForTier, getTier, profileHref } from '@/lib/utils';
 import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages } from '@/lib/supabaseService';
 import { auth } from '@/lib/supabase';
 import {
@@ -373,7 +373,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1.5"><Star size={12}/> Top Players</p>
             <div className="space-y-2">
               {members.slice(0, 5).map((p, i) => (
-                <Link key={p.uid} href={`/players/${p.username}/`}
+                <Link key={p.uid} href={profileHref(p)}
                   className="flex items-center gap-3 hover:bg-slate-800/50 rounded-xl px-2 py-1.5 transition-colors">
                   <span className="text-xs text-slate-600 w-4 shrink-0">#{i + 1}</span>
                   <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
@@ -404,7 +404,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               const isModerator = (club.moderatorIds ?? []).includes(p.uid);
               return (
                 <div key={p.uid} className="flex items-center gap-3 px-5 py-3">
-                  <Link href={`/players/${p.username}/`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                  <Link href={profileHref(p)} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
                     <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">

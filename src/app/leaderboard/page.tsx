@@ -5,12 +5,10 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm } from '@/lib/utils';
+import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref } from '@/lib/utils';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, MalaysiaState, Tier } from '@/types';
-
-const isRealPlayer = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Following'] as const;
 type Tab = typeof TABS[number];
@@ -62,11 +60,6 @@ export default function Leaderboard() {
   const showPodium = !query && top3.length >= 3;
   const rest      = showPodium ? list.slice(3) : list;
   const meInList  = list.find(p => p.uid === 'me');
-
-  // Real accounts aren't in the static export's pre-rendered /players/[username]/
-  // paths (build-time generateStaticParams only covers the demo roster) — route
-  // them through /profile/?uid=X instead, same convention as QRModal.
-  const profileHref = (p: UserProfile) => isRealPlayer(p.uid) ? `/profile/?uid=${p.uid}` : `/players/${p.username}/`;
 
   return (
     <div className="space-y-6">

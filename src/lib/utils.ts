@@ -9,6 +9,13 @@ export function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+// /players/[username]/ only pre-renders the demo roster (static export) — a
+// real account's username 404s there, so real players route through
+// /profile/?uid=X instead (works for any signed-in account).
+export function profileHref(p: { uid: string; username: string; isDummy?: boolean }): string {
+  return p.isDummy || p.uid === 'me' ? `/players/${p.username}/` : `/profile/?uid=${p.uid}`;
+}
+
 export function getTier(mmr: number): Tier {
   if (mmr < 800)  return 'Beginner';
   if (mmr < 1000) return 'Bronze';
