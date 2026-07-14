@@ -566,7 +566,8 @@ export async function ensureSeedClubsExist(seedClubs: Club[]): Promise<void> {
 }
 
 export async function createClubDoc(club: Club) {
-  await supabase.from('clubs').insert(clubObjToRow(club));
+  const { error } = await supabase.from('clubs').insert(clubObjToRow(club));
+  if (error) throw error;
 }
 
 export async function updateClubDoc(id: string, patch: Partial<Club>) {
