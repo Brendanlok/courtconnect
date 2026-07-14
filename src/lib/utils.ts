@@ -16,6 +16,13 @@ export function profileHref(p: { uid: string; username: string; isDummy?: boolea
   return p.isDummy || p.uid === 'me' ? `/players/${p.username}/` : `/profile/?uid=${p.uid}`;
 }
 
+// Same static-export limitation as profileHref, for clubs: /clubs/[id]/ only
+// pre-renders the demo roster's club ids, so a real (user-created) club 404s
+// there — route it through /clubs/view/?id=X instead.
+export function clubHref(c: { id: string; isDummy?: boolean }): string {
+  return c.isDummy ? `/clubs/${c.id}/` : `/clubs/view/?id=${c.id}`;
+}
+
 export function getTier(mmr: number): Tier {
   if (mmr < 800)  return 'Beginner';
   if (mmr < 1000) return 'Bronze';

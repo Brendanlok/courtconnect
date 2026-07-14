@@ -10,7 +10,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
@@ -404,7 +404,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             ) : (
             <div className="space-y-2">
               {playerClubs.map(club => (
-                <a key={club.id} href={`/clubs/${club.id}/`}
+                <a key={club.id} href={clubHref(club)}
                   className="flex items-center gap-4 p-3 bg-slate-800/60 border border-slate-700 hover:border-violet-500/40 rounded-2xl transition-colors group">
                   {/* Club logo */}
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black border ${club.color}`}>

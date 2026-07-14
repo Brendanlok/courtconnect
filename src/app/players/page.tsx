@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -476,10 +476,10 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       return aMe - bMe;
     });
 
-  const copyLink = (clubId: string) => {
-    const url = `${window.location.origin}${BASE_PATH}/clubs/${clubId}/`;
+  const copyLink = (club: Club) => {
+    const url = `${window.location.origin}${BASE_PATH}${clubHref(club)}`;
     navigator.clipboard.writeText(url).then(() => {
-      setCopiedId(clubId);
+      setCopiedId(club.id);
       setTimeout(() => setCopiedId(null), 2000);
     }).catch(() => {});
   };
@@ -556,7 +556,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
           return (
             <div key={club.id}
-              onClick={() => { window.location.href = `${BASE_PATH}/clubs/${club.id}/`; }}
+              onClick={() => { window.location.href = `${BASE_PATH}${clubHref(club)}`; }}
               className={`bg-slate-900 border rounded-2xl overflow-hidden transition-colors cursor-pointer hover:border-slate-600
               ${isMine ? 'border-emerald-500/40 shadow-[0_0_0_1px_rgba(16,185,129,0.15)] hover:border-emerald-500/60' : 'border-slate-800'}`}>
               <div className="p-4 space-y-3">
@@ -638,7 +638,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
                     {club.minMMR && <span className="flex items-center gap-1 text-amber-400/80">Min {club.minMMR.toLocaleString()}</span>}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button onClick={e => { e.stopPropagation(); copyLink(club.id); }}
+                    <button onClick={e => { e.stopPropagation(); copyLink(club); }}
                       className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] text-slate-400 transition-colors">
                       {copiedId === club.id ? <><CheckCheck size={10} className="text-emerald-400"/> Copied</> : <><Copy size={10}/> Share</>}
                     </button>
