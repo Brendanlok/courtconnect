@@ -691,7 +691,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await createClubDoc(stored);
       return null;
     } catch (e: unknown) {
-      return e instanceof Error ? e.message : 'Something went wrong. Please try again.';
+      // Supabase errors (PostgrestError) are plain {message, code, ...}
+      // objects, not Error instances - instanceof Error would miss them.
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
     }
   }, [myRealUid]);
 
