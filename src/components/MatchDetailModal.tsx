@@ -5,6 +5,7 @@ import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { PointLogTable } from '@/components/LiveMatchModal';
 
 interface Props {
   match: Match | null;
@@ -187,6 +188,18 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
                 <span className="text-slate-500">Avg. gap between points</span>
                 <span className="text-slate-200 text-right font-semibold">{Math.round(m.liveStats.avgPointGapSec)}s</span>
               </div>
+            </div>
+          )}
+
+          {/* Point-by-point log, one table per game */}
+          {m.pointLog && m.pointLog.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs font-semibold text-slate-400">Point Log</p>
+              {m.pointLog.map((log, i) => (
+                log.length > 0 && (
+                  <PointLogTable key={i} log={log} teamAName={myName} teamBName={oppName} active={false} />
+                )
+              ))}
             </div>
           )}
 

@@ -78,6 +78,10 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
   const opp = amP1 ? { id: sm.player2Id, name: sm.player2Name, username: sm.player2Username }
                    : { id: sm.player1Id, name: sm.player1Name, username: sm.player1Username };
   const myDelta = sm.mmrChange === undefined ? undefined : (sm.reporterUid === myUid ? sm.mmrChange : -sm.mmrChange);
+  // pointLog/liveStats sides were captured as 'a' = reporter (always stored
+  // as player1), 'b' = opponent — same orientation as games' p1/p2, so flip
+  // them the same way when the viewer is the non-reporting side.
+  const flipSide = (s: 'a' | 'b'): 'a' | 'b' => (s === 'a' ? 'b' : 'a');
   return {
     id: sm.id, type: sm.type as Match['type'],
     player1Id: my.id, player1Name: my.name, player1Username: my.username,
@@ -89,6 +93,12 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
     playedAt: sm.playedAt,
     location: sm.location,
     pendingConfirmations: sm.pendingConfirmations.map(u => u === myUid ? 'me' : u),
+    recordedLive: sm.recordedLive,
+    liveStats: sm.liveStats && (amP1 ? sm.liveStats : {
+      ...sm.liveStats,
+      maxWinStreak: { ...sm.liveStats.maxWinStreak, side: flipSide(sm.liveStats.maxWinStreak.side) },
+    }),
+    pointLog: sm.pointLog && (amP1 ? sm.pointLog : sm.pointLog.map(g => g.map(flipSide))),
   };
 }
 
@@ -506,7 +516,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         location: m.location,
         pendingConfirmations: [m.player2Id],
         mmrAppliedBy: [],
-        pointLog: m.pointLog,
+        pointLog: m.pointLog, recordedLive: m.recordedLive, liveStats: m.liveStats,
       };
       sendMatchDoc(stored).catch(() => {});
       // Optimistic local echo, same pattern as sendChallenge.

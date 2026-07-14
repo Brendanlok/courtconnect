@@ -10,7 +10,7 @@
  */
 import { supabase } from '@/lib/supabase';
 import { getTier } from '@/lib/utils';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState } from '@/types';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -638,12 +638,17 @@ export interface StoredMatch {
   winnerId: string; games: { p1: number; p2: number }[]; status: 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
   mmrChange?: number; playedAt: string; location?: string;
   pendingConfirmations: string[]; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
+  recordedLive?: boolean; liveStats?: LiveMatchStats;
 }
 
-// mmrAppliedBy, reporterUid, and pointLog have no columns in the `matches`
-// table (0002) — stored inside `live_stats` jsonb (unused for these plain
-// reported matches) as a small side-channel rather than adding new columns.
-interface ExtraMeta { reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][] }
+// mmrAppliedBy, reporterUid, pointLog, recordedLive, and liveStats have no
+// columns in the `matches` table (0002) — stored inside `live_stats` jsonb
+// (unused for these plain reported matches) as a small side-channel rather
+// than adding new columns.
+interface ExtraMeta {
+  reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
+  recordedLive?: boolean; liveStats?: LiveMatchStats;
+}
 
 function matchRowToStored(row: Record<string, unknown>): StoredMatch {
   const extra = (row.live_stats as ExtraMeta | null) ?? { reporterUid: row.player1_id as string, mmrAppliedBy: [] };
@@ -656,7 +661,7 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
     winnerId: row.winner_id as string, games: row.games as StoredMatch['games'], status: row.status as StoredMatch['status'],
     mmrChange: row.mmr_change as number | undefined, playedAt: row.played_at as string, location: row.location as string | undefined,
     pendingConfirmations: (row.pending_confirmations as string[]) ?? [], mmrAppliedBy: extra.mmrAppliedBy ?? [],
-    pointLog: extra.pointLog,
+    pointLog: extra.pointLog, recordedLive: extra.recordedLive, liveStats: extra.liveStats,
   };
 }
 
@@ -676,7 +681,10 @@ export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) 
 }
 
 export async function sendMatchDoc(m: StoredMatch) {
-  const extra: ExtraMeta = { reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog };
+  const extra: ExtraMeta = {
+    reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog,
+    recordedLive: m.recordedLive, liveStats: m.liveStats,
+  };
   await supabase.from('matches').insert({
     id: m.id, type: m.type, player1_id: m.player1Id, player1_name: m.player1Name, player1_username: m.player1Username,
     player2_id: m.player2Id, player2_name: m.player2Name, player2_username: m.player2Username, winner_id: m.winnerId,

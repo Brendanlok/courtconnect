@@ -333,7 +333,7 @@ function biggestComebackInGame(log: ('a' | 'b')[], winner: 'A' | 'B'): number {
   return maxDeficit;
 }
 
-function PointLogTable({ log, teamAName, teamBName, active }: {
+export function PointLogTable({ log, teamAName, teamBName, active }: {
   log: ('a' | 'b')[]; teamAName: string; teamBName: string; active: boolean;
 }) {
   const rowCell = (side: 'a' | 'b', i: number, borderClass: string) => {
