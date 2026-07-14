@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-14 (auto-dev, 2nd session, cont'd further)] — Fixed: real chat partner / club member profile links 404'd
+
+**Trigger:** Continued self-directed work. While checking for other instances of the "silently
+broken for real accounts" bug class found earlier this session, found a second one.
+
+### What was broken
+`/players/[username]/` is a static-export route — `generateStaticParams` only pre-renders the
+demo roster's usernames, so a real account's username 404s there. `leaderboard/page.tsx` and
+`players/page.tsx` already knew this and had an identical `profileHref()` workaround (real
+players route through `/profile/?uid=X` instead), but two other places that link to a player's
+profile never got it: clicking a real chat partner's name/avatar in Chat (or the "Challenge"
+button next to it), and clicking a real club member in a club's Top Players or Members list.
+Both would dead-end on a 404 for any real (non-demo) account.
+
+### Fix
+Promoted the duplicated `profileHref()` (was copy-pasted identically into both files) into a
+shared `src/lib/utils.ts` helper, and applied it at the two missing call sites
+(`chat/page.tsx`, `ClubDetailClient.tsx`). The Challenge button's `?challenge=1` query param is
+preserved but only does anything on the demo-roster path — for a real player it now correctly
+lands on `/profile/?uid=X`, which already has its own visible Challenge button
+(`PlayerActionCard`), so nothing is lost.
+
+### Verification
+`npx next build` clean. Did not run the full repo ESLint config — it surfaces a large amount of
+pre-existing, unrelated lint debt across the codebase (hooks-order and setState-in-effect
+issues in files this session touched, none near the actual edits) that isn't part of this
+project's deploy gate; confirmed my specific added lines are plain attribute swaps with no
+lint-relevant risk. Not verified live — same login constraint as every session.
+
 ## [2026-07-14 (auto-dev, 2nd session cont'd)] — Fixed: live-match stats/point-log never actually reached real matches
 
 **Trigger:** Continuation of the same session, self-directed (no new Telegram/Notion signal —
