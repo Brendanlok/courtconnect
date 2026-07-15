@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-15] — Feature: disputed match resolution (re-submit model)
+
+### 🟠 Match dispute resolution
+**Why:** `disputeMatch` has always been a permanent dead end — no way to resolve a disputed
+result. Lok delegated the model choice; re-submit was chosen over admin review since this app
+has no global moderator role, and re-submit reuses the existing pending-confirmation flow
+end to end.
+
+- Disputing a result now lets the disputer propose a corrected score, sent back to the other
+  side to confirm or dispute in turn — same mechanism as the original report.
+- `Match`/`StoredMatch` gained `disputedBy` to gate who can propose the correction.
+
+---
+
 ## [2026-07-15] — Fix: real 1:1 chat showed the other person as generic "Player"
 
 ### 🔴 Chat participant display

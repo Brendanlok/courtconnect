@@ -1,5 +1,45 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Feature: disputed match resolution (re-submit model)
+
+**Trigger:** Lok asked me to decide the resolution model myself, re-submit vs. admin review,
+for the long-standing gap where `disputeMatch` set a match to `Disputed` with no way out.
+
+**Decision: re-submit, not admin review.** This app has no global moderator/admin role for
+matches — only club-scoped moderators, which don't apply here — so admin review would mean
+inventing a whole new admin system from scratch for a 2-real-user, pre-launch app. Re-submit
+reuses the entire pending-confirmation mechanism that already exists (and was just fixed today
+for Live Match): the disputer proposes a corrected score, it goes back to the other side to
+confirm or dispute in turn, exactly like the original report did. Smallest correct diff, fits
+how every other multi-party flow in this app already works.
+
+**What changed:**
+- `Match`/`StoredMatch` gained `disputedBy?: string` — who last disputed, so only they get to
+  propose the fix (not the original reporter re-approving their own claim unchanged).
+- `disputeMatch` now records who disputed (`'me'` locally, the real uid for shared matches).
+- New `resubmitMatch(id, games)`: recomputes the winner from the corrected scores. Keeps the
+  original mmr delta's *magnitude* and re-signs it for the (possibly new) winner rather than
+  re-running the Elo calc with live current MMRs — `ponytail:` noted in `supabaseService.ts`,
+  since getting that fully accurate on a winner-flip needs an extra opponent-MMR fetch this v1
+  doesn't do. Sets `status: 'Pending'` with the correction routed to whichever side ISN'T
+  resubmitting (handles a second dispute round correctly, not just the first).
+- `MatchDetailModal.tsx`: a "Propose Correct Score" action appears only for the disputer, with
+  an inline score-entry form (same input style as `LogMatchModal`) pre-filled from the disputed
+  scores. A status banner explains the state to both sides.
+- Wired `resubmitMatch`/`onResubmit` through all three places `MatchDetailModal` is rendered
+  (`page.tsx`, `matches/page.tsx`, `PlayerProfileClient.tsx`).
+
+**Caught while writing it:** the shared-match version of `resubmitSharedMatch` initially always
+routed the correction back to `player1Id` (the original reporter) — wrong for a *second* dispute
+round, where the original reporter is now the one resubmitting and it should go back to the
+other side instead. Fixed before it shipped by determining the recipient as whichever of
+player1/player2 isn't the resubmitting uid.
+
+**Verification:** `npx next build` and `npm run lint` clean (zero new errors — the 3 that
+surface near touched files all predate this change). Could not live-test the actual dispute →
+resubmit → confirm cycle with two real accounts — same recurring limitation as always (no
+login, no live-device testing available this session).
+
 ## [2026-07-15 (auto-dev)] — Fix: real 1:1 chat showed the other person as generic "Player"
 
 **Trigger:** Left as a "worth checking" note in the previous entry while fixing the club
