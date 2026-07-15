@@ -1,5 +1,30 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Fix: real 1:1 chat showed the other person as generic "Player"
+
+**Trigger:** Left as a "worth checking" note in the previous entry while fixing the club
+tier-limit bug — followed up immediately rather than leaving it for a future session.
+
+**Bug:** `loadParticipantsMap` in `supabaseService.ts` (feeds every shared/real 1:1 conversation)
+read participant profiles from the base `users` table. Migration `0003_restrict_users_pii.sql`
+(2026-07-14) locked `users` to owner-only reads (`auth.uid() = uid`) and added a `users_public`
+view specifically so other-player lookups keep working — every other cross-user lookup in this
+file already uses `users_public` (there's even a comment two lines above documenting the
+convention), but this one call site was missed. Since RLS silently returns zero rows rather than
+erroring, every real chat conversation's OTHER participant silently fell back to
+`toLocalConversation`'s placeholder data (`AppContext.tsx:43-54`) — displayed as generic
+"Player", `Beginner` tier, 1200 MMR, no photo — regardless of who they actually are. Sending
+messages was unaffected (that path builds its participant map from already-known local data),
+so most day-to-day chat use wouldn't surface it — most visible on returning to an existing
+conversation after this migration shipped.
+
+**Fix:** One-line table swap, `users` → `users_public`, matching the established convention.
+
+**Verification:** `npx next build` and `npm run lint` clean. Could not live-verify an actual
+two-real-account chat (no live-device/second-account testing available this session, same
+limitation as always) — verified by confirming the RLS policy text in the migration file and
+that every other analogous read in this file already uses `users_public`.
+
 ## [2026-07-15 (auto-dev)] — Fix: per-user tier club limit bypassable via club-admin actions
 
 **Trigger:** Follow-up targeted pass specifically hunting for the same bug shape as the

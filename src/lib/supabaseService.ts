@@ -369,7 +369,9 @@ async function loadConversationMessages(conversationId: string): Promise<ChatMes
 
 async function loadParticipantsMap(uids: string[]): Promise<Record<string, SharedParticipant>> {
   if (!uids.length) return {};
-  const { data } = await supabase.from('users').select('uid, display_name, username, tier, mmr, photo_url').in('uid', uids);
+  // users_public, not users — chat participants are frequently NOT the
+  // caller, and users' RLS is owner-only (see lookupUserByUsername above).
+  const { data } = await supabase.from('users_public').select('uid, display_name, username, tier, mmr, photo_url').in('uid', uids);
   const out: Record<string, SharedParticipant> = {};
   (data ?? []).forEach(r => {
     out[r.uid as string] = { displayName: r.display_name as string, username: r.username as string, tier: r.tier as string, mmr: r.mmr as number, photoURL: r.photo_url as string | null };

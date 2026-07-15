@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-15] — Fix: real 1:1 chat showed the other person as generic "Player"
+
+### 🔴 Chat participant display
+**Why:** The RLS-tightening migration (0003) added `users_public` for cross-user reads but
+missed this one call site — found while following up on a note left during the club-limit fix.
+
+- `loadParticipantsMap` now reads from `users_public` instead of the owner-read-only `users`
+  table, so real conversations show the other person's actual name/tier/MMR/photo again.
+
+---
+
 ## [2026-07-15] — Fix: per-user tier club limit bypassable via club-admin actions
 
 ### 🟠 Club tier-limit enforcement
