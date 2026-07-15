@@ -1,9 +1,10 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw, MapPin } from 'lucide-react';
+import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw, MapPin, Zap, ZapOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { LiveMatch, CourtPosition } from '@/types';
 import { computeHomography, applyHomography, CALIBRATION_CORNER_ORDER, type PixelPoint, type Homography } from '@/lib/courtCalibration';
+import { computeCoverCrop, toGrayscale, motionCentroid } from '@/lib/motionDetect';
 
 const CORNER_LABELS: Record<typeof CALIBRATION_CORNER_ORDER[number], string> = {
   nearLeft: 'near-left corner (closest to you, left side)',
@@ -13,6 +14,14 @@ const CORNER_LABELS: Record<typeof CALIBRATION_CORNER_ORDER[number], string> = {
 };
 
 type State = 'idle' | 'instructions' | 'requesting' | 'previewing' | 'recording' | 'done' | 'uploading' | 'uploaded';
+
+// Phase 2 auto-detect tuning. ponytail: fixed constants rather than a
+// settings UI — revisit if real-world use shows they need to vary per device.
+const DETECT_INTERVAL_MS = 1200; // ~1 sample/sec is plenty for a heatmap
+const DETECT_CANVAS_W = 160;
+const DETECT_CANVAS_H = 90;
+const DETECT_SLOW_MS = 250; // one tick's processing budget within the interval
+const DETECT_SLOW_TICKS_LIMIT = 3; // consecutive slow ticks before auto-falling-back to manual tap
 
 interface Props {
   match: LiveMatch;
@@ -81,6 +90,11 @@ export default function ClipRecorder({
   const [calibCorners, setCalibCorners] = useState<PixelPoint[]>([]);
   const [calibLocked,  setCalibLocked]  = useState(false);
   const [lastTap,       setLastTap]     = useState<PixelPoint | null>(null);
+  // Pose-tracking heatmap Phase 2: auto-detect play position via frame-diff
+  // motion instead of requiring a manual tap every time. Off by default —
+  // manual tap (Phase 1) always stays available as the fallback.
+  const [autoDetect,    setAutoDetect]  = useState(false);
+  const [autoSlowNotice, setAutoSlowNotice] = useState(false);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
@@ -89,6 +103,9 @@ export default function ClipRecorder({
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const blobRef     = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const detectCanvasRef = useRef<HTMLCanvasElement>(null);
+  const prevGrayRef  = useRef<Uint8ClampedArray | null>(null);
+  const slowTicksRef = useRef(0);
 
   // autoStart skips the small idle button and opens straight to setup instructions
   useEffect(() => {
@@ -164,6 +181,9 @@ export default function ClipRecorder({
       setHomography(null);
       setCalibCorners([]);
       setCalibLocked(false);
+      setAutoDetect(false);
+      setAutoSlowNotice(false);
+      prevGrayRef.current = null;
     } catch {
       // Permission denied or no camera → native file input
       setNativeMode(true);
@@ -230,7 +250,60 @@ export default function ClipRecorder({
     setHomography(null);
     setCalibCorners([]);
     setCalibLocked(false);
+    setAutoDetect(false);
+    setAutoSlowNotice(false);
+    prevGrayRef.current = null;
   }, []);
+
+  // Phase 2: one frame-diff sample. Draws the video's currently-visible
+  // (object-cover-cropped) region onto a small offscreen canvas, diffs it
+  // against the previous sample, and reports the motion centroid the same
+  // way a manual tap would. Self-throttles: if it can't keep up with
+  // DETECT_INTERVAL_MS on this device for a few ticks running, it turns
+  // itself off rather than staying on and janking the recording.
+  const detectTick = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = detectCanvasRef.current;
+    if (!video || !canvas || !homography) return;
+    const rect = video.getBoundingClientRect();
+    if (!rect.width || !rect.height || !video.videoWidth || !video.videoHeight) return;
+
+    const t0 = performance.now();
+    const { sx, sy, sw, sh } = computeCoverCrop(video.videoWidth, video.videoHeight, rect.width, rect.height);
+    canvas.width = DETECT_CANVAS_W;
+    canvas.height = DETECT_CANVAS_H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, DETECT_CANVAS_W, DETECT_CANVAS_H);
+    const gray = toGrayscale(ctx.getImageData(0, 0, DETECT_CANVAS_W, DETECT_CANVAS_H).data, DETECT_CANVAS_W, DETECT_CANVAS_H);
+
+    const prev = prevGrayRef.current;
+    prevGrayRef.current = gray;
+    if (prev) {
+      const centroid = motionCentroid(prev, gray, DETECT_CANVAS_W, DETECT_CANVAS_H);
+      if (centroid) {
+        const pos = applyHomography(homography, [centroid.x, centroid.y]);
+        onCourtTap?.({ x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) });
+        setLastTap([centroid.x, centroid.y]);
+      }
+    }
+
+    const dt = performance.now() - t0;
+    slowTicksRef.current = dt > DETECT_SLOW_MS ? slowTicksRef.current + 1 : 0;
+    if (slowTicksRef.current >= DETECT_SLOW_TICKS_LIMIT) {
+      slowTicksRef.current = 0;
+      setAutoDetect(false);
+      setAutoSlowNotice(true);
+    }
+  }, [homography, onCourtTap]);
+
+  useEffect(() => {
+    if (!autoDetect || !homography || !calibLocked) return;
+    if (state !== 'previewing' && state !== 'recording') return;
+    prevGrayRef.current = null; // fresh baseline each time detection (re)starts
+    const id = setInterval(detectTick, DETECT_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [autoDetect, homography, calibLocked, state, detectTick]);
 
   const confirmCalibration = useCallback(() => setCalibLocked(true), []);
 
