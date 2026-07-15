@@ -79,6 +79,7 @@ export default function ClipRecorder({
   const [readiness, setReadiness]   = useState<Readiness>('checking');
   const [homography,   setHomography]   = useState<Homography | null>(null);
   const [calibCorners, setCalibCorners] = useState<PixelPoint[]>([]);
+  const [calibLocked,  setCalibLocked]  = useState(false);
   const [lastTap,       setLastTap]     = useState<PixelPoint | null>(null);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
@@ -162,6 +163,7 @@ export default function ClipRecorder({
       setReadiness('checking');
       setHomography(null);
       setCalibCorners([]);
+      setCalibLocked(false);
     } catch {
       // Permission denied or no camera → native file input
       setNativeMode(true);
@@ -200,29 +202,64 @@ export default function ClipRecorder({
   // video's actual pixel resolution or any object-cover cropping.
   const handleCourtTap = useCallback((e: React.MouseEvent<HTMLVideoElement>) => {
     if (!courtTapMode) return;
+    // Once 4 corners are placed, taps land on the draft quad to fine-tune it
+    // (see dragCorner below) — clicks on blank video do nothing until confirmed.
+    if (homography && !calibLocked) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pt: PixelPoint = [(e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height];
 
     if (!homography) {
       const next = [...calibCorners, pt];
-      if (next.length < 4) { setCalibCorners(next); return; }
+      setCalibCorners(next);
+      if (next.length < 4) return;
       try {
         setHomography(computeHomography(next));
       } catch {
         // degenerate corners (e.g. two taps on the same spot) — restart calibration
+        setCalibCorners([]);
       }
-      setCalibCorners([]);
       return;
     }
 
     const pos = applyHomography(homography, pt);
     onCourtTap?.({ x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) });
     setLastTap(pt);
-  }, [courtTapMode, homography, calibCorners, onCourtTap]);
+  }, [courtTapMode, homography, calibLocked, calibCorners, onCourtTap]);
 
   const recalibrate = useCallback(() => {
     setHomography(null);
     setCalibCorners([]);
+    setCalibLocked(false);
+  }, []);
+
+  const confirmCalibration = useCallback(() => setCalibLocked(true), []);
+
+  // Dragging a draft corner handle recomputes the homography live so the user
+  // can fine-tune a rough tap before locking it in — same math, just re-run
+  // per corner move instead of once.
+  const dragCorner = useCallback((idx: number) => (e: React.PointerEvent<HTMLSpanElement>) => {
+    e.stopPropagation();
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    const move = (ev: PointerEvent) => {
+      const rect = videoEl.getBoundingClientRect();
+      const pt: PixelPoint = [
+        Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)),
+        Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height)),
+      ];
+      setCalibCorners(prev => {
+        const next = [...prev];
+        next[idx] = pt;
+        try { setHomography(computeHomography(next)); } catch { /* keep last valid homography */ }
+        return next;
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }, []);
 
   const closeModal = useCallback(() => {
@@ -432,6 +469,20 @@ export default function ClipRecorder({
                   <MapPin size={11}/> Tap the {CORNER_LABELS[CALIBRATION_CORNER_ORDER[calibCorners.length]]} · {calibCorners.length}/4
                 </div>
               </div>
+            ) : !calibLocked ? (
+              <div className={`absolute inset-x-3 flex justify-center gap-1.5 ${state === 'previewing' ? 'top-14' : 'top-3'}`}>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-amber-500/90 text-black text-center">
+                  Drag corners to fine-tune
+                </div>
+                <button onClick={confirmCalibration}
+                  className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-emerald-500/90 text-white">
+                  Confirm
+                </button>
+                <button onClick={recalibrate}
+                  className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-black/50 text-slate-300">
+                  Restart
+                </button>
+              </div>
             ) : (
               <div className="absolute top-3 right-3 flex items-center gap-1.5">
                 <div className="bg-black/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -443,8 +494,16 @@ export default function ClipRecorder({
                 </button>
               </div>
             )}
+            {homography && calibLocked && (
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                <polygon points={calibCorners.map(([x, y]) => `${x * 100}%,${y * 100}%`).join(' ')}
+                  fill="none" stroke="#34d399" strokeOpacity="0.6" strokeWidth="1.5" strokeDasharray="5 4"/>
+              </svg>
+            )}
             {calibCorners.map(([x, y], i) => (
-              <span key={i} className="absolute w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white/80 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              <span key={i} onPointerDown={!calibLocked && homography ? dragCorner(i) : undefined}
+                className={`absolute rounded-full bg-emerald-400 border border-white/80 -translate-x-1/2 -translate-y-1/2
+                  ${!calibLocked && homography ? 'w-5 h-5 cursor-grab active:cursor-grabbing touch-none' : 'w-2.5 h-2.5 pointer-events-none'}`}
                 style={{ left: `${x * 100}%`, top: `${y * 100}%` }}/>
             ))}
             {lastTap && (
@@ -471,7 +530,7 @@ export default function ClipRecorder({
                 : 'bg-amber-500/90 text-black'}`}>
                 {readiness === 'checking' && <>⏳ Checking camera…</>}
                 {readiness === 'ready' && <>✓ Looks good — you&apos;re set to record</>}
-                {readiness === 'warn' && <>⚠ Rotate to landscape for full court coverage</>}
+                {readiness === 'warn' && <>⚠ Rotate to landscape (check auto-rotate is on in quick settings)</>}
               </div>
             </div>
           </>
