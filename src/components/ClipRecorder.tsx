@@ -1,8 +1,16 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw } from 'lucide-react';
+import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { LiveMatch } from '@/types';
+import type { LiveMatch, CourtPosition } from '@/types';
+import { computeHomography, applyHomography, CALIBRATION_CORNER_ORDER, type PixelPoint, type Homography } from '@/lib/courtCalibration';
+
+const CORNER_LABELS: Record<typeof CALIBRATION_CORNER_ORDER[number], string> = {
+  nearLeft: 'near-left corner (closest to you, left side)',
+  nearRight: 'near-right corner (closest to you, right side)',
+  farRight: 'far-right corner (far end, right side)',
+  farLeft: 'far-left corner (far end, left side)',
+};
 
 type State = 'idle' | 'instructions' | 'requesting' | 'previewing' | 'recording' | 'done' | 'uploading' | 'uploaded';
 
@@ -17,6 +25,12 @@ interface Props {
   onRequestExit?: () => void;
   matchComplete?: boolean;
   onLogResult?: () => void;
+  // Pose-tracking heatmap Phase 1: when set, tapping the live camera preview
+  // (instead of a separate abstract court diagram) marks a court position,
+  // via a one-time 4-corner calibration to correct for the camera's angle.
+  courtTapMode?: boolean;
+  onCourtTap?: (pos: CourtPosition) => void;
+  courtTapCount?: number;
 }
 
 function fmt(s: number) {
@@ -55,6 +69,7 @@ function CourtGuideOverlay() {
 export default function ClipRecorder({
   match, onUploaded, autoStart = false, canScore = false, onAddPoint,
   onUndo, canUndo = false, onRequestExit, matchComplete = false, onLogResult,
+  courtTapMode = false, onCourtTap, courtTapCount = 0,
 }: Props) {
   const [state,    setState]    = useState<State>('idle');
   const [error,    setError]    = useState('');
@@ -62,6 +77,9 @@ export default function ClipRecorder({
   const [elapsed,  setElapsed]  = useState(0);
   const [nativeMode, setNativeMode] = useState(false); // iOS fallback: native file input
   const [readiness, setReadiness]   = useState<Readiness>('checking');
+  const [homography,   setHomography]   = useState<Homography | null>(null);
+  const [calibCorners, setCalibCorners] = useState<PixelPoint[]>([]);
+  const [lastTap,       setLastTap]     = useState<PixelPoint | null>(null);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
@@ -88,6 +106,13 @@ export default function ClipRecorder({
     streamRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
+
+  // Fade the tap-feedback dot out shortly after each court tap.
+  useEffect(() => {
+    if (!lastTap) return;
+    const t = setTimeout(() => setLastTap(null), 700);
+    return () => clearTimeout(t);
+  }, [lastTap]);
 
   // Readiness check — confirms the stream is actually live and the phone is
   // physically held in landscape before letting the user hit record. Not real
@@ -135,6 +160,8 @@ export default function ClipRecorder({
       }
       setState('previewing');
       setReadiness('checking');
+      setHomography(null);
+      setCalibCorners([]);
     } catch {
       // Permission denied or no camera → native file input
       setNativeMode(true);
@@ -164,6 +191,38 @@ export default function ClipRecorder({
   const stopRec = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     recorderRef.current?.stop();
+  }, []);
+
+  // Tapping the live preview: first 4 taps calibrate (map this camera's
+  // perspective onto the court), every tap after that reports a position.
+  // Coordinates are stored as a fraction of the video's rendered box, same
+  // convention CourtHeatmap.tsx uses — self-consistent regardless of the
+  // video's actual pixel resolution or any object-cover cropping.
+  const handleCourtTap = useCallback((e: React.MouseEvent<HTMLVideoElement>) => {
+    if (!courtTapMode) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pt: PixelPoint = [(e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height];
+
+    if (!homography) {
+      const next = [...calibCorners, pt];
+      if (next.length < 4) { setCalibCorners(next); return; }
+      try {
+        setHomography(computeHomography(next));
+      } catch {
+        // degenerate corners (e.g. two taps on the same spot) — restart calibration
+      }
+      setCalibCorners([]);
+      return;
+    }
+
+    const pos = applyHomography(homography, pt);
+    onCourtTap?.({ x: Math.max(0, Math.min(1, pos.x)), y: Math.max(0, Math.min(1, pos.y)) });
+    setLastTap(pt);
+  }, [courtTapMode, homography, calibCorners, onCourtTap]);
+
+  const recalibrate = useCallback(() => {
+    setHomography(null);
+    setCalibCorners([]);
   }, []);
 
   const closeModal = useCallback(() => {
@@ -362,7 +421,37 @@ export default function ClipRecorder({
       {/* Court / camera area — 2/3 of screen, controls overlaid at the bottom */}
       <div className="flex-[2] min-h-0 relative bg-black flex items-center justify-center">
         {(state === 'requesting' || state === 'previewing' || state === 'recording') && (
-          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline/>
+          <video ref={videoRef} className={`w-full h-full object-cover ${courtTapMode ? 'cursor-crosshair' : ''}`}
+            muted playsInline onClick={handleCourtTap}/>
+        )}
+        {courtTapMode && (state === 'previewing' || state === 'recording') && (
+          <>
+            {!homography ? (
+              <div className={`absolute inset-x-3 flex justify-center pointer-events-none ${state === 'previewing' ? 'top-14' : 'top-3'}`}>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-emerald-500/90 text-white text-center">
+                  <MapPin size={11}/> Tap the {CORNER_LABELS[CALIBRATION_CORNER_ORDER[calibCorners.length]]} · {calibCorners.length}/4
+                </div>
+              </div>
+            ) : (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                <div className="bg-black/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {courtTapCount} pts
+                </div>
+                <button onClick={recalibrate}
+                  className="bg-black/50 hover:bg-black/70 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors">
+                  Recalibrate
+                </button>
+              </div>
+            )}
+            {calibCorners.map(([x, y], i) => (
+              <span key={i} className="absolute w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white/80 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: `${x * 100}%`, top: `${y * 100}%` }}/>
+            ))}
+            {lastTap && (
+              <span className="absolute w-4 h-4 rounded-full bg-emerald-400/70 border border-white -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: `${lastTap[0] * 100}%`, top: `${lastTap[1] * 100}%` }}/>
+            )}
+          </>
         )}
         {state === 'requesting' && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -372,10 +461,10 @@ export default function ClipRecorder({
         {state === 'previewing' && (
           <>
             <CourtGuideOverlay/>
-            <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1">
+            <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1 pointer-events-none">
               Fit both baselines and the net inside the dashed guide
             </p>
-            <div className="absolute top-3 inset-x-3 flex justify-center">
+            <div className="absolute top-3 inset-x-3 flex justify-center pointer-events-none">
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
                 ${readiness === 'checking' ? 'bg-slate-800/90 text-slate-300'
                 : readiness === 'ready' ? 'bg-emerald-500/90 text-white'

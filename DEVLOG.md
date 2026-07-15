@@ -1,5 +1,44 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Pose-tracking heatmap Phase 1: tap the live camera view instead of a separate diagram
+
+**Trigger:** Lok approved building Phase 1 after I flagged the UX tradeoff (a one-time 4-corner
+calibration tap, in exchange for tapping the real camera view instead of a separate abstract
+diagram). Found the pure-math homography code from an earlier session's scratchpad
+(`courtCalibration.ts` + a passing self-check suite) and integrated it.
+
+**What changed:**
+- Moved the homography math into the repo at `src/lib/courtCalibration.ts` (swapped the
+  scratchpad's local `CourtPosition` type for the real `@/types` one, per its own comment) and
+  its self-check test at `src/lib/courtCalibration.selfcheck.ts` (`npx tsx
+  src/lib/courtCalibration.selfcheck.ts` — all 6 checks pass).
+- `ClipRecorder.tsx` gained three new opt-in props (`courtTapMode`, `onCourtTap`,
+  `courtTapCount`), off by default — the other two call sites (`LiveMatchModal.tsx`,
+  `app/live/page.tsx`) are untouched. When enabled, the first 4 taps on the live video walk the
+  user through tapping the court's corners in order (near-left → near-right → far-right →
+  far-left), computes a homography, then every tap after that converts camera-pixel position to
+  an accurate court position via `applyHomography` and reports it through `onCourtTap`. A
+  "Recalibrate" button resets it if the phone moves mid-session.
+- `CourtTrackModal.tsx` (the two-phone "Track & Record" flow) now passes `courtTapMode` through
+  to `ClipRecorder`, so taps can happen directly on the live camera picture once the camera's
+  open — the abstract `CourtHeatmap` diagram stays as-is below it for before the camera starts
+  or as an alternative any time.
+
+**Bug caught by the self-check before it shipped:** initially added `Math.max(0, Math.min(1,
+...))` clamping inside `applyHomography` itself as a "safety" addition — this broke test #2
+(interior-point recovery), because that test (and the real calibration-corner synthesis) uses
+`applyHomography` in the reverse direction to generate large-magnitude synthetic pixel
+coordinates, which the clamp silently corrupted. Reverted the clamp out of the pure math
+function and moved it to the one real call site that needs it (the actual tap handler in
+`ClipRecorder.tsx`) instead — a clean example of why the self-check exists.
+
+**Verification:** `npx next build` and `npm run lint` both clean (zero new errors). Traced the
+pointer-events stacking by hand and added `pointer-events-none` to two pre-existing overlay
+elements (the "Fit both baselines…" caption and the readiness badge) that would otherwise have
+silently swallowed taps landing in their strip — a real bug the calibration UI would have hit
+immediately on a real device. Could not live-test with an actual camera/touch device — same
+recurring limitation as every prior session on this feature.
+
 ## [2026-07-15 (auto-dev)] — Live Match results were permanently stuck "Pending", doubles used the wrong MMR formula
 
 **Trigger:** Autonomous bug-hunt pass (no queued To-Do work was actionable — all items blocked

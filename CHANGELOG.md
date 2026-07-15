@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-15] — Feature: Pose-tracking heatmap Phase 1 (camera-view tap tracking)
+
+### 🟡 Court tracking UX
+**Why:** Tapping a separate abstract diagram while also watching the live camera feed was
+unnecessary context-switching. Lok approved a one-time 4-corner calibration tap in exchange for
+tapping the real camera picture directly.
+
+- New `src/lib/courtCalibration.ts`: one-time 4-corner tap → homography → accurate court
+  position from any camera angle. Self-check at `courtCalibration.selfcheck.ts`.
+- `ClipRecorder.tsx`: opt-in `courtTapMode` — tap the live video to calibrate, then to mark
+  positions. Other consumers of `ClipRecorder` unaffected.
+- `CourtTrackModal.tsx`'s two-phone tracking flow now offers this alongside the existing
+  abstract-diagram tap surface.
+
+---
+
 ## [2026-07-15] — Fix: Live Match results permanently stuck "Pending", doubles MMR wrong
 
 ### 🔴 Live Match MMR pipeline

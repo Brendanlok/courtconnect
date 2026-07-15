@@ -159,11 +159,11 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
                 <span className="text-[11px] text-slate-500 text-right">{session.positions.length} positions logged (both ends)</span>
               </div>
               <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
-                Position your phone 3/4 back from {isHostEnd ? 'your baseline' : 'the far baseline'}, landscape, elevated. Tap the court below whenever play settles into a new spot.
+                Position your phone 3/4 back from {isHostEnd ? 'your baseline' : 'the far baseline'}, landscape, elevated. Once the camera&apos;s open, tap its 4 court corners once to calibrate, then tap the live picture whenever play settles into a new spot. Or use the diagram below any time.
               </p>
-              <ClipRecorder match={recorderStub}/>
+              <ClipRecorder match={recorderStub} courtTapMode onCourtTap={handleTap} courtTapCount={session.positions.length}/>
               <div>
-                <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Tap where play is happening</p>
+                <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Or tap where play is happening here</p>
                 <CourtHeatmap positions={session.positions} tapMode onTap={handleTap} showStats={false}/>
               </div>
               <Button variant="danger" onClick={handleEndTracking} className="w-full">
