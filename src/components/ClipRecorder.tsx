@@ -295,8 +295,14 @@ export default function ClipRecorder({
       const { error } = await supabase.storage.from('clips').upload(path, blob, { contentType: blob.type, upsert: true });
       if (error) throw error;
       setProgress(100);
-      const { data } = supabase.storage.from('clips').getPublicUrl(path);
-      const url = data.publicUrl;
+      // clips bucket is private (real match footage, not for anonymous public
+      // access) — sign the URL instead of getPublicUrl, which only works on
+      // public buckets. ponytail: 10-year expiry stored as a static URL rather
+      // than re-signing on every view; fine unless the storage signing key
+      // rotates, upgrade to sign-on-view if that ever becomes an issue.
+      const { data, error: signErr } = await supabase.storage.from('clips').createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (signErr || !data) throw signErr ?? new Error('No signed URL returned');
+      const url = data.signedUrl;
       blobRef.current = null;
       setState('uploaded');
       onUploaded?.(url);
