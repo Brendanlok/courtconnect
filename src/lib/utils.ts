@@ -5,10 +5,6 @@ import type { Tier, MalaysiaState, CountryCode } from '@/types';
 // alone doesn't include a subpath like /courtconnect on GitHub Pages.
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-export function cn(...classes: (string | undefined | false | null)[]) {
-  return classes.filter(Boolean).join(' ');
-}
-
 // /players/[username]/ only pre-renders the demo roster (static export) — a
 // real account's username 404s there, so real players route through
 // /profile/?uid=X instead (works for any signed-in account).
@@ -133,27 +129,6 @@ export const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as const;
 export const SLOT_IDS   = ['6_9am','9am_12pm','12_3pm','3_6pm','6_9pm','9pm_12am'] as const;
 export const SLOT_LABELS = ['6–9am','9–12pm','12–3pm','3–6pm','6–9pm','9–12am'] as const;
 
-export function formatAvailability(available: string): string {
-  if (!available) return '';
-  const ids = available.split(',').map(s => s.trim()).filter(Boolean);
-  const byDay: Record<string, string[]> = {};
-  for (const id of ids) {
-    const day = id.split('_')[0];
-    const dayIdx = (DAY_IDS as readonly string[]).indexOf(day);
-    if (dayIdx >= 0) {
-      const slotKey = id.slice(day.length + 1);
-      const slotIdx = (SLOT_IDS as readonly string[]).indexOf(slotKey);
-      const slotLabel = slotIdx >= 0 ? SLOT_LABELS[slotIdx] : slotKey;
-      if (!byDay[day]) byDay[day] = [];
-      byDay[day].push(slotLabel);
-    }
-  }
-  if (Object.keys(byDay).length === 0) return ids.join(', ');
-  return Object.entries(byDay)
-    .map(([day, slots]) => `${DAY_LABELS[(DAY_IDS as readonly string[]).indexOf(day)]}: ${slots.join(', ')}`)
-    .join(' · ');
-}
-
 // ─── Postcode lookup ──────────────────────────────────────────────────────────
 
 const PC_LOC: Record<string, { city: string; state: MalaysiaState }> = {
@@ -244,10 +219,6 @@ const PC_LOC: Record<string, { city: string; state: MalaysiaState }> = {
 export function postcodeToLocation(postcode: string): { city: string; state: MalaysiaState } | null {
   if (!/^\d{5}$/.test(postcode.trim())) return null;
   return PC_LOC[postcode.slice(0, 2)] ?? null;
-}
-
-export function postcodeToCity(postcode: string): string | null {
-  return postcodeToLocation(postcode)?.city ?? null;
 }
 
 export const MY_STATES = [
@@ -353,9 +324,6 @@ export const COUNTRIES: CountryData[] = [
   },
 ];
 
-export function getCountryByCode(code: CountryCode): CountryData {
-  return COUNTRIES.find(c => c.code === code) ?? COUNTRIES[0];
-}
 export function getCountryByName(name: string): CountryData {
   return COUNTRIES.find(c => c.name === name) ?? COUNTRIES[0];
 }

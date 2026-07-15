@@ -230,15 +230,6 @@ export interface CourtSession {
   venue?: string;
 }
 
-export interface AuthUser {
-  uid: string;
-  displayName: string;
-  username: string;
-  email: string;
-  provider: 'email' | 'google';
-  passwordHash?: string; // stored as-is for demo (not real hashing)
-}
-
 export interface LiveMatchPlayer {
   uid: string;
   displayName: string;

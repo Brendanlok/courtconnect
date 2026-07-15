@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-15] — Cleanup + fix: dead code removed, tournament regs & planned matches now persist across reloads
+
+### 🟠 Data persistence
+**Why:** An over-engineering/dead-code audit turned up two real bugs — tournament
+registrations and your own planned matches were written to the database correctly but never
+loaded back, so both silently reset to nothing on every reload.
+
+- Tournament registrations and planned matches now hydrate from the database on sign-in,
+  merged with local state so nothing already on screen gets clobbered.
+- Removed an abandoned "friends" feature (superseded by follow), a dead club-invite tracking
+  list, and several unused helper functions/types — no behavior change, just less code.
+
+---
+
 ## [2026-07-15] — Feature: disputed match resolution (re-submit model)
 
 ### 🟠 Match dispute resolution

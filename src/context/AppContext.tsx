@@ -8,7 +8,7 @@ import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
-  saveTournamentReg, deleteTournamentReg,
+  saveTournamentReg, deleteTournamentReg, loadTournamentRegs,
   loadConversations,
   subscribeChallengesFor, sendChallengeDoc, updateChallengeStatus, type StoredChallenge,
   subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
@@ -165,7 +165,6 @@ interface AppCtx {
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
-  clubInvites: string[];                 // club IDs I've been invited to
   inviteToClub: (clubId: string, targetUid: string) => void;
   acceptClubInvite: (clubId: string) => void;
   declineClubInvite: (clubId: string) => void;
@@ -242,7 +241,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // `clubs` (translated for display) and myClubIds/myClubPendingIds are
   // derived from it further down, same 'me'-normalization as challenges.
   const [rawClubs,         setRawClubs]          = useState<Club[]>(SEED_CLUBS);
-  const [clubInvites,      setClubInvites]       = useState<string[]>([]);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
   const [following,              setFollowing]             = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
@@ -328,6 +326,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch { /* Firestore unavailable — keep seed convs */ }
       })();
       loadAllRealUsers(authUser.uid).then(setAllRealPlayers).catch(() => {});
+      // Merge (not replace) — registerTournament already writes local/demo
+      // entries into this same map, and the server copy is only authoritative
+      // for real tournaments a signed-in account actually registered for.
+      loadTournamentRegs(authUser.uid).then(regs => setRegistrations(r => ({ ...r, ...regs }))).catch(() => {});
     });
     return unsub;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -755,10 +757,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const inviteToClub = useCallback((clubId: string, targetUid: string) => {
     if (targetUid === 'me') {
-      // Being invited by someone else — add pending invite + notification.
-      // (Kept local/session-only — a real per-account "invites received"
-      // list is a scoped-out follow-up, same as the club migration itself.)
-      setClubInvites(p => [...p, clubId]);
+      // Being invited by someone else — notify only. (No real per-account
+      // "invites received" list is kept — a scoped-out follow-up, same as
+      // the club migration itself.)
       addNotification({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
     } else {
       // Admin inviting another player — adds them immediately, matching the
@@ -770,13 +771,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const acceptClubInvite = useCallback((clubId: string) => {
     if ((!myClubIds.includes(clubId) && myClubIds.length >= clubLimit) || !myRealUid) return;
-    setClubInvites(p => p.filter(id => id !== clubId));
     addClubMember(clubId, myRealUid).catch(() => {});
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
   }, [myClubIds, clubLimit, myRealUid]);
 
   const declineClubInvite = useCallback((clubId: string) => {
-    setClubInvites(p => p.filter(id => id !== clubId));
     addNotification({ type: 'club_declined', title: 'Invitation Declined', body: 'You declined the club invitation.' });
   }, []);
 
@@ -990,7 +989,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
-      clubInvites, inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
+      inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,

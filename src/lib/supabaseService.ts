@@ -133,7 +133,6 @@ export async function loadAllRealUsers(excludeUid: string): Promise<UserProfile[
 // demo-opponent matches specifically. Add a nullable/no-FK column if that's
 // ever needed for real.
 export async function saveMatch(_uid: string, _match: Match) { /* no-op, see note above */ }
-export async function loadMatches(_uid: string): Promise<Match[]> { return []; }
 
 // ── Planned matches ───────────────────────────────────────────────────────────
 // planned_matches has real columns (host_uid, format, venue, date, status,
@@ -146,11 +145,6 @@ export async function savePlannedMatch(uid: string, pm: object) {
   await supabase.from('planned_matches').upsert({
     id: p.id, host_uid: uid, format: p.format, venue: p.venue, date: p.date, status: p.status ?? 'upcoming', data: pm,
   });
-}
-
-export async function deletePlannedMatch(uid: string, matchId: string) {
-  if (!uid || uid === 'me') return;
-  await supabase.from('planned_matches').delete().eq('id', matchId).eq('host_uid', uid);
 }
 
 export async function loadPlannedMatches(uid: string): Promise<object[]> {
@@ -179,13 +173,6 @@ export async function loadTournamentRegs(uid: string): Promise<Record<string, { 
   return result;
 }
 
-// ── Club membership ───────────────────────────────────────────────────────────
-
-export async function saveClubMembership(_uid: string, _clubIds: string[]) {
-  // no-op: club membership lives on the club row's member_ids (see clubs
-  // section below), not a field on the user — nothing to write here.
-}
-
 // ── Account deletion ──────────────────────────────────────────────────────────
 
 export async function deleteAccountData(uid: string): Promise<void> {
@@ -199,23 +186,6 @@ export async function deleteAccountData(uid: string): Promise<void> {
   // ponytail: this deletes the profile row + owned rows above; it does not
   // remove `uid` from other rows' arrays (clubs.member_ids, matches, etc) or
   // delete the auth.users account — see deleteUser() gap noted in AuthContext.
-}
-
-// ── Friends ───────────────────────────────────────────────────────────────────
-
-export async function saveFriend(uid: string, friendUid: string) {
-  if (!uid || uid === 'me') return;
-  await supabase.from('friends').upsert({ user_id: uid, friend_id: friendUid });
-}
-
-export async function removeFriendRecord(uid: string, friendUid: string) {
-  if (!uid || uid === 'me') return;
-  await supabase.from('friends').delete().eq('user_id', uid).eq('friend_id', friendUid);
-}
-
-export async function loadFriends(uid: string): Promise<string[]> {
-  const { data } = await supabase.from('friends').select('friend_id').eq('user_id', uid);
-  return (data ?? []).map(r => r.friend_id as string);
 }
 
 // ── User settings ─────────────────────────────────────────────────────────────
@@ -383,21 +353,6 @@ async function loadParticipantsMap(uids: string[]): Promise<Record<string, Share
 async function buildSharedConversation(row: { id: string; participant_ids: string[]; last_message: string | null; last_at: string | null }): Promise<SharedConversation> {
   const [messages, participants] = await Promise.all([loadConversationMessages(row.id), loadParticipantsMap(row.participant_ids ?? [])]);
   return { id: row.id, participantUids: row.participant_ids ?? [], participants, messages, lastMessage: row.last_message ?? '', lastAt: row.last_at ?? '' };
-}
-
-export function subscribeSharedConversation(chatId: string, cb: (c: SharedConversation | null) => void): () => void {
-  let cancelled = false;
-  const load = async () => {
-    const { data } = await supabase.from('conversations').select('*').eq('id', chatId).maybeSingle();
-    if (cancelled) return;
-    cb(data ? await buildSharedConversation(data as never) : null);
-  };
-  load();
-  const channel = supabase.channel(`conversation:${chatId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations', filter: `id=eq.${chatId}` }, load)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_messages', filter: `conversation_id=eq.${chatId}` }, load)
-    .subscribe();
-  return () => { cancelled = true; supabase.removeChannel(channel); };
 }
 
 // ponytail: Realtime postgres_changes filters only support column=eq, not

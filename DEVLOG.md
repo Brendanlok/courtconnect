@@ -1,5 +1,52 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Dead-code cleanup + fixed two "write without read-back" gaps
+
+**Trigger:** Switched lenses after bug-hunting hit diminishing returns — audited for
+over-engineering/dead code instead. Every finding below was independently re-verified by
+grepping every call site myself before touching anything, not taken on the audit's word alone.
+
+**Dead code removed** (zero callers anywhere, confirmed by grep):
+- `src/lib/utils.ts`: `cn()`, `postcodeToCity()`, `getCountryByCode()`, `formatAvailability()`
+- `src/types/index.ts`: `AuthUser` interface (pre-Supabase demo-auth leftover, includes a
+  `passwordHash?` field — never referenced, `AuthContext.tsx` uses `CompatUser` instead)
+- `src/lib/supabaseService.ts`: the entire `saveFriend`/`removeFriendRecord`/`loadFriends`
+  "friends" CRUD (an abandoned earlier design superseded by the `following`/`followPlayer`
+  system, which persists to localStorage instead), `saveClubMembership` (a no-op stub, never
+  called), `loadMatches` (no-op stub, never called), `subscribeSharedConversation` (singular —
+  only the plural `subscribeMySharedConversations` is used), `deletePlannedMatch` (cancelling a
+  planned match goes through a status update, not deletion — confirmed no delete UI exists)
+- `src/context/AppContext.tsx`: `clubInvites` state — written to faithfully by `inviteToClub`/
+  `acceptClubInvite`/`declineClubInvite` but never read by anything; the actual invite UI drives
+  off `Notification.meta.clubId` instead. Removed the state and its 3 dead setter calls, kept
+  the (genuinely used) functions themselves.
+
+**Two real "write without read-back" bugs found and fixed** (the audit's most valuable catch —
+these write to Supabase correctly but nothing ever loads the data back, so it silently resets
+on every reload for a real signed-in user):
+- Tournament registrations: `registerTournament`/`unregisterTournament` always called
+  `saveTournamentReg`/`deleteTournamentReg`, but `loadTournamentRegs` was never called anywhere.
+  Wired it into the existing auth-ready hydration effect in `AppContext.tsx` (same place
+  `loadUserProfile`/`loadConversations` already hydrate on sign-in) — merges into `registrations`
+  by spreading over local state, so demo/local entries aren't clobbered.
+- Planned matches: `matches/page.tsx`'s `planned` state initialized purely from `SEED_PLANNED`
+  and never loaded a real user's own saved plans back from Supabase (`savePlannedMatch` writes
+  correctly; `loadPlannedMatches` existed but was dead). Added an `onAuthStateChanged` effect in
+  the same file, merging loaded plans into `planned` by id — same merge-by-id idiom `AppContext`
+  already uses for real conversations.
+
+**Left as a flagged gap, not fixed:** `myEndorsements` (endorsements I've given) has the same
+"write without read-back" shape, but `loadEndorsementGiven(targetUid, fromUid)` only checks ONE
+target at a time — it can't hydrate the full `Record<targetUid, skills[]>` map without a new
+aggregate query (no target filter, grouped by target). That's a genuine small feature, not a
+one-line wire-up like the other two, so didn't rush it at the end of a long session — added to
+the Notion To-Do board instead.
+
+**Verification:** `npx next build` and `npm run lint` clean (zero new errors; same 60
+pre-existing errors as the session's original baseline, all in files untouched here). Loaded
+the dev server, no console/server errors. Could not verify the two hydration fixes with a real
+reload-with-real-data cycle — needs a login, same limitation as everything else today.
+
 ## [2026-07-15 (auto-dev)] — Follow-up: self-check for today's anti-cheat partner-vs-opponent fix
 
 **Trigger:** Same reasoning as the dispute-resubmit self-check just added — `antiCheatCheck` had

@@ -13,8 +13,8 @@ import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
   Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
 } from 'lucide-react';
-import { auth } from '@/lib/supabase';
-import { savePlannedMatch, deletePlannedMatch } from '@/lib/supabaseService';
+import { auth, onAuthStateChanged } from '@/lib/supabase';
+import { savePlannedMatch, loadPlannedMatches } from '@/lib/supabaseService';
 import { loadPausedMatch } from '@/lib/pausedMatch';
 import type { UserProfile, MatchType, Match } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -192,6 +192,29 @@ export default function MatchesPage() {
     setPlanned(prev => prev.map(m =>
       m.id === ref.plannedMatchId && !m.liveState ? { ...m, liveState: 'live' } : m));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A real signed-in user's own planned matches are saved to Supabase
+  // (savePlannedMatch above) but were never loaded back — every reload reset
+  // to just the seed demo plans. Merge by id, same idiom AppContext uses for
+  // real conversations, so a plan already open in this tab isn't clobbered.
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, authUser => {
+      if (!authUser) return;
+      loadPlannedMatches(authUser.uid).then(rows => {
+        const loaded = rows as PlannedMatch[];
+        if (!loaded.length) return;
+        setPlanned(prev => {
+          const merged = [...prev];
+          loaded.forEach(pm => {
+            const idx = merged.findIndex(m => m.id === pm.id);
+            if (idx >= 0) merged[idx] = pm; else merged.unshift(pm);
+          });
+          return merged;
+        });
+      }).catch(() => {});
+    });
+    return unsub;
   }, []);
 
   // Cancelled and completed plans move to History — a completed one is already
