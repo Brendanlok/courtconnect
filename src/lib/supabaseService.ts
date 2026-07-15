@@ -10,6 +10,7 @@
  */
 import { supabase } from '@/lib/supabase';
 import { getTier, maxClubsForTier } from '@/lib/utils';
+import { resubmitRecipient } from '@/lib/matchDispute';
 import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
@@ -744,9 +745,7 @@ export async function resubmitSharedMatch(id: string, resubmittingUid: string, g
   const player1Id = data?.player1_id as string | undefined;
   const player2Id = data?.player2_id as string | undefined;
   if (!player1Id || !player2Id) return;
-  // Send it to whichever side ISN'T resubmitting — not always player1, since
-  // a second dispute round can flip who's proposing the correction.
-  const recipient = resubmittingUid === player1Id ? player2Id : player1Id;
+  const recipient = resubmitRecipient(resubmittingUid, player1Id, player2Id);
   await patchExtra(id, { disputedBy: undefined });
   await supabase.from('matches').update({
     games, winner_id: winnerId, mmr_change: reporterMmrChange,

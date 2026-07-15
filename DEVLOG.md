@@ -1,5 +1,21 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Follow-up: extracted + self-checked the dispute re-submit math
+
+**Trigger:** The re-submit logic just shipped had exactly the kind of branchy logic that's easy
+to get subtly wrong — I'd already caught one bug by hand (recipient routing breaking on a 2nd
+dispute round) before it shipped. A one-time manual trace isn't as strong a guarantee as a
+runnable check, and this session can't live-test any of it with a real device.
+
+**Change:** Extracted the three pure decisions (`resubmitWinner`, `resignedMmrChange`,
+`resubmitRecipient`) out of `AppContext.tsx`/`supabaseService.ts` into `src/lib/matchDispute.ts`,
+no behavior change — `resubmitMatch` and `resubmitSharedMatch` now just call them. Added
+`matchDispute.selfcheck.ts` (`npx tsx src/lib/matchDispute.selfcheck.ts` — all 3 checks pass),
+which pins down the exact 2nd-round routing bug that was caught by hand, so it can't silently
+regress in a future edit.
+
+**Verification:** self-check passes, `npx next build` and `npm run lint` clean (no new errors).
+
 ## [2026-07-15 (auto-dev)] — Feature: disputed match resolution (re-submit model)
 
 **Trigger:** Lok asked me to decide the resolution model myself, re-submit vs. admin review,

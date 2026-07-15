@@ -4,6 +4,7 @@ import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Not
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier } from '@/lib/utils';
+import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
@@ -565,28 +566,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // role in this app, only club-scoped ones, so "admin review" would need
   // inventing a whole new system for a model this already covers).
   const resubmitMatch = useCallback((id: string, games: { p1: number; p2: number }[]) => {
-    const myWins = games.filter(g => g.p1 > g.p2).length;
-    const oppWins = games.filter(g => g.p2 > g.p1).length;
-    const iWon = myWins > oppWins; // from the resubmitter's own local ('me'-oriented) perspective
-
     const realUid = auth.currentUser?.uid;
     if (isRealMatchId(id) && realUid) {
       const m = realMatches.find(x => x.id === id);
       if (!m) return;
       const amP1 = m.player1Id === realUid;
       const storedGames = amP1 ? games : games.map(g => ({ p1: g.p2, p2: g.p1 }));
-      const newWinnerId = iWon ? realUid : (amP1 ? m.player2Id : m.player1Id);
-      const magnitude = Math.abs(m.mmrChange ?? 0);
-      const reporterMmrChange = newWinnerId === m.reporterUid ? magnitude : -magnitude;
+      const newWinnerId = resubmitWinner(storedGames, m.player1Id, m.player2Id);
+      const reporterMmrChange = resignedMmrChange(m.mmrChange, newWinnerId, m.reporterUid);
       resubmitSharedMatch(id, realUid, storedGames, newWinnerId, reporterMmrChange).catch(() => {});
       return;
     }
     setMatches(p => p.map(m => {
       if (m.id !== id) return m;
-      const magnitude = Math.abs(m.mmrChange ?? 0);
+      const newWinnerId = resubmitWinner(games, 'me', m.player2Id);
       return {
-        ...m, games, winnerId: iWon ? 'me' : m.player2Id,
-        mmrChange: iWon ? magnitude : -magnitude,
+        ...m, games, winnerId: newWinnerId,
+        mmrChange: resignedMmrChange(m.mmrChange, newWinnerId, 'me'),
         status: 'Pending' as const, disputedBy: undefined,
       };
     }));
