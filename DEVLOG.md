@@ -1,5 +1,32 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Fix: per-user tier club limit bypassable via club-admin actions
+
+**Trigger:** Follow-up targeted pass specifically hunting for the same bug shape as the
+`max_members` fix earlier today (a limit checked in only some of the paths that can violate
+it). Found one: `maxClubsForTier` (a user can belong to at most N clubs, N by tier — 1 for
+Beginner/Bronze up to 5 for Elite).
+
+**Bug:** `joinClub`, `requestJoinClub`, and `acceptClubInvite` in `AppContext.tsx` all check
+the acting user's own `myClubIds.length >= clubLimit` before adding them to a club — but
+`acceptClubMember` (an owner accepting someone else's pending request) and `inviteToClub`'s
+admin-add branch (an owner adding a player directly) never check the *target* user's club count
+against their tier limit at all. Same shape as the `max_members` bug: enforced on the self-serve
+buttons, absent from the admin-driven ones, and absent from `addClubMember` itself.
+
+**Fix:** Extended the same `addClubMember` check (added earlier today for `max_members`) to also
+fetch the target user's tier and current club count before adding — via `users_public` rather
+than the base `users` table, since the actor here is often a club admin, not the target user
+themselves, and `users` is owner-read-only per RLS (`0003_restrict_users_pii.sql`); `users_public`
+already exposes `tier` for exactly this kind of cross-user read.
+
+**Note for later:** while tracing this, `loadParticipantsMap` in `supabaseService.ts` (used to
+show chat participant names/tiers) reads from the base `users` table for potentially
+non-self uids — worth checking whether that's silently returning empty rows under the same RLS
+policy. Didn't chase it down this session; flagging for a future pass.
+
+**Verification:** `npx next build` and `npm run lint` clean.
+
 ## [2026-07-15 (auto-dev)] — Fix: club membership could exceed its own max_members cap
 
 **Trigger:** Second autonomous bug-hunt pass (tournaments/challenges/clubs/chat/follow/

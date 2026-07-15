@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-15] — Fix: per-user tier club limit bypassable via club-admin actions
+
+### 🟠 Club tier-limit enforcement
+**Why:** Same bug shape as the max_members fix, found by a targeted follow-up pass — a club
+owner accepting a request or inviting a player could push that user over their own tier's club
+count limit, since only the self-join paths checked it.
+
+- `addClubMember` (`supabaseService.ts`) now also enforces `maxClubsForTier` on the target user,
+  reading their tier via `users_public` since the caller is often not that user.
+
+---
+
 ## [2026-07-15] — Fix: club membership could exceed its own max_members cap
 
 ### 🟠 Club capacity enforcement

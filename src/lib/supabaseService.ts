@@ -9,8 +9,8 @@
  * call sites needed a one-line import swap, not a rewrite.
  */
 import { supabase } from '@/lib/supabase';
-import { getTier } from '@/lib/utils';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats } from '@/types';
+import { getTier, maxClubsForTier } from '@/lib/utils';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -593,13 +593,23 @@ async function mutateClubArray(id: string, column: 'member_ids' | 'pending_ids' 
 
 export async function addClubMember(id: string, uid: string) {
   // Every path that adds a member (self-join, accept request, admin invite,
-  // accept invite) routes through here — enforce max_members once, in the
-  // one place all of them share, instead of duplicating the check at each
-  // call site.
+  // accept invite) routes through here — enforce max_members AND the
+  // per-user tier club limit once, in the one place all of them share,
+  // instead of duplicating the checks at each call site.
   const { data } = await supabase.from('clubs').select('member_ids, max_members').eq('id', id).maybeSingle();
   const row = data as { member_ids?: string[]; max_members?: number } | null;
   const alreadyMember = (row?.member_ids ?? []).includes(uid);
-  if (!alreadyMember && row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return;
+  if (!alreadyMember) {
+    if (row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return;
+    // users_public (not users) — the actor here is often a club admin, not
+    // the target user themselves, and the base users table is owner-read-only.
+    const [{ data: userRow }, { data: memberOfRows }] = await Promise.all([
+      supabase.from('users_public').select('tier').eq('uid', uid).maybeSingle(),
+      supabase.from('clubs').select('id').contains('member_ids', [uid]),
+    ]);
+    const tier = ((userRow as { tier?: Tier } | null)?.tier) ?? 'Beginner';
+    if ((memberOfRows?.length ?? 0) >= maxClubsForTier(tier)) return;
+  }
   await mutateClubArray(id, 'member_ids', [uid], []);
   await mutateClubArray(id, 'pending_ids', [], [uid]);
 }
