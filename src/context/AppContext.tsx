@@ -15,7 +15,7 @@ import {
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
-  subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, cancelSharedMatch,
+  subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
 } from '@/lib/supabaseService';
@@ -93,6 +93,7 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
     playedAt: sm.playedAt,
     location: sm.location,
     pendingConfirmations: sm.pendingConfirmations.map(u => u === myUid ? 'me' : u),
+    disputedBy: sm.disputedBy === undefined ? undefined : (sm.disputedBy === myUid ? 'me' : sm.disputedBy),
     recordedLive: sm.recordedLive,
     liveStats: sm.liveStats && (amP1 ? sm.liveStats : {
       ...sm.liveStats,
@@ -123,6 +124,7 @@ interface AppCtx {
   addMatch: (m: Match) => void;
   confirmMatch: (id: string, uid?: string) => void;
   disputeMatch: (id: string) => void;
+  resubmitMatch: (id: string, games: { p1: number; p2: number }[]) => void;
   cancelPendingMatch: (id: string) => void;
   updateUser: (patch: Partial<UserProfile>) => void;
   conversations: Conversation[];
@@ -554,9 +556,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, [isRealMatchId]);
   const disputeMatch  = useCallback((id: string) => {
-    if (isRealMatchId(id)) { disputeSharedMatch(id).catch(() => {}); return; }
-    setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const } : m));
+    const realUid = auth.currentUser?.uid;
+    if (isRealMatchId(id) && realUid) { disputeSharedMatch(id, realUid).catch(() => {}); return; }
+    setMatches(p => p.map(m => m.id === id ? { ...m, status: 'Disputed' as const, disputedBy: 'me' } : m));
   }, [isRealMatchId]);
+  // Re-submit model, not admin review — reuses the exact same pending-
+  // confirmation flow as the initial report (there's no global moderator
+  // role in this app, only club-scoped ones, so "admin review" would need
+  // inventing a whole new system for a model this already covers).
+  const resubmitMatch = useCallback((id: string, games: { p1: number; p2: number }[]) => {
+    const myWins = games.filter(g => g.p1 > g.p2).length;
+    const oppWins = games.filter(g => g.p2 > g.p1).length;
+    const iWon = myWins > oppWins; // from the resubmitter's own local ('me'-oriented) perspective
+
+    const realUid = auth.currentUser?.uid;
+    if (isRealMatchId(id) && realUid) {
+      const m = realMatches.find(x => x.id === id);
+      if (!m) return;
+      const amP1 = m.player1Id === realUid;
+      const storedGames = amP1 ? games : games.map(g => ({ p1: g.p2, p2: g.p1 }));
+      const newWinnerId = iWon ? realUid : (amP1 ? m.player2Id : m.player1Id);
+      const magnitude = Math.abs(m.mmrChange ?? 0);
+      const reporterMmrChange = newWinnerId === m.reporterUid ? magnitude : -magnitude;
+      resubmitSharedMatch(id, realUid, storedGames, newWinnerId, reporterMmrChange).catch(() => {});
+      return;
+    }
+    setMatches(p => p.map(m => {
+      if (m.id !== id) return m;
+      const magnitude = Math.abs(m.mmrChange ?? 0);
+      return {
+        ...m, games, winnerId: iWon ? 'me' : m.player2Id,
+        mmrChange: iWon ? magnitude : -magnitude,
+        status: 'Pending' as const, disputedBy: undefined,
+      };
+    }));
+  }, [isRealMatchId, realMatches]);
   // Withdraws a match still waiting on other players' confirmation — for when an
   // opponent never responds. No MMR was ever applied for a Pending match, so
   // there's nothing to roll back.
@@ -953,7 +987,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      user, matches: allMatches, addMatch, confirmMatch, disputeMatch, cancelPendingMatch, updateUser,
+      user, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
       conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,

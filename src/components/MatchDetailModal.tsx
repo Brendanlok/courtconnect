@@ -1,6 +1,7 @@
 'use client';
+import { useState } from 'react';
 import type { Match } from '@/types';
-import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio } from 'lucide-react';
+import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3 } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -13,16 +14,23 @@ interface Props {
   onConfirm?: () => void;
   onDispute?: () => void;
   onCancel?: () => void;
+  onResubmit?: (games: { p1: number; p2: number }[]) => void;
 }
 
-export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel }: Props) {
+export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel, onResubmit }: Props) {
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
+  const [correcting, setCorrecting] = useState(false);
+  const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
   if (!m) return null;
 
   const isWin     = m.winnerId === 'me';
   const isPending = m.status === 'Pending';
   const isDisputed = m.status === 'Disputed';
   const isCancelled = m.status === 'Cancelled';
+  // Only the person who disputed the result gets to propose the fix — the
+  // re-submit model, not admin review, since there's no global moderator
+  // role for matches in this app.
+  const canResubmit = isDisputed && m.disputedBy === 'me' && !!onResubmit;
   const hasOutstandingConfirmers = !!(m.pendingConfirmations && m.pendingConfirmations.length > 0);
   // Whether it's genuinely this viewer's move: true for the original local/
   // demo flow (no pendingConfirmations at all — self-confirmable, as always)
@@ -41,6 +49,21 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   );
   const myGamesWon  = gameScores.filter(g => g.p1 > g.p2).length;
   const oppGamesWon = gameScores.filter(g => g.p2 > g.p1).length;
+
+  const startCorrecting = () => {
+    setCorrectedGames(gameScores.map(g => ({ p1: String(g.p1), p2: String(g.p2) })));
+    setCorrecting(true);
+  };
+  const setCorrectedScore = (i: number, side: 'p1' | 'p2', v: string) =>
+    setCorrectedGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
+  const submitCorrection = () => {
+    const parsed = correctedGames
+      .filter(g => g.p1 !== '' && g.p2 !== '')
+      .map(g => ({ p1: Number(g.p1) || 0, p2: Number(g.p2) || 0 }));
+    if (!parsed.length) return;
+    onResubmit?.(parsed);
+    setCorrecting(false);
+  };
 
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={onClose}>
@@ -86,6 +109,18 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
             ) : (
               <span>Waiting for your opponent to confirm this result. You can also confirm or dispute it yourself below.</span>
             )}
+          </div>
+        )}
+
+        {/* Disputed notice */}
+        {isDisputed && !correcting && (
+          <div className="mx-5 mt-4 p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-xs text-red-300 flex items-start gap-2">
+            <XCircle size={13} className="shrink-0 mt-0.5" />
+            <span>
+              {canResubmit
+                ? 'You disputed this result. Propose the score you believe is correct below.'
+                : `${oppName} disputed this result and can propose a correction.`}
+            </span>
           </div>
         )}
 
@@ -220,9 +255,39 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
           </div>
         </div>
 
+        {/* Propose a corrected score */}
+        {correcting && (
+          <div className="px-5 pb-4">
+            <p className="text-xs text-slate-400 font-semibold mb-2">Enter the score you believe is correct</p>
+            <div className="space-y-2">
+              {correctedGames.map((g, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 w-14 shrink-0">Game {i + 1}</span>
+                  <input type="number" min="0" max="30" placeholder="You" value={g.p1} onChange={e => setCorrectedScore(i, 'p1', e.target.value)}
+                    className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
+                  <span className="text-slate-500 font-bold">—</span>
+                  <input type="number" min="0" max="30" placeholder="Opp" value={g.p2} onChange={e => setCorrectedScore(i, 'p2', e.target.value)}
+                    className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2">Sent back to {oppName} to confirm or dispute in turn.</p>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="px-5 pb-5 flex gap-3">
-          {isPending && onConfirm && onDispute && isMyTurn ? (
+          {correcting ? (
+            <>
+              <Button onClick={submitCorrection} icon={<CheckCircle size={15}/>} className="flex-1">
+                Submit Correction
+              </Button>
+              <button onClick={() => setCorrecting(false)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-sm transition-colors">
+                Cancel
+              </button>
+            </>
+          ) : isPending && onConfirm && onDispute && isMyTurn ? (
             <>
               <Button onClick={onConfirm} icon={<CheckCircle size={15}/>} className="flex-1">
                 Confirm Result
@@ -230,6 +295,16 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
               <button onClick={onDispute}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-300 rounded-xl font-semibold text-sm transition-colors">
                 <XCircle size={15}/> Dispute
+              </button>
+            </>
+          ) : canResubmit ? (
+            <>
+              <Button onClick={startCorrecting} icon={<Edit3 size={15}/>} className="flex-1">
+                Propose Correct Score
+              </Button>
+              <button onClick={onClose}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-sm transition-colors">
+                Close
               </button>
             </>
           ) : (

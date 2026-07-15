@@ -78,6 +78,7 @@ export interface Match {
   location?: string;
   venue?: string;
   pendingConfirmations?: string[]; // opponent uids who still need to confirm this result
+  disputedBy?: string;             // uid who last disputed this match, if status is 'Disputed' — only they can propose a corrected score
   plannedMatchId?: string;         // links back to the PlannedMatch this was logged from, if any
   recordedLive?: boolean;          // scored point-by-point in real time via Live Match, not typed in after the fact
   liveStats?: LiveMatchStats;      // only present when recordedLive is true

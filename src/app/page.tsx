@@ -17,7 +17,7 @@ import type { Match, Tournament, Challenge, Club } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
 
 export default function Home() {
-  const { user, matches, updateUser, confirmMatch, disputeMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
+  const { user, matches, updateUser, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const pausedMatch = usePausedMatch();
@@ -371,6 +371,7 @@ export default function Home() {
         onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, user.uid); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
         onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}
       />
       {logOpen && <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>}
     </>

@@ -659,16 +659,16 @@ export interface StoredMatch {
   winnerId: string; games: { p1: number; p2: number }[]; status: 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
   mmrChange?: number; playedAt: string; location?: string;
   pendingConfirmations: string[]; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
-  recordedLive?: boolean; liveStats?: LiveMatchStats;
+  recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
 }
 
-// mmrAppliedBy, reporterUid, pointLog, recordedLive, and liveStats have no
-// columns in the `matches` table (0002) — stored inside `live_stats` jsonb
-// (unused for these plain reported matches) as a small side-channel rather
-// than adding new columns.
+// mmrAppliedBy, reporterUid, pointLog, recordedLive, liveStats, and
+// disputedBy have no columns in the `matches` table (0002) — stored inside
+// `live_stats` jsonb (unused for these plain reported matches) as a small
+// side-channel rather than adding new columns.
 interface ExtraMeta {
   reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
-  recordedLive?: boolean; liveStats?: LiveMatchStats;
+  recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
 }
 
 function matchRowToStored(row: Record<string, unknown>): StoredMatch {
@@ -682,7 +682,7 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
     winnerId: row.winner_id as string, games: row.games as StoredMatch['games'], status: row.status as StoredMatch['status'],
     mmrChange: row.mmr_change as number | undefined, playedAt: row.played_at as string, location: row.location as string | undefined,
     pendingConfirmations: (row.pending_confirmations as string[]) ?? [], mmrAppliedBy: extra.mmrAppliedBy ?? [],
-    pointLog: extra.pointLog, recordedLive: extra.recordedLive, liveStats: extra.liveStats,
+    pointLog: extra.pointLog, recordedLive: extra.recordedLive, liveStats: extra.liveStats, disputedBy: extra.disputedBy,
   };
 }
 
@@ -704,7 +704,7 @@ export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) 
 export async function sendMatchDoc(m: StoredMatch) {
   const extra: ExtraMeta = {
     reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog,
-    recordedLive: m.recordedLive, liveStats: m.liveStats,
+    recordedLive: m.recordedLive, liveStats: m.liveStats, disputedBy: m.disputedBy,
   };
   await supabase.from('matches').insert({
     id: m.id, type: m.type, player1_id: m.player1Id, player1_name: m.player1Name, player1_username: m.player1Username,
@@ -720,8 +720,38 @@ export async function confirmSharedMatch(id: string, confirmingUid: string) {
   await supabase.from('matches').update({ pending_confirmations: remaining, status: 'Confirmed' }).eq('id', id);
 }
 
-export async function disputeSharedMatch(id: string) {
+async function patchExtra(id: string, patch: Partial<ExtraMeta>) {
+  const { data } = await supabase.from('matches').select('live_stats').eq('id', id).maybeSingle();
+  const extra = { ...(data?.live_stats as ExtraMeta | null), ...patch };
+  await supabase.from('matches').update({ live_stats: extra }).eq('id', id);
+}
+
+export async function disputeSharedMatch(id: string, disputingUid: string) {
+  await patchExtra(id, { disputedBy: disputingUid });
   await supabase.from('matches').update({ status: 'Disputed' }).eq('id', id);
+}
+
+// Re-submit model: disputing an existing result doesn't require an admin —
+// the disputer proposes a corrected score, which goes back to the original
+// reporter to confirm or dispute in turn (same pendingConfirmations flow
+// already used for the initial report). Keeps the mmr delta's MAGNITUDE as
+// originally computed and just re-signs it for the (possibly new) winner —
+// ponytail: doesn't re-run calcMMRChange with live current MMRs, which would
+// need an extra fetch; revisit if a winner-flip on a lopsided original MMR
+// gap turns out to matter in practice.
+export async function resubmitSharedMatch(id: string, resubmittingUid: string, games: { p1: number; p2: number }[], winnerId: string, reporterMmrChange: number) {
+  const { data } = await supabase.from('matches').select('player1_id, player2_id').eq('id', id).maybeSingle();
+  const player1Id = data?.player1_id as string | undefined;
+  const player2Id = data?.player2_id as string | undefined;
+  if (!player1Id || !player2Id) return;
+  // Send it to whichever side ISN'T resubmitting — not always player1, since
+  // a second dispute round can flip who's proposing the correction.
+  const recipient = resubmittingUid === player1Id ? player2Id : player1Id;
+  await patchExtra(id, { disputedBy: undefined });
+  await supabase.from('matches').update({
+    games, winner_id: winnerId, mmr_change: reporterMmrChange,
+    status: 'Pending', pending_confirmations: [recipient],
+  }).eq('id', id);
 }
 
 export async function cancelSharedMatch(id: string) {

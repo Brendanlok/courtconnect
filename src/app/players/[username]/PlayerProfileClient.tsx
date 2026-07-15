@@ -35,7 +35,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -762,6 +762,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
         onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, ctxUser.uid); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
         onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
       {isMe && settOpen && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
