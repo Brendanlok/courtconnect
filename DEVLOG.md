@@ -1,5 +1,19 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Follow-up: self-check for today's anti-cheat partner-vs-opponent fix
+
+**Trigger:** Same reasoning as the dispute-resubmit self-check just added — `antiCheatCheck` had
+a real, confirmed bug fixed earlier today (a doubles partner was wrongly counted as an
+opponent), and it's already a pure exported function, so adding a runnable check cost nothing.
+
+**Change:** `src/lib/antiCheat.selfcheck.ts` (`npx tsx src/lib/antiCheat.selfcheck.ts` — all 3
+checks pass): confirms partnering with someone never counts them as an opponent no matter how
+many matches, confirms the actual "3 matches vs the same opponent in 7 days" rule still blocks
+correctly from either player slot, and confirms an opposing pair's partner still counts (only
+MY OWN partner is excluded). No source logic changed, test-only addition.
+
+**Verification:** self-check passes, `npx next build` and `npm run lint` clean.
+
 ## [2026-07-15 (auto-dev)] — Follow-up: extracted + self-checked the dispute re-submit math
 
 **Trigger:** The re-submit logic just shipped had exactly the kind of branchy logic that's easy
