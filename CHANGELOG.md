@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-15] — Fix: club membership could exceed its own max_members cap
+
+### 🟠 Club capacity enforcement
+**Why:** Autonomous bug-hunt found the owner's Accept/Invite paths had no capacity check at
+all — only the self-serve Join button did, and only in the UI, not the underlying function.
+
+- `addClubMember` (`supabaseService.ts`) now enforces `max_members` once, covering all four
+  paths that route through it (self-join, accept request, admin invite, accept invite).
+
+---
+
 ## [2026-07-15] — Feature: Pose-tracking heatmap Phase 1 (camera-view tap tracking)
 
 ### 🟡 Court tracking UX

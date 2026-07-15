@@ -1,5 +1,28 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Fix: club membership could exceed its own max_members cap
+
+**Trigger:** Second autonomous bug-hunt pass (tournaments/challenges/clubs/chat/follow/
+notifications — tournament brackets are static seed data with no bracket logic to review, so
+that area was a dead end; nothing else confirmed except this one).
+
+**Bug:** `joinClub`, `acceptClubInvite`, `acceptClubMember`, and `inviteToClub`'s admin-add
+branch (all in `AppContext.tsx`) each call `addClubMember` to add a member, but none of them —
+nor `addClubMember` itself in `supabaseService.ts` — ever checked the target club's own
+`maxMembers` before adding. Self-join has a *UI-only* guard (`isFull` disables the Join button
+in `ClubDetailClient.tsx`/`players/page.tsx`), but the owner's "Accept" button on pending
+requests, and "Invite a Player", have no guard at all — an owner accepting two pending requests
+in a row once the club is one seat from full deterministically pushes membership over its own
+configured cap, no race condition needed.
+
+**Fix:** Added the `max_members` check inside `addClubMember` itself (`supabaseService.ts`) —
+every one of those four call sites routes through it, so one check covers all of them instead
+of duplicating it four times. Re-fetches `member_ids, max_members` (this function was already a
+non-atomic read-modify-write per its existing `ponytail:` comment — one more read is consistent
+with that), no-ops if the club's already at capacity and the uid isn't already a member.
+
+**Verification:** `npx next build` and `npm run lint` clean.
+
 ## [2026-07-15 (auto-dev)] — Pose-tracking heatmap Phase 1: tap the live camera view instead of a separate diagram
 
 **Trigger:** Lok approved building Phase 1 after I flagged the UX tradeoff (a one-time 4-corner

@@ -592,6 +592,14 @@ async function mutateClubArray(id: string, column: 'member_ids' | 'pending_ids' 
 }
 
 export async function addClubMember(id: string, uid: string) {
+  // Every path that adds a member (self-join, accept request, admin invite,
+  // accept invite) routes through here — enforce max_members once, in the
+  // one place all of them share, instead of duplicating the check at each
+  // call site.
+  const { data } = await supabase.from('clubs').select('member_ids, max_members').eq('id', id).maybeSingle();
+  const row = data as { member_ids?: string[]; max_members?: number } | null;
+  const alreadyMember = (row?.member_ids ?? []).includes(uid);
+  if (!alreadyMember && row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return;
   await mutateClubArray(id, 'member_ids', [uid], []);
   await mutateClubArray(id, 'pending_ids', [], [uid]);
 }
