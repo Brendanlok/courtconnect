@@ -1,5 +1,19 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Fix: endorsements given now persist across reloads (3rd instance closed)
+
+**Trigger:** Picked up the gap flagged earlier today (needed a query redesign, not a one-line
+wire-up like tournament regs/planned matches) rather than digging for more unactioned RLS
+findings on top of the two already flagged.
+
+**Fix:** `loadEndorsementGiven(targetUid, fromUid)` only checked one target at a time, which
+couldn't hydrate the full `Record<targetUid, skills[]>` map `myEndorsements` needs. Replaced it
+with `loadEndorsementsGiven(fromUid)` — no target filter, groups by `to_uid` — and wired it into
+the same auth-ready hydration effect as the tournament-registrations fix, merging into
+`myEndorsements` so nothing already toggled in this session gets clobbered.
+
+**Verification:** `npx next build` and `npm run lint` clean.
+
 ## [2026-07-15 (auto-dev)] — Dead-code cleanup + fixed two "write without read-back" gaps
 
 **Trigger:** Switched lenses after bug-hunting hit diminishing returns — audited for

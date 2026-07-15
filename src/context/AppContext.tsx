@@ -12,7 +12,7 @@ import {
   loadConversations,
   subscribeChallengesFor, sendChallengeDoc, updateChallengeStatus, type StoredChallenge,
   subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
-  subscribeEndorsementsReceived, setEndorsementDoc,
+  subscribeEndorsementsReceived, setEndorsementDoc, loadEndorsementsGiven,
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
@@ -330,6 +330,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // entries into this same map, and the server copy is only authoritative
       // for real tournaments a signed-in account actually registered for.
       loadTournamentRegs(authUser.uid).then(regs => setRegistrations(r => ({ ...r, ...regs }))).catch(() => {});
+      // Same gap as tournament registrations above — setEndorsementDoc writes
+      // correctly but nothing ever loaded it back, so myEndorsements silently
+      // reset to empty every reload (risking a double-endorse that looks like
+      // a toggle-off since the UI thought the skill was never given).
+      loadEndorsementsGiven(authUser.uid).then(given => setMyEndorsements(e => ({ ...e, ...given }))).catch(() => {});
     });
     return unsub;
   // eslint-disable-next-line react-hooks/exhaustive-deps

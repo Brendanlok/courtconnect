@@ -450,9 +450,17 @@ export function subscribeEndorsementsReceived(myUid: string, cb: (bySkill: Recor
   return () => { supabase.removeChannel(channel); };
 }
 
-export async function loadEndorsementGiven(targetUid: string, fromUid: string): Promise<string[]> {
-  const { data } = await supabase.from('endorsements').select('skill').eq('from_uid', fromUid).eq('to_uid', targetUid);
-  return (data ?? []).map(r => r.skill as string);
+// All skills a real account has endorsed on anyone, grouped by target — the
+// counterpart to setEndorsementDoc's writes, which nothing was ever loading
+// back (myEndorsements silently reset to empty on every reload before this).
+export async function loadEndorsementsGiven(fromUid: string): Promise<Record<string, string[]>> {
+  const { data } = await supabase.from('endorsements').select('to_uid, skill').eq('from_uid', fromUid);
+  const result: Record<string, string[]> = {};
+  (data ?? []).forEach(r => {
+    const targetUid = r.to_uid as string;
+    (result[targetUid] ??= []).push(r.skill as string);
+  });
+  return result;
 }
 
 // ── Clubs (real, shared rows — membership/moderation visible to everyone) ─────
