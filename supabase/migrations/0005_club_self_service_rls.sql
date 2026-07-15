@@ -1,6 +1,11 @@
--- CRITICAL BUG: self-service club actions have been silently broken for
--- every real user since the clubs RLS policy was first written (0001, kept
--- in 0002). The only UPDATE policy on `clubs` is:
+-- CRITICAL BUG (two tables, same root cause): self-service club actions AND
+-- the Track & Record court-tracking session have been silently broken for
+-- every real user since their RLS policies were first written (0001, kept
+-- in 0002) — a whole class of "policy scoped to one role (host/admin), but
+-- a different legitimate actor also needs to write" bug. Clubs first, see
+-- court_sessions further down for the second instance.
+--
+-- The only UPDATE policy on `clubs` is:
 --
 --   create policy "member update" on clubs for update
 --     using (auth.uid() = admin_id or auth.uid() = any(moderator_ids));
@@ -92,3 +97,24 @@
 --   update clubs set pending_ids = array_remove(pending_ids, v_uid) where id = p_club_id;
 -- end; $$;
 -- grant execute on function public.club_self_cancel_request(text) to authenticated;
+
+-- ── SAME BUG CLASS, SECOND INSTANCE: court_sessions (Track & Record) ────
+-- create policy "host update" on court_sessions for update using (auth.uid() = host_uid);
+--
+-- addCourtSessionPositions() and completeCourtSession() (supabaseService.ts)
+-- are called by BOTH devices in a two-phone tracking session — the host AND
+-- whoever joined via the 6-character code (CourtTrackModal.tsx's handleTap/
+-- handleEndTracking run identically regardless of isHostEnd). A joining
+-- participant's own uid is never host_uid, so their position taps and their
+-- "end tracking" call are silently rejected the same way clubs are.
+--
+-- Notably, live_matches (the same kind of two-device shared session, for
+-- live scoring instead of tap-tracking) ALREADY uses the broad pattern:
+--   create policy "auth update" on live_matches for update using (auth.uid() is not null);
+-- and that one works. court_sessions using a host-only policy instead looks
+-- like an inconsistency/oversight, not a deliberate stricter choice — the
+-- fix is just matching the pattern this schema already uses successfully
+-- for the structurally identical live_matches table:
+
+-- drop policy "host update" on court_sessions;
+-- create policy "auth update" on court_sessions for update using (auth.uid() is not null);
