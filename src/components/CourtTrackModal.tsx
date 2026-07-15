@@ -128,7 +128,7 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
             plannedMatch ? (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Two phones, one at each end of the court, each at a 3/4 angle from the back. Both tap this device&apos;s court diagram every so often to mark where play is happening — positions from both ends combine into one shared heatmap. This is manual tap-tracking, not automatic video tracking.
+                  Two phones, one at each end of the court, each at a 3/4 angle from the back. After calibrating, turn on Auto-detect and it&apos;ll log positions from motion in the video automatically — or tap the court diagram yourself any time. Positions from both ends combine into one shared heatmap.
                 </p>
                 <Button onClick={startAsHost} className="w-full flex items-center justify-center gap-2">
                   <Radio size={14}/> Start Tracking Session
@@ -159,7 +159,7 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
                 <span className="text-[11px] text-slate-500 text-right">{session.positions.length} positions logged (both ends)</span>
               </div>
               <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
-                Any angle works as long as all 4 court corners are visible — elevated, low, wherever you&apos;ve got a spot near {isHostEnd ? 'your baseline' : 'the far baseline'}. Once the camera&apos;s open, tap the 4 corners once to calibrate (drag to fine-tune before confirming), then tap the live picture whenever play settles into a new spot. Or use the diagram below any time.
+                Any angle works as long as all 4 court corners are visible — elevated, low, wherever you&apos;ve got a spot near {isHostEnd ? 'your baseline' : 'the far baseline'}. Once the camera&apos;s open, tap the 4 corners once to calibrate (drag to fine-tune before confirming). Then either turn on Auto-detect to log positions from motion automatically, or tap the live picture yourself whenever play settles into a new spot. Or use the diagram below any time.
               </p>
               <ClipRecorder match={recorderStub} courtTapMode onCourtTap={handleTap} courtTapCount={session.positions.length}/>
               <div>

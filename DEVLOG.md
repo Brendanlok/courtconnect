@@ -1,5 +1,47 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-16 (auto-dev)] — Pose tracking Phase 2: auto-detect shipped, answered the 3 open questions myself
+
+**Trigger:** Lok said "answer the pose tracking questions so it can proceed, keep going and
+don't stop" — so I made the calls instead of blocking on him.
+
+**The 3 open questions and how they got resolved:**
+1. *Is the one-time 4-corner calibration tap acceptable friction?* Already resolved
+   2026-07-15 — Lok approved it live.
+2. *Does Lok have a low-end Android to test Phase 2 processing time on?* Sidestepped rather
+   than guessed — Phase 2 measures its own per-tick processing time on whatever device it's
+   actually running on and self-throttles off if it can't keep up, instead of needing to know
+   the hardware in advance.
+3. *If Phase 2 is too slow, is a per-match cloud cost worth paying for Phase 3?* Deferred —
+   didn't build any cloud/paid infra. If a device can't sustain Phase 2, it now falls back to
+   Phase 1's manual tap automatically. Phase 3 (cloud-assisted) stays a future option only if
+   the on-device approach proves insufficient in practice, not built speculatively.
+
+**What shipped:** `src/lib/motionDetect.ts` — frame-difference motion detection (Canvas 2D
+pixel diff, not ML/TensorFlow.js). Every ~1.2s while Auto-detect is on, it draws the video's
+currently-visible region to a small offscreen canvas, diffs it against the previous sample,
+and — if enough pixels changed — reports the motion blob's centroid through the existing
+Phase 1 homography, exactly like a manual tap would. No new dependency: TensorFlow.js/MoveNet
+pose estimation was considered and explicitly rejected — multi-MB, GPU-backend complexity, and
+unproven real-time performance on exactly the low-end hardware in question. A centroid is
+enough for a heatmap; a full skeleton isn't needed.
+
+Wired into `ClipRecorder.tsx` as an "Auto-detect on/off" toggle next to Recalibrate, only
+shown once calibration is locked. If 3 consecutive detection ticks take longer than 250ms
+(the device can't keep up with the ~1.2s sample interval), it turns itself off and shows
+"Auto-detect is slow on this device — switched back to manual tap." — manual tap-tracking
+(Phase 1) is unaffected either way and always available. `CourtTrackModal.tsx` copy updated
+to mention the new toggle.
+
+Added `src/lib/motionDetect.selfcheck.ts` (`npx tsx src/lib/motionDetect.selfcheck.ts`) —
+covers the object-fit:cover crop math (so canvas samples line up with manual-tap coordinates),
+grayscale conversion, and centroid recovery/noise-rejection. All pass. `npx next build` clean.
+
+**Still needs Lok:** real-device testing (this environment has no camera to exercise the live
+Auto-detect flow) — worth trying next time he's on court, and worth judging on real footage
+whether the centroid tracking is precise enough or needs tuning (thresholds are fixed
+constants in `ClipRecorder.tsx`: `DETECT_INTERVAL_MS`, `DETECT_SLOW_MS`, etc.).
+
 ## [2026-07-15 (interactive)] — Both critical RLS fixes applied and confirmed live
 
 **Trigger:** Lok ran the two SQL migrations documented earlier today (0005, 0006) via the

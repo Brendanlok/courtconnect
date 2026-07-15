@@ -563,16 +563,29 @@ export default function ClipRecorder({
                 </button>
               </div>
             ) : (
-              <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                <div className="bg-black/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {courtTapCount} pts
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="bg-black/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {courtTapCount} pts
+                  </div>
+                  <button onClick={() => { setAutoDetect(a => !a); setAutoSlowNotice(false); }}
+                    className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors
+                      ${autoDetect ? 'bg-emerald-500/90 text-white' : 'bg-black/50 hover:bg-black/70 text-slate-300'}`}>
+                    {autoDetect ? <Zap size={10}/> : <ZapOff size={10}/>} Auto-detect {autoDetect ? 'on' : 'off'}
+                  </button>
+                  <button onClick={recalibrate}
+                    className="bg-black/50 hover:bg-black/70 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors">
+                    Recalibrate
+                  </button>
                 </div>
-                <button onClick={recalibrate}
-                  className="bg-black/50 hover:bg-black/70 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors">
-                  Recalibrate
-                </button>
+                {autoSlowNotice && (
+                  <div className="bg-amber-500/90 text-black text-[10px] font-semibold px-2 py-1 rounded-lg max-w-[200px] text-right leading-snug">
+                    Auto-detect is slow on this device — switched back to manual tap.
+                  </div>
+                )}
               </div>
             )}
+            <canvas ref={detectCanvasRef} className="hidden" aria-hidden/>
             {homography && calibLocked && (
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <polygon points={calibCorners.map(([x, y]) => `${x * 100}%,${y * 100}%`).join(' ')}
