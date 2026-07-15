@@ -1,5 +1,44 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (auto-dev)] — Live Match results were permanently stuck "Pending", doubles used the wrong MMR formula
+
+**Trigger:** Autonomous bug-hunt pass (no queued To-Do work was actionable — all items blocked
+on Lok). Traced the MMR pipeline end-to-end across Log Match vs Live Match and found Live
+Match's `handleLogMatch` (`LiveMatchModal.tsx`) diverged from Log Match's proven-working pattern
+in four ways, all rooted in the same wrong assumption: that Live Match opponents (picked from
+`PLAYERS`, the seed/demo array — there's no way to pick a real signed-up account) could ever
+confirm a match the way a real second account can.
+
+**Bugs fixed:**
+- Every singles Live Match ever logged against an opponent set `pendingConfirmations` to the
+  demo opponent's uid and gated `status: 'Confirmed'` on them clearing it — but a demo player
+  can never confirm anything, and `confirmMatch`'s local self-confirm path only clears entries
+  matching `'me'`. Result: every Live Match result sat in "Pending" forever, MMR never applied,
+  and the Confirm button never even rendered (`MatchDetailModal`'s `isMyTurn` was false). Fixed
+  by dropping `pendingConfirmations` entirely for the local (non-real-uid) path, matching exactly
+  what `LogMatchModal.tsx` already does for the same demo-opponent scenario — self-confirmable
+  via the existing `!m.pendingConfirmations` fallback.
+- Doubles Live Matches (`MD`/`WD`/`MX`) computed MMR change from `user.mmr` vs. `teamB[0]`'s solo
+  MMR only — never averaging in my partner (`teamA[1]`) or the second opponent (`teamB[1]`), and
+  never recording `player1PartnerId`/`player2PartnerId` on the saved match at all. Fixed to
+  average team MMR on both sides and record partner IDs, matching `LogMatchModal`'s formula.
+- Live Match never applied the placement K-factor (`k=48` for a user's first 10 matches) and
+  never incremented `placementMatchesPlayed` — a user who only ever used Live Match (the app's
+  flagship live-scoring feature) never exited calibration. Fixed to match `LogMatchModal`.
+- `antiCheat.ts`'s "max 3 matches vs same opponent/week" rule counted your OWN doubles partner
+  as an opponent (it unconditionally included both `player1PartnerId` and `player2PartnerId` in
+  `opponentIds` regardless of which side you were on), so playing 3 doubles matches partnered
+  *with* someone could wrongly block a brand-new singles match *against* that same person. Fixed
+  to only count the opposing side's partner.
+
+**Verification:** `npx next build` clean, `npm run lint` shows zero new errors introduced (all
+60 pre-existing errors are in unrelated files). Could not live-test the confirm flow itself —
+same recurring limitation as every prior session: no demo/guest auth path, and this session
+doesn't create accounts or enter passwords even for the project's own testing. Verified instead
+by tracing every code path by hand (PlayerPicker only ever offers `PLAYERS` demo data, so
+`isRealUid` is always false for Live Match opponents, confirmed via grep) and cross-checking
+against `LogMatchModal`'s already-working equivalent logic line by line.
+
 ## [2026-07-14 (interactive)] — Tab-switch back-button behavior: no history growth from tab taps, "tap again to exit" at tab roots
 
 **Trigger:** User asked for two things: (1) switching bottom-nav/sidebar tabs should not push a

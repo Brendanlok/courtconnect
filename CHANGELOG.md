@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-15] — Fix: Live Match results permanently stuck "Pending", doubles MMR wrong
+
+### 🔴 Live Match MMR pipeline
+**Why:** Autonomous bug-hunt found Live Match's result-logging diverged from Log Match's
+working pattern in four ways, all stemming from treating demo/seed opponents as if they could
+confirm a match like a real account.
+
+- Every Live Match result against an opponent (Live Match only ever offers demo/seed players)
+  was permanently stuck "Pending" — MMR never applied, Confirm button never rendered.
+- Doubles Live Matches used the wrong opponent's solo MMR instead of averaging both teams, and
+  never recorded partner identities.
+- Live Match never applied the placement K-factor or advanced placement match count.
+- Anti-cheat's weekly-opponent-cap rule counted your own doubles partner as an opponent.
+
+---
+
 ## [2026-07-12] — Backend migration: Firebase → Supabase
 
 ### 🔴 Full backend cutover (not yet deployed — pending user review)

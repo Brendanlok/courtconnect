@@ -9,10 +9,12 @@ export function antiCheatCheck(matches: Match[], userId: string, oppUids: string
 
   // Rule 1: max 3 matches vs any of the same opponents in 7 days
   const recentVsOpp = matches.filter(m => {
-    const opponentIds = [m.player1Id === userId ? null : m.player1Id, m.player2Id === userId ? null : m.player2Id,
-      m.player1PartnerId, m.player2PartnerId].filter(Boolean) as string[];
-    const involves = (m.player1Id === userId || m.player2Id === userId) &&
-      opponentIds.some(id => oppUids.includes(id));
+    // Only the OPPOSING side counts as opponents — a teammate on my own side
+    // (player1PartnerId when I'm player1, etc.) is never an opponent.
+    const opponentIds = m.player1Id === userId ? [m.player2Id, m.player2PartnerId].filter(Boolean) as string[]
+      : m.player2Id === userId ? [m.player1Id, m.player1PartnerId].filter(Boolean) as string[]
+      : [];
+    const involves = opponentIds.some(id => oppUids.includes(id));
     return involves && (now - new Date(m.playedAt).getTime()) < week;
   });
   if (recentVsOpp.length >= 3) {

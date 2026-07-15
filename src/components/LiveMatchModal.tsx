@@ -870,7 +870,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   onMatchLogged?: (plannedMatchId: string) => void;
   onMatchCancelled?: (plannedMatchId: string) => void;
 }) {
-  const { user, matches, addMatch, addNotification } = useApp();
+  const { user, matches, addMatch, updateUser } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
@@ -1003,11 +1003,15 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const iWon = m.winningSide === 'A'; // team A is always host's team
     const gameScores = m.games.filter(g => g.done).map(g => ({ p1: g.a, p2: g.b }));
     const opp = m.teamB[0];
-    // Everyone on the opposing team must confirm before the result is finalized
-    const opponentUids = m.teamB.filter(Boolean).map(p => p.uid).filter(uid => uid !== 'me');
+    const partner = m.teamA[1] ?? null;
+    const opp2 = m.teamB[1] ?? null;
+    const isDoubles = teamSize(m.format) === 2;
 
-    const oppMMR = PLAYERS.find(p => p.uid === opp?.uid)?.mmr ?? user.mmr;
-    const { gain, loss } = calcMMRChange(iWon ? user.mmr : oppMMR, iWon ? oppMMR : user.mmr);
+    const mmrOf = (uid?: string, fallback = user.mmr) => uid === user.uid ? user.mmr : PLAYERS.find(p => p.uid === uid)?.mmr ?? fallback;
+    const myTeamMMR = isDoubles && partner ? Math.round((user.mmr + mmrOf(partner.uid)) / 2) : user.mmr;
+    const oppTeamMMR = isDoubles && opp && opp2 ? Math.round((mmrOf(opp.uid) + mmrOf(opp2.uid)) / 2) : mmrOf(opp?.uid);
+    const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
+    const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, placementDone ? 32 : 48);
     const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
     const mmrChange = Math.round((iWon ? gain : loss) * bonus);
 
@@ -1015,11 +1019,16 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       id: `m_${Date.now()}`,
       type: m.format,
       player1Id: user.uid, player1Name: user.displayName, player1Username: user.username,
+      ...(isDoubles && partner ? {
+        player1PartnerId: partner.uid, player1PartnerName: partner.displayName, player1PartnerUsername: partner.username,
+      } : {}),
       player2Id: opp?.uid ?? 'opp', player2Name: opp?.displayName ?? 'Opponent', player2Username: opp?.username ?? 'opponent',
+      ...(isDoubles && opp2 ? {
+        player2PartnerId: opp2.uid, player2PartnerName: opp2.displayName, player2PartnerUsername: opp2.username,
+      } : {}),
       winnerId: iWon ? user.uid : opp?.uid ?? 'opp',
       games: gameScores,
-      status: opponentUids.length > 0 ? 'Pending' as const : 'Confirmed' as const,
-      pendingConfirmations: opponentUids,
+      status: 'Pending' as const,
       playedAt: new Date().toISOString(),
       venue: m.venue,
       mmrChange,
@@ -1029,18 +1038,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
-    opponentUids.forEach(uid => {
-      const player = m.teamB.find(p => p?.uid === uid);
-      addNotification({
-        id: `notif_confirm_${Date.now()}_${uid}`,
-        type: 'match_pending',
-        title: 'Confirm Match Result',
-        body: `${me.displayName} logged the result of your ${FORMAT_LABELS[m.format]} match — please confirm it's correct.`,
-        read: false,
-        createdAt: new Date().toISOString(),
-        meta: { matchId: newMatch.id, opponentUid: uid, opponentName: player?.displayName ?? '' },
-      });
-    });
+    if (!placementDone) updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
     clearPausedMatch();
     const loggedPlannedId = plannedMatch?.id ?? resumedPlannedId;
     if (loggedPlannedId) onMatchLogged?.(loggedPlannedId);
