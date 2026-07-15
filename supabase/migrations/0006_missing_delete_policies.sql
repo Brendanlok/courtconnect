@@ -1,3 +1,6 @@
+-- APPLIED 2026-07-15 by Lok — confirmed live via `select tablename,
+-- policyname from pg_policies where cmd = 'DELETE'`, all 6 rows present.
+--
 -- CRITICAL: zero DELETE policies exist anywhere in this schema (confirmed
 -- by grepping every migration for "for delete" — none). RLS defaults to
 -- deny when no permissive policy exists for an operation, even with other

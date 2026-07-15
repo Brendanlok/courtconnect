@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-15 (interactive)] — Both critical RLS fixes applied and confirmed live
+
+**Trigger:** Lok ran the two SQL migrations documented earlier today (0005, 0006) via the
+Supabase SQL editor.
+
+**What happened:** 0006 (missing delete policies) ran clean, all 6 confirmed via
+`pg_policies`. 0005 hit a snag — the `drop policy "host update" on court_sessions` statement
+failed with "does not exist." The tracked migration files assumed court_sessions had a
+policy named "host update" (based on what 0001/0002 said), but the live database's actual
+state didn't match — no UPDATE policy existed on that table at all under that name. Since
+Supabase's SQL editor runs a pasted batch as one atomic transaction, the failure also rolled
+back the `clubs` fix that had run earlier in the same paste. Diagnosed live via
+`pg_policies` queries (three total, self-uncovering as we went), corrected to a plain
+`create policy` for court_sessions (no drop needed) and `drop policy if exists` for clubs
+(idempotent, can't fail the same way twice), re-ran, and confirmed both policies now read
+`(auth.uid() IS NOT NULL)` via a final `pg_policies` check.
+
+**Net result — both now live:**
+- Account deletion, disbanding a club, unregistering from a tournament, and endorsement
+  replacement (delete-then-reinsert) all actually work now instead of silently no-op'ing.
+- Club joining/leaving/requesting, and Track & Record's tap-tracking from a joining
+  (non-host) participant, should now actually persist instead of silently failing.
+
+**No app code changes needed** — Option A widens the RLS policy rather than changing how the
+client calls Supabase, so the existing `addClubMember`/`addClubPending`/
+`addCourtSessionPositions` calls just start succeeding now that the database allows them.
+Nothing to deploy for this specific fix.
+
+**Corrected the historical record:** both migration files (0005, 0006) now note what was
+actually applied and flag that the tracked migration files don't perfectly reflect the live
+database's real history — worth keeping in mind before trusting a migration file's assumed
+current state again without verifying live.
+
+**Still not live-click-through-verified:** this fixes the write path, but nobody has actually
+tapped "Join" on a club or used Track & Record with two real accounts since the fix landed.
+Worth confirming for real next time there's a chance.
+
 ## [2026-07-15 (auto-dev)] — Fix: endorsements given now persist across reloads (3rd instance closed)
 
 **Trigger:** Picked up the gap flagged earlier today (needed a query redesign, not a one-line

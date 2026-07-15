@@ -1,3 +1,15 @@
+-- APPLIED 2026-07-15 by Lok (Option A, both tables) — confirmed live via
+-- `select tablename, policyname, cmd, qual from pg_policies where tablename
+-- in ('clubs','court_sessions') and cmd = 'UPDATE'`, both now show
+-- `(auth.uid() IS NOT NULL)`. One correction to the write-up below: the
+-- court_sessions policy this file assumed existed (named "host update",
+-- taken from the tracked migration files) did NOT actually exist in the
+-- live database — `drop policy "host update" on court_sessions` failed
+-- with "does not exist". The tracked migration files don't perfectly match
+-- what's actually live; the fix that worked was a plain `create policy`
+-- with no drop needed. Left the rest of this file as-is for the historical
+-- record of what was found and why.
+--
 -- CRITICAL BUG (two tables, same root cause): self-service club actions AND
 -- the Track & Record court-tracking session have been silently broken for
 -- every real user since their RLS policies were first written (0001, kept
