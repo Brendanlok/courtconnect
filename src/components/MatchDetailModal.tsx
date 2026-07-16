@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Match } from '@/types';
 import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3 } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
@@ -21,7 +21,15 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   const [correcting, setCorrecting] = useState(false);
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
   if (!m) return null;
+
+  const seekTo = (t: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = t;
+    v.play().catch(() => {});
+  };
 
   const isWin     = m.winnerId === 'me';
   const isPending = m.status === 'Pending';
@@ -198,6 +206,27 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Recorded clip + detected shuttle hits */}
+          {m.clipUrl && (
+            <div className="mb-4">
+              <video ref={videoRef} src={m.clipUrl} controls playsInline
+                className="w-full rounded-xl bg-black aspect-video"/>
+              {m.shuttleHits && m.shuttleHits.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-slate-500 mb-1.5">{m.shuttleHits.length} shuttle hit{m.shuttleHits.length === 1 ? '' : 's'} detected — tap to jump</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.shuttleHits.map((t, i) => (
+                      <button key={i} onClick={() => seekTo(t)}
+                        className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-[11px] font-mono text-slate-300 transition-colors">
+                        {Math.floor(t / 60)}:{String(Math.round(t) % 60).padStart(2, '0')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

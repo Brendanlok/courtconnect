@@ -569,7 +569,8 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
         onAddPoint={addPoint}
         onUndo={undoLast}
         canUndo={isHost && history.length > 0}
-        onUploaded={() => awardClipCredits(50)}
+        onUploaded={(url) => { awardClipCredits(50); setMatch(m => ({ ...m, clipUrl: url })); }}
+        onShuttleHitsDetected={(hits) => setMatch(m => ({ ...m, shuttleHits: hits }))}
         onRequestExit={onRequestExit}
         matchComplete={match.status === 'completed'}
         onLogResult={() => onComplete(match)}
@@ -1035,6 +1036,8 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       recordedLive: true,
       liveStats: m.liveStats,
       pointLog: m.pointLog,
+      clipUrl: m.clipUrl,
+      shuttleHits: m.shuttleHits,
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);

@@ -624,15 +624,17 @@ export interface StoredMatch {
   mmrChange?: number; playedAt: string; location?: string;
   pendingConfirmations: string[]; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
   recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
+  clipUrl?: string; shuttleHits?: number[];
 }
 
-// mmrAppliedBy, reporterUid, pointLog, recordedLive, liveStats, and
-// disputedBy have no columns in the `matches` table (0002) — stored inside
-// `live_stats` jsonb (unused for these plain reported matches) as a small
-// side-channel rather than adding new columns.
+// mmrAppliedBy, reporterUid, pointLog, recordedLive, liveStats, disputedBy,
+// clipUrl, and shuttleHits have no columns in the `matches` table (0002) —
+// stored inside `live_stats` jsonb (unused for these plain reported matches)
+// as a small side-channel rather than adding new columns.
 interface ExtraMeta {
   reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
   recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
+  clipUrl?: string; shuttleHits?: number[];
 }
 
 function matchRowToStored(row: Record<string, unknown>): StoredMatch {
@@ -647,6 +649,7 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
     mmrChange: row.mmr_change as number | undefined, playedAt: row.played_at as string, location: row.location as string | undefined,
     pendingConfirmations: (row.pending_confirmations as string[]) ?? [], mmrAppliedBy: extra.mmrAppliedBy ?? [],
     pointLog: extra.pointLog, recordedLive: extra.recordedLive, liveStats: extra.liveStats, disputedBy: extra.disputedBy,
+    clipUrl: extra.clipUrl, shuttleHits: extra.shuttleHits,
   };
 }
 
@@ -669,6 +672,7 @@ export async function sendMatchDoc(m: StoredMatch) {
   const extra: ExtraMeta = {
     reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog,
     recordedLive: m.recordedLive, liveStats: m.liveStats, disputedBy: m.disputedBy,
+    clipUrl: m.clipUrl, shuttleHits: m.shuttleHits,
   };
   await supabase.from('matches').insert({
     id: m.id, type: m.type, player1_id: m.player1Id, player1_name: m.player1Name, player1_username: m.player1Username,

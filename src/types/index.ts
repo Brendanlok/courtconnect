@@ -83,6 +83,8 @@ export interface Match {
   recordedLive?: boolean;          // scored point-by-point in real time via Live Match, not typed in after the fact
   liveStats?: LiveMatchStats;      // only present when recordedLive is true
   pointLog?: ('a' | 'b')[][];      // rally-by-rally winner log, one array per game; only present when recordedLive is true
+  clipUrl?: string;                // recorded video, if Live Match was played in video mode and the clip was uploaded
+  shuttleHits?: number[];          // detected shuttle-hit timestamps (seconds into clipUrl), if any were found
 }
 
 // Point-by-point telemetry captured while a match is scored live. Everything
@@ -262,6 +264,7 @@ export interface LiveMatch {
   createdAt: string;
   completedAt?: string;
   clipUrl?: string;
+  shuttleHits?: number[];      // detected shuttle-hit timestamps (seconds into clipUrl), set once audio analysis finishes
   recordMode?: 'manual' | 'video'; // how the host chose to record — camera session itself can't survive a pause
   liveStats?: LiveMatchStats;
   pointLog?: ('a' | 'b')[][];        // rally-by-rally winner log, one array per game — populated on completion

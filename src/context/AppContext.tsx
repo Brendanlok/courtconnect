@@ -101,6 +101,7 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
       maxWinStreak: { ...sm.liveStats.maxWinStreak, side: flipSide(sm.liveStats.maxWinStreak.side) },
     }),
     pointLog: sm.pointLog && (amP1 ? sm.pointLog : sm.pointLog.map(g => g.map(flipSide))),
+    clipUrl: sm.clipUrl, shuttleHits: sm.shuttleHits,
   };
 }
 
@@ -527,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         pendingConfirmations: [m.player2Id],
         mmrAppliedBy: [],
         pointLog: m.pointLog, recordedLive: m.recordedLive, liveStats: m.liveStats,
+        clipUrl: m.clipUrl, shuttleHits: m.shuttleHits,
       };
       sendMatchDoc(stored).catch(() => {});
       // Optimistic local echo, same pattern as sendChallenge.

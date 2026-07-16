@@ -27,6 +27,7 @@ const DETECT_SLOW_TICKS_LIMIT = 3; // consecutive slow ticks before auto-falling
 interface Props {
   match: LiveMatch;
   onUploaded?: (url: string) => void;
+  onShuttleHitsDetected?: (hits: number[]) => void;
   autoStart?: boolean;
   canScore?: boolean;
   onAddPoint?: (side: 'a' | 'b') => void;
@@ -77,7 +78,7 @@ function CourtGuideOverlay() {
 }
 
 export default function ClipRecorder({
-  match, onUploaded, autoStart = false, canScore = false, onAddPoint,
+  match, onUploaded, onShuttleHitsDetected, autoStart = false, canScore = false, onAddPoint,
   onUndo, canUndo = false, onRequestExit, matchComplete = false, onLogResult,
   courtTapMode = false, onCourtTap, courtTapCount = 0,
 }: Props) {
@@ -322,8 +323,9 @@ export default function ClipRecorder({
     detectShuttleHits(blobRef.current).then(hits => {
       setShuttleHits(hits);
       setDetectingHits(false);
+      onShuttleHitsDetected?.(hits);
     });
-  }, [state, shuttleHits]);
+  }, [state, shuttleHits, onShuttleHitsDetected]);
 
   const confirmCalibration = useCallback(() => setCalibLocked(true), []);
 
