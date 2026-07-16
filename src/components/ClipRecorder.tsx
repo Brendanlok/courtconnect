@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import type { LiveMatch, CourtPosition } from '@/types';
 import { computeHomography, applyHomography, CALIBRATION_CORNER_ORDER, type PixelPoint, type Homography } from '@/lib/courtCalibration';
 import { computeCoverCrop, toGrayscale, motionCentroid } from '@/lib/motionDetect';
+import { detectShuttleHits } from '@/lib/shuttleDetect';
 
 const CORNER_LABELS: Record<typeof CALIBRATION_CORNER_ORDER[number], string> = {
   nearLeft: 'near-left corner (closest to you, left side)',
@@ -95,6 +96,11 @@ export default function ClipRecorder({
   // manual tap (Phase 1) always stays available as the fallback.
   const [autoDetect,    setAutoDetect]  = useState(false);
   const [autoSlowNotice, setAutoSlowNotice] = useState(false);
+  // Shuttle-hit auto-detect: audio-based, runs once as a post-processing pass
+  // after recording stops (see src/lib/shuttleDetect.ts for why audio + why
+  // post-processing over live/video-based).
+  const [shuttleHits, setShuttleHits] = useState<number[] | null>(null);
+  const [detectingHits, setDetectingHits] = useState(false);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
@@ -184,6 +190,8 @@ export default function ClipRecorder({
       setAutoDetect(false);
       setAutoSlowNotice(false);
       prevGrayRef.current = null;
+      setShuttleHits(null);
+      setDetectingHits(false);
     } catch {
       // Permission denied or no camera → native file input
       setNativeMode(true);
@@ -305,6 +313,18 @@ export default function ClipRecorder({
     return () => clearInterval(id);
   }, [autoDetect, homography, calibLocked, state, detectTick]);
 
+  // Once a clip is done recording (camera or native file-input path), scan its
+  // audio track once for shuttle hits. Runs regardless of onCourtTap/courtTapMode
+  // — this is an independent review aid, not tied to position tracking.
+  useEffect(() => {
+    if (state !== 'done' || shuttleHits !== null || !blobRef.current) return;
+    setDetectingHits(true);
+    detectShuttleHits(blobRef.current).then(hits => {
+      setShuttleHits(hits);
+      setDetectingHits(false);
+    });
+  }, [state, shuttleHits]);
+
   const confirmCalibration = useCallback(() => setCalibLocked(true), []);
 
   // Dragging a draft corner handle recomputes the homography live so the user
@@ -400,6 +420,7 @@ export default function ClipRecorder({
     const file = e.target.files?.[0];
     if (!file) return;
     blobRef.current = file;
+    setShuttleHits(null);
     setState('done');
   }, []);
 
@@ -634,6 +655,21 @@ export default function ClipRecorder({
             <p className="text-slate-400 text-sm">{fmt(elapsed)} recorded</p>
             {matchComplete && (
               <p className="text-slate-500 text-xs">Match finished — log the result below when ready.</p>
+            )}
+            {detectingHits && (
+              <p className="text-slate-500 text-xs">Scanning audio for shuttle hits…</p>
+            )}
+            {!detectingHits && shuttleHits && shuttleHits.length > 0 && (
+              <div className="w-full max-w-xs">
+                <p className="text-slate-500 text-xs mb-1.5">{shuttleHits.length} shuttle hit{shuttleHits.length === 1 ? '' : 's'} detected</p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {shuttleHits.map((t, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-full text-[11px] font-mono text-slate-300">
+                      {fmt(Math.round(t))}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
