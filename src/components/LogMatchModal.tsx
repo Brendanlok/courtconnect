@@ -14,6 +14,21 @@ const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
 const ALL_PLAYERS = [ME, ...PLAYERS];
 
+// Standard badminton rules: win by 2, first to 21, hard cap at 30 (30-29 ends
+// the game regardless of margin). No draws.
+function isValidGameScore(p1: number, p2: number): boolean {
+  if (p1 === p2) return false;
+  const hi = Math.max(p1, p2), lo = Math.min(p1, p2);
+  if (hi === 30) return true;
+  return hi >= 21 && hi - lo >= 2;
+}
+
+function formatDisabledForGender(format: MatchType, gender?: 'Male' | 'Female'): boolean {
+  if (gender === 'Male')   return format === 'WS' || format === 'WD';
+  if (gender === 'Female') return format === 'MS' || format === 'MD';
+  return false;
+}
+
 // ─── QR scanner (photo / camera) ─────────────────────────────────────────────
 
 type ScanState = 'idle' | 'scanning' | 'success' | 'error';
@@ -376,7 +391,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
 }) {
   const { user, addMatch, matches, updateUser } = useApp();
   const [done,     setDone]     = useState(false);
-  const [type,     setType]     = useState<MatchType>('MS');
+  const [type,     setType]     = useState<MatchType>(() => user.gender === 'Female' ? 'WS' : 'MS');
   const [opp1,     setOpp1]     = useState<UserProfile | null>(null);
   const [opp2,     setOpp2]     = useState<UserProfile | null>(null);
   const [teammate, setTeammate] = useState<UserProfile | null>(null);
@@ -400,9 +415,20 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
     ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor)
     : null;
 
-  const hasScores   = games.some(g => g.p1 !== '' && g.p2 !== '' && (Number(g.p1) > 0 || Number(g.p2) > 0));
+  const parsedGames  = games
+    .filter(g => g.p1 !== '' && g.p2 !== '')
+    .map(g => ({ p1: Number(g.p1) || 0, p2: Number(g.p2) || 0 }));
+  const invalidGame  = parsedGames.some(g => !isValidGameScore(g.p1, g.p2));
+  const myGameWins   = parsedGames.filter(g => g.p1 > g.p2).length;
+  const oppGameWins  = parsedGames.filter(g => g.p2 > g.p1).length;
+  const hasScores    = parsedGames.length > 0;
+  const isDecisive   = hasScores && myGameWins !== oppGameWins;
+  const scoreError   = !hasScores ? null
+    : invalidGame ? 'Each game needs a valid badminton score — win by 2, first to 21 (capped at 30).'
+    : !isDecisive ? 'Games are tied — add a deciding game.'
+    : null;
   const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
-  const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !cheatBlock;
+  const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !scoreError && !cheatBlock;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>
     setGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
@@ -414,12 +440,8 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   };
 
   const submit = () => {
-    if (!opp1 || !mmrPreview) return;
-    const parsed  = games
-      .filter(g => g.p1 !== '' && g.p2 !== '')
-      .map(g => ({ p1: Number(g.p1) || 0, p2: Number(g.p2) || 0 }));
-    const myWins  = parsed.filter(g => g.p1 > g.p2).length;
-    const iWon    = myWins > parsed.filter(g => g.p2 > g.p1).length;
+    if (!opp1 || !mmrPreview || !isDecisive) return;
+    const iWon    = myGameWins > oppGameWins;
     const change  = iWon ? mmrPreview!.gain : mmrPreview!.loss;
 
     addMatch({
