@@ -555,10 +555,16 @@ export default function LivePage() {
       )}
 
       {/* Watching notice */}
-      {phase === 'watching' && (
+      {phase === 'watching' && !isPaused && (
         <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
           <Users size={12}/>
           <span>You&apos;re watching this match live. Scores update automatically.</span>
+        </div>
+      )}
+      {phase === 'watching' && isPaused && (
+        <div className="flex items-center gap-2 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+          <Users size={12}/>
+          <span>The scorer stepped away — this will update again once they resume.</span>
         </div>
       )}
     </div>
