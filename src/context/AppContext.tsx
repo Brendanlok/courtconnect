@@ -209,7 +209,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return ME;
   });
-  const [matches,          setMatches]          = useState<Match[]>(SEED_MATCHES);
+  // Matches logged against demo/seed opponents have no backend row (no real
+  // uid to satisfy the matches table's FK), so localStorage is what makes
+  // them survive a reload — same pattern as every other cc_* local-only
+  // field in this file (courtProfile, clipCredits, etc.), just applied here
+  // too. Without this, a demo-opponent match (and anything computed from it,
+  // e.g. achievement badges) vanished the moment the page reloaded.
+  const [matches,          setMatches]          = useState<Match[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('cc_localMatches');
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return SEED_MATCHES;
+  });
+  useEffect(() => {
+    try { localStorage.setItem('cc_localMatches', JSON.stringify(matches)); } catch { /* ignore */ }
+  }, [matches]);
   const [localConversations, setLocalConversations] = useState<Conversation[]>(SEED_CONVS);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tournaments,      setTournaments]      = useState<Tournament[]>(SEED_TOURNAMENTS);

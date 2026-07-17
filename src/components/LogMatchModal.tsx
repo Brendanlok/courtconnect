@@ -324,12 +324,13 @@ function LocationSearch({ value, onChange }: { value: string; onChange: (v: stri
 }
 
 function PlayerSearch({
-  label, value, onChange, exclude = [],
+  label, value, onChange, exclude = [], format,
 }: {
   label: string;
   value: UserProfile | null;
   onChange: (p: UserProfile | null) => void;
   exclude?: string[];
+  format: MatchType;
 }) {
   const [query, setQuery] = useState(value ? `${value.displayName} (@${value.username})` : '');
   const [show, setShow]   = useState(false);
@@ -352,6 +353,7 @@ function PlayerSearch({
   });
 
   const select = (p: UserProfile) => {
+    if (formatDisabledForGender(format, p.gender)) return;
     onChange(p);
     setQuery(`${p.displayName} (@${p.username})`);
     setShow(false);
@@ -373,13 +375,20 @@ function PlayerSearch({
           <div className="popover-anim absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-xs text-slate-500 px-4 py-3 text-center">No players found</p>
-            ) : filtered.map(p => (
-              <button key={p.uid} onMouseDown={() => select(p)}
-                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-700 text-left transition-colors">
-                <span className="text-sm font-medium">{p.displayName} <span className="text-slate-400 font-normal">(@{p.username})</span></span>
-                <span className="text-xs text-amber-400 shrink-0 ml-2">{p.mmr} MMR</span>
-              </button>
-            ))}
+            ) : filtered.map(p => {
+              const ineligible = formatDisabledForGender(format, p.gender);
+              return (
+                <button key={p.uid} onMouseDown={() => select(p)} disabled={ineligible}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors
+                    ${ineligible ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-700'}`}>
+                  <span className="text-sm font-medium min-w-0">
+                    <span className="block truncate">{p.displayName} <span className="text-slate-400 font-normal">(@{p.username})</span></span>
+                    {ineligible && <span className="block text-[10px] text-red-400 font-normal mt-0.5">Not eligible for this match</span>}
+                  </span>
+                  {!ineligible && <span className="text-xs text-amber-400 shrink-0 ml-2">{p.mmr} MMR</span>}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -522,7 +531,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
 
               {/* Singles */}
               {!isDoubles && (
-                <PlayerSearch label="Opponent" value={opp1} onChange={setOpp1} />
+                <PlayerSearch label="Opponent" value={opp1} onChange={setOpp1} format={type} />
               )}
 
               {/* Doubles */}
@@ -530,13 +539,13 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
                 <>
                   <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 space-y-3">
                     <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">Your Team</p>
-                    <PlayerSearch label="Teammate" value={teammate} onChange={setTeammate} exclude={excludeFromTeam} />
+                    <PlayerSearch label="Teammate" value={teammate} onChange={setTeammate} exclude={excludeFromTeam} format={type} />
                   </div>
 
                   <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 space-y-3">
                     <p className="text-xs text-red-400 font-semibold uppercase tracking-wide">Opponents</p>
-                    <PlayerSearch label="Opponent 1" value={opp1} onChange={setOpp1} exclude={excludeFromOpp1} />
-                    <PlayerSearch label="Opponent 2" value={opp2} onChange={setOpp2} exclude={excludeFromOpp2} />
+                    <PlayerSearch label="Opponent 1" value={opp1} onChange={setOpp1} exclude={excludeFromOpp1} format={type} />
+                    <PlayerSearch label="Opponent 2" value={opp2} onChange={setOpp2} exclude={excludeFromOpp2} format={type} />
                   </div>
                 </>
               )}
