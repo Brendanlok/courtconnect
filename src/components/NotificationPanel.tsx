@@ -70,7 +70,7 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
               <span className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
                 {NOTIF_ICON[n.type]}
               </span>
-              <div className="flex-1 min-w-0" onClick={() => markNotifRead(n.id)}>
+              <div className="flex-1 min-w-0" onClick={() => { markNotifRead(n.id); if (n.linkTo) window.location.href = n.linkTo; }}>
                 <p className="text-xs font-semibold text-slate-200">{n.title}</p>
                 <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{n.body}</p>
                 <p className="text-[10px] text-slate-600 mt-1">{timeAgo(n.createdAt)}</p>

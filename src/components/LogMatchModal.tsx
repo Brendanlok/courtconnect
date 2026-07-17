@@ -19,6 +19,7 @@ const ALL_PLAYERS = [ME, ...PLAYERS];
 function isValidGameScore(p1: number, p2: number): boolean {
   if (p1 === p2) return false;
   const hi = Math.max(p1, p2), lo = Math.min(p1, p2);
+  if (hi > 30) return false;
   if (hi === 30) return true;
   return hi >= 21 && hi - lo >= 2;
 }
@@ -459,7 +460,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
         player2PartnerUsername: opp2.username,
       } : {}),
       winnerId: iWon ? user.uid : opp1.uid,
-      games: parsed, mmrChange: change,
+      games: parsedGames, mmrChange: change,
       playedAt: new Date().toISOString(),
       location: loc || `${user.area}, ${user.state}`,
       ...(plannedMatchId ? { plannedMatchId } : {}),
@@ -512,7 +513,10 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
                 <span className="text-xs text-slate-400 font-semibold">Match Type</span>
                 <select value={type} onChange={e => { setType(e.target.value as MatchType); reset(); }}
                   className="mt-1.5 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors">
-                  {Object.entries(MATCH_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  {Object.entries(MATCH_TYPE_LABEL).map(([v, l]) => {
+                    const disabled = formatDisabledForGender(v as MatchType, user.gender);
+                    return <option key={v} value={v} disabled={disabled}>{l}{disabled ? ' (unavailable)' : ''}</option>;
+                  })}
                 </select>
               </label>
 
@@ -561,13 +565,23 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
               <div>
                 <span className="text-xs text-slate-400 font-semibold">Scores <span className="text-red-400">*</span></span>
                 <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="w-14 shrink-0"/>
+                    <span className="w-16 text-center text-[10px] font-bold text-emerald-400 uppercase tracking-wide truncate">
+                      {isDoubles ? 'Your team' : 'You'}
+                    </span>
+                    <span className="w-4 shrink-0"/>
+                    <span className="w-16 text-center text-[10px] font-bold text-red-400 uppercase tracking-wide truncate">
+                      {isDoubles ? 'Opponents' : (opp1?.displayName ?? 'Opponent')}
+                    </span>
+                  </div>
                   {games.map((g, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <span className="text-xs text-slate-500 w-14 shrink-0">Game {i + 1}</span>
-                      <input type="number" min="0" max="30" placeholder="You" value={g.p1} onChange={e => setScore(i, 'p1', e.target.value)}
+                      <input type="number" min="0" max="30" placeholder="0" value={g.p1} onChange={e => setScore(i, 'p1', e.target.value)}
                         className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
-                      <span className="text-slate-500 font-bold">—</span>
-                      <input type="number" min="0" max="30" placeholder="Opp" value={g.p2} onChange={e => setScore(i, 'p2', e.target.value)}
+                      <span className="text-slate-500 font-bold w-4 text-center shrink-0">—</span>
+                      <input type="number" min="0" max="30" placeholder="0" value={g.p2} onChange={e => setScore(i, 'p2', e.target.value)}
                         className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
                       {i >= 2 && (
                         <button onClick={() => setGames(g => g.filter((_, idx) => idx !== i))} aria-label={`Remove game ${i + 1}`} className="text-slate-500 hover:text-red-400 ml-auto"><X size={14}/></button>
@@ -580,13 +594,18 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
                       <Plus size={12}/> Add Game 3
                     </button>
                   )}
+                  {scoreError && (
+                    <p className="text-xs text-amber-400 flex items-center gap-1.5 pt-1">
+                      <AlertCircle size={12} className="shrink-0"/> {scoreError}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="p-5 pt-0 flex gap-3">
               <Button onClick={submit} disabled={!canSubmit}
-                title={!opp1 ? 'Select an opponent first' : !hasScores ? 'Enter at least one game score' : undefined}
+                title={!opp1 ? 'Select an opponent first' : !hasScores ? 'Enter at least one game score' : scoreError ?? undefined}
                 className="flex-1">
                 Submit Match
               </Button>

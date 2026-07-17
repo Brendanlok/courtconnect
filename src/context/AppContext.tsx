@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
-import { maxClubsForTier, getTier } from '@/lib/utils';
+import { maxClubsForTier, getTier, BASE_PATH } from '@/lib/utils';
 import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { BADGES, computeEarnedBadgeIds } from '@/lib/achievements';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
@@ -992,7 +992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (prev !== null) {
       earnedBadgeIds.filter(id => !prev.includes(id)).forEach(id => {
         const badge = BADGES.find(b => b.id === id);
-        if (badge) addNotification({ type: 'badge_earned', title: 'Achievement unlocked', body: `${badge.name} — ${badge.description}` });
+        if (badge) addNotification({ type: 'badge_earned', title: 'Achievement unlocked', body: `${badge.name} — ${badge.description}`, linkTo: `${BASE_PATH}/profile/#achievements` });
       });
     }
     prevBadgeIdsRef.current = earnedBadgeIds;

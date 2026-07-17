@@ -574,7 +574,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
           {/* Achievements — own profile only; badges are computed from real match
               history the client only has for the signed-in user. */}
           {isMe && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div id="achievements" className="bg-slate-900 border border-slate-800 rounded-2xl p-5 scroll-mt-20">
               <h2 className="font-semibold mb-3">Achievements</h2>
               <div className="grid grid-cols-2 gap-2">
                 {BADGES.map(b => {
