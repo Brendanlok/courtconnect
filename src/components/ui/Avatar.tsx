@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { getInitials } from '@/lib/utils';
 
 const COLORS = [
@@ -17,12 +20,14 @@ export function Avatar({ name, size = 'md', className = '', photoURL }: {
   className?: string;
   photoURL?: string | null;
 }) {
+  const [imgError, setImgError] = useState(false);
   const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-16 h-16 text-2xl' : 'w-10 h-10 text-sm';
-  if (photoURL) {
+  if (photoURL && !imgError) {
     return (
       <img
         src={photoURL}
         alt={name}
+        onError={() => setImgError(true)}
         className={`${sz} rounded-full object-cover shrink-0 ${className}`}
       />
     );
