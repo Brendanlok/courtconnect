@@ -16,6 +16,7 @@ export interface CompatUser {
   displayName: string | null;
   photoURL: string | null;
   providerData: { providerId: string }[];
+  emailConfirmedAt: string | null;
 }
 
 export function toCompatUser(u: SupaUser | null | undefined): CompatUser | null {
@@ -27,6 +28,7 @@ export function toCompatUser(u: SupaUser | null | undefined): CompatUser | null 
     displayName: (u.user_metadata?.full_name as string | undefined) ?? (u.user_metadata?.name as string | undefined) ?? null,
     photoURL: (u.user_metadata?.avatar_url as string | undefined) ?? null,
     providerData: providers.map(p => ({ providerId: p === 'google' ? 'google.com' : p })),
+    emailConfirmedAt: u.email_confirmed_at ?? null,
   };
 }
 

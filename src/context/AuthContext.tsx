@@ -24,9 +24,18 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx>({} as AuthCtx);
 
+// A profile row is never deleted once created, so "exists" only ever needs
+// confirming once per device — caching it turns a network round-trip that
+// gated every single app boot into a same-tick localStorage read for anyone
+// who's already completed signup (the overwhelming majority of loads).
+const PROFILE_EXISTS_KEY = 'cc_profile_exists';
+
 async function userRowExists(uid: string): Promise<boolean> {
+  try { if (localStorage.getItem(PROFILE_EXISTS_KEY) === uid) return true; } catch { /* ignore */ }
   const { data } = await supabase.from('users').select('uid').eq('uid', uid).maybeSingle();
-  return !!data;
+  const exists = !!data;
+  if (exists) { try { localStorage.setItem(PROFILE_EXISTS_KEY, uid); } catch { /* ignore */ } }
+  return exists;
 }
 
 async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string }) {
@@ -68,13 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [needsEmailVerification,  setNeedsEmailVerification] = useState(false);
   const [needsProfileSetup,       setNeedsProfileSetup]      = useState(false);
 
-  const evaluateUser = async (user: CompatUser | null, confirmed: boolean) => {
+  const evaluateUser = async (user: CompatUser | null) => {
     if (!user) {
       setNeedsEmailVerification(false);
       setNeedsProfileSetup(false);
       return;
     }
-    const verified = isGoogleUser(user) || confirmed;
+    const verified = isGoogleUser(user) || !!user.emailConfirmedAt;
     setNeedsEmailVerification(!verified);
     if (!verified) { setNeedsProfileSetup(false); return; }
     const exists = await userRowExists(user.uid);
@@ -84,9 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async user => {
       setAuthUser(user);
-      const { data } = await supabase.auth.getSession();
-      const confirmed = !!data.session?.user?.email_confirmed_at;
-      await evaluateUser(user, confirmed);
+      await evaluateUser(user);
       setIsLoading(false);
     });
     return unsub;
@@ -130,8 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshVerificationStatus = async () => {
     const { data } = await supabase.auth.refreshSession();
-    const confirmed = !!data.session?.user?.email_confirmed_at;
-    await evaluateUser(auth.currentUser, confirmed);
+    if (!auth.currentUser) return;
+    await evaluateUser({ ...auth.currentUser, emailConfirmedAt: data.session?.user?.email_confirmed_at ?? null });
   };
 
   const checkUsernameAvailable = async (username: string): Promise<boolean> => {
