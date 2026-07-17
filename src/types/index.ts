@@ -197,7 +197,7 @@ export interface Club {
 
 export interface Notification {
   id: string;
-  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_invite' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered';
+  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_invite' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered' | 'badge_earned';
   title: string;
   body: string;
   read: boolean;

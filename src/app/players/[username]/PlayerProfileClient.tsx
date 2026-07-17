@@ -11,8 +11,9 @@ import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
+import { BADGES } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
@@ -25,17 +26,18 @@ const RADAR_DATA = [
   { stat:'Footwork', val:80 },{ stat:'Stamina', val:74 },{ stat:'Serve', val:68 },
 ];
 
-const ACHIEVEMENTS = [
-  { icon:'🔥', name:'Hot Streak',  desc:'5 wins in a row',       done:true },
-  { icon:'🏅', name:'First Blood', desc:'Win your first match',   done:true },
-  { icon:'📈', name:'On the Rise', desc:'+100 MMR in a week',     done:true },
-  { icon:'💎', name:'Diamond',     desc:'Reach 2000 MMR',         done:false },
-  { icon:'🏆', name:'Champion',    desc:'Win a tournament',        done:false },
-  { icon:'🤝', name:'Centurion',   desc:'Play 100 matches',        done:false },
-];
+const BADGE_ICON: Record<string, React.ReactNode> = {
+  first_win:     <Trophy size={18} className="text-amber-400"/>,
+  hot_streak:    <Flame size={18} className="text-orange-400"/>,
+  giant_slayer:  <Swords size={18} className="text-red-400"/>,
+  comeback_king: <TrendingUp size={18} className="text-emerald-400"/>,
+  bagel:         <CircleSlash size={18} className="text-blue-400"/>,
+  marathon:      <Clock size={18} className="text-violet-400"/>,
+  century_club:  <Star size={18} className="text-amber-400"/>,
+};
 
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile, earnedBadgeIds } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -569,23 +571,29 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             )}
           </div>
 
-          {/* Achievements */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="font-semibold mb-3">Achievements</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {ACHIEVEMENTS.map(a => (
-                <div key={a.name}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border transition-opacity
-                    ${a.done ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-35'}`}>
-                  <span className="text-xl">{a.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate">{a.name}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{a.desc}</p>
-                  </div>
-                </div>
-              ))}
+          {/* Achievements — own profile only; badges are computed from real match
+              history the client only has for the signed-in user. */}
+          {isMe && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="font-semibold mb-3">Achievements</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {BADGES.map(b => {
+                  const done = earnedBadgeIds.includes(b.id);
+                  return (
+                    <div key={b.id}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl border transition-opacity
+                        ${done ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-35'}`}>
+                      {BADGE_ICON[b.id]}
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate">{b.name}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{b.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ── Stage 2: Match Analytics ──────────────────────────────── */}

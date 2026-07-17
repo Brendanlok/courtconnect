@@ -5,6 +5,7 @@ import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS a
 import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier } from '@/lib/utils';
 import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
+import { BADGES, computeEarnedBadgeIds } from '@/lib/achievements';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
@@ -190,6 +191,8 @@ interface AppCtx {
   addNotification: (n: Notification | Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
   markNotifRead: (id: string) => void;
   markAllNotifsRead: () => void;
+  // Achievements
+  earnedBadgeIds: string[];
 }
 
 const Ctx = createContext<AppCtx>({} as AppCtx);
@@ -979,6 +982,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...matches,
     ...realMatches.map(m => toLocalMatch(m, myRealUid)),
   ].sort((a, b) => b.playedAt.localeCompare(a.playedAt)), [matches, realMatches, myRealUid]);
+
+  // Recomputed live from match history on every render — no separate
+  // award/persist step, so there's nothing to migrate or get out of sync.
+  const earnedBadgeIds = useMemo(() => computeEarnedBadgeIds(allMatches, user), [allMatches, user]);
+  const prevBadgeIdsRef = useRef<string[] | null>(null);
+  useEffect(() => {
+    const prev = prevBadgeIdsRef.current;
+    if (prev !== null) {
+      earnedBadgeIds.filter(id => !prev.includes(id)).forEach(id => {
+        const badge = BADGES.find(b => b.id === id);
+        if (badge) addNotification({ type: 'badge_earned', title: 'Achievement unlocked', body: `${badge.name} — ${badge.description}` });
+      });
+    }
+    prevBadgeIdsRef.current = earnedBadgeIds;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [earnedBadgeIds]);
+
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
     for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
@@ -1001,6 +1021,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
+      earnedBadgeIds,
     }}>
       {children}
     </Ctx.Provider>

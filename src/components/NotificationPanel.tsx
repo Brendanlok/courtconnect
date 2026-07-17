@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useEffect } from 'react';
-import { Bell, X, Swords, Users, Shield, CheckCircle, MessageCircle, UserPlus, UserCheck, Calendar, Trophy, Mail } from 'lucide-react';
+import { Bell, X, Swords, Users, Shield, CheckCircle, MessageCircle, UserPlus, UserCheck, Calendar, Trophy, Mail, Award } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { timeAgo } from '@/lib/utils';
 import type { Notification } from '@/types';
@@ -24,6 +24,7 @@ const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   friend_accepted:    <UserCheck size={14} className="text-emerald-400"/>,
   event_invite:       <Trophy size={14} className="text-amber-400"/>,
   event_registered:   <Trophy size={14} className="text-emerald-400"/>,
+  badge_earned:       <Award size={14} className="text-amber-400"/>,
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
