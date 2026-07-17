@@ -323,6 +323,48 @@ function LocationSearch({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
+const WHEEL_ITEM_H = 36;
+const WHEEL_MAX = 30;
+
+// Native scroll + CSS snap gives a real scroll-wheel picker for free — no
+// drag-math or animation library needed. `value` only drives the wheel back
+// to position on an *external* reset (submit/reset, format switch); the
+// user's own scroll already leaves scrollTop at the right spot, so the sync
+// effect below is a no-op for it (skipped whenever already within half a row).
+function ScoreWheel({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const target = (value === '' ? 0 : Number(value)) * WHEEL_ITEM_H;
+    if (Math.abs(ref.current.scrollTop - target) > WHEEL_ITEM_H / 2) {
+      ref.current.scrollTop = target;
+    }
+  }, [value]);
+
+  const handleScroll = () => {
+    if (!ref.current) return;
+    const idx = Math.round(ref.current.scrollTop / WHEEL_ITEM_H);
+    onChange(String(Math.max(0, Math.min(WHEEL_MAX, idx))));
+  };
+
+  return (
+    <div className="relative w-16 shrink-0" style={{ height: WHEEL_ITEM_H * 3 }}>
+      <div ref={ref} onScroll={handleScroll} className="no-scrollbar h-full overflow-y-scroll" style={{ scrollSnapType: 'y mandatory' }}>
+        <div style={{ height: WHEEL_ITEM_H }}/>
+        {Array.from({ length: WHEEL_MAX + 1 }).map((_, i) => (
+          <div key={i} style={{ height: WHEEL_ITEM_H, scrollSnapAlign: 'center' }}
+            className="flex items-center justify-center text-sm font-bold text-slate-200">
+            {i}
+          </div>
+        ))}
+        <div style={{ height: WHEEL_ITEM_H }}/>
+      </div>
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-lg border-y border-emerald-500/40 pointer-events-none" style={{ height: WHEEL_ITEM_H }}/>
+    </div>
+  );
+}
+
 function PlayerSearch({
   label, value, onChange, exclude = [], format,
 }: {
@@ -587,11 +629,9 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
                   {games.map((g, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <span className="text-xs text-slate-500 w-14 shrink-0">Game {i + 1}</span>
-                      <input type="number" min="0" max="30" placeholder="0" value={g.p1} onChange={e => setScore(i, 'p1', e.target.value)}
-                        className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
+                      <ScoreWheel value={g.p1} onChange={v => setScore(i, 'p1', v)}/>
                       <span className="text-slate-500 font-bold w-4 text-center shrink-0">—</span>
-                      <input type="number" min="0" max="30" placeholder="0" value={g.p2} onChange={e => setScore(i, 'p2', e.target.value)}
-                        className="w-16 text-center bg-slate-800 border border-slate-700 rounded-xl py-2 text-sm font-bold outline-none focus:border-emerald-500"/>
+                      <ScoreWheel value={g.p2} onChange={v => setScore(i, 'p2', v)}/>
                       {i >= 2 && (
                         <button onClick={() => setGames(g => g.filter((_, idx) => idx !== i))} aria-label={`Remove game ${i + 1}`} className="text-slate-500 hover:text-red-400 ml-auto"><X size={14}/></button>
                       )}

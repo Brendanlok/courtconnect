@@ -11,12 +11,13 @@ import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
-import { BADGES } from '@/lib/achievements';
+import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const RESULT_FILTERS = ['All', 'Wins', 'Losses', 'Pending'] as const;
 type ResultFilter = typeof RESULT_FILTERS[number];
@@ -36,6 +37,33 @@ const BADGE_ICON: Record<string, React.ReactNode> = {
   century_club:  <Star size={18} className="text-amber-400"/>,
 };
 
+function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: boolean; onClose: () => void }) {
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, badge.name);
+  return (
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h2 className="font-bold">Achievement</h2>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="p-6 flex flex-col items-center text-center gap-3">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${earned ? 'bg-slate-800' : 'bg-slate-800/50 opacity-50'}`}>
+            {BADGE_ICON[badge.id]}
+          </div>
+          <div>
+            <p className="font-bold text-base">{badge.name}</p>
+            <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border
+              ${earned ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+              {earned ? 'Unlocked' : 'Locked'}
+            </span>
+          </div>
+          <p className="text-sm text-slate-400 leading-relaxed">{badge.description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
   const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile, earnedBadgeIds } = useApp();
 
@@ -52,6 +80,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const [matchQuery,     setMatchQuery]     = useState('');
   const [matchFormat,    setMatchFormat]    = useState<MatchType | 'All'>('All');
   const [matchResult,    setMatchResult]    = useState<ResultFilter>('All');
+  const [selectedBadge,  setSelectedBadge]  = useState<Badge | null>(null);
 
   if (!staticPlayer && !forceIsMe) return notFound();
 
@@ -580,15 +609,15 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 {BADGES.map(b => {
                   const done = earnedBadgeIds.includes(b.id);
                   return (
-                    <div key={b.id}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl border transition-opacity
-                        ${done ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-35'}`}>
+                    <button key={b.id} onClick={() => setSelectedBadge(b)}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-colors
+                        ${done ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-slate-900 border-slate-800 opacity-35 hover:opacity-60'}`}>
                       {BADGE_ICON[b.id]}
                       <div className="min-w-0">
                         <p className="text-xs font-semibold truncate">{b.name}</p>
                         <p className="text-[10px] text-slate-500 truncate">{b.description}</p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
