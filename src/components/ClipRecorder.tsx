@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw, MapPin, Zap, ZapOff } from 'lucide-react';
+import { Camera, Square, Upload, Download, X, Video, Check, AlertCircle, RotateCcw, MapPin, Zap, ZapOff, Pause, Play } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { LiveMatch, CourtPosition } from '@/types';
 import { computeHomography, applyHomography, CALIBRATION_CORNER_ORDER, type PixelPoint, type Homography } from '@/lib/courtCalibration';
@@ -102,6 +102,7 @@ export default function ClipRecorder({
   // post-processing over live/video-based).
   const [shuttleHits, setShuttleHits] = useState<number[] | null>(null);
   const [detectingHits, setDetectingHits] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const streamRef   = useRef<MediaStream | null>(null);
@@ -215,6 +216,7 @@ export default function ClipRecorder({
     rec.start(1000);
     recorderRef.current = rec;
     setElapsed(0);
+    setPaused(false);
     timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
     setState('recording');
   }, [stopStream]);
@@ -222,6 +224,20 @@ export default function ClipRecorder({
   const stopRec = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     recorderRef.current?.stop();
+  }, []);
+
+  const pauseRec = useCallback(() => {
+    if (recorderRef.current?.state !== 'recording') return;
+    recorderRef.current.pause();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setPaused(true);
+  }, []);
+
+  const resumeRec = useCallback(() => {
+    if (recorderRef.current?.state !== 'paused') return;
+    recorderRef.current.resume();
+    timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
+    setPaused(false);
   }, []);
 
   // Tapping the live preview: first 4 taps calibrate (map this camera's
@@ -307,12 +323,12 @@ export default function ClipRecorder({
   }, [homography, onCourtTap]);
 
   useEffect(() => {
-    if (!autoDetect || !homography || !calibLocked) return;
+    if (!autoDetect || !homography || !calibLocked || paused) return;
     if (state !== 'previewing' && state !== 'recording') return;
     prevGrayRef.current = null; // fresh baseline each time detection (re)starts
     const id = setInterval(detectTick, DETECT_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [autoDetect, homography, calibLocked, state, detectTick]);
+  }, [autoDetect, homography, calibLocked, state, detectTick, paused]);
 
   // Once a clip is done recording (camera or native file-input path), scan its
   // audio track once for shuttle hits. Runs regardless of onCourtTap/courtTapMode
@@ -546,9 +562,9 @@ export default function ClipRecorder({
 
         <div className="flex items-center justify-center gap-2 pb-1.5 shrink-0">
           {state === 'recording' && (
-            <span className="text-[11px] font-mono text-red-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-              {fmt(elapsed)}
+            <span className={`text-[11px] font-mono flex items-center gap-1 ${paused ? 'text-amber-400' : 'text-red-400'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${paused ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`}/>
+              {paused ? 'Paused · ' : ''}{fmt(elapsed)}
             </span>
           )}
           {canScore && !matchComplete && (
@@ -717,10 +733,16 @@ export default function ClipRecorder({
             </button>
           )}
           {state === 'recording' && (
-            <button onClick={stopRec} aria-label="Stop recording"
-              className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
-              <Square size={24} fill="white" className="text-white"/>
-            </button>
+            <>
+              <button onClick={paused ? resumeRec : pauseRec} aria-label={paused ? 'Resume recording' : 'Pause recording'}
+                className="w-12 h-12 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700 flex items-center justify-center transition-colors shrink-0">
+                {paused ? <Play size={18} className="text-white"/> : <Pause size={18} className="text-white"/>}
+              </button>
+              <button onClick={stopRec} aria-label="Stop recording"
+                className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center shrink-0">
+                <Square size={24} fill="white" className="text-white"/>
+              </button>
+            </>
           )}
           {state === 'done' && (
             <div className="flex gap-3 flex-wrap justify-center">
