@@ -74,6 +74,10 @@ html.light body {
 /* Recharts tooltip */
 .recharts-tooltip-wrapper { outline: none; }
 
+/* Scroll-wheel score picker — scrollbar hidden, snap handled inline */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* ── Motion ───────────────────────────────────────────────────────────────────
    Key-interaction animations: button press feedback, modal/popover entrances.
    Everything here is enter-only (elements fully unmount on close) and skips
