@@ -825,6 +825,9 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
       />
       {isMe && <QRModal open={qrOpen} onClose={() => setQrOpen(false)}/>}
       {isMe && settOpen && <SettingsModal open={settOpen} onClose={() => setSettOpen(false)}/>}
+      {selectedBadge && (
+        <BadgeDetailModal badge={selectedBadge} earned={earnedBadgeIds.includes(selectedBadge.id)} onClose={() => setSelectedBadge(null)}/>
+      )}
       {!isMe && challengeOpen && <ChallengeModal opponent={player} onClose={() => setChallengeOpen(false)}/>}
     </>
   );
