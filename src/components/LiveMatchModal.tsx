@@ -590,9 +590,15 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
         </button>
         <div className="flex items-center gap-1.5 text-xs text-slate-400">
           {connected ? <Wifi size={12} className="text-emerald-400"/> : <WifiOff size={12} className="text-red-400"/>}
-          {isHost ? 'Scoring' : 'Watching live'}
+          {isHost ? 'Scoring' : match.status === 'paused' ? 'Match paused' : 'Watching live'}
         </div>
       </div>
+
+      {!isHost && match.status === 'paused' && (
+        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2.5 text-xs text-amber-300">
+          <Clock size={13} className="shrink-0"/> The scorer stepped away — score will update again once they resume.
+        </div>
+      )}
 
       {/* Elapsed time */}
       <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 font-mono tabular-nums">

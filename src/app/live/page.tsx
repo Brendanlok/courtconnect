@@ -342,6 +342,7 @@ export default function LivePage() {
   const needed    = gamesNeeded(match.bestOf);
   const isHost    = phase === 'scoring';
   const isDone    = phase === 'complete';
+  const isPaused  = match.status === 'paused' && !isDone;
   const winnerName = match.winningSide === 'A' ? match.teamAName : match.winningSide === 'B' ? match.teamBName : '';
 
   const teamColor = (side: 'A' | 'B') =>
@@ -404,8 +405,10 @@ export default function LivePage() {
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">{MATCH_TYPE_LABEL[match.format]}</h1>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-              isDone ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse'}`}>
-              {isDone ? 'FINAL' : phase === 'watching' ? '👁 WATCHING' : '● LIVE'}
+              isDone ? 'bg-slate-700 text-slate-400 border-slate-600'
+              : isPaused ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+              : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse'}`}>
+              {isDone ? 'FINAL' : isPaused ? '⏸ PAUSED' : phase === 'watching' ? '👁 WATCHING' : '● LIVE'}
             </span>
           </div>
           {match.venue && <p className="text-xs text-slate-500 mt-0.5">{match.venue}</p>}
