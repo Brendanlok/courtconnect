@@ -652,7 +652,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
             </button>
             <button onClick={onTrack}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-colors">
-              <MapPinned size={11}/>Track &amp; Record (2 Devices)
+              <MapPinned size={11}/>Track &amp; Record
             </button>
           </div>
         )}

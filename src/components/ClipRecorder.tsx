@@ -572,7 +572,7 @@ export default function ClipRecorder({
                 </div>
               </div>
             ) : !calibLocked ? (
-              <div className={`absolute inset-x-3 flex justify-center gap-1.5 ${state === 'previewing' ? 'top-14' : 'top-3'}`}>
+              <div className={`absolute inset-x-3 flex flex-wrap justify-center gap-1.5 ${state === 'previewing' ? 'top-14' : 'top-3'}`}>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-amber-500/90 text-black text-center">
                   Drag corners to fine-tune
                 </div>
@@ -634,10 +634,14 @@ export default function ClipRecorder({
         )}
         {state === 'previewing' && (
           <>
-            <CourtGuideOverlay/>
-            <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1 pointer-events-none">
-              Fit both baselines and the net inside the dashed guide
-            </p>
+            {!courtTapMode && (
+              <>
+                <CourtGuideOverlay/>
+                <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1 pointer-events-none">
+                  Fit both baselines and the net inside the dashed guide
+                </p>
+              </>
+            )}
             <div className="absolute top-3 inset-x-3 flex justify-center pointer-events-none">
               <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold
                 ${readiness === 'checking' ? 'bg-slate-800/90 text-slate-300'

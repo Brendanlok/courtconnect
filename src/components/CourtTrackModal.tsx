@@ -128,7 +128,7 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
             plannedMatch ? (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Two phones, one at each end of the court, each at a 3/4 angle from the back. After calibrating, turn on Auto-detect and it&apos;ll log positions from motion in the video automatically — or tap the court diagram yourself any time. Positions from both ends combine into one shared heatmap.
+                  Position your phone at a 3/4 angle wherever you can see all 4 court corners — one device is all you need. After calibrating, turn on Auto-detect and it&apos;ll log positions from motion in the video automatically — or tap the court diagram yourself any time. Want extra coverage? Share the join code once you start; a second device is optional.
                 </p>
                 <Button onClick={startAsHost} className="w-full flex items-center justify-center gap-2">
                   <Radio size={14}/> Start Tracking Session
@@ -152,14 +152,17 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
           {view === 'tracking' && session && recorderStub && (
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <button onClick={copyCode}
-                  className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] font-mono font-bold shrink-0">
-                  {session.joinCode} {codeCopied ? <Check size={11} className="text-emerald-400"/> : <Copy size={11}/>}
-                </button>
-                <span className="text-[11px] text-slate-500 text-right">{session.positions.length} positions logged (both ends)</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-500">Invite a 2nd device (optional)</span>
+                  <button onClick={copyCode}
+                    className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] font-mono font-bold shrink-0 w-fit">
+                    {session.joinCode} {codeCopied ? <Check size={11} className="text-emerald-400"/> : <Copy size={11}/>}
+                  </button>
+                </div>
+                <span className="text-[11px] text-slate-500 text-right">{session.positions.length} positions logged</span>
               </div>
               <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
-                Any angle works as long as all 4 court corners are visible — elevated, low, wherever you&apos;ve got a spot near {isHostEnd ? 'your baseline' : 'the far baseline'}. Once the camera&apos;s open, tap the 4 corners once to calibrate (drag to fine-tune before confirming). Then either turn on Auto-detect to log positions from motion automatically, or tap the live picture yourself whenever play settles into a new spot. Or use the diagram below any time.
+                Any angle works as long as all 4 court corners are visible — elevated, low, side-on, wherever you&apos;ve got a spot. Tap the 4 corners once to calibrate (drag to fine-tune before confirming). Then either turn on Auto-detect to log positions from motion automatically, or tap the live picture yourself whenever play settles into a new spot. Or use the diagram below any time.
               </p>
               <ClipRecorder match={recorderStub} courtTapMode onCourtTap={handleTap} courtTapCount={session.positions.length}/>
               <div>
