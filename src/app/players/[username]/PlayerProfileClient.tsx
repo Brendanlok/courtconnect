@@ -1,6 +1,6 @@
 'use client';
 import { notFound } from 'next/navigation';
-import { PLAYERS, MMR_HISTORY, ME } from '@/lib/data';
+import { PLAYERS, ME } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
@@ -61,6 +61,22 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
   const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+
+  // Real MMR history for the last 30 days (own profile only), walked forward
+  // from each confirmed match's mmrChange — same approach as the Home page
+  // chart, not a hardcoded seed series.
+  const thirtyDaysAgo = Date.now() - 30 * 86400000;
+  const recentConfirmedForMmr = isMe
+    ? [...allMatches]
+        .filter(m => m.status === 'Confirmed' && new Date(m.playedAt).getTime() >= thirtyDaysAgo)
+        .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime())
+    : [];
+  let mmrRunning = ctxUser.mmr - recentConfirmedForMmr.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+  const mmrHistory = recentConfirmedForMmr.map(m => {
+    mmrRunning += m.mmrChange ?? 0;
+    const d = new Date(m.playedAt);
+    return { date: `${d.toLocaleDateString('en-US', { month: 'short' })} ${d.getDate()}`, mmr: mmrRunning };
+  });
   const filteredMatches = playerMatches
     .filter(m => matchFormat === 'All' || m.type === matchFormat)
     .filter(m => {
@@ -471,21 +487,27 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
           {isMe && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <h2 className="font-semibold mb-4">MMR Progression</h2>
-              <ResponsiveContainer width="100%" height={150}>
-                <AreaChart data={MMR_HISTORY} margin={{ top:4, right:4, left:-24, bottom:0 }}>
-                  <defs>
-                    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval={2}/>
-                  <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
-                  <Tooltip contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
-                    labelStyle={{ color:'#94a3b8' }} itemStyle={{ color:'#10b981' }}/>
-                  <Area type="monotone" dataKey="mmr" stroke="#10b981" strokeWidth={2.5} fill="url(#pg)" dot={false}/>
-                </AreaChart>
-              </ResponsiveContainer>
+              {mmrHistory.length === 0 ? (
+                <div className="h-[150px] flex flex-col items-center justify-center gap-2 text-center">
+                  <p className="text-xs text-slate-500">No confirmed matches in the last 30 days</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={150}>
+                  <AreaChart data={mmrHistory} margin={{ top:4, right:4, left:-24, bottom:0 }}>
+                    <defs>
+                      <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval={2}/>
+                    <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
+                    <Tooltip contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
+                      labelStyle={{ color:'#94a3b8' }} itemStyle={{ color:'#10b981' }}/>
+                    <Area type="monotone" dataKey="mmr" stroke="#10b981" strokeWidth={2.5} fill="url(#pg)" dot={false}/>
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           )}
 

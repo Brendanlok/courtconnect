@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { MMR_HISTORY, COMMUNITY_FEED } from '@/lib/data';
+import { COMMUNITY_FEED } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
@@ -43,6 +43,20 @@ export default function Home() {
   const weeklyMmrDelta = confirmed
     .filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo)
     .reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+
+  // Real MMR history for the last 30 days, walked forward from each confirmed
+  // match's mmrChange — starting point is today's MMR minus every delta in
+  // the window, not a hardcoded seed series.
+  const thirtyDaysAgo = Date.now() - 30 * 86400000;
+  const recentConfirmed = [...confirmed]
+    .filter(m => new Date(m.playedAt).getTime() >= thirtyDaysAgo)
+    .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+  let mmrRunning = user.mmr - recentConfirmed.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+  const mmrHistory = recentConfirmed.map(m => {
+    mmrRunning += m.mmrChange ?? 0;
+    const d = new Date(m.playedAt);
+    return { date: `${d.toLocaleDateString('en-US', { month: 'short' })} ${d.getDate()}`, mmr: mmrRunning };
+  });
 
   const upcomingEvents = tournaments.filter(t =>
     t.status === 'Upcoming' && registrations[t.id]
@@ -312,23 +326,30 @@ export default function Home() {
               </h2>
               <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-medium">30 days</span>
             </div>
-            <ResponsiveContainer width="100%" height={148}>
-              <AreaChart data={MMR_HISTORY} margin={{ top:4, right:4, left:-24, bottom:0 }}>
-                <defs>
-                  <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval={2}/>
-                <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
-                <Tooltip
-                  contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
-                  labelStyle={{ color:'#94a3b8' }} itemStyle={{ color:'#10b981' }}
-                />
-                <Area type="monotone" dataKey="mmr" stroke="#10b981" strokeWidth={2.5} fill="url(#g)" dot={false}/>
-              </AreaChart>
-            </ResponsiveContainer>
+            {mmrHistory.length === 0 ? (
+              <div className="h-[148px] flex flex-col items-center justify-center gap-2 text-center">
+                <TrendingUp size={24} className="text-slate-700"/>
+                <p className="text-xs text-slate-500">No confirmed matches in the last 30 days</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={148}>
+                <AreaChart data={mmrHistory} margin={{ top:4, right:4, left:-24, bottom:0 }}>
+                  <defs>
+                    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval={2}/>
+                  <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
+                  <Tooltip
+                    contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
+                    labelStyle={{ color:'#94a3b8' }} itemStyle={{ color:'#10b981' }}
+                  />
+                  <Area type="monotone" dataKey="mmr" stroke="#10b981" strokeWidth={2.5} fill="url(#g)" dot={false}/>
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           {/* Recent Matches */}

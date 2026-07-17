@@ -132,13 +132,6 @@ export const COMMUNITY_FEED: Array<{
 
 export const MATCHES: Match[] = [];
 
-export const MMR_HISTORY = [
-  {date:'May 7', mmr:1680},{date:'May 10',mmr:1698},{date:'May 13',mmr:1683},
-  {date:'May 16',mmr:1710},{date:'May 20',mmr:1728},{date:'May 23',mmr:1745},
-  {date:'May 26',mmr:1740},{date:'May 29',mmr:1762},{date:'Jun 1', mmr:1780},
-  {date:'Jun 2', mmr:1765},{date:'Jun 4', mmr:1825},{date:'Jun 5', mmr:1847},
-];
-
 export const TOURNAMENTS: Tournament[] = [
   {
     isDummy:true, id:'t1', name:'PJ Badminton Open 2025', type:'MS', status:'Active',
