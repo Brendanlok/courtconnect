@@ -1,5 +1,36 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-18] — Over-engineering audit: 9 unused deps removed, self-checks wired to `npm test`
+
+**Trigger:** Lok asked for an over-engineering audit of the codebase (no Notion To-Do item —
+this was a live-conversation request, separate from the scheduled auto-dev loop).
+
+**What the audit found (full report in the conversation, not repeated here):**
+`@radix-ui/react-{avatar,dialog,progress,select,tabs}`, `clsx`, `tailwind-merge`,
+`react-hook-form`, `zod`, and `firebase-admin` — zero imports in `src/`, confirmed by grep
+before removing. Also a dead `toISOString()` pass-through in `supabaseService.ts` (zero
+callers) — deleted. `npm install` after removal dropped 237 transitive packages.
+
+The five `src/lib/*.selfcheck.ts` suites existed but ran nowhere — not in any npm script, not
+in CI. Added `tsx` as a devDependency and `npm test` to actually run them, so they stop
+silently rotting as the source files they cover change.
+
+Two lower-confidence findings from the audit were **not** acted on, left for Lok to decide:
+- Collapsing the 13-country `COUNTRIES` list (`src/lib/utils.ts`) down to Malaysia-only —
+  it's live/used, not dead, and cutting country support is a product-scope call, not cleanup.
+- Whether the self-check suites should also gate CI (`.github/workflows/deploy.yml` doesn't
+  run `npm test` yet) — added the script but didn't wire it into the deploy pipeline unasked.
+
+**Also:** started a QA click-through of the live site but the Browser pane's click-to-element
+targeting was unreliable this session (one ref-click aimed at "Show password" instead
+navigated to Google's real OAuth consent screen; screenshots also timed out repeatedly). An
+earlier read that the Sign Up tab toggle doesn't switch forms was retracted as a likely
+artifact of that same tooling glitch, not a confirmed app bug — flagging here in case a future
+session sees the same symptom and can attribute it correctly instead of re-chasing a ghost.
+
+`npx next build` clean, `npm test` all pass, deployed (pushed to main, GitHub Actions
+build+deploy triggered).
+
 ## [2026-07-16 (auto-dev)] — Pose tracking Phase 2: auto-detect shipped, answered the 3 open questions myself
 
 **Trigger:** Lok said "answer the pose tracking questions so it can proceed, keep going and
