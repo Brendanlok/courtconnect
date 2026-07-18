@@ -975,16 +975,16 @@ function BracketCard({ match: m }: { match: BracketMatch }) {
       className={`rounded-xl overflow-hidden border text-sm flex flex-col
         ${isLive ? 'border-amber-500/50' : m.winner ? 'border-slate-700' : 'border-slate-800/80'}`}>
       {[m.player1, m.player2].map((name, i) => (
-        <div key={i} className={`flex-1 px-3 flex items-center justify-between border-b last:border-0 border-slate-800
+        <div key={i} className={`flex-1 px-3 flex flex-col justify-center gap-0.5 border-b last:border-0 border-slate-800
           ${name === m.winner ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
             : !name || name === 'TBD' ? 'text-slate-600' : 'text-slate-300'}`}>
-          <span className="truncate text-xs">{name || 'TBD'}</span>
-          <div className="flex items-center gap-1.5 shrink-0 ml-1">
-            {m.score && name === m.winner && (
-              <span className="text-[9px] text-slate-500 truncate max-w-[80px]">{m.score}</span>
-            )}
-            {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"/>}
+          <div className="flex items-center justify-between">
+            <span className="truncate text-xs">{name || 'TBD'}</span>
+            {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse shrink-0 ml-1"/>}
           </div>
+          {m.score && name === m.winner && (
+            <span className="text-[9px] text-slate-500 leading-tight truncate" title={m.score}>{m.score}</span>
+          )}
         </div>
       ))}
     </div>
