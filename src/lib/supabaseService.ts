@@ -730,13 +730,3 @@ export async function markMatchMmrApplied(id: string, uid: string) {
   if (!extra.mmrAppliedBy.includes(uid)) extra.mmrAppliedBy = [...extra.mmrAppliedBy, uid];
   await supabase.from('matches').update({ live_stats: extra }).eq('id', id);
 }
-
-// ── Timestamp helpers ─────────────────────────────────────────────────────────
-// Postgres/PostgREST already returns timestamptz columns as ISO strings, so
-// there's no Timestamp class to unwrap here (unlike Firestore) — kept as a
-// pass-through for call-site compat.
-export function toISOString(ts: unknown): string {
-  if (!ts) return new Date().toISOString();
-  if (typeof ts === 'string') return ts;
-  return new Date().toISOString();
-}
