@@ -312,6 +312,11 @@ function PlayersList({ user, following, filters, realPlayers }: { user: UserProf
       return !q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
     })
     .sort((a, b) => {
+      if (openToPartner) {
+        const aFollow = following.includes(a.uid) ? 0 : 1;
+        const bFollow = following.includes(b.uid) ? 0 : 1;
+        if (aFollow !== bFollow) return aFollow - bFollow;
+      }
       if (sortKey === 'winRate') return winRate(b) - winRate(a);
       if (sortKey === 'wins')    return b.stats.wins - a.stats.wins;
       if (sortKey === 'matches') return b.stats.totalMatches - a.stats.totalMatches;
