@@ -324,6 +324,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               // real mmr shown everywhere else).
               disciplineMMR: profile.disciplineMMR ?? {},
             }));
+            // courtProfile lives in its own state (not on `user`), so the
+            // spread above never picks it up — hydrate it separately or a
+            // returning user's heatmap never survives a new device/browser.
+            if (profile.courtProfile) setCourtProfile(profile.courtProfile);
           }
         } catch { /* Firestore unavailable — keep local/seed profile */ }
       })();
@@ -876,6 +880,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         lastUpdated: new Date().toISOString(),
       };
       try { localStorage.setItem('cc_courtProfile', JSON.stringify(next)); } catch { /* ignore */ }
+      const uid = auth.currentUser?.uid;
+      if (uid) saveUserProfile(uid, { courtProfile: next }).catch(() => {});
       return next;
     });
   }, []);
