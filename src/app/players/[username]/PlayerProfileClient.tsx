@@ -133,6 +133,23 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const h2hWins   = h2hMatches.filter(m => m.winnerId === 'me').length;
   const h2hLosses = h2hMatches.filter(m => m.winnerId === player.uid).length;
 
+  // Doubles partner chemistry: confirmed doubles matches grouped by teammate,
+  // sorted by matches played together (most-played partner first).
+  const partnerStats = [...playerMatches
+    .filter(m => m.status === 'Confirmed' && m.type !== 'MS' && m.type !== 'WS')
+    .reduce((map, m) => {
+      const iAmP1 = m.player1Id === player.uid;
+      const partnerId       = iAmP1 ? m.player1PartnerId       : m.player2PartnerId;
+      const partnerName     = iAmP1 ? m.player1PartnerName     : m.player2PartnerName;
+      if (!partnerId) return map;
+      const entry = map.get(partnerId) ?? { id: partnerId, name: partnerName ?? 'Partner', wins: 0, losses: 0 };
+      if (m.winnerId === player.uid) entry.wins++; else entry.losses++;
+      map.set(partnerId, entry);
+      return map;
+    }, new Map<string, { id: string; name: string; wins: number; losses: number }>())
+    .values()]
+    .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses));
+
   // Account privacy: private accounts require an accepted follow to see anything beyond the header
   const isFollowingPlayer  = following.includes(player.uid);
   const hasRequestedFollow = followRequestsSent.includes(player.uid);
@@ -372,6 +389,37 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Doubles Partners ── */}
+        {partnerStats.length > 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Users size={15} className="text-emerald-400"/> Doubles Partners
+            </h2>
+            <div className="space-y-2">
+              {partnerStats.slice(0, 4).map((p, i) => {
+                const played = p.wins + p.losses;
+                const wr = Math.round((p.wins / played) * 100);
+                return (
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50">
+                    {i === 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                        MOST PLAYED
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <p className="text-xs text-slate-500">{p.wins}-{p.losses} together &middot; {wr}% win rate</p>
+                    </div>
+                    <div className="h-1.5 w-16 bg-slate-700 rounded-full overflow-hidden shrink-0">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${wr}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
