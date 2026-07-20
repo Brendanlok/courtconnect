@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-21] — Feature: Doubles Partners record on player profiles
+
+### 🟢 Profile stats
+**Why:** Doubles teammate identity was already stored on every match (`player1PartnerId`/
+`player2PartnerId`) but never surfaced anywhere — a player had no way to see who they play
+best with.
+
+- New "Doubles Partners" card on player profiles (own and others'), next to Head to Head:
+  confirmed doubles matches grouped by teammate, showing W-L record and win rate per partner,
+  sorted by most matches played together.
+- Pure client-side aggregation from existing match data — no schema change.
+
+---
+
 ## [2026-07-15] — Cleanup + fix: dead code removed, tournament regs & planned matches now persist across reloads
 
 ### 🟠 Data persistence

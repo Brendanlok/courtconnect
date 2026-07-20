@@ -1,5 +1,31 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-21] — Feature: Doubles Partners record on player profiles
+
+**Trigger:** Lok asked (live conversation) for creative new feature ideas. Brainstormed 6
+options against the current feature set (shareable match recap, club leaderboard, weekly
+recap, availability board, casual/practice matches, doubles partner stats) and picked doubles
+partner stats to build first — pure upside, zero data-model risk, reuses data already on
+every `Match` record.
+
+**Shipped:** `player1PartnerId`/`player2PartnerId` were captured on every doubles match but
+never displayed. Added a "Doubles Partners" card to `PlayerProfileClient.tsx` (own profile and
+others') that aggregates confirmed doubles matches by teammate into W-L record + win rate,
+sorted by most-played partner. `npx next build` clean, deployed (commit 69dc851).
+
+**Not verified live:** couldn't click-test past the login screen — this environment has no
+real Supabase login credentials and creating a real account isn't something I'll do
+unprompted. Build is clean and the console showed no errors on the login page, but Lok should
+open the deployed site and check a doubles player's profile to confirm the card renders and
+math is right.
+
+**Remaining ideas from the brainstorm, not yet built:** shareable match recap image (auto-
+generated after a confirmed match, for sharing to WhatsApp groups), club leaderboard/rivalry,
+weekly MMR recap banner, "who's playing this week" availability board (needs a new table),
+casual/practice match logging that skips MMR.
+
+---
+
 ## [2026-07-18] — Over-engineering audit: 9 unused deps removed, self-checks wired to `npm test`
 
 **Trigger:** Lok asked for an over-engineering audit of the codebase (no Notion To-Do item —
