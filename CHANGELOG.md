@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-21] — Fixes: full-screen live recording, log-to-profile prompt, shuttle-hit tuning
+
+### 🟠 Live recording UX
+**Why:** The camera recording screen wasted a third of the screen on a score header that
+was never actually tappable in any reachable flow, and the `/live` scoreboard page had no
+way to save its result to your profile at all.
+
+- Recording now goes full screen (score header only shows where live tap-scoring is real).
+- `/live` page prompts to log the match to your profile once it's done — previously the
+  result just evaporated when you left the page.
+- Shuttle-hit auto-detect threshold raised to cut false positives from court/crowd noise.
+
+---
+
 ## [2026-07-21] — Feature: Doubles Partners record on player profiles
 
 ### 🟢 Profile stats

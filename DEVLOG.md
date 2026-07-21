@@ -1,5 +1,46 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-21] — Fixes: full-screen recording, log-to-profile prompt, shuttle-hit tuning
+
+**Trigger:** Lok (live conversation) reported shuttle-hit auto-detect "seems a bit random",
+and asked for live recording to go full screen with the score removed, plus a prompt to
+upload/log the match once recording ends. Also asked for more features and a light/dark
+switch.
+
+**Shipped:**
+- `ClipRecorder.tsx`: the score header (1/3 of the screen) now only renders when `canScore`
+  is true — i.e. only for the one flow where live tap-to-score is actually wired up
+  (`LiveMatchModal` video mode, currently hidden from the UI). Every reachable recording
+  surface (`/live` page, Track & Record) had `canScore=false` and was showing a dead,
+  untappable 0-0 header for no reason — camera now goes full screen there instead. Moved the
+  recording-elapsed timer into an overlay on the camera view so it's not lost when the header
+  is gone.
+- `live/page.tsx`: this page never had a way to save its match to your profile/MMR — it's a
+  standalone scoreboard, `addMatch` was never called anywhere in it. Added a "Log this match
+  to your profile?" prompt on completion that opens the existing `LogMatchModal`.
+- `shuttleDetect.ts`: raised the transient-detection threshold (3 → 4.2 stddev) to cut false
+  positives from crowd/court noise. Still a heuristic (frame-energy + rolling threshold, not
+  a trained classifier) — real recordings would be needed to tune further, which this
+  environment doesn't have access to.
+
+**Investigated, turned out to already exist:** Lok asked for "more features" and a light/dark
+switch.
+- Light/dark toggle: already live since 2026-07-08 (`Topbar.tsx` account menu → Theme toggle),
+  backed by a CSS-variable remap of the whole slate palette in `globals.css` — every
+  `bg-slate-*`/`border-slate-*`/`text-slate-*` class in the app inverts automatically, no
+  per-component work needed. Didn't rebuild it, just confirmed it's there and pointed Lok at it.
+- Checked the "remaining ideas" list from the 2026-07-21 Doubles Partners session (shareable
+  match recap image, club leaderboard, weekly MMR recap banner, availability board, casual/
+  practice match logging). Two of the five already exist and weren't flagged as done at the
+  time: a weekly MMR delta already shows in the home hero card, and clubs already have a
+  "Top Players" mini-leaderboard. The other three (recap image, availability board, casual
+  match logging) are still open — presented to Lok to pick rather than guessing which to build.
+
+**Not verified live:** same recurring limitation as every prior session — no demo/guest login,
+real Supabase auth required for every write, and creating a test account or entering a
+password isn't something this session does. Verified via `npx next build` (clean) and careful
+code read-through instead. `npx next build` clean, deployed (commit acc1514).
+
 ## [2026-07-21] — Feature: Doubles Partners record on player profiles
 
 **Trigger:** Lok asked (live conversation) for creative new feature ideas. Brainstormed 6
