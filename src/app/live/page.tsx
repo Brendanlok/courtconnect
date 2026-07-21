@@ -7,6 +7,7 @@ import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users, Map
 import type { LiveMatch, MatchType, CourtPosition } from '@/types';
 import ClipRecorder from '@/components/ClipRecorder';
 import CourtHeatmap from '@/components/CourtHeatmap';
+import { LogMatchModal } from '@/components/LogMatchModal';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ export default function LivePage() {
   const [courtPositions, setCourtPositions] = useState<CourtPosition[]>([]);
   const [courtOpen,      setCourtOpen]      = useState(false);
   const [courtSaved,     setCourtSaved]     = useState(false);
+  const [logOpen,        setLogOpen]        = useState(false);
 
   // join flow — pre-fill from ?code= query param
   const [joinInput,  setJoinInput]  = useState(() => {
@@ -501,6 +503,22 @@ export default function LivePage() {
         )}
       </div>
 
+      {/* Log-to-profile prompt on match completion — this page only tracks the
+          live scoreboard, it never saves to the player's match history/MMR on
+          its own, so without this the result just evaporates once you leave. */}
+      {isDone && (
+        <div className="bg-slate-900 border border-amber-500/25 rounded-2xl p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold">Log this match to your profile?</p>
+            <p className="text-xs text-slate-400 mt-0.5">This scoreboard is separate from your match history — log it to count toward MMR and stats.</p>
+          </div>
+          <button onClick={() => setLogOpen(true)}
+            className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">
+            Log to Profile
+          </button>
+        </div>
+      )}
+
       {/* Court save prompt on match completion */}
       {isDone && courtPositions.length > 0 && !courtSaved && (
         <div className="bg-slate-900 border border-emerald-500/25 rounded-2xl p-4 space-y-3">
@@ -567,6 +585,8 @@ export default function LivePage() {
           <span>The scorer stepped away — this will update again once they resume.</span>
         </div>
       )}
+
+      {logOpen && <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)}/>}
     </div>
   );
 }

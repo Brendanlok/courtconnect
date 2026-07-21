@@ -534,47 +534,53 @@ export default function ClipRecorder({
   // overlay the bottom of the court area instead of taking their own strip.
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Score section — 1/3 of screen, each side is one big tap target */}
-      <div className="flex-[1] min-h-0 flex flex-col bg-black/80">
-        <div className="flex-1 min-h-0 flex items-stretch relative">
-          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('a')}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
-              ${canScore && !matchComplete ? 'active:scale-[0.97] active:bg-emerald-500/15' : ''}`}>
-            <span className="text-xs font-bold text-emerald-400 truncate max-w-[90%]">{match.teamAName}</span>
-            <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
-              {match.games[match.currentGame]?.a ?? 0}
-            </span>
-          </button>
+      {/* Score section — only when this recording IS the live scoring surface
+          (LiveMatchModal video mode). Everywhere else (plain /live recording,
+          Track & Record) canScore is false and there's nothing to tap, so the
+          header used to just burn a third of the screen showing a cosmetic
+          0-0 — cut it and let the camera go full screen instead. */}
+      {canScore && (
+        <div className="flex-[1] min-h-0 flex flex-col bg-black/80">
+          <div className="flex-1 min-h-0 flex items-stretch relative">
+            <button disabled={matchComplete} onClick={() => onAddPoint?.('a')}
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
+                ${!matchComplete ? 'active:scale-[0.97] active:bg-emerald-500/15' : ''}`}>
+              <span className="text-xs font-bold text-emerald-400 truncate max-w-[90%]">{match.teamAName}</span>
+              <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
+                {match.games[match.currentGame]?.a ?? 0}
+              </span>
+            </button>
 
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-800/90 border border-slate-700 rounded-full px-2 py-0.5 pointer-events-none">
-            vs
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-800/90 border border-slate-700 rounded-full px-2 py-0.5 pointer-events-none">
+              vs
+            </div>
+
+            <button disabled={matchComplete} onClick={() => onAddPoint?.('b')}
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
+                ${!matchComplete ? 'active:scale-[0.97] active:bg-blue-500/15' : ''}`}>
+              <span className="text-xs font-bold text-blue-400 truncate max-w-[90%]">{match.teamBName}</span>
+              <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
+                {match.games[match.currentGame]?.b ?? 0}
+              </span>
+            </button>
           </div>
 
-          <button disabled={!canScore || matchComplete} onClick={() => onAddPoint?.('b')}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 m-1.5 rounded-2xl transition-all
-              ${canScore && !matchComplete ? 'active:scale-[0.97] active:bg-blue-500/15' : ''}`}>
-            <span className="text-xs font-bold text-blue-400 truncate max-w-[90%]">{match.teamBName}</span>
-            <span className="text-6xl sm:text-7xl font-black text-white tabular-nums leading-none">
-              {match.games[match.currentGame]?.b ?? 0}
-            </span>
-          </button>
+          {!matchComplete && (
+            <p className="text-center text-[10px] text-slate-500 pb-1.5 shrink-0">Tap a score to add a point</p>
+          )}
         </div>
+      )}
 
-        <div className="flex items-center justify-center gap-2 pb-1.5 shrink-0">
-          {state === 'recording' && (
-            <span className={`text-[11px] font-mono flex items-center gap-1 ${paused ? 'text-amber-400' : 'text-red-400'}`}>
+      {/* Court / camera area — full screen when there's no score header above */}
+      <div className={`${canScore ? 'flex-[2]' : 'flex-1'} min-h-0 relative bg-black flex items-center justify-center`}>
+        {state === 'recording' && (
+          <div className="absolute top-3 left-3 z-10 pointer-events-none">
+            <span className={`text-[11px] font-mono flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 ${paused ? 'text-amber-400' : 'text-red-400'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${paused ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`}/>
               {paused ? 'Paused · ' : ''}{fmt(elapsed)}
             </span>
-          )}
-          {canScore && !matchComplete && (
-            <p className="text-center text-[10px] text-slate-500">Tap a score to add a point</p>
-          )}
-        </div>
-      </div>
-
-      {/* Court / camera area — 2/3 of screen, controls overlaid at the bottom */}
-      <div className="flex-[2] min-h-0 relative bg-black flex items-center justify-center">
+          </div>
+        )}
         {(state === 'requesting' || state === 'previewing' || state === 'recording') && (
           <video ref={videoRef} className={`w-full h-full object-cover ${courtTapMode ? 'cursor-crosshair' : ''}`}
             muted playsInline onClick={handleCourtTap}/>
@@ -677,6 +683,9 @@ export default function ClipRecorder({
             <p className="text-slate-400 text-sm">{fmt(elapsed)} recorded</p>
             {matchComplete && (
               <p className="text-slate-500 text-xs">Match finished — log the result below when ready.</p>
+            )}
+            {!matchComplete && !canScore && state === 'done' && (
+              <p className="text-slate-500 text-xs">Upload the clip, then log the match once it's over.</p>
             )}
             {detectingHits && (
               <p className="text-slate-500 text-xs">Scanning audio for shuttle hits…</p>

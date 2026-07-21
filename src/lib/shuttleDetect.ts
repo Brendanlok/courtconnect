@@ -14,7 +14,13 @@ const FRAME_MS = 20;
 const MIN_GAP_MS = 300;
 const WINDOW_MS = 1000;
 const MIN_ENERGY = 0.02; // floor so near-silence noise never counts as a hit
-const THRESHOLD_K = 3; // stddevs above rolling mean to count as a transient
+// stddevs above rolling mean to count as a transient. Was 3 — Lok reported
+// hits feeling "random" in real use, i.e. too many false positives from
+// crowd/voice/footstep noise on a busy court. Raised so only a much sharper
+// spike (an actual impact) clears the bar; still a heuristic, not a trained
+// classifier, so it can still miss soft net shots — revisit with real
+// recordings if that turns out to be the bigger problem instead.
+const THRESHOLD_K = 4.2;
 
 export function computeFrameEnergies(samples: Float32Array, sampleRate: number, frameMs = FRAME_MS): Float32Array {
   const frameSize = Math.max(1, Math.round((sampleRate * frameMs) / 1000));
