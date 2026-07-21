@@ -1,6 +1,4 @@
--- NOT YET APPLIED — run this in the Supabase SQL editor before the
--- "who's playing this week" feature will work. It's additive-only (one new
--- table), doesn't touch any existing table.
+-- APPLIED 2026-07-21 by Lok, via the Supabase SQL editor.
 
 create table availability (
   id uuid primary key default gen_random_uuid(),
