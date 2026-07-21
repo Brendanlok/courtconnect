@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-21] — Feature: casual match logging, shareable match recap image, availability board
+
+### 🟢 New features
+**Why:** Lok picked all 3 remaining ideas from an earlier feature brainstorm.
+
+- Log a match as Ranked or Casual/Practice — casual matches save to your history but never
+  touch MMR, tier, win/loss record, or placement calibration.
+- "Share Recap" button on confirmed matches generates a shareable image card and opens the
+  native share sheet (WhatsApp, etc.), or downloads if sharing isn't supported.
+- New "This Week" tab on Players — post when you're free to play, browse who else is.
+  **Requires a Supabase migration Lok needs to run** (`0007_availability.sql`) before it
+  works live.
+
+---
+
 ## [2026-07-21] — Fixes: full-screen live recording, log-to-profile prompt, shuttle-hit tuning
 
 ### 🟠 Live recording UX

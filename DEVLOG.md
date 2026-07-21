@@ -1,5 +1,43 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-21] — Feature: casual match logging, shareable match recap image, availability board
+
+**Trigger:** Lok picked all 3 remaining ideas from the earlier feature brainstorm and asked
+for all of them in one go.
+
+**Shipped:**
+- **Casual/practice match logging.** `LogMatchModal` has a Ranked/Casual toggle. Casual
+  matches still go through the normal report → opponent confirms → saved-to-history flow,
+  but never touch `user.mmr`, tier, win/loss stats, or placement calibration — gated in the
+  two places `AppContext` actually applies MMR (`realMatches` effect for real Supabase
+  matches, `confirmMatch`'s local branch for doubles/demo matches) on a new optional
+  `Match.mode` field. Anti-cheat's opponent-frequency check is also skipped for casual,
+  since its only purpose is guarding against MMR farming — irrelevant once nothing's at
+  stake, and it would otherwise block logging repeat practice sessions with the same
+  regular partner. `mode` piggybacks on the existing `live_stats` jsonb side-channel
+  (`ExtraMeta`) that already carries fields with no dedicated column — no migration needed
+  for this one.
+- **Shareable match recap image.** New `src/lib/matchRecapImage.ts` draws a 1080×1350 card
+  (score, players, winner, MMR change, venue/date) on a plain `<canvas>` — no image library,
+  matches the QR-decode canvas pattern already used in `LogMatchModal`. "Share Recap" button
+  on confirmed matches in `MatchDetailModal` generates the PNG and hands it to
+  `navigator.share` (opens the native share sheet — WhatsApp etc. show up there on mobile)
+  or falls back to a plain download.
+- **Availability board ("This Week").** New 4th tab on the Players page. Post "I'm free
+  [day] [time of day], optional venue/note"; anyone can browse what's posted, sorted by day;
+  your own entries can be removed. New `availability` table
+  (`supabase/migrations/0007_availability.sql`) — **not yet applied, Lok needs to run this
+  one in the Supabase SQL editor before the feature works** (posting/loading will silently
+  no-op or error until then — `subscribeAvailability` degrades to an empty list rather than
+  crashing, so the rest of the app is unaffected either way).
+
+**Not verified live:** same recurring limitation as every session — no demo/guest login,
+can't click-test past the auth wall. Verified via `npx next build` (clean) and careful
+code read-through, including tracing every MMR-application site to make sure casual mode
+is actually excluded everywhere (not just the one obvious spot), and confirming `mode`
+survives the dispute/resubmit cycle (merged into `live_stats`, not overwritten). `npx next
+build` clean, deployed (commit 97352ce).
+
 ## [2026-07-21] — Fixes: full-screen recording, log-to-profile prompt, shuttle-hit tuning
 
 **Trigger:** Lok (live conversation) reported shuttle-hit auto-detect "seems a bit random",
