@@ -443,6 +443,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
 }) {
   const { user, addMatch, matches, updateUser } = useApp();
   const [done,     setDone]     = useState(false);
+  const [mode,     setMode]     = useState<'ranked' | 'casual'>('ranked');
   const [type,     setType]     = useState<MatchType>(() => user.gender === 'Female' ? 'WS' : 'MS');
   const [opp1,     setOpp1]     = useState<UserProfile | null>(null);
   const [opp2,     setOpp2]     = useState<UserProfile | null>(null);
@@ -463,7 +464,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   // MMR preview: for doubles average team MMR vs enemy team MMR
   const myTeamMMR   = isDoubles && teammate ? Math.round((user.mmr + teammate.mmr) / 2) : user.mmr;
   const oppTeamMMR  = isDoubles && opp1 && opp2 ? Math.round((opp1.mmr + opp2.mmr) / 2) : opp1?.mmr ?? 0;
-  const mmrPreview  = (isDoubles ? opp1 && opp2 && teammate : opp1)
+  const mmrPreview  = mode === 'ranked' && (isDoubles ? opp1 && opp2 && teammate : opp1)
     ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor)
     : null;
 
@@ -479,7 +480,10 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
     : invalidGame ? 'Each game needs a valid badminton score — win by 2, first to 21 (capped at 30).'
     : !isDecisive ? 'Games are tied — add a deciding game.'
     : null;
-  const cheatBlock  = opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
+  // Anti-cheat only guards against MMR farming — irrelevant for a casual
+  // match that never touches MMR, and would otherwise block logging
+  // legitimate practice sessions with a regular partner.
+  const cheatBlock  = mode === 'ranked' && opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
   const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !scoreError && !cheatBlock;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>
@@ -492,9 +496,10 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   };
 
   const submit = () => {
-    if (!opp1 || !mmrPreview || !isDecisive) return;
+    if (!opp1 || !isDecisive) return;
+    if (mode === 'ranked' && !mmrPreview) return;
     const iWon    = myGameWins > oppGameWins;
-    const change  = iWon ? mmrPreview!.gain : mmrPreview!.loss;
+    const change  = mode === 'ranked' ? (iWon ? mmrPreview!.gain : mmrPreview!.loss) : undefined;
 
     addMatch({
       id: `m-${Date.now()}`, type, status: 'Pending',
@@ -511,13 +516,15 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
         player2PartnerUsername: opp2.username,
       } : {}),
       winnerId: iWon ? user.uid : opp1.uid,
-      games: parsedGames, mmrChange: change,
+      games: parsedGames, mmrChange: change, mode,
       playedAt: new Date().toISOString(),
       location: loc || `${user.area}, ${user.state}`,
       ...(plannedMatchId ? { plannedMatchId } : {}),
     } as Match);
 
-    if (!placementDone) {
+    // Placement calibration is a ranked-only concept — a casual match
+    // shouldn't burn one of the 10 placement games.
+    if (mode === 'ranked' && !placementDone) {
       updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
     }
 
@@ -548,6 +555,21 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
             </div>
 
             <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Ranked / Casual */}
+              <div className="flex bg-slate-800 border border-slate-700 rounded-xl p-1">
+                <button type="button" onClick={() => setMode('ranked')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'ranked' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>
+                  🏆 Ranked
+                </button>
+                <button type="button" onClick={() => setMode('casual')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'casual' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>
+                  🎽 Casual / Practice
+                </button>
+              </div>
+              {mode === 'casual' && (
+                <p className="text-[11px] text-slate-500 -mt-2">Saved to your match history, but won&apos;t affect MMR, tier, or win/loss record.</p>
+              )}
+
               {/* QR scan */}
               <div>
                 <p className="text-xs text-slate-400 font-semibold mb-2">Scan Opponent QR Code</p>

@@ -207,6 +207,22 @@ export interface Notification {
   meta?: Record<string, string>;
 }
 
+// "Who's playing this week" board — a player posts a day they're free to
+// play; anyone can see the list and reach out. Self-cleans by just not
+// querying past dates, no expiry job needed.
+export type AvailabilityTimeLabel = 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+export interface AvailabilityEntry {
+  id: string;
+  uid: string;
+  displayName: string;
+  username: string;
+  day: string; // ISO date, e.g. "2026-07-24"
+  timeLabel: AvailabilityTimeLabel;
+  venue?: string;
+  note?: string;
+  createdAt: string;
+}
+
 export interface CourtPosition {
   x: number; // 0–1, left baseline = 0, right baseline = 1
   y: number; // 0–1, top sideline = 0, bottom sideline = 1

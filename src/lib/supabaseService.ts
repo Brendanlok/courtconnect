@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase';
 import { getTier, maxClubsForTier } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier } from '@/types';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -621,20 +621,20 @@ export interface StoredMatch {
   player1Id: string; player1Name: string; player1Username: string;
   player2Id: string; player2Name: string; player2Username: string;
   winnerId: string; games: { p1: number; p2: number }[]; status: 'Pending' | 'Confirmed' | 'Disputed' | 'Cancelled';
-  mmrChange?: number; playedAt: string; location?: string;
+  mmrChange?: number; mode?: 'ranked' | 'casual'; playedAt: string; location?: string;
   pendingConfirmations: string[]; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
   recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
   clipUrl?: string; shuttleHits?: number[];
 }
 
 // mmrAppliedBy, reporterUid, pointLog, recordedLive, liveStats, disputedBy,
-// clipUrl, and shuttleHits have no columns in the `matches` table (0002) —
-// stored inside `live_stats` jsonb (unused for these plain reported matches)
+// clipUrl, shuttleHits, and mode have no columns in the `matches` table (0002)
+// — stored inside `live_stats` jsonb (unused for these plain reported matches)
 // as a small side-channel rather than adding new columns.
 interface ExtraMeta {
   reporterUid: string; mmrAppliedBy: string[]; pointLog?: ('a' | 'b')[][];
   recordedLive?: boolean; liveStats?: LiveMatchStats; disputedBy?: string;
-  clipUrl?: string; shuttleHits?: number[];
+  clipUrl?: string; shuttleHits?: number[]; mode?: 'ranked' | 'casual';
 }
 
 function matchRowToStored(row: Record<string, unknown>): StoredMatch {
@@ -646,7 +646,7 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
     player1Id: row.player1_id as string, player1Name: row.player1_name as string, player1Username: row.player1_username as string,
     player2Id: row.player2_id as string, player2Name: row.player2_name as string, player2Username: row.player2_username as string,
     winnerId: row.winner_id as string, games: row.games as StoredMatch['games'], status: row.status as StoredMatch['status'],
-    mmrChange: row.mmr_change as number | undefined, playedAt: row.played_at as string, location: row.location as string | undefined,
+    mmrChange: row.mmr_change as number | undefined, mode: extra.mode, playedAt: row.played_at as string, location: row.location as string | undefined,
     pendingConfirmations: (row.pending_confirmations as string[]) ?? [], mmrAppliedBy: extra.mmrAppliedBy ?? [],
     pointLog: extra.pointLog, recordedLive: extra.recordedLive, liveStats: extra.liveStats, disputedBy: extra.disputedBy,
     clipUrl: extra.clipUrl, shuttleHits: extra.shuttleHits,
@@ -672,7 +672,7 @@ export async function sendMatchDoc(m: StoredMatch) {
   const extra: ExtraMeta = {
     reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog,
     recordedLive: m.recordedLive, liveStats: m.liveStats, disputedBy: m.disputedBy,
-    clipUrl: m.clipUrl, shuttleHits: m.shuttleHits,
+    clipUrl: m.clipUrl, shuttleHits: m.shuttleHits, mode: m.mode,
   };
   await supabase.from('matches').insert({
     id: m.id, type: m.type, player1_id: m.player1Id, player1_name: m.player1Name, player1_username: m.player1Username,
@@ -729,4 +729,43 @@ export async function markMatchMmrApplied(id: string, uid: string) {
   const extra = (data?.live_stats as ExtraMeta | null) ?? { reporterUid: uid, mmrAppliedBy: [] };
   if (!extra.mmrAppliedBy.includes(uid)) extra.mmrAppliedBy = [...extra.mmrAppliedBy, uid];
   await supabase.from('matches').update({ live_stats: extra }).eq('id', id);
+}
+
+// ── Availability ("who's playing this week") ───────────────────────────────
+// Requires migration 0007_availability.sql to be applied — see that file.
+
+function availabilityRowToEntry(row: Record<string, unknown>): AvailabilityEntry {
+  return {
+    id: row.id as string, uid: row.uid as string,
+    displayName: row.display_name as string, username: row.username as string,
+    day: row.day as string, timeLabel: row.time_label as AvailabilityEntry['timeLabel'],
+    venue: row.venue as string | undefined, note: row.note as string | undefined,
+    createdAt: row.created_at as string,
+  };
+}
+
+// Only ever queries today-forward — past entries just age out of every
+// result set, no cleanup job needed.
+export function subscribeAvailability(cb: (entries: AvailabilityEntry[]) => void): () => void {
+  const load = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase.from('availability').select('*').gte('day', today).order('day', { ascending: true });
+    cb((data ?? []).map(availabilityRowToEntry));
+  };
+  load();
+  const channel = supabase.channel('availability')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+export async function createAvailabilityEntry(e: Omit<AvailabilityEntry, 'id' | 'createdAt'>): Promise<void> {
+  await supabase.from('availability').insert({
+    uid: e.uid, display_name: e.displayName, username: e.username,
+    day: e.day, time_label: e.timeLabel, venue: e.venue || null, note: e.note || null,
+  });
+}
+
+export async function deleteAvailabilityEntry(id: string): Promise<void> {
+  await supabase.from('availability').delete().eq('id', id);
 }

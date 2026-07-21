@@ -33,7 +33,10 @@ export function MatchCard({ match: m, userId, onClick }: Props) {
         <div className="text-sm font-semibold truncate">
           vs. {opponent} <span className="text-slate-500 font-normal text-xs">@{oppUser}</span>
         </div>
-        <div className="text-xs text-slate-500">{MATCH_TYPE_LABEL[m.type]} · {timeAgo(m.playedAt)}</div>
+        <div className="text-xs text-slate-500 flex items-center gap-1.5">
+          {MATCH_TYPE_LABEL[m.type]} · {timeAgo(m.playedAt)}
+          {m.mode === 'casual' && <span className="text-[9px] font-bold text-slate-400 bg-slate-700/60 px-1.5 py-0.5 rounded">CASUAL</span>}
+        </div>
       </div>
 
       <div className="text-right shrink-0">

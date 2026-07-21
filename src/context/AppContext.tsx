@@ -92,6 +92,7 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
     games: amP1 ? sm.games : sm.games.map(g => ({ p1: g.p2, p2: g.p1 })),
     status: sm.status,
     mmrChange: myDelta,
+    mode: sm.mode,
     playedAt: sm.playedAt,
     location: sm.location,
     pendingConfirmations: sm.pendingConfirmations.map(u => u === myUid ? 'me' : u),
@@ -512,12 +513,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     realMatches.forEach(m => {
       if (m.status !== 'Confirmed' || m.mmrAppliedBy.includes(uid) || mmrApplyingRef.current.has(m.id)) return;
       mmrApplyingRef.current.add(m.id);
-      const iWon = m.winnerId === uid;
-      const delta = (m.reporterUid === uid ? m.mmrChange : m.mmrChange !== undefined ? -m.mmrChange : undefined) ?? 0;
-      setUser(u => ({
-        ...u, mmr: u.mmr + delta,
-        stats: { wins: u.stats.wins + (iWon ? 1 : 0), losses: u.stats.losses + (iWon ? 0 : 1), totalMatches: u.stats.totalMatches + 1 },
-      }));
+      // Casual/practice matches are recorded but never touch MMR or ranked
+      // win/loss stats — still need mmrAppliedBy set so this effect stops
+      // retrying it every render.
+      if (m.mode !== 'casual') {
+        const iWon = m.winnerId === uid;
+        const delta = (m.reporterUid === uid ? m.mmrChange : m.mmrChange !== undefined ? -m.mmrChange : undefined) ?? 0;
+        setUser(u => ({
+          ...u, mmr: u.mmr + delta,
+          stats: { wins: u.stats.wins + (iWon ? 1 : 0), losses: u.stats.losses + (iWon ? 0 : 1), totalMatches: u.stats.totalMatches + 1 },
+        }));
+      }
       markMatchMmrApplied(m.id, uid).catch(() => { mmrApplyingRef.current.delete(m.id); });
     });
   }, [realMatches]);
@@ -547,6 +553,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         games: m.games,
         status: 'Pending',
         mmrChange: m.mmrChange,
+        mode: m.mode,
         playedAt: m.playedAt,
         location: m.location,
         pendingConfirmations: [m.player2Id],
@@ -580,12 +587,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const iWon = m.winnerId === 'me';
-      const delta = m.mmrChange ?? 0;
-      setUser(u => ({
-        ...u, mmr: u.mmr + delta,
-        stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
-      }));
+      if (m.mode !== 'casual') {
+        const iWon = m.winnerId === 'me';
+        const delta = m.mmrChange ?? 0;
+        setUser(u => ({
+          ...u, mmr: u.mmr + delta,
+          stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
+        }));
+      }
       return { ...m, status: 'Confirmed' as const, pendingConfirmations: [] };
     }));
   }, [isRealMatchId]);

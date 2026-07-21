@@ -1,12 +1,13 @@
 'use client';
 import { useRef, useState } from 'react';
 import type { Match } from '@/types';
-import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3 } from 'lucide-react';
+import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3, Share2, Loader2 } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { PointLogTable } from '@/components/LiveMatchModal';
+import { generateMatchRecapBlob, shareOrDownloadRecap } from '@/lib/matchRecapImage';
 
 interface Props {
   match: Match | null;
@@ -21,6 +22,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   const [correcting, setCorrecting] = useState(false);
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
+  const [sharing, setSharing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   if (!m) return null;
 
@@ -58,6 +60,23 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const myGamesWon  = gameScores.filter(g => g.p1 > g.p2).length;
   const oppGamesWon = gameScores.filter(g => g.p2 > g.p1).length;
 
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const blob = await generateMatchRecapBlob({
+        matchTypeLabel: MATCH_TYPE_LABEL[m.type],
+        myName, oppName, myGamesWon, oppGamesWon, isWin,
+        gameScores: gameScores.filter(g => g.p1 > 0 || g.p2 > 0),
+        mmrChange: m.mmrChange,
+        venue: m.venue || m.location,
+        dateLabel: formatDate(m.playedAt),
+      });
+      await shareOrDownloadRecap(blob, `courtconnect-${m.id}.png`);
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const startCorrecting = () => {
     setCorrectedGames(gameScores.map(g => ({ p1: String(g.p1), p2: String(g.p2) })));
     setCorrecting(true);
@@ -92,6 +111,11 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
               {m.recordedLive && (
                 <span className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border bg-rose-500/10 text-rose-400 border-rose-500/30">
                   <Radio size={10}/> Live Verified
+                </span>
+              )}
+              {m.mode === 'casual' && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-slate-700/60 text-slate-400 border-slate-600">
+                  Casual
                 </span>
               )}
             </div>
@@ -282,6 +306,14 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
               <span>{formatTime(m.playedAt)}</span>
             </div>
           </div>
+
+          {!isPending && !isDisputed && !isCancelled && (
+            <button onClick={handleShare} disabled={sharing}
+              className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 rounded-xl text-sm font-semibold transition-colors">
+              {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15} className="text-emerald-400"/>}
+              {sharing ? 'Generating…' : 'Share Recap'}
+            </button>
+          )}
         </div>
 
         {/* Propose a corrected score */}

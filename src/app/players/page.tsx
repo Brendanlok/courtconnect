@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -9,7 +9,7 @@ import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
   X, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, Crown, ShieldCheck,
-  UserMinus, Trash2, UserCheck, ChevronDown, LayoutList, BarChart2,
+  UserMinus, Trash2, UserCheck, ChevronDown, LayoutList, BarChart2, Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CreateClubModal } from '@/components/CreateClubModal';
@@ -17,10 +17,11 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import type { UserProfile, MalaysiaState, Tier, MatchType, Club } from '@/types';
+import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry } from '@/lib/supabaseService';
+import type { UserProfile, MalaysiaState, Tier, MatchType, Club, AvailabilityEntry, AvailabilityTimeLabel } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Leaderboard', 'Following', 'Clubs'] as const;
+const TABS = ['Leaderboard', 'Following', 'Clubs', 'This Week'] as const;
 
 export default function PlayersPage() {
   const {
@@ -91,13 +92,14 @@ export default function PlayersPage() {
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
             {t === 'Following' && <UserCheck size={13}/>}
             {t === 'Clubs'    && <Shield size={13}/>}
+            {t === 'This Week' && <Calendar size={13}/>}
             {t}
           </button>
         ))}
       </div>
 
       {/* Filters row — player filters for Leaderboard/Following, club filters for Clubs */}
-      {tab !== 'Clubs' && <SharedPlayerFilters f={sharedFilters}/>}
+      {tab !== 'Clubs' && tab !== 'This Week' && <SharedPlayerFilters f={sharedFilters}/>}
       {tab === 'Clubs' && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[160px]">
@@ -139,6 +141,7 @@ export default function PlayersPage() {
           userId={user.uid}
         />
       )}
+      {tab === 'This Week' && <AvailabilityTab user={user}/>}
     </div>
   );
 }
@@ -702,6 +705,129 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       )}
 
       {createOpen && <CreateClubModal onClose={() => setCreateOpen(false)}/>}
+    </div>
+  );
+}
+
+// ─── This Week (availability board) ────────────────────────────────────────
+
+const TIME_LABELS: AvailabilityTimeLabel[] = ['Morning', 'Afternoon', 'Evening', 'Night'];
+
+function dayLabel(iso: string): string {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(iso + 'T00:00:00');
+  const diffDays = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  return d.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'short' });
+}
+
+function todayISO(): string { return new Date().toISOString().slice(0, 10); }
+function addDaysISO(days: number): string { return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10); }
+
+function AvailabilityTab({ user }: { user: UserProfile }) {
+  const [entries,  setEntries]  = useState<AvailabilityEntry[]>([]);
+  const [formOpen, setFormOpen] = useState(false);
+  const [day,      setDay]      = useState(todayISO());
+  const [timeLabel,setTimeLabel]= useState<AvailabilityTimeLabel>('Evening');
+  const [venue,    setVenue]    = useState('');
+  const [note,     setNote]     = useState('');
+  const [posting,  setPosting]  = useState(false);
+  const [error,    setError]    = useState('');
+
+  useEffect(() => subscribeAvailability(setEntries), []);
+
+  const grouped = entries.reduce<Record<string, AvailabilityEntry[]>>((acc, e) => {
+    (acc[e.day] ??= []).push(e);
+    return acc;
+  }, {});
+  const days = Object.keys(grouped).sort();
+
+  const post = async () => {
+    setPosting(true);
+    setError('');
+    try {
+      await createAvailabilityEntry({
+        uid: user.uid, displayName: user.displayName, username: user.username,
+        day, timeLabel, venue: venue.trim() || undefined, note: note.trim() || undefined,
+      });
+      setFormOpen(false);
+      setDay(todayISO()); setTimeLabel('Evening'); setVenue(''); setNote('');
+    } catch {
+      setError('Could not post — try again.');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {!formOpen ? (
+        <button onClick={() => setFormOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 rounded-xl text-sm font-semibold transition-colors">
+          <Plus size={15}/> I&apos;m free to play
+        </button>
+      ) : (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-xs text-slate-400 font-semibold">Day</span>
+              <input type="date" value={day} min={todayISO()} max={addDaysISO(30)} onChange={e => setDay(e.target.value)}
+                className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
+            </label>
+            <label className="block">
+              <span className="text-xs text-slate-400 font-semibold">Time</span>
+              <select value={timeLabel} onChange={e => setTimeLabel(e.target.value as AvailabilityTimeLabel)}
+                className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500">
+                {TIME_LABELS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          </div>
+          <input value={venue} onChange={e => setVenue(e.target.value)} placeholder="Venue (optional)"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional) — e.g. looking for doubles partners"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <div className="flex gap-2">
+            <Button onClick={post} disabled={posting} className="flex-1">
+              {posting ? 'Posting…' : 'Post'}
+            </Button>
+            <button onClick={() => setFormOpen(false)}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {days.length === 0 ? (
+        <div className="text-center py-10 space-y-2">
+          <Calendar size={28} className="mx-auto text-slate-700"/>
+          <p className="text-sm text-slate-500">No one's posted their availability yet</p>
+          <p className="text-xs text-slate-600">Be the first — say when you're free to play</p>
+        </div>
+      ) : days.map(d => (
+        <div key={d} className="space-y-2">
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{dayLabel(d)}</p>
+          <div className="space-y-2">
+            {grouped[d].map(e => (
+              <div key={e.id} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+                <Avatar name={e.displayName} size="sm"/>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{e.displayName} <span className="text-slate-500 font-normal text-xs">@{e.username}</span></p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {e.timeLabel}{e.venue ? ` · ${e.venue}` : ''}{e.note ? ` · ${e.note}` : ''}
+                  </p>
+                </div>
+                {e.uid === user.uid && (
+                  <button onClick={() => deleteAvailabilityEntry(e.id)} aria-label="Remove"
+                    className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
