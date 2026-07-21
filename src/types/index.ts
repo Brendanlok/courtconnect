@@ -74,6 +74,7 @@ export interface Match {
   games: { p1: number; p2: number }[];
   status: MatchStatus;
   mmrChange?: number;
+  mode?: 'ranked' | 'casual'; // absent = ranked, for backward compat with every existing match
   playedAt: string;
   location?: string;
   venue?: string;
