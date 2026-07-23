@@ -765,6 +765,7 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
 
   return (
     <div className="space-y-4">
+      {error && !formOpen && <p className="text-xs text-red-400">{error}</p>}
       {!formOpen ? (
         <button onClick={() => setFormOpen(true)}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 rounded-xl text-sm font-semibold transition-colors">
@@ -823,7 +824,7 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
                   </p>
                 </div>
                 {e.uid === auth.currentUser?.uid && (
-                  <button onClick={() => deleteAvailabilityEntry(e.id)} aria-label="Remove"
+                  <button onClick={() => deleteAvailabilityEntry(e.id).catch(() => setError('Could not remove — try again.'))} aria-label="Remove"
                     className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
                 )}
               </div>
