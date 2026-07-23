@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-24] — Fix: opponent search couldn't find real signed-up players
+
+### 🔴 Critical fix
+**Why:** `LogMatchModal`, `LiveMatchModal`, and the planned-match picker all searched only
+the static seed/demo roster — a real user typing a real friend's name to log, live-score, or
+schedule a match found nobody. QR-code scan was the only working path. The Players page
+already merged in the live Supabase roster correctly; the three match-creation search boxes
+never got the same fix.
+
+- Opponent search in "Log a Match", live match creation, and "Schedule a Match" now includes
+  every real signed-up player, not just the demo roster.
+
+---
+
 ## [2026-07-21] — Feature: casual match logging, shareable match recap image, availability board
 
 ### 🟢 New features

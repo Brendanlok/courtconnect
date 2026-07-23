@@ -1,5 +1,31 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-24] — Fix: real signed-up players were invisible to every opponent search
+
+**Trigger:** Telegram from Lok — "solve the problems and add new features you think make
+sense, don't have to ask me." Went looking for a real gap rather than another brainstormed
+feature, since the last brainstorm list (recap image, availability board, casual matches,
+doubles partners, club leaderboard, weekly recap) is now fully shipped.
+
+**Found:** `players/page.tsx` already merges `[user, ...PLAYERS, ...allRealPlayers]` when
+listing players — `allRealPlayers` is the live Supabase roster, loaded via
+`loadAllRealUsers()` in `AppContext` on every login. But the three opponent-search UIs used
+to actually *play* someone only ever searched the static seed `PLAYERS` array:
+`LogMatchModal`'s `PlayerSearch`, `LiveMatchModal`'s `PlayerPicker`, and `matches/page.tsx`'s
+`PlayerSearchDropdown` (used for scheduling a planned match). QR-code scan already had a
+Supabase lookup fallback and worked fine — but typing a real friend's name to log a match,
+start a live match, or schedule a match found nothing. Root cause was the same gap copy-
+pasted three times, not three separate bugs.
+
+**Shipped:** all three components now pull `allRealPlayers` from `useApp()` and search
+`[...PLAYERS, ...allRealPlayers]` instead of `PLAYERS` alone — same pattern the Players page
+already used correctly. No schema change, no new dependency, 14 lines total.
+
+**Not verified live:** no demo/guest login in this environment to click-test past the auth
+wall. Verified via `npx next build` (clean), `npm test` (all self-checks pass), and a code
+read confirming `allRealPlayers` excludes the caller's own uid server-side (so no risk of
+searching yourself). `npx next build` clean, deployed (commit 1cb27de).
+
 ## [2026-07-21] — Feature: casual match logging, shareable match recap image, availability board
 
 **Trigger:** Lok picked all 3 remaining ideas from the earlier feature brainstorm and asked
