@@ -17,6 +17,7 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { auth } from '@/lib/supabase';
 import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry } from '@/lib/supabaseService';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club, AvailabilityEntry, AvailabilityTimeLabel } from '@/types';
 
@@ -744,11 +745,13 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
   const days = Object.keys(grouped).sort();
 
   const post = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setError('Could not post — try again.'); return; }
     setPosting(true);
     setError('');
     try {
       await createAvailabilityEntry({
-        uid: user.uid, displayName: user.displayName, username: user.username,
+        uid, displayName: user.displayName, username: user.username,
         day, timeLabel, venue: venue.trim() || undefined, note: note.trim() || undefined,
       });
       setFormOpen(false);
@@ -819,7 +822,7 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
                     {e.timeLabel}{e.venue ? ` · ${e.venue}` : ''}{e.note ? ` · ${e.note}` : ''}
                   </p>
                 </div>
-                {e.uid === user.uid && (
+                {e.uid === auth.currentUser?.uid && (
                   <button onClick={() => deleteAvailabilityEntry(e.id)} aria-label="Remove"
                     className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
                 )}

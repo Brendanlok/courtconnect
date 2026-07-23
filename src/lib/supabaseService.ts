@@ -760,12 +760,14 @@ export function subscribeAvailability(cb: (entries: AvailabilityEntry[]) => void
 }
 
 export async function createAvailabilityEntry(e: Omit<AvailabilityEntry, 'id' | 'createdAt'>): Promise<void> {
-  await supabase.from('availability').insert({
+  const { error } = await supabase.from('availability').insert({
     uid: e.uid, display_name: e.displayName, username: e.username,
     day: e.day, time_label: e.timeLabel, venue: e.venue || null, note: e.note || null,
   });
+  if (error) throw error;
 }
 
 export async function deleteAvailabilityEntry(id: string): Promise<void> {
-  await supabase.from('availability').delete().eq('id', id);
+  const { error } = await supabase.from('availability').delete().eq('id', id);
+  if (error) throw error;
 }
