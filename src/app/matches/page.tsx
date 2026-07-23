@@ -802,6 +802,7 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, 
 }) {
   const [q, setQ] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const { allRealPlayers } = useApp();
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
@@ -811,7 +812,9 @@ function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, 
 
   const showSelf = selfPlayer && !exclude.includes(selfPlayer.uid) && (!gender || selfPlayer.gender === gender) &&
     (!q || selfPlayer.displayName.toLowerCase().includes(q.toLowerCase()) || selfPlayer.username.toLowerCase().includes(q.toLowerCase()));
-  const candidates = PLAYERS
+  // Real signed-up opponents alongside the seed/demo roster — same fix as
+  // LogMatchModal's PlayerSearch and LiveMatchModal's PlayerPicker.
+  const candidates = [...PLAYERS, ...allRealPlayers]
     .filter(p => !exclude.includes(p.uid))
     .filter(p => p.uid !== selfPlayer?.uid) // selfPlayer shown separately
     .filter(p => !gender || p.gender === gender)

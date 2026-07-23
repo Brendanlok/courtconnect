@@ -44,7 +44,10 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const results = PLAYERS
+  const { allRealPlayers } = useApp();
+  // Real signed-up opponents alongside the seed/demo roster — see same fix
+  // in LogMatchModal's PlayerSearch.
+  const results = [...PLAYERS, ...allRealPlayers]
     .filter(p => !excludeUids.includes(p.uid))
     .filter(p => !q || p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q))
     .slice(0, 5);

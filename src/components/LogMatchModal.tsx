@@ -377,6 +377,7 @@ function PlayerSearch({
   const [query, setQuery] = useState(value ? `${value.displayName} (@${value.username})` : '');
   const [show, setShow]   = useState(false);
   const ref               = useRef<HTMLDivElement>(null);
+  const { allRealPlayers } = useApp();
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShow(false); };
@@ -388,7 +389,10 @@ function PlayerSearch({
     if (!value) setQuery('');
   }, [value]);
 
-  const filtered = PLAYERS.filter(p => {
+  // Real signed-up opponents alongside the seed/demo roster — search used to
+  // only see PLAYERS, so a real user could never find another real user here
+  // (QR scan was the only working path; see lookupUserByUid/Username above).
+  const filtered = [...PLAYERS, ...allRealPlayers].filter(p => {
     if (exclude.includes(p.uid)) return false;
     const q = query.toLowerCase();
     return p.displayName.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
