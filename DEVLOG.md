@@ -1,5 +1,41 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-25] — Feature: rally stats, crowd-sourced venue directory, club ladder
+
+**Trigger:** Lok picked 3 of the 5 feature ideas suggested this session (rally stats,
+venue directory, club ladder) and asked for all three built in sequence without stopping.
+Also fixed a small UX gap he flagged directly: Track & Record's camera had no placement
+guide before the 4-corner tap calibration (see the commit right before this one).
+
+**Shipped:**
+- **Rally stats.** `src/lib/rallyStats.ts` clusters a match's already-detected shuttle-hit
+  timestamps into rallies (gap > 4s = new rally) — no new data collection. Shows rally
+  count / longest rally / avg hits-per-rally next to the existing hit chips on the match
+  detail screen, only when there's more than one rally worth summarizing.
+- **Venue directory.** New "Venues" tab on the Players page — a real, crowd-sourced list of
+  courts/halls any signed-in user can add (`supabase/migrations/0008_venues.sql`, **not yet
+  applied** — same graceful-degrade-to-empty pattern as the availability migration before
+  Lok ran it). The venue autocomplete that already existed only in the tournament-hosting
+  form (backed by a static mock list) is now a shared `VenueInput` component wired into
+  every venue field app-wide — challenge a player, log/schedule a match, live match setup,
+  This Week availability post. Real venues merge with the old curated list so autocomplete
+  isn't empty on day one.
+- **Club ladder.** New "Ladder" tab on the club page — ranks members by wins in confirmed
+  singles matches played against each other. Not a new ranking system: `computeLadder`
+  (`src/lib/clubLadder.ts`) aggregates over matches that already exist, fetched via a new
+  `subscribeMatchesAmong` query (matches has public-read RLS, so this isn't limited to "my
+  matches" like the existing match subscription). Members with no qualifying matches yet
+  are counted at the bottom instead of cluttering the ranked list.
+
+**Not verified live:** same recurring limitation — no demo/guest login in this environment
+to click-test past the auth wall, and none of these can be exercised meaningfully as an
+anonymous visitor. Verified via `npx next build` (clean), `npm test` (all self-checks pass,
+including 2 new ones for rallyStats and clubLadder), and confirmed the deployed site loads
+with zero console errors post-deploy. Deployed across 3 commits (rally stats + venues:
+`13e45da`, club ladder: `3b9e962`). Still needs Lok to eyeball the new tabs live and apply
+migration 0008 in the Supabase SQL editor before the venue directory actually persists
+anything (autocomplete still works off the seed list either way).
+
 ## [2026-07-24] — Fix: club invites silently added members with zero notification; dead Accept/Decline UI removed
 
 **Trigger:** Auto-dev session. Both open To-Do items (pose tracking, shuttle auto-detect)

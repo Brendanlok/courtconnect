@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-25] — Feature: rally stats, venue directory, club ladder
+
+### 🟢 New features
+**Why:** Lok asked for 3 of 5 suggested feature ideas, built back to back.
+
+- **Rally stats** on the match detail screen — rally count, longest rally, average hits
+  per rally, computed from shuttle-hit detection that was already running on every clip.
+- **Venue directory** — a real, crowd-sourced list of courts/halls (new "Venues" tab on
+  Players). The venue autocomplete that used to only exist in the tournament form is now
+  shared everywhere a match asks for a venue. Requires migration 0008 to be applied.
+- **Club ladder** — a new "Ladder" tab on each club ranks members by wins in confirmed
+  singles matches played against each other, computed from existing match history.
+- Also: Track & Record's camera now shows a placement guide before the 4-corner tap
+  calibration, so you can see roughly where the court should sit in frame first.
+
 ## [2026-07-24] — Fix: silent club invites, dead Accept/Decline UI removed
 
 ### 🟠 Bug fix
