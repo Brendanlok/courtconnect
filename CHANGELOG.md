@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-24] — Fix: silent club invites, dead Accept/Decline UI removed
+
+### 🟠 Bug fix
+**Why:** A real user invited to a club was added as a full member immediately with zero
+notification — no bell entry, no toast — while the app's own notification panel had a fully
+wired Accept/Decline button pair that could never actually appear, because the code path
+that would have created that notification was unreachable from any real invite flow.
+
+- `inviteToClub` still adds the invited player immediately (unchanged, deliberate
+  consent-free behavior) but now the invited player is actually told: an "Added to Club"
+  notification fires via the same real-time diff that already tells players when their own
+  join *request* is accepted or declined.
+- Removed the dead `acceptClubInvite`/`declineClubInvite` functions and the Accept/Decline
+  buttons in the notification panel — they were wired to a notification type that no live
+  code path ever produced.
+
 ## [2026-07-24] — Feature: toast popups for friend + challenge requests
 
 ### 🟢 New feature

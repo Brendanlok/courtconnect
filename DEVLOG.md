@@ -1,5 +1,38 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-24] — Fix: club invites silently added members with zero notification; dead Accept/Decline UI removed
+
+**Trigger:** Auto-dev session. Both open To-Do items (pose tracking, shuttle auto-detect)
+are still gated on Lok live-testing, and the last brainstormed feature list is fully
+shipped — so audited real user flows end-to-end again instead of reporting nothing to do.
+
+**Found:** `inviteToClub` (`AppContext.tsx`) only produced a `club_invite` notification
+(the thing that makes `NotificationPanel` render Accept/Decline buttons) when
+`targetUid === 'me'`. Neither real call site (`ClubDetailClient.tsx`, inviting by username
+or from the demo roster) ever passes `'me'` — they always pass the real target's uid — so
+that branch was dead code, unreachable from any UI path. The reachable branch instead added
+the target as a full club member immediately and notified the *inviting admin* only. Net
+effect: a real user could be silently added to a club with zero notification (no bell entry,
+no toast), while the app's own UI implied invites went through a consent flow that could
+never actually fire. `declineClubInvite`, dead as well, additionally never removed the
+membership `inviteToClub` had already granted — so even if the unreachable path were somehow
+reached, "declining" wouldn't have undone anything.
+
+**Shipped:** removed the dead `targetUid === 'me'` branch, `acceptClubInvite`/
+`declineClubInvite`, the `club_invite` notification type, and the Accept/Decline buttons in
+`NotificationPanel`. The consent-free add-on-invite behavior itself is unchanged (that was a
+deliberate prior decision, matching legacy demo behavior) — the actual fix is that the
+invited player now gets notified: the existing `subscribeClubs` diff (the same mechanism
+that already notifies players when their join *request* is accepted/declined) gained a new
+branch that fires "Added to Club" when a player's own `memberIds` gains them without having
+gone through the pending-request path first.
+
+**Not verified live:** same recurring limitation as every session — no demo/guest login in
+this environment. Verified via `npx next build` (clean), `npm test` (all self-checks pass),
+and a full trace of both `inviteToClub` call sites confirming neither can pass `'me'`. `npx
+next build` clean, deployed (commit `498eaa7`). Still needs Lok to confirm the "Added to
+Club" notification actually appears for a real invited account.
+
 ## [2026-07-24] — Feature: toast popups for incoming friend + challenge requests
 
 **Trigger:** Auto-dev session. Both open To-Do items (pose tracking, shuttle auto-detect)
