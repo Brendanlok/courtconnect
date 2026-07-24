@@ -130,9 +130,17 @@ button:not(:disabled):active {
   from { opacity: 0; transform: scale(0.95); }
 }
 
+/* Toasts — slide down from the top, above the Topbar. */
+.toast-anim {
+  animation: toast-in 200ms var(--motion-ease-out) both;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   button:not(:disabled):active { transform: none; }
-  [role="dialog"], .modal-backdrop, .popover-anim, .sheet-panel {
+  [role="dialog"], .modal-backdrop, .popover-anim, .sheet-panel, .toast-anim {
     animation-duration: 1ms;
     animation-name: none;
   }

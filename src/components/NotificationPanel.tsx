@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { timeAgo } from '@/lib/utils';
 import type { Notification } from '@/types';
 
-const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
+export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   challenge_received: <Swords size={14} className="text-amber-400"/>,
   challenge_accepted: <CheckCircle size={14} className="text-emerald-400"/>,
   challenge_declined: <X size={14} className="text-red-400"/>,
