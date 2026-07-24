@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase';
 import { getTier, maxClubsForTier } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry } from '@/types';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -769,5 +769,33 @@ export async function createAvailabilityEntry(e: Omit<AvailabilityEntry, 'id' | 
 
 export async function deleteAvailabilityEntry(id: string): Promise<void> {
   const { error } = await supabase.from('availability').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ── Venues (crowd-sourced court/venue directory) ────────────────────────────
+// Requires migration 0008_venues.sql to be applied — see that file.
+
+function venueRowToVenue(row: Record<string, unknown>): Venue {
+  return {
+    id: row.id as string, name: row.name as string,
+    state: row.state as MalaysiaState, addedBy: row.added_by as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+export function subscribeVenues(cb: (venues: Venue[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('venues').select('*').order('name', { ascending: true });
+    cb((data ?? []).map(venueRowToVenue));
+  };
+  load();
+  const channel = supabase.channel('venues')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+export async function createVenue(v: Omit<Venue, 'id' | 'createdAt'>): Promise<void> {
+  const { error } = await supabase.from('venues').insert({ name: v.name, state: v.state, added_by: v.addedBy });
   if (error) throw error;
 }

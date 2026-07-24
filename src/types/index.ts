@@ -207,6 +207,17 @@ export interface Notification {
   meta?: Record<string, string>;
 }
 
+// Crowd-sourced court/venue directory — a real address any player can add,
+// picked from autocomplete anywhere a match asks for a venue (previously a
+// plain free-text field with no shared list behind it).
+export interface Venue {
+  id: string;
+  name: string; // full venue name/address, one line — same free-text shape every venue field already used
+  state: MalaysiaState;
+  addedBy: string;
+  createdAt: string;
+}
+
 // "Who's playing this week" board — a player posts a day they're free to
 // play; anyone can see the list and reach out. Self-cleans by just not
 // querying past dates, no expiry job needed.

@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier } from '@/types';
+import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier, Venue } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier, BASE_PATH } from '@/lib/utils';
@@ -20,6 +20,7 @@ import {
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
+  subscribeVenues,
 } from '@/lib/supabaseService';
 
 // A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
@@ -136,6 +137,7 @@ interface AppCtx {
   sendRealMessage: (otherUid: string, otherProfile: SharedParticipant, text: string) => void;
   markRealConvRead: (chatId: string) => void;
   allRealPlayers: UserProfile[];
+  venues: Venue[];
   totalUnread: number;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -244,6 +246,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ranking pool (Leaderboard, Players tab) instead of each page fetching
   // the whole users collection on its own every time it's visited.
   const [allRealPlayers,         setAllRealPlayers]         = useState<UserProfile[]>([]);
+  // Crowd-sourced venue directory, live-subscribed same as clubs — any
+  // signed-in user adding a venue should show up for everyone immediately.
+  const [venues,                 setVenues]                 = useState<Venue[]>([]);
   // Per-chat "last opened" timestamp for real conversations — device-local,
   // same idea as every other per-device UI preference here (openToPlay, etc.).
   const [realLastRead,           setRealLastRead]           = useState<Record<string, string>>(() => {
@@ -416,7 +421,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       realUnsubsRef.current = [];
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
-        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]);
+        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = [];
         return;
@@ -456,6 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setRealConversationDocs(docs);
         }),
         subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
+        subscribeVenues(setVenues),
         subscribeClubs(docs => {
           const prev = prevClubsRef.current;
           docs.forEach(c => {
@@ -1029,7 +1035,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       user, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
-      conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, totalUnread, sidebarCollapsed, toggleSidebar,
+      conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, venues, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, pendingRequests,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,

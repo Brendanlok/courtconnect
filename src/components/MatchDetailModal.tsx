@@ -8,6 +8,7 @@ import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { PointLogTable } from '@/components/LiveMatchModal';
 import { generateMatchRecapBlob, shareOrDownloadRecap } from '@/lib/matchRecapImage';
+import { computeRallyStats } from '@/lib/rallyStats';
 
 interface Props {
   match: Match | null;
@@ -241,6 +242,23 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
               {m.shuttleHits && m.shuttleHits.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs text-slate-500 mb-1.5">{m.shuttleHits.length} shuttle hit{m.shuttleHits.length === 1 ? '' : 's'} detected — tap to jump</p>
+                  {(() => {
+                    const rally = computeRallyStats(m.shuttleHits);
+                    if (!rally || rally.rallyCount < 2) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        <span className="px-2 py-0.5 bg-slate-800/80 rounded-full text-[11px] text-slate-400">
+                          {rally.rallyCount} rallies
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-800/80 rounded-full text-[11px] text-slate-400">
+                          Longest: {rally.longestRallyHits} hits ({rally.longestRallySec}s)
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-800/80 rounded-full text-[11px] text-slate-400">
+                          Avg {rally.avgHitsPerRally} hits/rally
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex flex-wrap gap-1.5">
                     {m.shuttleHits.map((t, i) => (
                       <button key={i} onClick={() => seekTo(t)}
