@@ -668,6 +668,28 @@ export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) 
   return () => { cancelled = true; supabase.removeChannel(channel); };
 }
 
+// Confirmed singles matches between two members of the same set of uids —
+// powers the club ladder (a club-internal win/loss record, computed from
+// matches that already exist rather than a new parallel ranking system).
+// `matches` has public-read RLS, so this isn't limited to "my" matches like
+// subscribeMyRealMatches above — .in() on both columns correctly requires
+// BOTH players of a match to be in the given uid set.
+export function subscribeMatchesAmong(uids: string[], cb: (docs: StoredMatch[]) => void): () => void {
+  if (uids.length === 0) { cb([]); return () => {}; }
+  let cancelled = false;
+  const load = async () => {
+    const { data } = await supabase.from('matches').select('*')
+      .in('player1_id', uids).in('player2_id', uids)
+      .in('type', ['MS', 'WS']).eq('status', 'Confirmed');
+    if (!cancelled) cb((data ?? []).map(matchRowToStored));
+  };
+  load();
+  const channel = supabase.channel(`club_ladder:${uids.slice().sort().join(',')}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
+    .subscribe();
+  return () => { cancelled = true; supabase.removeChannel(channel); };
+}
+
 export async function sendMatchDoc(m: StoredMatch) {
   const extra: ExtraMeta = {
     reporterUid: m.reporterUid, mmrAppliedBy: m.mmrAppliedBy, pointLog: m.pointLog,

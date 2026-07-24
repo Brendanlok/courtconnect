@@ -8,12 +8,13 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { timeAgo, maxClubsForTier, getTier, profileHref } from '@/lib/utils';
-import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages } from '@/lib/supabaseService';
+import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, type StoredMatch } from '@/lib/supabaseService';
+import { computeLadder } from '@/lib/clubLadder';
 import { auth } from '@/lib/supabase';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
   Send, ArrowLeft, Megaphone, UserPlus, Trash2, ChevronRight,
-  Search, Check, X, AlertTriangle,
+  Search, Check, X, AlertTriangle, Trophy,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, ClubMessage } from '@/types';
@@ -28,7 +29,7 @@ const PURPOSE_COLOR: Record<string, string> = {
   Youth:        'bg-amber-500/20 text-amber-400 border-amber-500/30',
 };
 
-type Tab = 'Overview' | 'Members' | 'Chat' | 'Admin';
+type Tab = 'Overview' | 'Members' | 'Ladder' | 'Chat' | 'Admin';
 
 export function ClubDetailClient({ clubId }: { clubId: string }) {
   const {
@@ -155,6 +156,18 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
+  // Club ladder — confirmed singles matches between two members of this club.
+  // Public read, so unlike club chat this isn't gated behind isMember.
+  const myRealUid = auth.currentUser?.uid;
+  const [ladderMatches, setLadderMatches] = useState<StoredMatch[]>([]);
+  useEffect(() => {
+    const realUids = memberKey.split(',').map(id => id === 'me' ? myRealUid : id).filter((id): id is string => !!id);
+    return subscribeMatchesAmong(realUids, setLadderMatches);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberKey]);
+  const toLocalId = (realUid: string) => realUid === myRealUid ? 'me' : realUid;
+  const ladder = computeLadder(ladderMatches, toLocalId);
+
   // Keep announce in sync when club updates
   useEffect(() => {
     if (!editAnnounce) setAnnounce(club.announcement ?? '');
@@ -194,7 +207,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     p.displayName.toLowerCase().includes(inviteQuery.toLowerCase())
   );
 
-  const tabs: Tab[] = ['Overview', 'Members', 'Chat', ...(canManage ? ['Admin' as Tab] : [])];
+  const tabs: Tab[] = ['Overview', 'Members', 'Ladder', 'Chat', ...(canManage ? ['Admin' as Tab] : [])];
 
   const purposeClass = PURPOSE_COLOR[club.purpose] ?? 'bg-slate-700 text-slate-300 border-slate-600';
 
@@ -338,6 +351,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors
               ${tab === t ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+            {t === 'Ladder' && <Trophy size={11} className="inline mr-1"/>}
             {t === 'Chat' && <MessageCircle size={11} className="inline mr-1"/>}
             {t === 'Admin' && <Shield size={11} className="inline mr-1"/>}
             {t}
@@ -440,6 +454,51 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── Ladder ── */}
+      {tab === 'Ladder' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-800">
+            <p className="text-sm font-semibold">Club Ladder</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Ranked by wins in confirmed singles matches between club members</p>
+          </div>
+          {ladder.length === 0 ? (
+            <div className="py-10 text-center space-y-2">
+              <Trophy size={28} className="mx-auto text-slate-700"/>
+              <p className="text-sm text-slate-500">No ranked matches between members yet</p>
+              <p className="text-xs text-slate-600">Log a singles match against a fellow member to get on the board</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-800/60">
+              {ladder.map((entry, i) => {
+                const p = resolveProfile(entry.uid);
+                if (!p) return null;
+                return (
+                  <Link key={entry.uid} href={profileHref(p)}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">
+                    <span className="text-xs text-slate-600 w-5 shrink-0">#{i + 1}</span>
+                    <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{p.displayName} {entry.uid === 'me' && <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold ml-1">You</span>}</p>
+                      <p className="text-[11px] text-slate-500">{entry.played} match{entry.played === 1 ? '' : 'es'} played</p>
+                    </div>
+                    <p className="text-sm font-bold text-right shrink-0">
+                      <span className="text-emerald-400">{entry.wins}W</span>
+                      <span className="text-slate-600"> – </span>
+                      <span className="text-red-400">{entry.losses}L</span>
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+          {members.length > ladder.length && (
+            <p className="text-[11px] text-slate-600 px-5 py-3 border-t border-slate-800">
+              {members.length - ladder.length} member{members.length - ladder.length === 1 ? '' : 's'} not yet on the board — play a confirmed singles match against a club member to appear.
+            </p>
+          )}
         </div>
       )}
 
