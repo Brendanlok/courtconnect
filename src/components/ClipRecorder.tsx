@@ -656,11 +656,13 @@ export default function ClipRecorder({
         )}
         {state === 'previewing' && (
           <>
-            {!courtTapMode && (
+            {(!courtTapMode || (!homography && calibCorners.length === 0)) && (
               <>
                 <CourtGuideOverlay/>
                 <p className="absolute bottom-3 inset-x-3 text-center text-[11px] text-white/80 bg-black/40 rounded-full py-1 pointer-events-none">
-                  Fit both baselines and the net inside the dashed guide
+                  {courtTapMode
+                    ? 'Line the court up roughly like this, then tap its 4 corners'
+                    : 'Fit both baselines and the net inside the dashed guide'}
                 </p>
               </>
             )}
