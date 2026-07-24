@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useEffect } from 'react';
-import { Bell, X, Swords, Users, Shield, CheckCircle, MessageCircle, UserPlus, UserCheck, Calendar, Trophy, Mail, Award } from 'lucide-react';
+import { Bell, X, Swords, Users, Shield, CheckCircle, MessageCircle, UserPlus, UserCheck, Calendar, Trophy, Award } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { timeAgo } from '@/lib/utils';
 import type { Notification } from '@/types';
@@ -14,7 +14,6 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   club_join_request:  <Shield size={14} className="text-amber-400"/>,
   club_accepted:      <Shield size={14} className="text-emerald-400"/>,
   club_declined:      <Shield size={14} className="text-red-400"/>,
-  club_invite:        <Mail size={14} className="text-blue-400"/>,
   club_message:       <MessageCircle size={14} className="text-blue-400"/>,
   match_pending:      <MessageCircle size={14} className="text-slate-400"/>,
   match_invite:       <Calendar size={14} className="text-amber-400"/>,
@@ -28,7 +27,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
-  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount, acceptClubInvite, declineClubInvite } = useApp();
+  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount } = useApp();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,18 +73,6 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
                 <p className="text-xs font-semibold text-slate-200">{n.title}</p>
                 <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{n.body}</p>
                 <p className="text-[10px] text-slate-600 mt-1">{timeAgo(n.createdAt)}</p>
-                {n.type === 'club_invite' && n.meta?.clubId && (
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={e => { e.stopPropagation(); acceptClubInvite(n.meta!.clubId!); markNotifRead(n.id); }}
-                      className="flex-1 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-[11px] font-semibold transition-colors">
-                      Accept
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); declineClubInvite(n.meta!.clubId!); markNotifRead(n.id); }}
-                      className="flex-1 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-semibold transition-colors">
-                      Decline
-                    </button>
-                  </div>
-                )}
               </div>
               {!n.read && <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0 mt-1.5"/>}
             </div>

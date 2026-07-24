@@ -169,8 +169,6 @@ interface AppCtx {
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
   inviteToClub: (clubId: string, targetUid: string) => void;
-  acceptClubInvite: (clubId: string) => void;
-  declineClubInvite: (clubId: string) => void;
   sendClubMessage: (clubId: string, text: string) => void;
   // Follow
   following: string[];
@@ -477,6 +475,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (old.pendingIds.includes(uid) && !c.pendingIds.includes(uid)) {
               if (c.memberIds.includes(uid)) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `Your request to join ${c.name} was accepted!` });
               else addNotification({ type: 'club_declined', title: 'Request Declined', body: `Your request to join ${c.name} was declined.` });
+            } else if (!old.memberIds.includes(uid) && c.memberIds.includes(uid)) {
+              // Direct admin invite (inviteToClub) skips the pending step
+              // entirely — this is the only place that path gets notified.
+              addNotification({ type: 'club_accepted', title: 'Added to Club', body: `You were added to ${c.name}.` });
             }
           });
           prevClubsRef.current = docs;
@@ -796,27 +798,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [myRealUid]);
 
   const inviteToClub = useCallback((clubId: string, targetUid: string) => {
-    if (targetUid === 'me') {
-      // Being invited by someone else — notify only. (No real per-account
-      // "invites received" list is kept — a scoped-out follow-up, same as
-      // the club migration itself.)
-      addNotification({ type: 'club_invite', title: 'Club Invitation', body: 'You have been invited to join a club!', meta: { clubId } });
-    } else {
-      // Admin inviting another player — adds them immediately, matching the
-      // existing (consent-free) demo behavior; now persisted for real.
-      addClubMember(clubId, targetUid).catch(() => {});
-      addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
-    }
-  }, []);
-
-  const acceptClubInvite = useCallback((clubId: string) => {
-    if ((!myClubIds.includes(clubId) && myClubIds.length >= clubLimit) || !myRealUid) return;
-    addClubMember(clubId, myRealUid).catch(() => {});
-    addNotification({ type: 'club_accepted', title: 'Joined Club', body: 'You accepted the club invitation!' });
-  }, [myClubIds, clubLimit, myRealUid]);
-
-  const declineClubInvite = useCallback((clubId: string) => {
-    addNotification({ type: 'club_declined', title: 'Invitation Declined', body: 'You declined the club invitation.' });
+    // Admin inviting another player — adds them immediately, matching the
+    // existing (consent-free) demo behavior; now persisted for real. The
+    // invited player is notified via the subscribeClubs diff below (their
+    // own memberIds change), not here.
+    addClubMember(clubId, targetUid).catch(() => {});
+    addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
   }, []);
 
   const sendClubMessage = useCallback((clubId: string, text: string) => {
@@ -1048,7 +1035,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
-      inviteToClub, acceptClubInvite, declineClubInvite, sendClubMessage,
+      inviteToClub, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,

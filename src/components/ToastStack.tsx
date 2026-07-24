@@ -13,7 +13,7 @@ const MAX_VISIBLE = 3;
 // everything else still lands in the bell, just without the popup.
 const TOAST_TYPES = new Set<Notification['type']>([
   'challenge_received', 'challenge_accepted', 'challenge_declined',
-  'friend_request', 'friend_accepted', 'club_invite',
+  'friend_request', 'friend_accepted',
 ]);
 
 export function ToastStack() {
