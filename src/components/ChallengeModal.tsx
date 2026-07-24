@@ -6,6 +6,7 @@ import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import type { UserProfile, MatchType, Challenge } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 
@@ -89,7 +90,7 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
             <p className="text-[11px] text-slate-500 font-semibold mb-1.5 flex items-center gap-1">
               <MapPin size={10}/> Venue / Court
             </p>
-            <input value={venue} onChange={e => setVenue(e.target.value)} required
+            <VenueInput value={venue} onChange={setVenue} required
               placeholder="e.g. Bukit Kiara Sports Complex, KL"
               className={inp}/>
           </label>

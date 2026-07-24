@@ -13,6 +13,7 @@ import {
 import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
 import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
 import { calcMMRChange } from '@/lib/utils';
 import { antiCheatCheck, liveMatchIntegrityCheck, liveBonusEligible, LIVE_BONUS_MULTIPLIER } from '@/lib/antiCheat';
@@ -260,7 +261,7 @@ function SetupView({ me, onStart, onJoin }: {
           {/* Venue */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-400">Venue</label>
-            <input value={venue} onChange={e => setVenue(e.target.value)}
+            <VenueInput value={venue} onChange={setVenue}
               placeholder="e.g. Sport Planet PJ"
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500"/>
           </div>

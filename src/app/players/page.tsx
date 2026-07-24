@@ -18,11 +18,12 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { auth } from '@/lib/supabase';
-import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry } from '@/lib/supabaseService';
-import type { UserProfile, MalaysiaState, Tier, MatchType, Club, AvailabilityEntry, AvailabilityTimeLabel } from '@/types';
+import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry, createVenue } from '@/lib/supabaseService';
+import type { UserProfile, MalaysiaState, Tier, MatchType, Club, AvailabilityEntry, AvailabilityTimeLabel, Venue } from '@/types';
+import { VenueInput } from '@/components/VenueInput';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
-const TABS = ['Leaderboard', 'Following', 'Clubs', 'This Week'] as const;
+const TABS = ['Leaderboard', 'Following', 'Clubs', 'This Week', 'Venues'] as const;
 
 export default function PlayersPage() {
   const {
@@ -31,7 +32,7 @@ export default function PlayersPage() {
     myClubPendingIds, acceptClubMember, declineClubMember, updateClub, disbandClub,
     assignModerator, removeModerator,
     following, followPlayer, unfollowPlayer,
-    allRealPlayers,
+    allRealPlayers, venues,
   } = useApp();
   const [mmrInfoOpen, setMmrInfoOpen] = useState(false);
   const [tab, setTab] = useState<typeof TABS[number]>(() => {
@@ -94,13 +95,14 @@ export default function PlayersPage() {
             {t === 'Following' && <UserCheck size={13}/>}
             {t === 'Clubs'    && <Shield size={13}/>}
             {t === 'This Week' && <Calendar size={13}/>}
+            {t === 'Venues'   && <MapPin size={13}/>}
             {t}
           </button>
         ))}
       </div>
 
       {/* Filters row — player filters for Leaderboard/Following, club filters for Clubs */}
-      {tab !== 'Clubs' && tab !== 'This Week' && <SharedPlayerFilters f={sharedFilters}/>}
+      {tab !== 'Clubs' && tab !== 'This Week' && tab !== 'Venues' && <SharedPlayerFilters f={sharedFilters}/>}
       {tab === 'Clubs' && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[160px]">
@@ -143,6 +145,7 @@ export default function PlayersPage() {
         />
       )}
       {tab === 'This Week' && <AvailabilityTab user={user}/>}
+      {tab === 'Venues' && <VenuesTab user={user} venues={venues}/>}
     </div>
   );
 }
@@ -787,7 +790,7 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
               </select>
             </label>
           </div>
-          <input value={venue} onChange={e => setVenue(e.target.value)} placeholder="Venue (optional)"
+          <VenueInput value={venue} onChange={setVenue} placeholder="Venue (optional)"
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional) — e.g. looking for doubles partners"
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
@@ -827,6 +830,97 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
                   <button onClick={() => deleteAvailabilityEntry(e.id).catch(() => setError('Could not remove — try again.'))} aria-label="Remove"
                     className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Venues (crowd-sourced court directory) ────────────────────────────────
+
+function VenuesTab({ user, venues }: { user: UserProfile; venues: Venue[] }) {
+  const [formOpen, setFormOpen] = useState(false);
+  const [name,     setName]     = useState('');
+  const [state,    setState]    = useState<MalaysiaState>((user.state as MalaysiaState) || 'Selangor');
+  const [posting,  setPosting]  = useState(false);
+  const [error,    setError]    = useState('');
+
+  const grouped = venues.reduce<Record<string, Venue[]>>((acc, v) => {
+    (acc[v.state] ??= []).push(v);
+    return acc;
+  }, {});
+  const states = Object.keys(grouped).sort();
+
+  const post = async () => {
+    const uid = auth.currentUser?.uid;
+    const trimmed = name.trim();
+    if (!uid || !trimmed) return;
+    if (venues.some(v => v.name.toLowerCase() === trimmed.toLowerCase())) {
+      setError('Already in the directory.');
+      return;
+    }
+    setPosting(true);
+    setError('');
+    try {
+      await createVenue({ name: trimmed, state, addedBy: uid });
+      setFormOpen(false);
+      setName('');
+    } catch {
+      setError('Could not add — try again.');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && !formOpen && <p className="text-xs text-red-400">{error}</p>}
+      {!formOpen ? (
+        <button onClick={() => setFormOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 rounded-xl text-sm font-semibold transition-colors">
+          <Plus size={15}/> Add a venue
+        </button>
+      ) : (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Sport Planet PJ, No.5 Jalan SS7/19, 47301 Petaling Jaya"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"/>
+          <label className="block">
+            <span className="text-xs text-slate-400 font-semibold">State</span>
+            <select value={state} onChange={e => setState(e.target.value as MalaysiaState)}
+              className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500">
+              {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <div className="flex gap-2">
+            <Button onClick={post} disabled={posting || !name.trim()} className="flex-1">
+              {posting ? 'Adding…' : 'Add'}
+            </Button>
+            <button onClick={() => { setFormOpen(false); setError(''); }}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm font-medium transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {states.length === 0 ? (
+        <div className="text-center py-10 space-y-2">
+          <MapPin size={28} className="mx-auto text-slate-700"/>
+          <p className="text-sm text-slate-500">No venues added yet</p>
+          <p className="text-xs text-slate-600">Be the first — add a court or hall you play at</p>
+        </div>
+      ) : states.map(s => (
+        <div key={s} className="space-y-2">
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{s}</p>
+          <div className="space-y-2">
+            {grouped[s].map(v => (
+              <div key={v.id} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+                <MapPin size={14} className="text-slate-500 shrink-0"/>
+                <p className="text-sm text-slate-200 flex-1 min-w-0 truncate">{v.name}</p>
               </div>
             ))}
           </div>

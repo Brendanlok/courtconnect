@@ -19,6 +19,7 @@ import { loadPausedMatch } from '@/lib/pausedMatch';
 import type { UserProfile, MatchType, Match } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1098,7 +1099,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
           {/* Venue */}
           <div className="space-y-1.5">
             <label className="text-xs text-slate-400 font-semibold">Venue</label>
-            <input value={venue} onChange={e => setVenue(e.target.value)}
+            <VenueInput value={venue} onChange={setVenue}
               placeholder="e.g. Setia Alam Sports Complex"
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
           </div>

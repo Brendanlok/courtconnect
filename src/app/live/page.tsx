@@ -8,6 +8,7 @@ import type { LiveMatch, MatchType, CourtPosition } from '@/types';
 import ClipRecorder from '@/components/ClipRecorder';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { LogMatchModal } from '@/components/LogMatchModal';
+import { VenueInput } from '@/components/VenueInput';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -322,7 +323,7 @@ export default function LivePage() {
         {/* Venue */}
         <div>
           <p className="text-[11px] text-slate-500 font-semibold mb-2">Venue (optional)</p>
-          <input value={venue} onChange={e => setVenue(e.target.value)}
+          <VenueInput value={venue} onChange={setVenue}
             placeholder="e.g. Sport Planet PJ"
             className={inp}/>
         </div>
