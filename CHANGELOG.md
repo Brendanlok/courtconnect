@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-24] — Feature: toast popups for friend + challenge requests
+
+### 🟢 New feature
+**Why:** The only signal for an incoming friend or challenge request was the Topbar bell
+count — easy to miss. Picked up a scoped idea already flagged in DEVLOG's Feature Ideas list.
+
+- A transient banner now pops at the top of the screen when someone sends you a challenge,
+  accepts/declines one, sends/accepts a follow request, or invites you to a club — on top of
+  the existing bell notification, not instead of it.
+- Auto-dismisses after 5 seconds, capped at 3 banners visible at once, tap to jump straight
+  to the relevant screen, or dismiss manually.
+
+---
+
 ## [2026-07-24] — Fix: opponent search couldn't find real signed-up players
 
 ### 🔴 Critical fix

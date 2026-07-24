@@ -1,5 +1,40 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-24] — Feature: toast popups for incoming friend + challenge requests
+
+**Trigger:** Auto-dev session. Both open To-Do items (pose tracking, shuttle auto-detect)
+are still gated on Lok live-testing on a real court — a prior session already confirmed
+this twice with no code changes. Instead of reporting "nothing to do" a fourth time, picked
+up a scoped idea already sitting in this file's Feature Ideas table: "Toast/snackbar for
+incoming friend + challenge requests — right now the only signal is the Topbar bell count."
+
+**Checked the other two Feature Ideas first — both already stale:**
+- "Friends-aware Partner Finder" — already shipped (commit `ae6aeac`, "prioritize followed
+  players in Open to Partner results"); `PlayersList` already sorts followed players first.
+- "Bo3 score display in tournament brackets" — the described bug (score-splitting only
+  showing game 1/2 by array index) no longer exists; `BracketMatch.score` is a single
+  pre-formatted string (`"21-14, 21-18"`) and `BracketCard` already displays it in full.
+
+**Shipped:** `ToastStack` (mounted once in `AuthGate`, inside `AppProvider`) watches the
+existing `notifications` array from `AppContext` — the single entry point every
+challenge/friend/club event already flows through — and pops a transient top-of-screen
+banner for `challenge_received/accepted/declined`, `friend_request/accepted`, and
+`club_invite`. Seeds a `seenIds` ref with whatever notifications already exist on mount so
+history doesn't toast, then diffs new arrivals. Auto-dismisses after 5s per-toast, capped
+at 3 visible at once so a notification burst can't fill the screen, tap-to-navigate via the
+existing `linkTo` + `markNotifRead`, explicit dismiss (X) too. Reused `NOTIF_ICON` from
+`NotificationPanel` (exported it) instead of duplicating the icon map. Core dedup/cap logic
+extracted into `src/lib/toastQueue.ts` with a self-check (`toastQueue.selfcheck.ts`), since
+this couldn't be click-tested live (see below) — same convention as `motionDetect`/
+`shuttleDetect`.
+
+**Not verified live:** same recurring limitation as every prior session — no demo/guest
+login in this environment, and creating a real test account or entering a password isn't
+something this session does. Verified via `npx next build` (clean), `npm test` (all
+self-checks incl. the new one pass), and confirmed the deployed site still loads with zero
+console errors post-deploy. Deployed (commit `e5ecd4a`). Still needs Lok to eyeball the
+toast styling/timing live and confirm it doesn't feel intrusive.
+
 ## [2026-07-24] — Fix: real signed-up players were invisible to every opponent search
 
 **Trigger:** Telegram from Lok — "solve the problems and add new features you think make
