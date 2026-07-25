@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-07-25] — Fix: club ladder ranking bugs, venue autocomplete gap
+
+### 🟡 Bug fix
+**Why:** Auditing yesterday's shipment turned up 3 real issues past the surface-level check.
+
+- Club ladder ranked a player with more losses above one with a better win rate (tiebreak
+  used matches-played, not win rate).
+- Ladder rank numbers (`#1, #2, #3…`) could show a gap while a member's profile was still
+  loading.
+- "Log a Match" — the app's most-used venue field — never actually got the shared venue
+  directory despite yesterday's note; it now suggests crowd-sourced venue names alongside
+  its existing GPS/live-location search instead of losing that search to a straight swap.
+
 ## [2026-07-25] — Feature: rally stats, venue directory, club ladder
 
 ### 🟢 New features

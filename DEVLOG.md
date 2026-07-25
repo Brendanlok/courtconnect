@@ -1,5 +1,32 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-25] — Fix: 3 bugs found auditing yesterday's ladder/rally/venue shipment
+
+**Trigger:** Auto-dev session (9am). Both queued To-Do items are still gated on Lok's
+real-court/real-match testing, so instead of idling, dispatched a deeper bug hunt over the
+three features shipped in the last 24h (rally stats, venue directory, club ladder) beyond
+the surface-level correctness pass a prior session already did.
+
+**Found and fixed:**
+- **Club ladder tiebreak rewarded more losses.** `computeLadder` broke ties on wins by
+  matches-played, not win rate — a 3-10 record outranked a clean 3-0 record. Now sorts by
+  win rate first, wins as the tiebreak. Added a regression self-check.
+- **Ladder rank numbers could skip a number.** `#1, #2, #3…` was computed from the raw
+  array index before filtering out members whose profile hadn't resolved yet (async
+  fetch), so it could render `#1, #3, #4` with a gap until the profile loaded. Filter now
+  happens before the index is assigned.
+- **Correction to yesterday's claim below:** "wired into every venue field app-wide"
+  overstated it — the everyday "Log a Match" flow (opened from the homepage, Topbar,
+  matches page, and Track & Record) never got the shared venue directory; it kept its own
+  separate Nominatim/GPS-backed location search, untouched. Rather than replace that
+  search (it does live geocoding + "use my location", which `VenueInput` doesn't), merged
+  crowd-sourced venue names into its existing suggestion dropdown as an addition, so this
+  highest-traffic venue field benefits without losing GPS/live lookup.
+
+**Verified:** `npx next build` clean, `clubLadder.selfcheck.ts` passes (4/4 including the
+new regression case). Not click-tested live — same recurring limitation, no demo/guest
+login in this environment past the auth wall. Deployed: `e47d9d9`.
+
 ## [2026-07-25] — Feature: rally stats, crowd-sourced venue directory, club ladder
 
 **Trigger:** Lok picked 3 of the 5 feature ideas suggested this session (rally stats,
@@ -17,9 +44,11 @@ guide before the 4-corner tap calibration (see the commit right before this one)
   applied** — same graceful-degrade-to-empty pattern as the availability migration before
   Lok ran it). The venue autocomplete that already existed only in the tournament-hosting
   form (backed by a static mock list) is now a shared `VenueInput` component wired into
-  every venue field app-wide — challenge a player, log/schedule a match, live match setup,
+  most venue fields app-wide — challenge a player, schedule a match, live match setup,
   This Week availability post. Real venues merge with the old curated list so autocomplete
-  isn't empty on day one.
+  isn't empty on day one. **Correction (see 2026-07-25 entry above):** "Log a Match" was
+  missed by this pass — it kept its separate GPS/geocoding search, now fixed to also
+  surface crowd-sourced venues instead.
 - **Club ladder.** New "Ladder" tab on the club page — ranks members by wins in confirmed
   singles matches played against each other. Not a new ranking system: `computeLadder`
   (`src/lib/clubLadder.ts`) aggregates over matches that already exist, fetched via a new
