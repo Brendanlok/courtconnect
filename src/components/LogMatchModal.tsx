@@ -74,7 +74,7 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
         if (match) payload = { username: decodeURIComponent(match[1]) };
       }
 
-      // First check seed players, then look up in Firestore
+      // First check seed players, then look up in Supabase
       let player: UserProfile | null = ALL_PLAYERS.find(p =>
         (payload.uid && p.uid === payload.uid) ||
         (payload.username && p.username === payload.username)

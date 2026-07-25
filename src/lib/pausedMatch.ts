@@ -1,5 +1,5 @@
 // Paused-live-match handoff — remembers the in-progress match (score included)
-// across a quit/resume so it's never lost, without depending on a Firestore
+// across a quit/resume so it's never lost, without depending on a Supabase
 // round-trip. `match`/`pointLog` are kept fresh continuously while scoring
 // (see ScorerView), not just at pause time.
 import { useEffect, useState } from 'react';

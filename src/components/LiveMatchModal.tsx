@@ -385,7 +385,7 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
   const [connected, setConnected] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
 
-  // Keep a full local snapshot fresh on every point, independent of Firestore —
+  // Keep a full local snapshot fresh on every point, independent of Supabase —
   // this is what makes "continue recording" actually resume the real score
   // instead of restarting at 0-0 when the network round-trip fails/is slow.
   useEffect(() => {
@@ -421,7 +421,7 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
   }, [match.status]);
 
   // Best-effort auto-pause if the app is backgrounded/closed mid-match instead of
-  // an explicit Pause & Quit — persists both the Firestore status and the local
+  // an explicit Pause & Quit — persists both the Supabase status and the local
   // "paused match" pointer so Live Match can still offer to resume it later.
   useEffect(() => {
     const persistAutoPause = () => {
@@ -532,7 +532,7 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
   }, [isHost, currentGame, match, onComplete, recordMode, pointLog, pointGapsSec, gameDurationsSec]);
 
   // New game started — make sure pointLog has a slot for it (covers the case
-  // where match state syncs in from Firestore, e.g. a watcher's view)
+  // where match state syncs in from Supabase, e.g. a watcher's view)
   useEffect(() => {
     setPointLog(prev => {
       if (match.currentGame < prev.length) return prev;
@@ -935,7 +935,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     if (!open || view !== 'setup') return;
     const ref = loadPausedMatch();
     // Trust the local snapshot directly — it's kept fresh on every point scored,
-    // so resume doesn't depend on a Firestore round-trip succeeding.
+    // so resume doesn't depend on a Supabase round-trip succeeding.
     if (!ref || !ref.match) { setPausedMatch(null); setPausedRef(null); return; }
     // A paused match tied to a specific planned match only counts as "this" paused
     // match when we're reopening that same planned match — otherwise it belongs

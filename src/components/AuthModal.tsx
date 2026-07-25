@@ -98,7 +98,7 @@ function VerifyEmailView() {
   );
 }
 
-// ── Step shown once signed up/verified but the Firestore profile doesn't exist
+// ── Step shown once signed up/verified but the Supabase profile doesn't exist
 // yet — same two-step flow (username, then details) for both Google and email ──
 function CompleteProfileView() {
   const { authUser, completeProfile, checkUsernameAvailable, logout } = useAuth();

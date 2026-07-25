@@ -23,11 +23,11 @@ import {
   subscribeVenues,
 } from '@/lib/supabaseService';
 
-// A uid is "real" (a genuine Firebase-authenticated account) if it isn't the
+// A uid is "real" (a genuine Supabase-authenticated account) if it isn't the
 // local demo user ('me') or one of the static seed players from lib/data.ts.
 const isRealUid = (uid: string) => uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && uid !== ME_DATA.uid;
 
-// Normalizes a Firestore-shared challenge into the app's local, 'me'-centric
+// Normalizes a Supabase-shared challenge into the app's local, 'me'-centric
 // Challenge shape — same convention already used for matches (player1Id: 'me'
 // locally, real uid only on the shared doc).
 function toLocalChallenge(c: StoredChallenge, myUid: string): Challenge {
@@ -108,8 +108,8 @@ function toLocalMatch(sm: StoredMatch, myUid: string): Match {
   };
 }
 
-// Same normalization for clubs: real Firebase uids on the shared Firestore
-// doc, translated to the local 'me' convention for display/equality checks.
+// Same normalization for clubs: real Supabase uids on the shared clubs
+// row, translated to the local 'me' convention for display/equality checks.
 function toLocalClub(c: Club, myUid: string): Club {
   const translate = (uid: string) => uid === myUid ? 'me' : uid;
   return {
@@ -235,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
   const [localChallenges,  setLocalChallenges]  = useState<Challenge[]>([]);
   // Real, cross-account challenges/conversations/endorsements — populated via
-  // Firestore real-time listeners once signed in (see the effect below).
+  // Supabase real-time listeners once signed in (see the effect below).
   const [realIncomingChallenges, setRealIncomingChallenges] = useState<StoredChallenge[]>([]);
   const [realOutgoingChallenges, setRealOutgoingChallenges] = useState<StoredChallenge[]>([]);
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
@@ -244,7 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Every real signed-up account, fetched once per session (not a listener —
   // see loadAllRealUsers) and shared across every screen that needs the
   // ranking pool (Leaderboard, Players tab) instead of each page fetching
-  // the whole users collection on its own every time it's visited.
+  // the whole users table on its own every time it's visited.
   const [allRealPlayers,         setAllRealPlayers]         = useState<UserProfile[]>([]);
   // Crowd-sourced venue directory, live-subscribed same as clubs — any
   // signed-in user adding a venue should show up for everyone immediately.
@@ -260,9 +260,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return {};
   });
-  // Clubs live in Firestore now (real, shared documents — see the real-time
+  // Clubs live in Supabase now (real, shared rows — see the real-time
   // subscription effect below) so two real accounts actually see the same
-  // membership/pending/moderator state. rawClubs holds real Firebase uids;
+  // membership/pending/moderator state. rawClubs holds real Supabase uids;
   // `clubs` (translated for display) and myClubIds/myClubPendingIds are
   // derived from it further down, same 'me'-normalization as challenges.
   const [rawClubs,         setRawClubs]          = useState<Club[]>(SEED_CLUBS);
@@ -303,7 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  // Load the real signed-in user's actual profile + conversations from Firestore.
+  // Load the real signed-in user's actual profile + conversations from Supabase.
   // Without this, the app just shows the local demo seed profile forever,
   // regardless of who's actually logged in — everything a real user set during
   // signup (username, name, etc.) would never appear anywhere.
@@ -333,7 +333,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // returning user's heatmap never survives a new device/browser.
             if (profile.courtProfile) setCourtProfile(profile.courtProfile);
           }
-        } catch { /* Firestore unavailable — keep local/seed profile */ }
+        } catch { /* Supabase unavailable — keep local/seed profile */ }
       })();
       (async () => {
         try {
@@ -352,7 +352,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
             return merged.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
           });
-        } catch { /* Firestore unavailable — keep seed convs */ }
+        } catch { /* Supabase unavailable — keep seed convs */ }
       })();
       loadAllRealUsers(authUser.uid).then(setAllRealPlayers).catch(() => {});
       // Merge (not replace) — registerTournament already writes local/demo
@@ -544,7 +544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const isRealMatchId = useCallback((id: string) => realMatches.some(m => m.id === id), [realMatches]);
 
-  // A match against a real, singles opponent becomes a shared Firestore doc
+  // A match against a real, singles opponent becomes a shared Supabase row
   // both accounts can see and confirm, instead of a local-only record only
   // the reporter ever sees — see toLocalMatch for how each side reads it
   // back. Doubles (or a demo opponent) keep the original local-only path.
@@ -701,7 +701,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: 'pending', createdAt: new Date().toISOString(),
       };
       sendChallengeDoc(stored).catch(() => {});
-      // Optimistic local echo — the listener reconciles once Firestore confirms.
+      // Optimistic local echo — the listener reconciles once Supabase confirms.
       setRealOutgoingChallenges(p => [stored, ...p.filter(x => x.id !== stored.id)]);
       return;
     }
@@ -723,9 +723,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Clubs — translated to the local 'me' convention for display; how many a
   // user can belong to at once scales with MMR tier. Every mutation below
-  // writes straight to Firestore (arrayUnion/arrayRemove — safe under
-  // concurrent edits from real members) and relies on the live subscription
-  // above to reflect the change back, rather than managing local copies.
+  // writes straight to Supabase (read-modify-write on the clubs row's array
+  // columns — see mutateClubArray's ponytail note, not atomic under
+  // concurrent edits) and relies on the live subscription above to reflect
+  // the change back, rather than managing local copies.
   const myRealUid = auth.currentUser?.uid ?? '';
   // Memoized: without this, `clubs` (and everything derived from it) would be
   // a brand-new array on every AppContext render — including ones triggered
@@ -825,7 +826,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user.displayName, myRealUid]);
 
   // New-club-message notifications, scoped to only the clubs I'm actually a
-  // member of — NOT the full clubs collection. One Firestore listener per
+  // member of — NOT the full clubs table. One Supabase listener per
   // club I've joined (bounded by the per-tier club cap, so at most a handful
   // per user), reconciled as myClubIds changes rather than tearing down and
   // recreating every subscription on every unrelated re-render: no cleanup
@@ -966,7 +967,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markAllNotifsRead = useCallback(() => setNotifications(p => p.map(n => ({ ...n, read: true }))), []);
   const unreadNotifCount  = notifications.filter(n => !n.read).length;
 
-  // Sends a message in a real cross-account conversation (shared Firestore doc,
+  // Sends a message in a real cross-account conversation (shared Supabase row,
   // not the per-user demo copy). otherProfile is only needed the first time —
   // it's what lets the recipient's own client render a header for this chat.
   const sendRealMessage = useCallback((otherUid: string, otherProfile: SharedParticipant, text: string) => {
@@ -989,7 +990,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Combine local/demo state with the real, Firestore-synced cross-account
+  // Combine local/demo state with the real, Supabase-synced cross-account
   // state. myRealUid (declared above, next to the club logic) is '' when
   // signed out, so isRealUid-keyed lookups just fall through to nothing
   // rather than mismatching against a stale uid.

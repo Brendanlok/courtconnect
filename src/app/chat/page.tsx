@@ -21,7 +21,7 @@ export default function Chat() {
   const [input,      setInput]      = useState('');
   const [query,      setQuery]      = useState('');
   // A real conversation the user just started but hasn't sent a first message
-  // for yet — no Firestore doc exists until then, so it isn't in `convs`.
+  // for yet — no conversation row exists until then, so it isn't in `convs`.
   const [pendingRealConv, setPendingRealConv] = useState<Conversation | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -120,7 +120,8 @@ export default function Chat() {
         ? { ...c, messages: [...c.messages, msg], lastMessage: input.trim(), lastAt: msg.sentAt, unread: 0 }
         : c
       );
-      // Persist to Firestore
+      // saveConversation is a no-op (demo conversations stay local-only) —
+      // kept so a future real-persistence hookup only needs to fill it in.
       const uid = auth.currentUser?.uid;
       if (uid) {
         const conv = updated.find(c => c.id === activeId);

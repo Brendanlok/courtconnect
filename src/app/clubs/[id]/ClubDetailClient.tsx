@@ -121,10 +121,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club.name}`);
   const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club.name}`);
 
-  // Club chat lives in a subcollection (clubs/{id}/messages), not embedded on
-  // the club doc — scoped to this one club, not the full clubs listener.
-  // Messages carry the real Firebase uid as senderId (written straight to
-  // Firestore, never passed through the app's local 'me' translation), so
+  // Club chat lives in its own `club_messages` table, not embedded on the
+  // clubs row — scoped to this one club, not the full clubs listener.
+  // Messages carry the real Supabase uid as senderId (written straight to
+  // the table, never passed through the app's local 'me' translation), so
   // it's normalized here the same way toLocalClub does for membership.
   const [messages, setMessages] = useState<ClubMessage[]>(club.clubMessages ?? []);
   useEffect(() => {

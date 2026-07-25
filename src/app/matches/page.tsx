@@ -232,7 +232,7 @@ export default function MatchesPage() {
       ? prev.map(p => p.id === editId ? pmFinal : p)
       : [pmFinal, ...prev]);
     setPlanOpen(false);
-    // Persist to Firestore
+    // Persist to Supabase
     const uid = auth.currentUser?.uid;
     if (uid) savePlannedMatch(uid, pmFinal).catch(() => {});
     // Notify all invited players

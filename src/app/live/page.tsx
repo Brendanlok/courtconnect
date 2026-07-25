@@ -108,7 +108,7 @@ export default function LivePage() {
   // undo stack — list of previous LiveMatch states
   const [history,    setHistory]    = useState<LiveMatch[]>([]);
 
-  // Sync from Firestore when watching
+  // Sync from Supabase when watching
   useEffect(() => {
     if (phase !== 'watching' || !match) return;
     const unsub = subscribeLiveMatch(match.id, (updated) => {
