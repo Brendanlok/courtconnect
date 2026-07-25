@@ -14,7 +14,7 @@ const id = (u: string) => u; // identity resolver for these checks
 }
 console.log('PASS a single match credits winner and loser correctly');
 
-// 2. Standings sort by wins first, then matches played as a tiebreaker.
+// 2. Standings sort by win rate first, then total wins as a tiebreaker.
 {
   const ladder = computeLadder([
     { player1Id: 'a', player2Id: 'b', winnerId: 'a' },
@@ -23,9 +23,29 @@ console.log('PASS a single match credits winner and loser correctly');
   ], id);
   assert.deepStrictEqual(ladder.map(e => e.uid), ['a', 'b', 'c']);
 }
-console.log('PASS standings sort by wins, then matches played');
+console.log('PASS standings sort by win rate, then total wins');
 
-// 3. toLocalId lets a real uid collapse onto the caller's own "me" convention.
+// 3. A player with a worse win rate but more matches played must not outrank
+//    a player with a better win rate on fewer matches (regression: sort used
+//    to fall back to matches-played, rewarding more losses).
+{
+  const heavyLosses = Array.from({ length: 10 }, () => ({ player1Id: 'a', player2Id: 'x', winnerId: 'x' }));
+  const ladder = computeLadder([
+    ...heavyLosses,
+    { player1Id: 'a', player2Id: 'x', winnerId: 'a' },
+    { player1Id: 'a', player2Id: 'x', winnerId: 'a' },
+    { player1Id: 'a', player2Id: 'x', winnerId: 'a' },
+    { player1Id: 'b', player2Id: 'y', winnerId: 'b' },
+    { player1Id: 'b', player2Id: 'y', winnerId: 'b' },
+    { player1Id: 'b', player2Id: 'y', winnerId: 'b' },
+  ], id);
+  const aIdx = ladder.findIndex(e => e.uid === 'a');
+  const bIdx = ladder.findIndex(e => e.uid === 'b');
+  assert.ok(bIdx < aIdx, 'a 3-win/13-played record must not outrank b\'s 3-win/3-played record');
+}
+console.log('PASS win rate beats raw matches played in the tiebreak');
+
+// 4. toLocalId lets a real uid collapse onto the caller's own "me" convention.
 {
   const toLocal = (u: string) => u === 'real123' ? 'me' : u;
   const ladder = computeLadder([{ player1Id: 'real123', player2Id: 'x', winnerId: 'real123' }], toLocal);

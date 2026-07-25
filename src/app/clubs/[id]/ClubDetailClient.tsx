@@ -472,9 +472,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             </div>
           ) : (
             <div className="divide-y divide-slate-800/60">
-              {ladder.map((entry, i) => {
+              {ladder.flatMap(entry => {
                 const p = resolveProfile(entry.uid);
-                if (!p) return null;
+                return p ? [{ entry, p }] : [];
+              }).map(({ entry, p }, i) => {
                 return (
                   <Link key={entry.uid} href={profileHref(p)}
                     className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">

@@ -29,5 +29,5 @@ export function computeLadder(matches: LadderMatch[], toLocalId: (realUid: strin
     bump(a, winner === a);
     bump(b, winner === b);
   }
-  return [...table.values()].sort((x, y) => y.wins - x.wins || y.played - x.played);
+  return [...table.values()].sort((x, y) => (y.wins / y.played) - (x.wins / x.played) || y.wins - x.wins);
 }

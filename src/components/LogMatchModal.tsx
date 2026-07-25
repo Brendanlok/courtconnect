@@ -218,6 +218,7 @@ interface NominatimResult {
 }
 
 function LocationSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { venues } = useApp();
   const [query,    setQuery]    = useState(value);
   const [results,  setResults]  = useState<NominatimResult[]>([]);
   const [show,     setShow]     = useState(false);
@@ -225,6 +226,13 @@ function LocationSearch({ value, onChange }: { value: string; onChange: (v: stri
   const [gpsLoad,  setGpsLoad]  = useState(false);
   const ref    = useRef<HTMLDivElement>(null);
   const timer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Crowd-sourced venues (same `venues` table other venue fields autocomplete
+  // from) surfaced alongside live OSM results, so a match logged here can
+  // reuse a name a club member already added — cheap local filter, no fetch.
+  const venueMatches = query.trim().length >= 2
+    ? venues.filter(v => v.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 4)
+    : [];
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShow(false); };
@@ -295,13 +303,23 @@ function LocationSearch({ value, onChange }: { value: string; onChange: (v: stri
         {loading && <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin"/>}
         <input
           value={query}
-          onChange={e => { setQuery(e.target.value); onChange(e.target.value); search(e.target.value); }}
-          onFocus={() => { if (results.length) setShow(true); }}
+          onChange={e => { setQuery(e.target.value); onChange(e.target.value); search(e.target.value); setShow(true); }}
+          onFocus={() => { if (results.length || venueMatches.length) setShow(true); }}
           placeholder="Search or use my location…"
           className="w-full pl-8 pr-8 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"
         />
-        {show && results.length > 0 && (
+        {show && (results.length > 0 || venueMatches.length > 0) && (
           <div className="popover-anim absolute top-full mt-1 left-0 right-0 z-20 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+            {venueMatches.map(v => (
+              <button key={v.id} onMouseDown={() => { setQuery(v.name); onChange(v.name); setShow(false); }}
+                className="w-full flex items-start gap-2.5 px-4 py-2.5 hover:bg-slate-700 text-left transition-colors">
+                <MapPin size={13} className="text-emerald-400 mt-0.5 shrink-0"/>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{v.name.split(',')[0]}</p>
+                  <p className="text-xs text-slate-400 truncate">{v.name.substring(v.name.indexOf(',') + 1).trim()}</p>
+                </div>
+              </button>
+            ))}
             {results.map(r => {
               const name = r.name || r.address?.road || '';
               const area = [r.address?.suburb, r.address?.city, r.address?.state].filter(Boolean).join(', ');
