@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { calcMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { previewMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -487,7 +487,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   const myTeamMMR   = isDoubles && teammate ? Math.round((user.mmr + teammate.mmr) / 2) : user.mmr;
   const oppTeamMMR  = isDoubles && opp1 && opp2 ? Math.round((opp1.mmr + opp2.mmr) / 2) : opp1?.mmr ?? 0;
   const mmrPreview  = mode === 'ranked' && (isDoubles ? opp1 && opp2 && teammate : opp1)
-    ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor)
+    ? previewMMRChange(myTeamMMR, oppTeamMMR, kFactor)
     : null;
 
   const parsedGames  = games

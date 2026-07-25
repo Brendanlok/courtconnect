@@ -691,11 +691,14 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             .filter(Boolean) as { format: MatchType; played: number; wins: number; rate: number }[];
 
           // Recent form: last 7 confirmed matches
-          const recent = [...confirmed].sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()).slice(0, 7);
+          const allByDate = [...confirmed].sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+          const recent = allByDate.slice(0, 7);
 
-          // Streak: current W or L run from latest match
+          // Streak: current W or L run from latest match — walks the full
+          // history (not just the 7 shown as "recent form" dots above), or a
+          // streak longer than 7 would silently show capped at 7.
           let streak = 0; let streakType: 'W' | 'L' | null = null;
-          for (const m of recent) {
+          for (const m of allByDate) {
             const won = m.winnerId === player.uid;
             if (streakType === null) { streakType = won ? 'W' : 'L'; streak = 1; }
             else if ((streakType === 'W') === won) streak++;

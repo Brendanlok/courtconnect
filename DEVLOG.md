@@ -1,5 +1,50 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-25] — Fix: backwards MMR loss calc, notification-reload spam, broken chat link, capped streak display
+
+**Trigger:** Lok asked for a live (non-scheduled) audit across four areas: tournament
+registration/seeding, notifications, player profiles/endorsements, and the MMR
+calculation itself — a direct follow-up to the earlier 5pm auto-dev session's report.
+
+**Found and fixed:**
+- **MMR calculation (the big one).** `calcMMRChange(winnerMMR, loserMMR, k)` in
+  `src/lib/utils.ts` is correct when called with the ACTUAL match outcome's winner/loser
+  (as `LiveMatchModal.tsx` already did). But `LogMatchModal.tsx`'s pre-outcome preview
+  ("Win: +X MMR / Loss: -Y MMR", shown before scores are entered) always passed "my
+  side" as the winner argument for both branches. Concretely: a 1000-rated player who
+  lost to a 2000-rated player exactly as expected was charged -32 MMR (near the max K)
+  instead of ~0; a 2000-rated favorite upset by a 1000-rated underdog lost ~0 instead of
+  the near-max penalty they should take. This affected every ranked match logged through
+  "Log a Match", the app's highest-traffic match-logging flow. Fixed with a new
+  `previewMMRChange(myMMR, oppMMR, k)` helper in `utils.ts` that derives gain and loss
+  from their own correct actual-outcome calls, plus a new `utils.selfcheck.ts` proving
+  the zero-sum property and both the underdog-loses and favorite-upset asymmetries.
+- **Notifications re-fired on every app reload.** `subscribeClubs`/`subscribeClubMessages`
+  already guarded against notifying on their very first snapshot after sign-in, but the
+  incoming-challenges, DM-conversations, and real-match-confirmation subscriptions in
+  `AppContext.tsx` didn't — so every reload while any of those was still pending re-sent
+  the same "Challenge Received" / "New message" / "Match Result Reported" notification.
+  Added the same has-this-subscription-loaded-once guard to all three (and reset it on
+  sign-out, matching the existing `prevXRef` reset pattern).
+- **"New message" notification 404'd live.** Its `linkTo` (`/chat/?realUid=...`) was
+  missing the `BASE_PATH` prefix every other real navigation in the app already carries —
+  worked in local dev (no subpath), 404'd on the GitHub Pages `/courtconnect` subpath.
+- **Win/loss streak capped at 7.** `PlayerProfileClient.tsx`'s streak counter walked the
+  same 7-item array built for the "recent form" dots, so anything past a 7-game streak
+  silently displayed as "7W"/"7L" instead of the real number. Now walks the full
+  confirmed-match history sorted by date.
+
+**Also audited, no bug found:** the endorsement give/toggle/count-sync path (Chat feature
+was already covered in the earlier 5pm session). Tournament seeding doesn't exist as a
+real feature yet — brackets are static demo data, not generated from registrations — so
+there was no seeding algorithm to have a bug. Did surface one dead-end UX gap: private
+tournaments' "Request to Join" has no approval path anywhere in the code, so a requester
+can never actually get in. Left as a noted gap, not fixed — needs a product decision
+(who approves, and where) before building.
+
+**Verified:** `npm test` (all self-checks, including the new MMR one) and
+`npx next build` both clean.
+
 ## [2026-07-25] — Docs: stale Firestore/Firebase references corrected app-wide
 
 **Trigger:** Auto-dev session (5pm). Both queued To-Do items are still gated on Lok's

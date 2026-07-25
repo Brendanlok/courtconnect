@@ -5,6 +5,43 @@
 
 ---
 
+## [2026-07-25] — Fix: MMR calculation gave backwards gain/loss, spurious notification spam, broken chat link, capped win-streak display
+
+### 🔴 Critical
+**Why:** Requested audit across MMR, notifications, player profiles, and tournaments.
+
+- **MMR calculation was backwards for the losing side on every ranked match logged
+  through "Log a Match" (the highest-traffic flow).** An underdog who lost as expected
+  got charged a near-max MMR penalty instead of losing almost nothing; a favorite who
+  suffered an upset loss barely lost anything instead of taking a near-max hit. Root
+  cause: the MMR preview (shown before the outcome is known) always passed "my side" as
+  the winner argument to the Elo formula, silently swapping which side's expected-score
+  math applied to the loss. Fixed with a dedicated `previewMMRChange` helper that
+  correctly derives each branch, backed by a new regression test
+  (`utils.selfcheck.ts`). `LiveMatchModal`'s live-scoring flow already computed this
+  correctly and was untouched.
+
+### 🟠 High
+- **Real-time notifications re-fired on every app reload.** Three of five real-time
+  subscriptions (incoming challenges, DM conversations, real-match confirmations) were
+  missing the "don't notify on first load" guard that the clubs/club-chat subscriptions
+  already had — so reopening the app with any pending challenge, unread DM, or
+  unconfirmed match re-sent that same notification every time, not just once.
+- **Clicking a "New message" notification 404'd on the live site.** Its link was missing
+  the `BASE_PATH` prefix required under the GitHub Pages `/courtconnect` subpath.
+
+### 🟡 Medium
+- **A player's current win/loss streak silently capped at 7.** The streak counter reused
+  the "last 7 matches" array meant for the recent-form dots, so a real 10-game streak
+  displayed as "7W" instead of "10W".
+
+### 📋 Noted, not fixed
+- Private tournaments' "Request to Join" has no approval path anywhere in the code — a
+  requester's state can never resolve. Needs a product decision (who approves, and
+  where) before building, not a quick bug fix.
+
+**Verified:** `npm test` (all self-checks incl. new MMR one) and `npx next build` clean.
+
 ## [2026-07-25] — Fix: club ladder ranking bugs, venue autocomplete gap
 
 ### 🟡 Bug fix

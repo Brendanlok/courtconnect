@@ -96,10 +96,29 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
 }
 
+// winnerMMR/loserMMR must be the ACTUAL match outcome's sides — gain is the
+// winner's delta, loss is the loser's delta, both correctly asymmetric based
+// on how big an upset it was. Do not call this with "my side" always first;
+// see previewMMRChange below for computing both hypothetical outcomes before
+// the result is known.
 export function calcMMRChange(winnerMMR: number, loserMMR: number, k = 32) {
   const exp = 1 / (1 + Math.pow(10, (loserMMR - winnerMMR) / 400));
   const delta = Math.round(k * (1 - exp));
   return { gain: delta, loss: -delta };
+}
+
+// For a preview shown before the outcome is known (e.g. Log a Match's "Win:
+// +X / Loss: -Y" before scores are entered). Computing gain and loss from a
+// single calcMMRChange(myMMR, oppMMR) call — as if "my side" were always the
+// winner — silently swaps the two: an underdog who loses as expected would
+// get charged a near-max penalty instead of ~0, and a favorite upset would
+// barely lose anything instead of taking the near-max hit. Deriving each
+// branch from its own actual-outcome call keeps both correct.
+export function previewMMRChange(myMMR: number, oppMMR: number, k = 32) {
+  return {
+    gain: calcMMRChange(myMMR, oppMMR, k).gain,
+    loss: calcMMRChange(oppMMR, myMMR, k).loss,
+  };
 }
 
 // The app doesn't collect precise GPS location, so real distance between two

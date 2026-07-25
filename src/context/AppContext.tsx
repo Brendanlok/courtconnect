@@ -414,6 +414,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const prevConversationsRef      = useRef<SharedConversation[]>([]);
   const prevClubsRef              = useRef<Club[]>([]);
   const prevMatchesRef             = useRef<StoredMatch[]>([]);
+  // "have we run the diff at least once" per subscription — without this,
+  // the very first callback after sign-in (prevXRef still at its initial [])
+  // reads as "everything just changed" and re-fires a notification for every
+  // already-existing pending challenge/unread message/unconfirmed match on
+  // every reload, not just genuinely new ones. subscribeClubs/
+  // subscribeClubMessages avoid this by construction (see their own diffs);
+  // these three don't, so they need it explicitly.
+  const challengesLoadedRef    = useRef(false);
+  const conversationsLoadedRef = useRef(false);
+  const matchesLoadedRef       = useRef(false);
   const realUnsubsRef = useRef<(() => void)[]>([]);
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (authUser) => {
@@ -424,6 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = [];
+        challengesLoadedRef.current = false; conversationsLoadedRef.current = false; matchesLoadedRef.current = false;
         return;
       }
       const uid = authUser.uid;
@@ -431,8 +442,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       realUnsubsRef.current = [
         subscribeChallengesFor('toUid', uid, docs => {
           const prev = prevIncomingChallengesRef.current;
-          docs.filter(d => d.status === 'pending' && !prev.some(p => p.id === d.id))
-            .forEach(c => addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` }));
+          if (challengesLoadedRef.current) {
+            docs.filter(d => d.status === 'pending' && !prev.some(p => p.id === d.id))
+              .forEach(c => addNotification({ type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` }));
+          }
+          challengesLoadedRef.current = true;
           prevIncomingChallengesRef.current = docs;
           setRealIncomingChallenges(docs);
         }),
@@ -449,14 +463,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }),
         subscribeMySharedConversations(uid, docs => {
           const prev = prevConversationsRef.current;
-          docs.forEach(d => {
-            const oldCount = prev.find(p => p.id === d.id)?.messages.length ?? 0;
-            const newFromOther = d.messages.slice(oldCount).filter(m => m.senderId !== uid);
-            if (newFromOther.length === 0) return;
-            const otherUid = d.participantUids.find(u => u !== uid) ?? '';
-            const otherName = d.participants?.[otherUid]?.displayName ?? 'Someone';
-            addNotification({ type: 'new_message', title: `New message from ${otherName}`, body: newFromOther[newFromOther.length - 1].text, linkTo: `/chat/?realUid=${otherUid}` });
-          });
+          if (conversationsLoadedRef.current) {
+            docs.forEach(d => {
+              const oldCount = prev.find(p => p.id === d.id)?.messages.length ?? 0;
+              const newFromOther = d.messages.slice(oldCount).filter(m => m.senderId !== uid);
+              if (newFromOther.length === 0) return;
+              const otherUid = d.participantUids.find(u => u !== uid) ?? '';
+              const otherName = d.participants?.[otherUid]?.displayName ?? 'Someone';
+              addNotification({ type: 'new_message', title: `New message from ${otherName}`, body: newFromOther[newFromOther.length - 1].text, linkTo: `${BASE_PATH}/chat/?realUid=${otherUid}` });
+            });
+          }
+          conversationsLoadedRef.current = true;
           prevConversationsRef.current = docs;
           setRealConversationDocs(docs);
         }),
@@ -492,15 +509,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }),
         subscribeMyRealMatches(uid, docs => {
           const prev = prevMatchesRef.current;
-          docs.forEach(d => {
-            const old = prev.find(p => p.id === d.id);
-            if (!old && d.pendingConfirmations.includes(uid)) {
-              const oppName = d.reporterUid === d.player1Id ? d.player1Name : d.player2Name;
-              addNotification({ type: 'match_pending', title: 'Match Result Reported', body: `${oppName} reported a match result — confirm or dispute it.` });
-            } else if (old?.status === 'Pending' && d.status === 'Confirmed' && d.reporterUid === uid) {
-              addNotification({ type: 'match_confirmed', title: 'Match Confirmed', body: 'Your opponent confirmed the match result.' });
-            }
-          });
+          if (matchesLoadedRef.current) {
+            docs.forEach(d => {
+              const old = prev.find(p => p.id === d.id);
+              if (!old && d.pendingConfirmations.includes(uid)) {
+                const oppName = d.reporterUid === d.player1Id ? d.player1Name : d.player2Name;
+                addNotification({ type: 'match_pending', title: 'Match Result Reported', body: `${oppName} reported a match result — confirm or dispute it.` });
+              } else if (old?.status === 'Pending' && d.status === 'Confirmed' && d.reporterUid === uid) {
+                addNotification({ type: 'match_confirmed', title: 'Match Confirmed', body: 'Your opponent confirmed the match result.' });
+              }
+            });
+          }
+          matchesLoadedRef.current = true;
           prevMatchesRef.current = docs;
           setRealMatches(docs);
         }),
