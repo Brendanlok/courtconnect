@@ -329,6 +329,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                   Request to Join
                 </button>
               )
+            ) : club.minMMR && user.mmr < club.minMMR ? (
+              <p className="text-xs text-slate-500 text-center">
+                Requires {club.minMMR.toLocaleString()}+ MMR to join (you have {user.mmr.toLocaleString()}).
+              </p>
             ) : (
               <button onClick={() => joinClub(clubId)}
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition-colors">

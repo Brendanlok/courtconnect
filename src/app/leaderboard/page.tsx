@@ -5,10 +5,10 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref } from '@/lib/utils';
+import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName } from '@/lib/utils';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
-import type { UserProfile, MalaysiaState, Tier } from '@/types';
+import type { UserProfile, Tier } from '@/types';
 
 const TABS = ['Nationwide', 'By State', 'Nearby', 'Following'] as const;
 type Tab = typeof TABS[number];
@@ -27,12 +27,20 @@ export default function Leaderboard() {
   const { user, following, allRealPlayers } = useApp();
   const [tab,           setTab]          = useState<Tab>('Nationwide');
   const [query,         setQuery]        = useState('');
-  const [selState,      setSelState]     = useState<MalaysiaState>(user.state as MalaysiaState);
+  const [selState,      setSelState]     = useState<string>(user.state);
   const [sortKey,       setSortKey]      = useState<SortKey>('mmr');
   const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
   const userCountry = user.country ?? 'Malaysia';
   const [countryFilter, setCountryFilter]= useState<string>(userCountry);
   const countryData = COUNTRIES.find(c => c.name === countryFilter);
+  const regions = countryData?.regions.length ? countryData.regions : MY_STATES;
+  const regionLabel = countryData?.regionLabel ?? 'State';
+
+  function handleCountryChange(name: string) {
+    setCountryFilter(name);
+    const cd = getCountryByName(name);
+    setSelState(name === userCountry ? (user.region ?? user.state) : (cd.regions[0] ?? ''));
+  }
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
   const all: UserProfile[] = [user, ...PLAYERS, ...allRealPlayers];
@@ -40,7 +48,7 @@ export default function Leaderboard() {
   const list = all
     .filter(p => (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => {
-      if (tab === 'By State') return p.state === selState;
+      if (tab === 'By State') return (countryFilter === 'Malaysia' ? p.state : (p.region ?? '')) === selState;
       if (tab === 'Nearby')   return (p.distKm ?? (p.uid === 'me' ? 0 : approxDistanceKm(user, p))) <= 10;
       if (tab === 'Following') return following.includes(p.uid) || p.uid === 'me';
       return true;
@@ -77,16 +85,16 @@ export default function Leaderboard() {
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
                 ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-              {t}
+              {t === 'By State' ? `By ${regionLabel}` : t}
             </button>
           ))}
         </div>
 
         {tab === 'By State' && (
-          <FilterDropdown<MalaysiaState>
+          <FilterDropdown<string>
             icon={<MapPin size={11} className="text-emerald-400"/>}
             label={selState} value={selState}
-            options={MY_STATES.map(s => ({ value: s as MalaysiaState, label: s }))}
+            options={regions.map(s => ({ value: s, label: s }))}
             onChange={setSelState}
           />
         )}
@@ -109,7 +117,7 @@ export default function Leaderboard() {
             .map(name => COUNTRIES.find(c => c.name === name))
             .filter((c): c is NonNullable<typeof c> => !!c)
             .map(c => ({ value: c.name, label: c.name, prefix: <span>{c.flag}</span> }))}
-          onChange={setCountryFilter}
+          onChange={handleCountryChange}
         />
 
         <FilterDropdown<SortKey>

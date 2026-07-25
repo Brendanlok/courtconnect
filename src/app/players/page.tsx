@@ -141,7 +141,7 @@ export default function PlayersPage() {
           acceptClubMember={acceptClubMember} declineClubMember={declineClubMember}
           updateClub={updateClub} disbandClub={disbandClub}
           assignModerator={assignModerator} removeModerator={removeModerator}
-          userId={user.uid}
+          userId={user.uid} userMMR={user.mmr}
         />
       )}
       {tab === 'This Week' && <AvailabilityTab user={user}/>}
@@ -442,12 +442,13 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, clubSearch, clubMyOnly, clubStateFilter }: {
+function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, userMMR, clubSearch, clubMyOnly, clubStateFilter }: {
   clubs: Club[];
   myClubIds: string[];
   clubLimit: number;
   myClubPendingIds: string[];
   userId: string;
+  userMMR: number;
   joinClub: (id: string) => void;
   requestJoinClub: (id: string) => void;
   cancelClubRequest: (id: string) => void;
@@ -565,6 +566,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
           const isPending = myClubPendingIds.includes(club.id);
           const isExpanded= expandedId === club.id;
           const full      = club.memberIds.length >= club.maxMembers;
+          const mmrTooLow = !!(club.minMMR && userMMR < club.minMMR);
 
           return (
             <div key={club.id}
@@ -622,6 +624,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">
                       <UserPlus size={11}/> Request
                     </button>
+                  ) : mmrTooLow ? (
+                    <span className="text-[10px] text-slate-600 shrink-0 pt-1">Needs {club.minMMR!.toLocaleString()}+ MMR</span>
                   ) : (
                     <button onClick={e => { e.stopPropagation(); joinClub(club.id); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-semibold transition-colors shrink-0">

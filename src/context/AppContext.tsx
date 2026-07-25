@@ -760,10 +760,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clubLimit = maxClubsForTier(user.tier);
 
   const joinClub = useCallback((id: string) => {
+    const club = clubs.find(c => c.id === id);
     if (myClubIds.includes(id) || myClubIds.length >= clubLimit || !myRealUid) return;
+    if (club?.minMMR && user.mmr < club.minMMR) return;
     addClubMember(id, myRealUid).catch(() => {});
     addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
-  }, [myClubIds, clubLimit, myRealUid]);
+  }, [clubs, myClubIds, clubLimit, myRealUid, user.mmr]);
 
   const requestJoinClub = useCallback((id: string) => {
     if (myClubIds.length + myClubPendingIds.length >= clubLimit || !myRealUid) return;

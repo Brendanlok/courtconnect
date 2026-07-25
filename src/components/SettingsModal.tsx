@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
-import type { CountryCode } from '@/types';
+import type { CountryCode, MalaysiaState } from '@/types';
 import type { UserProfile } from '@/types';
 import { supabase, auth } from '@/lib/supabase';
 import { deleteAccountData } from '@/lib/supabaseService';
@@ -71,6 +71,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [deleteError, setDeleteError] = useState('');
   const [photoURL,    setPhotoURL]    = useState<string | null>(user.photoURL ?? null);
   const [uploadPct,   setUploadPct]   = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,10 +81,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     if (!uid) return;
     const path = `${uid}/${Date.now()}_${file.name}`;
     setUploadPct(0);
+    setUploadError('');
     // ponytail: supabase-js storage upload has no progress events (unlike
     // Firebase's uploadBytesResumable) — jump straight to 100 on success.
     supabase.storage.from('avatars').upload(path, file, { upsert: true }).then(({ error }) => {
-      if (error) { setUploadPct(null); return; }
+      if (error) { setUploadPct(null); setUploadError('Upload failed. Please try again.'); return; }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       setPhotoURL(data.publicUrl);
       setUploadPct(null);
@@ -114,7 +116,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       countryCode,
       region: isMY ? (location?.state ?? region) : region,
       area:   isMY ? (location?.city  ?? cityText) : cityText,
-      state:  isMY ? (location?.state ?? user.state) : user.state,
+      state:  isMY ? (location?.state ?? region as MalaysiaState) : user.state,
       postcode: countryData.hasPostcode ? postcode : undefined,
       available: availability.join(','),
       privacy,
@@ -202,6 +204,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               {photoURL ? 'Change photo' : 'Add photo'}
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange}/>
+            {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
           </div>
 
           {/* Name */}
