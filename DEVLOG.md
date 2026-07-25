@@ -1,5 +1,31 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-25] — Docs: stale Firestore/Firebase references corrected app-wide
+
+**Trigger:** Auto-dev session (5pm). Both queued To-Do items are still gated on Lok's
+live-court/live-match testing, and today's earlier sessions had already audited club
+ladder, venue directory, rally stats, no-op handlers, empty catches, TODOs, bracket
+scores, and the availability board — so this session reviewed a fresh area (Messages/
+Chat) instead of repeating ground already covered.
+
+**Found:** No functional bugs in chat (`chat/page.tsx`, `sendRealMessage`/
+`markRealConvRead`/`toLocalConversation` in `AppContext.tsx`). But while reading it,
+tripped over a comment claiming club membership writes were "safe under concurrent
+edits" — the actual implementation (`mutateClubArray` in `supabaseService.ts`) is a
+non-atomic read-modify-write that its own existing ponytail note says can clobber
+concurrent joins. That's a real contradiction, not just stale wording. A wider grep
+turned up ~20 more comments across 9 files still describing the pre-2026-07-12
+Firebase/Firestore architecture (subcollections, arrayUnion/arrayRemove, "Firestore
+doc") that no longer exists.
+
+**Fixed:** Corrected every stale reference to accurately describe the current Supabase
+architecture (tables, rows, real-time channels). Left the handful that were
+legitimately historical/comparative (e.g. contrasting supabase-js's lack of
+upload-progress events with Firebase's `uploadBytesResumable`). Comments only — no
+behavior change.
+
+**Verified:** `npx next build` clean. Deployed: `1946323`.
+
 ## [2026-07-25] — Fix: 3 bugs found auditing yesterday's ladder/rally/venue shipment
 
 **Trigger:** Auto-dev session (9am). Both queued To-Do items are still gated on Lok's
