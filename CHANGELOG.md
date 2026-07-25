@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-26] — Fix: leaderboard state filter wrong for non-MY countries, unenforced club MMR minimum, Settings location/photo-upload bugs
+
+### 🟠 High
+**Why:** Scheduled 1am auto-dev audit; both open To-Do items were still gated on Lok's
+real-world testing, so this session swept fresh ground instead.
+
+- **Leaderboard "By State" tab returned wrong/empty results for every non-Malaysia
+  country.** The state dropdown and filter always used Malaysia's state list regardless
+  of the selected country filter. Now derives options and the filtered field (state vs.
+  region) from the selected country itself.
+- **A club's minimum-MMR requirement was never enforced.** A player below the MMR floor
+  could join a public club instantly, despite the club's own settings promising otherwise.
+  Enforced in the join action plus disabled/explained states in both club-join UIs.
+
+### 🟡 Medium
+- **Manually picking a state in Settings (postcode not resolved) silently didn't save.**
+  The visible "state" dropdown updated the on-screen region but the saved `state` value
+  kept its old value — affecting Leaderboard's "By State" and "Nearby" ranking for those
+  users.
+- **Avatar upload failures were invisible.** A failed upload looked identical to a
+  successful one, with no error shown.
+
+---
+
 ## [2026-07-25] — Fix: MMR calculation gave backwards gain/loss, spurious notification spam, broken chat link, capped win-streak display
 
 ### 🔴 Critical

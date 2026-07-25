@@ -1,5 +1,47 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-26] — Fix: leaderboard state filter, unenforced club MMR minimum, Settings location/photo-upload bugs
+
+**Trigger:** 1am scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap,
+shuttle auto-detect) remain gated on Lok's real-court/real-match testing — nothing new to
+build blind there — so ran a fresh bug-hunt audit over ground not yet covered: leaderboard,
+club management, settings/profile editing, endorsements.
+
+**Found and fixed:**
+- **Leaderboard "By State" tab broken for every non-Malaysia country.** `src/app/leaderboard/page.tsx`
+  always populated the state dropdown from `MY_STATES` and filtered on `p.state`, regardless
+  of the selected country filter. A user who switched the country filter to Singapore,
+  Indonesia, etc. and clicked "By State" got Malaysian state names that never matched any
+  player's real region, so the tab silently returned wrong/empty results. Now derives the
+  dropdown options and tab label from the selected country's own `regions`/`regionLabel`
+  (already defined per-country in `utils.ts`'s `COUNTRIES`), and matches on `state` for
+  Malaysia or `region` for everyone else. Resets to a sensible default when the country
+  filter changes.
+- **Club minimum-MMR requirement was never enforced.** `CreateClubModal`'s own copy promises
+  "Anyone meeting the MMR requirement can join instantly," but `joinClub` (AppContext) only
+  checked club-count limits — `minMMR` was read nowhere in the join path, only displayed as a
+  stat. A player below a club's MMR floor could join a public club instantly. Added the check
+  to `joinClub` itself, plus a disabled/explained state in both places the Join button renders
+  (`ClubDetailClient.tsx`, the club list in `players/page.tsx`).
+- **Settings location save silently reverted state on manual state pick.** `SettingsModal.tsx`'s
+  save handler correctly fell back to the manually-picked `region` value for the `region` field
+  when a Malaysian user's postcode didn't resolve, but the `state` field's fallback used the
+  stale `user.state` instead of mirroring `region` — so a user who picked their real state from
+  the shown dropdown had it silently discarded. Since Leaderboard's "By State" and "Nearby"
+  both key off `state`, this permanently mis-ranked/mis-located affected users. Fixed to mirror
+  the `region` fallback.
+- **Silent avatar upload failures.** `SettingsModal.tsx`'s photo upload error branch cleared the
+  progress indicator with no error message — a failed upload (size limit, storage policy,
+  network drop) looked identical to a successful one with no visual feedback. Added a visible
+  error message.
+
+**Also audited, no bug found:** self-endorsement blocking, duplicate-endorsement toggling
+(both correctly guarded). Could not click-test any of this live — the deployed app sits
+behind an auth wall with no demo credentials available in this environment, and the one
+stored test-session file on this machine is credentials-protected (correctly left untouched
+rather than read around). Verified via full build (`npx next build` clean) and code-level
+tracing of the actual data flow instead.
+
 ## [2026-07-25] — Fix: backwards MMR loss calc, notification-reload spam, broken chat link, capped streak display
 
 **Trigger:** Lok asked for a live (non-scheduled) audit across four areas: tournament
