@@ -58,9 +58,14 @@ function toLocalConversation(c: SharedConversation, myUid: string, lastRead: Rec
     photoURL: p?.photoURL ?? null,
   };
   const readAt = lastRead[c.id] ?? '';
+  // conversations.last_message/last_at can't actually be written past the
+  // first message (no UPDATE policy on that table, see DEVLOG) — messages
+  // is always fresh (loaded straight from conversation_messages), so derive
+  // the preview + sort key from the real last message instead of the row.
+  const last = c.messages[c.messages.length - 1];
   return {
     id: c.id, participant,
-    lastMessage: c.lastMessage, lastAt: c.lastAt,
+    lastMessage: last?.text ?? c.lastMessage, lastAt: last?.sentAt ?? c.lastAt,
     // Real conversations have no server-tracked read receipt — "unread" is
     // just "arrived after the last time this device opened this chat",
     // stored locally (cc_realLastRead), same as every other per-device UI
