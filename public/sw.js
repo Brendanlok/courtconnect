@@ -40,7 +40,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: SCOPE + 'icons/icon-192x192.png',
+      // No `icon` — that renders as a large image on the right on Android.
+      // `badge` is the one small icon Lok wants, shown on the left.
       badge: SCOPE + 'icons/icon-96x96.png',
       data: { linkTo: data.linkTo },
     })
