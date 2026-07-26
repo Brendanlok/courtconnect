@@ -144,6 +144,11 @@ function toLocalTournament(t: Tournament, myUid: string): Tournament {
 
 interface AppCtx {
   user: UserProfile;
+  // True until the real signed-in profile has been fetched (or confirmed
+  // absent) — while true, `user` is still the local seed/cached placeholder,
+  // not the real account. AuthGate uses this to hold the splash screen
+  // instead of ever painting the wrong profile's numbers on load.
+  profileLoading: boolean;
   matches: Match[];
   addMatch: (m: Match) => void;
   confirmMatch: (id: string, uid?: string) => void;
@@ -231,6 +236,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return ME;
   });
+  const [profileLoading, setProfileLoading] = useState(true);
   // Matches logged against demo/seed opponents have no backend row (no real
   // uid to satisfy the matches table's FK), so localStorage is what makes
   // them survive a reload — same pattern as every other cc_* local-only
@@ -357,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (profile.courtProfile) setCourtProfile(profile.courtProfile);
           }
         } catch { /* Supabase unavailable — keep local/seed profile */ }
+        finally { setProfileLoading(false); }
       })();
       (async () => {
         try {
@@ -1138,7 +1145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      user, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
+      user, profileLoading, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
       conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, venues, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
