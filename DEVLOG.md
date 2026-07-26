@@ -1,5 +1,65 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-26] — Feature: full tournament bracket system + champion tracking, more push notification types
+
+**Trigger:** interactive session, continuing the feature list from earlier today. Lok asked for
+paused-match indicator (roadmap item), more push notification types, tournament champion tracking,
+and monetization direction.
+
+**Paused-match indicator — already done, no work needed.** Checked the roadmap item ("currently
+only visible on the Matches tab") against the actual code: it already surfaces on Home (full
+banner), BottomNav (amber dot), and Sidebar, from a prior session. Roadmap just wasn't updated.
+
+**More push notification types shipped:** `addClubMember`, `removeClubPending`, `removeTournamentPending`,
+and `approveTournamentRequest` (`src/lib/supabaseService.ts`) now write a real `notifications` row
+at write time via `notifyUser()` — same pattern as `sendSharedMessage`/`sendChallengeDoc` from
+earlier today. Covers club accepted/declined and tournament accepted/declined. `removeClubPending`/
+`removeTournamentPending` gained a `notifyDecline` flag so a host declining someone else's request
+notifies them, while a requester cancelling their own doesn't notify themself.
+**Skipped `badge_earned`:** badges are computed live from the user's own match history on their own
+device — there's no server-side moment to hook a push into without moving that computation
+server-side, a much bigger change than this session's scope.
+
+**Full bracket system — the big one.** Found while scoping this that real (non-demo) tournaments
+had *zero* bracket/progression logic at all — `BracketView` only ever rendered the hardcoded seed
+tournaments in `data.ts`; nothing generated a bracket from real participants, nothing let a host
+report a result, and nothing ever determined a winner. Real tournaments also never transitioned
+Upcoming → Active — nothing did that either. Built the whole thing:
+- `src/lib/bracketGen.ts` (+ `bracketGen.selfcheck.ts`) — pure, testable single-elimination bracket
+  generation (random seeding, byes auto-advance for non-power-of-2 participant counts) and result
+  progression (`reportBracketResult` fills the winner into the correct next-round slot;
+  `bracketChampion` reads off the final once it resolves). No new dependency — reused the existing
+  flat `BracketMatch[]` + round-number shape the seed data already used.
+- `Tournament.championUsername`/`championDisplayName` (new columns, `0012_tournament_champion.sql`,
+  not yet applied — needs Lok).
+- AppContext: `startTournamentBracket` (host-only, Upcoming + 2+ participants + no bracket yet →
+  generates bracket, flips to Active) and `reportBracketResult` (host reports a live match's
+  winner; if that resolves the final, flips to Completed, sets champion fields, and pushes the
+  winner a real "🏆 Tournament Champion" notification via `notifyUser`).
+- `tournaments/page.tsx`: "Start Tournament & Generate Bracket" button (host, Upcoming, disabled
+  until 2+ signed up), a tappable "Report" pill on live bracket matches (host, Active) opening a
+  small winner-picker modal, and a champion banner on Completed tournaments. Made the report
+  affordance an always-visible pill rather than a hover-reveal overlay — hover doesn't exist on
+  touchscreens and this app is phone-first.
+- New `champion` achievement badge (`src/lib/achievements.ts`) — `computeEarnedBadgeIds` now takes
+  an optional `tournaments` param to check `championUsername` against the viewer.
+
+**🔴 Needs Lok:** run `supabase/migrations/0012_tournament_champion.sql` in the Supabase SQL editor
+before champion fields persist for real. Bracket generation/reporting itself works without it (the
+columns just won't save) — same graceful-degrade pattern as every prior unapplied migration here.
+
+**Monetization:** Lok's direction — all core features stay free; a paid tier unlocks additional
+data/analytics for the minority who want deeper access. Still needs specifics (which analytics,
+what price point) before any code — asked in this session's response, not yet building blind on
+this one, and payment processing itself needs Lok to set up a real Stripe/billing account regardless.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass (added `bracketGen.selfcheck.ts`).
+Not click-tested live — same recurring limitation as every prior session, no demo/guest login past
+the real Supabase auth wall in this environment. **Not yet deployed** — GitHub was unreachable
+during this session (general internet fine, `api.github.com` specifically timed out, the known
+intermittent issue noted in this project's CLAUDE.md); commits are queued locally, will push and
+confirm once it's reachable again.
+
 ## [2026-07-26] — Feature: weekly recap card + real Web Push notifications (foundation) + 2 new milestone badges
 
 **Trigger:** interactive session — Lok asked for 4 feature ideas pitched earlier (head-to-head
