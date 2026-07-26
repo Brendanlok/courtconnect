@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-26] — Feature: full tournament bracket system + champion tracking
+
+### 🟠 High
+- **Real tournaments can now actually be played out.** Host taps "Start Tournament" once 2+ people
+  are signed up → generates a real single-elimination bracket (random seeding, byes handled). Host
+  reports each live match's winner, the bracket progresses round to round automatically, and the
+  final match's winner becomes the tournament's tracked champion — shown as a banner on the
+  tournament, a new "Champion" achievement badge, and a real push notification to the winner.
+- **🔴 Needs Lok:** run `0012_tournament_champion.sql` — bracket play works without it, only the
+  champion fields won't persist until then.
+- **More push notification types**: club join accepted/declined and tournament request
+  accepted/declined now reach the recipient even with the app closed, same as messages/challenges
+  shipped earlier today.
+- **Paused-match indicator** — turned out to already be live (Home, BottomNav, Sidebar) from a
+  prior session; roadmap item was just stale.
+
 ## [2026-07-26] — Feature: weekly recap card, real Web Push foundation, 2 new milestone badges
 
 ### 🟠 High
