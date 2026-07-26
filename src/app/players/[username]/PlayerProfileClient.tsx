@@ -37,6 +37,7 @@ const BADGE_ICON: Record<string, React.ReactNode> = {
   first_ten:     <Medal size={18} className="text-sky-400"/>,
   half_century:  <Award size={18} className="text-fuchsia-400"/>,
   century_club:  <Star size={18} className="text-amber-400"/>,
+  champion:      <Trophy size={18} className="text-amber-400"/>,
 };
 
 function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: boolean; onClose: () => void }) {

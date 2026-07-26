@@ -72,6 +72,7 @@ export default function Tournaments() {
   const { user, tournaments, addTournament, registrations, myTournamentPendingIds,
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
           acceptTournamentRequest, declineTournamentRequest,
+          startTournamentBracket, reportBracketResult,
           updateUser } = useApp();
 
   const userCountry = user.country ?? 'Malaysia';
@@ -88,6 +89,7 @@ export default function Tournaments() {
   const [regTarget,     setRegTarget]   = useState<Tournament | null>(null);
   const [unregTarget,   setUnregTarget] = useState<Tournament | null>(null);
   const [viewParticipants, setViewParticipants] = useState<Tournament | null>(null);
+  const [resultTarget, setResultTarget] = useState<{ tournament: Tournament; match: BracketMatch } | null>(null);
 
   const isPenalty = (t: Tournament) => {
     const msUntil = new Date(`${t.date}T${t.time ?? '00:00'}`).getTime() - Date.now();
@@ -252,7 +254,9 @@ export default function Tournaments() {
             onCancelRequest={() => cancelRequest(t.id)}
             onViewParticipants={() => setViewParticipants(t)}
             onApproveRequest={uid => acceptTournamentRequest(t.id, uid)}
-            onDeclineRequest={uid => declineTournamentRequest(t.id, uid)}/>
+            onDeclineRequest={uid => declineTournamentRequest(t.id, uid)}
+            onStartBracket={() => startTournamentBracket(t.id)}
+            onReportResult={match => setResultTarget({ tournament: t, match })}/>
         ))}
       </div>
 
@@ -277,19 +281,27 @@ export default function Tournaments() {
       {viewParticipants && (
         <ParticipantsModal tournament={viewParticipants} onClose={() => setViewParticipants(null)}/>
       )}
+      {resultTarget && (
+        <ReportResultModal match={resultTarget.match} onClose={() => setResultTarget(null)}
+          onSubmit={(winnerName, score) => {
+            reportBracketResult(resultTarget.tournament.id, resultTarget.match.id, winnerName, score);
+            setResultTarget(null);
+          }}/>
+      )}
     </div>
   );
 }
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest }: {
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest, onStartBracket, onReportResult }: {
   tournament: Tournament; myMMR: number; myDisplayName: string;
   isRegistered: boolean; isPending: boolean;
   onRegister: () => void; onUnregister: () => void;
   onRequest: () => void; onCancelRequest: () => void;
   onViewParticipants: () => void;
   onApproveRequest: (uid: string) => void; onDeclineRequest: (uid: string) => void;
+  onStartBracket: () => void; onReportResult: (match: BracketMatch) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft   = t.maxPlayers - t.currentPlayers;
@@ -478,13 +490,34 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
                 </div>
               )}
 
+              {/* Champion banner — Completed only */}
+              {t.status === 'Completed' && t.championDisplayName && (
+                <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+                  <Trophy size={20} className="text-amber-400 shrink-0"/>
+                  <div>
+                    <p className="text-sm font-bold text-amber-300">🏆 Champion: {t.championDisplayName}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">@{t.championUsername}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Host action: kick off the bracket once ready — Upcoming only,
+                  needs at least 2 signed-up players, one-time (no bracket yet). */}
+              {isMyTourney && t.status === 'Upcoming' && !t.bracket && (
+                <button onClick={e => { e.stopPropagation(); onStartBracket(); }}
+                  disabled={t.currentPlayers < 2}
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-black transition-colors">
+                  <Trophy size={14}/> {t.currentPlayers < 2 ? 'Need 2+ players to start' : 'Start Tournament & Generate Bracket'}
+                </button>
+              )}
+
               {/* Bracket — Active and Completed */}
               {t.bracket && (t.status === 'Active' || t.status === 'Completed') && (
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">
                     {t.status === 'Active' ? 'Live Bracket' : 'Final Bracket'}
                   </p>
-                  <BracketView bracket={t.bracket}/>
+                  <BracketView bracket={t.bracket} onReportResult={isMyTourney && t.status === 'Active' ? onReportResult : undefined}/>
                 </div>
               )}
 
@@ -581,6 +614,54 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
             </Button>
             <Button onClick={onConfirm} className="flex-1">
               I Understand — Register
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Report Bracket Result Modal ───────────────────────────────────────────────
+
+function ReportResultModal({ match: m, onClose, onSubmit }: {
+  match: BracketMatch; onClose: () => void; onSubmit: (winnerName: string, score?: string) => void;
+}) {
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Report Match Result');
+  const [winner, setWinner] = useState<string | null>(null);
+  const [score,  setScore]  = useState('');
+  const players = [m.player1!, m.player2!];
+
+  return (
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl outline-none" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h3 className="font-bold">Report Result</h3>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Who won?</p>
+            <div className="space-y-2">
+              {players.map(name => (
+                <button key={name} onClick={() => setWinner(name)}
+                  className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl border text-left text-sm font-medium transition-colors
+                    ${winner === name ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}>
+                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 ${winner === name ? 'border-emerald-400 bg-emerald-400' : 'border-slate-600'}`}/>
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1.5 block">Score (optional)</label>
+            <input value={score} onChange={e => setScore(e.target.value)} placeholder="21-14, 21-18"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={() => winner && onSubmit(winner, score.trim() || undefined)} disabled={!winner} className="flex-1">
+              Confirm Winner
             </Button>
           </div>
         </div>
@@ -908,7 +989,7 @@ function roundTopPad(ri: number): number {
   return (f1 + f2) / 2 - CARD_H / 2;
 }
 
-function BracketView({ bracket }: { bracket: BracketMatch[] }) {
+function BracketView({ bracket, onReportResult }: { bracket: BracketMatch[]; onReportResult?: (match: BracketMatch) => void }) {
   const rounds      = [...new Set(bracket.map(b => b.round))].sort();
   const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
   const r1Count     = byRound[0]?.length ?? 1;
@@ -938,7 +1019,7 @@ function BracketView({ bracket }: { bracket: BracketMatch[] }) {
           return (
             <div key={ri} className="flex items-start shrink-0">
               <div className="flex flex-col shrink-0" style={{ paddingTop: pad, gap }}>
-                {matches.map(m => <BracketCard key={m.id} match={m}/>)}
+                {matches.map(m => <BracketCard key={m.id} match={m} onReportResult={onReportResult}/>)}
               </div>
               {!isLast && (
                 <svg width={CONN_W} height={totalH} className="shrink-0 overflow-visible">
@@ -967,11 +1048,17 @@ function BracketView({ bracket }: { bracket: BracketMatch[] }) {
   );
 }
 
-function BracketCard({ match: m }: { match: BracketMatch }) {
+function BracketCard({ match: m, onReportResult }: { match: BracketMatch; onReportResult?: (match: BracketMatch) => void }) {
   const isLive = !m.winner && !!m.player1 && m.player1 !== 'TBD' && !!m.player2 && m.player2 !== 'TBD';
+  const canReport = isLive && !!onReportResult;
+  // A hover-reveal overlay would be invisible on touch devices — this app is
+  // phone-first, so the report action is a small always-visible pill instead,
+  // and the whole card is tappable (not hover-gated) when it's reportable.
   return (
-    <div style={{ width: CARD_W, height: CARD_H }}
-      className={`rounded-xl overflow-hidden border text-sm flex flex-col
+    <div onClick={canReport ? () => onReportResult!(m) : undefined}
+      style={{ width: CARD_W, height: CARD_H }}
+      className={`relative rounded-xl overflow-hidden border text-sm flex flex-col
+        ${canReport ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}
         ${isLive ? 'border-amber-500/50' : m.winner ? 'border-slate-700' : 'border-slate-800/80'}`}>
       {[m.player1, m.player2].map((name, i) => (
         <div key={i} className={`flex-1 px-3 flex flex-col justify-center gap-0.5 border-b last:border-0 border-slate-800
@@ -986,6 +1073,11 @@ function BracketCard({ match: m }: { match: BracketMatch }) {
           )}
         </div>
       ))}
+      {canReport && (
+        <span className="absolute top-0.5 right-0.5 bg-amber-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+          Report
+        </span>
+      )}
     </div>
   );
 }
