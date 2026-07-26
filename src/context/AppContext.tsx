@@ -6,6 +6,7 @@ import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier, BASE_PATH } from '@/lib/utils';
 import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { BADGES, computeEarnedBadgeIds } from '@/lib/achievements';
+import { generateBracket, reportBracketResult as computeBracketResult, bracketChampion } from '@/lib/bracketGen';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
@@ -19,6 +20,7 @@ import {
   sendClubMessageDoc, subscribeClubMessages,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
   addTournamentPending, removeTournamentPending, approveTournamentRequest,
+  lookupUserByUsername, notifyUser,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
@@ -175,6 +177,8 @@ interface AppCtx {
   cancelRequest: (id: string) => void;
   acceptTournamentRequest: (tournamentId: string, uid: string) => void;
   declineTournamentRequest: (tournamentId: string, uid: string) => void;
+  startTournamentBracket: (tournamentId: string) => void;
+  reportBracketResult: (tournamentId: string, matchId: string, winnerName: string, score?: string) => void;
   challenges: Challenge[];
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
@@ -792,6 +796,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const declineTournamentRequest = useCallback((tournamentId: string, uid: string) => {
     removeTournamentPending(tournamentId, toRealUid(uid, myRealUid), true).catch(() => {});
   }, [myRealUid]);
+
+  // Host starts the event: generates a single-elimination bracket from the
+  // signed-up participants (random seeding — no MMR-seeding UI exists) and
+  // flips status to Active. Bracket UI was already built for the seed demo
+  // tournaments; real ones just never had anything populating it before.
+  const startTournamentBracket = useCallback((tournamentId: string) => {
+    const t = tournaments.find(x => x.id === tournamentId);
+    if (!t || (t.participants ?? []).length < 2) return;
+    const bracket = generateBracket(t.participants!);
+    updateTournamentDoc(tournamentId, { status: 'Active', bracket }).catch(() => {});
+  }, [tournaments]);
+
+  // Host reports a live bracket match's result. Propagates the winner into
+  // the next round same as reportBracketResult; if that was the final match,
+  // also marks the tournament Completed and pushes the champion a real
+  // notification (reaches them even with the app closed, same pattern as
+  // sendChallengeDoc/sendSharedMessage).
+  const reportBracketResult = useCallback((tournamentId: string, matchId: string, winnerName: string, score?: string) => {
+    const t = tournaments.find(x => x.id === tournamentId);
+    if (!t?.bracket) return;
+    const updated = computeBracketResult(t.bracket, matchId, winnerName, score);
+    const champion = bracketChampion(updated);
+    const patch: Partial<Tournament> = { bracket: updated };
+    if (champion) {
+      patch.status = 'Completed';
+      const participant = (t.participants ?? []).find(p => p.displayName === champion);
+      if (participant) {
+        patch.championUsername = participant.username;
+        patch.championDisplayName = participant.displayName;
+        lookupUserByUsername(participant.username).then(profile => {
+          if (profile?.uid) notifyUser(profile.uid, { type: 'tournament_win', title: '🏆 Tournament Champion', body: `You won ${t.name}!` });
+        }).catch(() => {});
+      }
+    }
+    updateTournamentDoc(tournamentId, patch).catch(() => {});
+  }, [tournaments]);
+
   const myTournamentPendingIds = useMemo(() =>
     tournaments.filter(t => (t.pendingRequesterIds ?? []).includes('me')).map(t => t.id),
   [tournaments]);
@@ -1121,7 +1162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Recomputed live from match history on every render — no separate
   // award/persist step, so there's nothing to migrate or get out of sync.
-  const earnedBadgeIds = useMemo(() => computeEarnedBadgeIds(allMatches, user), [allMatches, user]);
+  const earnedBadgeIds = useMemo(() => computeEarnedBadgeIds(allMatches, user, tournaments), [allMatches, user, tournaments]);
   const prevBadgeIdsRef = useRef<string[] | null>(null);
   useEffect(() => {
     const prev = prevBadgeIdsRef.current;
@@ -1149,7 +1190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, venues, totalUnread, sidebarCollapsed, toggleSidebar,
       tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
-      acceptTournamentRequest, declineTournamentRequest,
+      acceptTournamentRequest, declineTournamentRequest, startTournamentBracket, reportBracketResult,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,

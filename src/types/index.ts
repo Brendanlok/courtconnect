@@ -127,6 +127,8 @@ export interface Tournament {
   hostUid?: string;         // uid of the user who created this tournament
   participants?: { displayName: string; username: string }[];
   pendingRequesterIds?: string[]; // uids waiting on host approval (private events only)
+  championUsername?: string;     // set once the final bracket match has a winner
+  championDisplayName?: string;
 }
 
 export interface BracketMatch {
@@ -199,7 +201,7 @@ export interface Club {
 
 export interface Notification {
   id: string;
-  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered' | 'badge_earned' | 'tournament_request' | 'tournament_join_request' | 'tournament_accepted' | 'tournament_declined';
+  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered' | 'badge_earned' | 'tournament_request' | 'tournament_join_request' | 'tournament_accepted' | 'tournament_declined' | 'tournament_win';
   title: string;
   body: string;
   read: boolean;

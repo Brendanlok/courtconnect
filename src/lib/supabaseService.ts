@@ -380,7 +380,7 @@ export function subscribeMySharedConversations(myUid: string, cb: (cs: SharedCon
 // closed — see the comment on the "any signed-in insert" policy in
 // 0010_push_subscriptions.sql. Best-effort: a failed insert (e.g. migration
 // not yet applied) shouldn't block the actual message/challenge send.
-async function notifyUser(userId: string, n: { type: string; title: string; body: string; linkTo?: string }) {
+export async function notifyUser(userId: string, n: { type: string; title: string; body: string; linkTo?: string }) {
   try {
     await supabase.from('notifications').insert({ user_id: userId, type: n.type, title: n.title, body: n.body, link_to: n.linkTo });
   } catch { /* ignore */ }
@@ -638,6 +638,8 @@ function tournamentRowToObj(row: Record<string, unknown>): Tournament {
     description: row.description as string | undefined, organiser: row.organiser as string | undefined,
     hostUid: row.host_uid as string | undefined, participants: row.participants as Tournament['participants'],
     pendingRequesterIds: (row.pending_requester_ids as string[]) ?? [],
+    championUsername: row.champion_username as string | undefined,
+    championDisplayName: row.champion_display_name as string | undefined,
   };
 }
 
@@ -649,6 +651,7 @@ function tournamentObjToRow(t: Tournament): Record<string, unknown> {
     date: t.date, time: t.time, is_private: t.isPrivate, bracket: t.bracket, tags: t.tags,
     description: t.description, organiser: t.organiser, host_uid: t.hostUid, participants: t.participants,
     pending_requester_ids: t.pendingRequesterIds,
+    champion_username: t.championUsername, champion_display_name: t.championDisplayName,
   };
 }
 

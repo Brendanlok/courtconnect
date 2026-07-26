@@ -28,6 +28,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   tournament_join_request: <Trophy size={14} className="text-amber-400"/>,
   tournament_accepted:     <Trophy size={14} className="text-emerald-400"/>,
   tournament_declined:     <Trophy size={14} className="text-red-400"/>,
+  tournament_win:          <Trophy size={14} className="text-amber-400"/>,
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {

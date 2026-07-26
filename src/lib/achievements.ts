@@ -1,4 +1,4 @@
-import type { Match, UserProfile } from '@/types';
+import type { Match, Tournament, UserProfile } from '@/types';
 
 // Achievement badges — computed live from match history + profile on every
 // render (useMemo in AppContext), not stored anywhere. Every input already
@@ -21,6 +21,7 @@ export const BADGES: Badge[] = [
   { id: 'first_ten',     name: 'First Ten',     description: 'Play 10 confirmed matches.' },
   { id: 'half_century',  name: 'Half Century',  description: 'Play 50 confirmed matches.' },
   { id: 'century_club',  name: 'Century Club',  description: 'Play 100 confirmed matches.' },
+  { id: 'champion',      name: 'Champion',      description: 'Win a tournament.' },
 ];
 
 // A larger mmrChange gain on a win implies a much higher-rated opponent (the
@@ -36,7 +37,7 @@ const CENTURY = 100;
 
 // Matches from useApp() are always normalized so player1/games.p1 is "me" and
 // winnerId === 'me' means I won — see toLocalMatch in AppContext.
-export function computeEarnedBadgeIds(matches: Match[], user: UserProfile): string[] {
+export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tournaments: Tournament[] = []): string[] {
   const confirmed = [...matches]
     .filter(m => m.status === 'Confirmed')
     .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
@@ -63,6 +64,8 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile): stri
   if (confirmed.length >= 10) earned.add('first_ten');
   if (confirmed.length >= 50) earned.add('half_century');
   if (confirmed.length >= CENTURY) earned.add('century_club');
+
+  if (tournaments.some(t => t.championUsername === user.username)) earned.add('champion');
 
   return [...earned];
 }
