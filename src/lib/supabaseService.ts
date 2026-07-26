@@ -375,11 +375,25 @@ export function subscribeMySharedConversations(myUid: string, cb: (cs: SharedCon
   return () => { cancelled = true; supabase.removeChannel(channel); };
 }
 
+// Writes a real row into the (previously unused) notifications table so a
+// push webhook has something to fire on even if the recipient's app is fully
+// closed — see the comment on the "any signed-in insert" policy in
+// 0010_push_subscriptions.sql. Best-effort: a failed insert (e.g. migration
+// not yet applied) shouldn't block the actual message/challenge send.
+async function notifyUser(userId: string, n: { type: string; title: string; body: string; linkTo?: string }) {
+  try {
+    await supabase.from('notifications').insert({ user_id: userId, type: n.type, title: n.title, body: n.body, link_to: n.linkTo });
+  } catch { /* ignore */ }
+}
+
 export async function sendSharedMessage(
-  chatId: string, participantUids: string[], _participants: Record<string, SharedParticipant>, msg: ChatMessage,
+  chatId: string, participantUids: string[], participants: Record<string, SharedParticipant>, msg: ChatMessage,
 ) {
   await supabase.from('conversations').upsert({ id: chatId, participant_ids: participantUids, last_message: msg.text, last_at: msg.sentAt });
   await supabase.from('conversation_messages').insert({ id: msg.id, conversation_id: chatId, sender_id: msg.senderId, text: msg.text, sent_at: msg.sentAt });
+  const senderName = participants[msg.senderId]?.displayName ?? 'Someone';
+  participantUids.filter(uid => uid !== msg.senderId).forEach(uid =>
+    notifyUser(uid, { type: 'new_message', title: `New message from ${senderName}`, body: msg.text, linkTo: `/chat/?realUid=${msg.senderId}` }));
 }
 
 // ── Real challenges between two real accounts ─────────────────────────────────
@@ -419,6 +433,7 @@ export async function sendChallengeDoc(c: StoredChallenge) {
     to_id: c.toUid, to_name: c.toName, to_username: c.toUsername,
     format: c.format, venue: c.venue, date: c.date, message: c.message, status: c.status, created_at: c.createdAt,
   });
+  notifyUser(c.toUid, { type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
 }
 
 export async function updateChallengeStatus(id: string, status: StoredChallenge['status']) {

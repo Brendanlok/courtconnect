@@ -11,7 +11,7 @@ import { usePausedMatch } from '@/lib/pausedMatch';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
-  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone, Radio,
+  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone, Radio, Share2, Sparkles,
 } from 'lucide-react';
 import type { Match, Tournament, Challenge, Club } from '@/types';
 import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -61,6 +61,15 @@ export default function Home() {
   const upcomingEvents = tournaments.filter(t =>
     t.status === 'Upcoming' && registrations[t.id]
   );
+
+  // Weekly recap: same 7-day window as weeklyMmrDelta above, plus a couple more
+  // shareable numbers computed from data already loaded for the rest of the page.
+  const weeklyMatches = confirmed.filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo);
+  const weeklyWins = weeklyMatches.filter(m => m.winnerId === user.uid);
+  const bestWin = weeklyWins.length > 0
+    ? [...weeklyWins].sort((a, b) => (b.mmrChange ?? 0) - (a.mmrChange ?? 0))[0]
+    : null;
+  const bestWinOpponent = bestWin ? (bestWin.player1Id === user.uid ? bestWin.player2Name : bestWin.player1Name) : null;
 
   return (
     <>
@@ -167,6 +176,14 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* ── Weekly Recap ──────────────────────────────────────────────────── */}
+        {weeklyMatches.length > 0 && (
+          <WeeklyRecapCard
+            mmrDelta={weeklyMmrDelta} matchesPlayed={weeklyMatches.length}
+            winsCount={weeklyWins.length} bestWinOpponent={bestWinOpponent} bestWinMmr={bestWin?.mmrChange}
+          />
+        )}
 
         {/* ── Paused live match banner ─────────────────────────────────────── */}
         {pausedMatch?.match && (
@@ -396,6 +413,58 @@ export default function Home() {
       />
       {logOpen && <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>}
     </>
+  );
+}
+
+// ─── Weekly Recap ─────────────────────────────────────────────────────────────
+// Screenshot-shareable end-of-week summary — uses the Web Share API where the
+// browser supports it (mobile Safari/Chrome) instead of building a custom
+// canvas-to-image export; falls back to just being a nice card to screenshot.
+
+function WeeklyRecapCard({ mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr }: {
+  mmrDelta: number; matchesPlayed: number; winsCount: number;
+  bestWinOpponent: string | null; bestWinMmr?: number;
+}) {
+  const shareText = `My badminton week on CourtConnect: ${matchesPlayed} match${matchesPlayed > 1 ? 'es' : ''} played, ${winsCount}W, ${mmrDelta >= 0 ? '+' : ''}${mmrDelta} MMR` +
+    (bestWinOpponent ? ` — best win vs ${bestWinOpponent}${bestWinMmr ? ` (+${bestWinMmr})` : ''}` : '') + ' 🏸';
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950/20 border border-violet-500/25 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-sm flex items-center gap-2 text-violet-300">
+          <Sparkles size={15}/> This Week
+        </h2>
+        {canShare && (
+          <button onClick={() => navigator.share({ title: 'CourtConnect Weekly Recap', text: shareText }).catch(() => {})}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-300 transition-colors">
+            <Share2 size={12}/> Share
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <p className={`text-xl font-black ${mmrDelta > 0 ? 'text-emerald-400' : mmrDelta < 0 ? 'text-red-400' : 'text-slate-300'}`}>
+            {mmrDelta > 0 ? '+' : ''}{mmrDelta}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">MMR</p>
+        </div>
+        <div className="border-x border-slate-700/60">
+          <p className="text-xl font-black">{matchesPlayed}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Matches</p>
+        </div>
+        <div>
+          <p className="text-xl font-black text-emerald-400">{winsCount}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Wins</p>
+        </div>
+      </div>
+      {bestWinOpponent && (
+        <p className="text-xs text-slate-400 text-center mt-3">
+          🏆 Best win: beat <span className="font-semibold text-slate-200">{bestWinOpponent}</span>
+          {bestWinMmr ? <span className="text-emerald-400 font-semibold"> (+{bestWinMmr})</span> : null}
+        </p>
+      )}
+    </div>
   );
 }
 

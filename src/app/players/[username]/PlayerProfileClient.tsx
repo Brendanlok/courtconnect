@@ -13,7 +13,7 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
 import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
@@ -34,6 +34,8 @@ const BADGE_ICON: Record<string, React.ReactNode> = {
   comeback_king: <TrendingUp size={18} className="text-emerald-400"/>,
   bagel:         <CircleSlash size={18} className="text-blue-400"/>,
   marathon:      <Clock size={18} className="text-violet-400"/>,
+  first_ten:     <Medal size={18} className="text-sky-400"/>,
+  half_century:  <Award size={18} className="text-fuchsia-400"/>,
   century_club:  <Star size={18} className="text-amber-400"/>,
 };
 

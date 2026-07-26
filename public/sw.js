@@ -30,6 +30,23 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Push received from the server (send-push Edge Function) — this is what
+// actually reaches the user when the app/tab is fully closed, unlike
+// AppContext's showNotification() call which only fires while a tab is still
+// open in the background.
+self.addEventListener('push', e => {
+  let data = { title: 'CourtConnect', body: '' };
+  try { data = e.data.json(); } catch { /* ignore, use default */ }
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: SCOPE + 'icons/icon-192x192.png',
+      badge: SCOPE + 'icons/icon-96x96.png',
+      data: { linkTo: data.linkTo },
+    })
+  );
+});
+
 // Notification click: focus an existing tab if open, otherwise open one
 self.addEventListener('notificationclick', e => {
   e.notification.close();

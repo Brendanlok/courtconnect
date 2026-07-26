@@ -5,16 +5,21 @@
 // (supabase/functions/send-push), triggered by a DB webhook on notifications
 // insert — this file only manages the subscription record.
 import { supabase } from '@/lib/supabase';
-import { BASE_PATH } from '@/lib/utils';
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+// The public half of a VAPID keypair is not sensitive (it's sent to browsers
+// on every subscribe call) — safe to commit directly, unlike the private half
+// which only ever lives as a Supabase Edge Function secret (never in git).
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  || 'BBWzyYmp3NvPZfr3nodMRvLFXwkClLRuqaktY2lM3a_LcIFpefYHt1J4xWapVjjlAVfLjjJmIA61gx_yTOokwGw';
 
 // Web Push wants the VAPID key as a raw Uint8Array, browsers only give you base64url.
-function urlBase64ToUint8Array(base64url: string): Uint8Array {
+function urlBase64ToUint8Array(base64url: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
   const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
 }
 
 export function pushSupported(): boolean {

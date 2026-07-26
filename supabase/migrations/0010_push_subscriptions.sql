@@ -20,3 +20,15 @@ alter table push_subscriptions enable row level security;
 -- theirs to add/read/remove. The send-push Edge Function reads across all
 -- rows using the service-role key, which bypasses RLS by design.
 create policy "push subscriptions owner only" on push_subscriptions for all using (auth.uid() = user_id);
+
+-- The `notifications` table already existed (from the original Firebase-era
+-- schema) but nothing ever wrote to it — every notification in this app is
+-- computed client-side from realtime subscriptions, which only run while the
+-- recipient's own tab happens to be open. That means a closed app never
+-- learns "you got a message" at all, so there's nothing for a push webhook to
+-- fire on. Fix: sendSharedMessage/sendChallengeDoc now also insert a real
+-- notifications row for the recipient at write time (see supabaseService.ts).
+-- That needs the SENDER to be able to insert a row addressed to someone else,
+-- which the existing owner-only policy blocks (auth.uid() = user_id) — same
+-- "any signed-in insert" shape already used for venues.
+create policy "any signed-in insert" on notifications for insert with check (auth.uid() is not null);

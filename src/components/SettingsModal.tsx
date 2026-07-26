@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
@@ -7,6 +7,7 @@ import type { CountryCode, MalaysiaState } from '@/types';
 import type { UserProfile } from '@/types';
 import { supabase, auth } from '@/lib/supabase';
 import { deleteAccountData } from '@/lib/supabaseService';
+import { pushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -509,11 +510,41 @@ function NotificationPermissionRow() {
     if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
     return Notification.permission;
   });
+  const [subscribing, setSubscribing] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+  const canRealPush = pushSupported();
+
+  useEffect(() => {
+    if (!canRealPush || perm !== 'granted') return;
+    navigator.serviceWorker.ready
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => setPushOn(!!sub))
+      .catch(() => {});
+  }, [canRealPush, perm]);
 
   const request = async () => {
     if (!('Notification' in window)) return;
     const result = await Notification.requestPermission();
     setPerm(result);
+    const uid = auth.currentUser?.uid;
+    if (result === 'granted' && uid) {
+      setSubscribing(true);
+      const ok = await subscribeToPush(uid);
+      setPushOn(ok);
+      setSubscribing(false);
+    }
+  };
+
+  const togglePush = async () => {
+    const uid = auth.currentUser?.uid;
+    setSubscribing(true);
+    if (pushOn) {
+      await unsubscribeFromPush();
+      setPushOn(false);
+    } else if (uid) {
+      setPushOn(await subscribeToPush(uid));
+    }
+    setSubscribing(false);
   };
 
   if (!('Notification' in (typeof window !== 'undefined' ? window : {}))) return null;
@@ -524,16 +555,29 @@ function NotificationPermissionRow() {
         {perm === 'granted' ? <Bell size={13} className="text-emerald-400"/> : <BellOff size={13} className="text-slate-500"/>}
         <div>
           <p className="text-xs font-semibold text-slate-300">Push Notifications</p>
-          <p className="text-[10px] text-slate-500">{perm === 'granted' ? 'Enabled — you\'ll get alerts when the app is in background' : perm === 'denied' ? 'Blocked — allow in browser settings' : 'Off'}</p>
+          <p className="text-[10px] text-slate-500">
+            {perm === 'granted'
+              ? (canRealPush && pushOn ? "Enabled — you'll get alerts even when the app is closed" : "Enabled — you'll get alerts when the app is in background")
+              : perm === 'denied' ? 'Blocked — allow in browser settings' : 'Off'}
+          </p>
         </div>
       </div>
       {perm === 'default' && (
-        <button onClick={request}
-          className="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-semibold transition-colors shrink-0">
-          Enable
+        <button onClick={request} disabled={subscribing}
+          className="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg font-semibold transition-colors shrink-0">
+          {subscribing ? 'Enabling…' : 'Enable'}
         </button>
       )}
-      {perm === 'granted' && <span className="text-[10px] text-emerald-400 font-bold shrink-0">✓ On</span>}
+      {perm === 'granted' && canRealPush && (
+        <button onClick={togglePush} disabled={subscribing}
+          title={pushOn ? 'Turn off background alerts' : 'Turn on background alerts'}
+          className={`text-[10px] font-bold shrink-0 transition-colors disabled:opacity-50 ${pushOn ? 'text-emerald-400 hover:text-red-400' : 'text-slate-500 hover:text-emerald-400'}`}>
+          {pushOn ? '✓ On' : 'Off'}
+        </button>
+      )}
+      {perm === 'granted' && !canRealPush && (
+        <span className="text-[10px] text-emerald-400 font-bold shrink-0">✓ On</span>
+      )}
     </div>
   );
 }

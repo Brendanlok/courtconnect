@@ -18,6 +18,8 @@ export const BADGES: Badge[] = [
   { id: 'comeback_king', name: 'Comeback King', description: 'Win a match after a 5+ point comeback in a game.' },
   { id: 'bagel',         name: 'Bagel',         description: 'Win a game 21-0.' },
   { id: 'marathon',      name: 'Marathon',      description: 'Play a live match lasting 45+ minutes.' },
+  { id: 'first_ten',     name: 'First Ten',     description: 'Play 10 confirmed matches.' },
+  { id: 'half_century',  name: 'Half Century',  description: 'Play 50 confirmed matches.' },
   { id: 'century_club',  name: 'Century Club',  description: 'Play 100 confirmed matches.' },
 ];
 
@@ -58,6 +60,8 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile): stri
 
   if (confirmed.some(m => (m.liveStats?.durationSec ?? 0) >= MARATHON_SEC)) earned.add('marathon');
 
+  if (confirmed.length >= 10) earned.add('first_ten');
+  if (confirmed.length >= 50) earned.add('half_century');
   if (confirmed.length >= CENTURY) earned.add('century_club');
 
   return [...earned];
