@@ -577,8 +577,8 @@ export async function addClubMember(id: string, uid: string) {
   // accept invite) routes through here — enforce max_members AND the
   // per-user tier club limit once, in the one place all of them share,
   // instead of duplicating the checks at each call site.
-  const { data } = await supabase.from('clubs').select('member_ids, max_members').eq('id', id).maybeSingle();
-  const row = data as { member_ids?: string[]; max_members?: number } | null;
+  const { data } = await supabase.from('clubs').select('name, member_ids, max_members').eq('id', id).maybeSingle();
+  const row = data as { name?: string; member_ids?: string[]; max_members?: number } | null;
   const alreadyMember = (row?.member_ids ?? []).includes(uid);
   if (!alreadyMember) {
     if (row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return;
@@ -593,6 +593,11 @@ export async function addClubMember(id: string, uid: string) {
   }
   await mutateClubArray(id, 'member_ids', [uid], []);
   await mutateClubArray(id, 'pending_ids', [], [uid]);
+  // Reaches the new member even with their app fully closed — same write-time
+  // pattern as notifyUser calls in sendSharedMessage/sendChallengeDoc, since
+  // the joiner's own client (if it's even open) has no way to know an admin
+  // just accepted/added them from their side.
+  if (!alreadyMember) notifyUser(uid, { type: 'club_accepted', title: 'Joined Club', body: row?.name ? `You joined ${row.name}!` : 'You joined a new club!' });
 }
 export async function removeClubMember(id: string, uid: string) {
   await mutateClubArray(id, 'member_ids', [], [uid]);
@@ -601,8 +606,12 @@ export async function removeClubMember(id: string, uid: string) {
 export async function addClubPending(id: string, uid: string) {
   await mutateClubArray(id, 'pending_ids', [uid], []);
 }
-export async function removeClubPending(id: string, uid: string) {
+// notifyDecline distinguishes an admin declining someone else's request (push
+// them the bad news) from a requester cancelling their own — same underlying
+// mutation either way, called from two different AppContext callbacks.
+export async function removeClubPending(id: string, uid: string, notifyDecline = false) {
   await mutateClubArray(id, 'pending_ids', [], [uid]);
+  if (notifyDecline) notifyUser(uid, { type: 'club_declined', title: 'Request Declined', body: 'Your request to join a club was declined.' });
 }
 export async function setClubModerator(id: string, uid: string, isModerator: boolean) {
   await mutateClubArray(id, 'moderator_ids', isModerator ? [uid] : [], isModerator ? [] : [uid]);
@@ -687,18 +696,21 @@ async function mutateTournamentPending(id: string, add: string[], remove: string
 export async function addTournamentPending(id: string, uid: string) {
   await mutateTournamentPending(id, [uid], []);
 }
-export async function removeTournamentPending(id: string, uid: string) {
+// notifyDecline distinguishes a host declining someone else's request from a
+// requester cancelling their own — same shape as removeClubPending above.
+export async function removeTournamentPending(id: string, uid: string, notifyDecline = false) {
   await mutateTournamentPending(id, [], [uid]);
+  if (notifyDecline) notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: 'Your request to join an event was declined.' });
 }
 
 // Approve = add to participants/increment currentPlayers (same as
 // registerTournament) + drop from the pending list, in one call.
 export async function approveTournamentRequest(id: string, uid: string) {
   const [{ data }, profile] = await Promise.all([
-    supabase.from('tournaments').select('current_players, participants').eq('id', id).maybeSingle(),
+    supabase.from('tournaments').select('name, current_players, participants').eq('id', id).maybeSingle(),
     lookupUserByUid(uid),
   ]);
-  const row = data as { current_players?: number; participants?: { displayName: string; username: string }[] } | null;
+  const row = data as { name?: string; current_players?: number; participants?: { displayName: string; username: string }[] } | null;
   if (profile?.displayName && profile?.username) {
     await supabase.from('tournaments').update({
       current_players: (row?.current_players ?? 0) + 1,
@@ -706,6 +718,7 @@ export async function approveTournamentRequest(id: string, uid: string) {
     }).eq('id', id);
   }
   await mutateTournamentPending(id, [], [uid]);
+  notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: row?.name ? `Your request to join ${row.name} was accepted!` : 'Your request to join an event was accepted!' });
 }
 
 export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) => void, max = 50): () => void {

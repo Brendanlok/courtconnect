@@ -790,7 +790,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: 'A player joined your event.' });
   }, [myRealUid]);
   const declineTournamentRequest = useCallback((tournamentId: string, uid: string) => {
-    removeTournamentPending(tournamentId, toRealUid(uid, myRealUid)).catch(() => {});
+    removeTournamentPending(tournamentId, toRealUid(uid, myRealUid), true).catch(() => {});
   }, [myRealUid]);
   const myTournamentPendingIds = useMemo(() =>
     tournaments.filter(t => (t.pendingRequesterIds ?? []).includes('me')).map(t => t.id),
@@ -911,7 +911,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [myRealUid]);
 
   const declineClubMember = useCallback((clubId: string, uid: string) => {
-    removeClubPending(clubId, toRealUid(uid, myRealUid)).catch(() => {});
+    removeClubPending(clubId, toRealUid(uid, myRealUid), true).catch(() => {});
   }, [myRealUid]);
 
   const inviteToClub = useCallback((clubId: string, targetUid: string) => {
