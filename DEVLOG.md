@@ -1,5 +1,41 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-26] — Fix: real chat previews froze after the first message, list stopped re-sorting
+
+**Trigger:** scheduled auto-dev session. All 3 open To-Do items (pose-tracking heatmap,
+shuttle auto-detect, tournament join-request approval) are gated on Lok — either real
+court/match testing, or the 0009 migration waiting for him to run it in the Supabase SQL
+editor. Rather than guess blind on those, swept for the same root-cause pattern that's
+bitten this app twice already (RLS policy scoped to the wrong actor) in an area not yet
+audited: real 1:1 chat.
+
+**🔴 Found: the `conversations` table has no UPDATE policy at all** (only SELECT + INSERT,
+see `0001_init.sql`/`0002_fix_id_types.sql`). `sendSharedMessage` does
+`supabase.from('conversations').upsert({..., last_message, last_at})` on every message —
+the first message succeeds (RLS sees it as an insert), but every message after that hits
+the same row and needs an UPDATE, which is silently rejected the same way clubs/
+court_sessions were before 0005. Net effect: `last_message`/`last_at` on every real
+conversation have been frozen at whatever the first message was, forever, for every user.
+
+Two things broke from this: **AppContext's `toLocalConversation`** read `lastMessage`/
+`lastAt` straight off that frozen row, so the Messages tab's preview line under a
+contact's name never updated past their first message — and the conversation list is
+sorted by `lastAt` (`b.lastAt.localeCompare(a.lastAt)`), so a chat with brand-new messages
+never bubbled back to the top; the list order also froze at first-contact order.
+
+**Fixed without touching the database:** `conversation_messages` (the actual message
+rows) already gets reloaded fresh on every render via `loadConversationMessages` — it was
+never affected by the RLS gap, only the derived `conversations.last_message` convenience
+column was. Changed `toLocalConversation` (`src/context/AppContext.tsx`) to derive the
+preview text and sort timestamp from `messages[messages.length - 1]` instead of the row
+fields, falling back to the row only when there are no messages yet (a freshly-created
+empty conversation). No migration needed, no Lok action needed — this ships as-is.
+
+**Verified:** `npx next build` clean, pushed (commit f3925e9). Not click-tested live —
+this app has no demo/guest login past the auth wall in this environment, and exercising
+two real accounts messaging each other isn't reproducible headless; the bug and fix were
+confirmed by tracing the actual RLS policies against the actual write path, not guessed.
+
 ## [2026-07-26] — Feature: real tournament persistence (was local-tab-only) + 3 smaller Tournaments bugs
 
 **Trigger:** 5am scheduled auto-dev session. Both queued To-Do items (pose-tracking
