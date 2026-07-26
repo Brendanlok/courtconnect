@@ -1,5 +1,5 @@
--- NOT YET APPLIED — run this in the Supabase SQL editor, then update this
--- header. Written by auto-dev (2026-07-26 session), same bug class as
+-- APPLIED 2026-07-26 by Lok in the Supabase SQL editor.
+-- Written by auto-dev (2026-07-26 session), same bug class as
 -- 0005 (self-service writes blocked by an actor-scoped UPDATE policy).
 --
 -- New column backing "Request to Join" for private tournaments
