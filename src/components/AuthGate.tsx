@@ -31,6 +31,32 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <AppProvider>
+      <AppShell onboardingDone={onboardingDone} setOnboardingDone={setOnboardingDone}>
+        {children}
+      </AppShell>
+    </AppProvider>
+  );
+}
+
+// Split out so it can read profileLoading from AppContext — AppProvider's own
+// value isn't visible to AuthGate itself, only to components rendered inside
+// it. Holds the same splash AuthGate shows for auth, so the app never paints
+// the local seed profile's numbers before the real signed-in profile arrives.
+function AppShell({ children, onboardingDone, setOnboardingDone }: {
+  children: ReactNode; onboardingDone: boolean; setOnboardingDone: (v: boolean) => void;
+}) {
+  const { profileLoading } = useApp();
+
+  if (profileLoading) {
+    return (
+      <div className="fixed inset-0 bg-[#020817] flex items-center justify-center">
+        <div className="text-4xl animate-pulse">🏸</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
       {!onboardingDone && <OnboardingModal onComplete={() => setOnboardingDone(true)}/>}
       <ToastStack />
       <div className="flex h-screen overflow-hidden">
@@ -46,6 +72,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </div>
       <BottomNav />
       <ExitGuard />
-    </AppProvider>
+    </>
   );
 }
