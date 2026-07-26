@@ -18,6 +18,7 @@ import {
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
+  addTournamentPending, removeTournamentPending, approveTournamentRequest,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
@@ -128,7 +129,12 @@ const toRealUid = (localUid: string, myUid: string) => localUid === 'me' ? myUid
 // shared row, translated to 'me' for the signed-in host's own display/equality
 // checks (e.g. TournamentRow's `t.hostUid === 'me'`).
 function toLocalTournament(t: Tournament, myUid: string): Tournament {
-  return { ...t, hostUid: t.hostUid === myUid ? 'me' : t.hostUid };
+  const translate = (uid: string) => uid === myUid ? 'me' : uid;
+  return {
+    ...t,
+    hostUid: t.hostUid === myUid ? 'me' : t.hostUid,
+    pendingRequesterIds: (t.pendingRequesterIds ?? []).map(translate),
+  };
 }
 
 interface AppCtx {
@@ -152,11 +158,13 @@ interface AppCtx {
   tournaments: Tournament[];
   addTournament: (t: Tournament) => Promise<string | null>;
   registrations: Record<string, { registeredAt: string }>;
-  pendingRequests: Record<string, { requestedAt: string }>;
+  myTournamentPendingIds: string[]; // private tournaments I've requested to join
   registerTournament: (id: string) => void;
   unregisterTournament: (id: string) => void;
   requestToJoin: (id: string) => void;
   cancelRequest: (id: string) => void;
+  acceptTournamentRequest: (tournamentId: string, uid: string) => void;
+  declineTournamentRequest: (tournamentId: string, uid: string) => void;
   challenges: Challenge[];
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
@@ -243,7 +251,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // `tournaments` (translated for display) is derived further down.
   const [rawTournaments,   setRawTournaments]    = useState<Tournament[]>(SEED_TOURNAMENTS);
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
-  const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
   const [localChallenges,  setLocalChallenges]  = useState<Challenge[]>([]);
   // Real, cross-account challenges/conversations/endorsements — populated via
   // Supabase real-time listeners once signed in (see the effect below).
@@ -424,6 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const prevOutgoingChallengesRef = useRef<StoredChallenge[]>([]);
   const prevConversationsRef      = useRef<SharedConversation[]>([]);
   const prevClubsRef              = useRef<Club[]>([]);
+  const prevTournamentsRef        = useRef<Tournament[]>([]);
   const prevMatchesRef             = useRef<StoredMatch[]>([]);
   // "have we run the diff at least once" per subscription — without this,
   // the very first callback after sign-in (prevXRef still at its initial [])
@@ -444,7 +452,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
         setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
-        prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = [];
+        prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = []; prevTournamentsRef.current = [];
         challengesLoadedRef.current = false; conversationsLoadedRef.current = false; matchesLoadedRef.current = false;
         return;
       }
@@ -452,7 +460,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ensureSeedClubsExist(SEED_CLUBS).catch(() => {});
       ensureSeedTournamentsExist(SEED_TOURNAMENTS).catch(() => {});
       realUnsubsRef.current = [
-        subscribeTournaments(setRawTournaments),
+        subscribeTournaments(docs => {
+          const prev = prevTournamentsRef.current;
+          docs.forEach(t => {
+            const old = prev.find(p => p.id === t.id);
+            if (!old) return; // first load — nothing "changed" yet, don't notify
+
+            if (t.hostUid === uid) {
+              (t.pendingRequesterIds ?? []).filter(p => !(old.pendingRequesterIds ?? []).includes(p))
+                .forEach(() => addNotification({ type: 'tournament_join_request', title: 'Join Request', body: `Someone requested to join ${t.name}.`, meta: { tournamentId: t.id } }));
+            }
+
+            const oldPending = old.pendingRequesterIds ?? [];
+            const newPending = t.pendingRequesterIds ?? [];
+            if (oldPending.includes(uid) && !newPending.includes(uid)) {
+              // No uid on the participants list to check directly (see approveTournamentRequest) —
+              // currentPlayers only moves via register/approve/unregister, so "did it go up"
+              // is a good-enough accept/decline signal at this scale.
+              if (t.currentPlayers > old.currentPlayers) addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: `Your request to join ${t.name} was accepted!` });
+              else addNotification({ type: 'tournament_declined', title: 'Request Declined', body: `Your request to join ${t.name} was declined.` });
+            }
+          });
+          prevTournamentsRef.current = docs;
+          setRawTournaments(docs);
+        }),
         subscribeChallengesFor('toUid', uid, docs => {
           const prev = prevIncomingChallengesRef.current;
           if (challengesLoadedRef.current) {
@@ -733,8 +764,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uid = auth.currentUser?.uid;
     if (uid) deleteTournamentReg(uid, id).catch(() => {});
   }, [tournaments, user.username]);
-  const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
-  const cancelRequest = useCallback((id: string) => setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; }), []);
+  const requestToJoin = useCallback((id: string) => {
+    if (!myRealUid) return;
+    addTournamentPending(id, myRealUid).catch(() => {});
+    addNotification({ type: 'tournament_request', title: 'Request Sent', body: 'Your request to join has been sent to the host.' });
+  }, [myRealUid]);
+  const cancelRequest = useCallback((id: string) => {
+    if (!myRealUid) return;
+    removeTournamentPending(id, myRealUid).catch(() => {});
+  }, [myRealUid]);
+  const acceptTournamentRequest = useCallback((tournamentId: string, uid: string) => {
+    approveTournamentRequest(tournamentId, toRealUid(uid, myRealUid)).catch(() => {});
+    addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: 'A player joined your event.' });
+  }, [myRealUid]);
+  const declineTournamentRequest = useCallback((tournamentId: string, uid: string) => {
+    removeTournamentPending(tournamentId, toRealUid(uid, myRealUid)).catch(() => {});
+  }, [myRealUid]);
+  const myTournamentPendingIds = useMemo(() =>
+    tournaments.filter(t => (t.pendingRequesterIds ?? []).includes('me')).map(t => t.id),
+  [tournaments]);
 
   const isRealChallengeId = useCallback((id: string) =>
     realIncomingChallenges.some(c => c.id === id) || realOutgoingChallenges.some(c => c.id === id),
@@ -1087,8 +1135,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       user, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
       conversations, setConversations: setLocalConversations, sendRealMessage, markRealConvRead, allRealPlayers, venues, totalUnread, sidebarCollapsed, toggleSidebar,
-      tournaments, addTournament, registrations, pendingRequests,
+      tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
+      acceptTournamentRequest, declineTournamentRequest,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,

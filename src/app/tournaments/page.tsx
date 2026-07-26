@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
-         AlertTriangle, X, Filter, Info, Eye, Search } from 'lucide-react';
+         AlertTriangle, X, Filter, Info, Eye, Search, Check } from 'lucide-react';
 import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { lookupUserByUid } from '@/lib/supabaseService';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -68,8 +69,9 @@ function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament;
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Tournaments() {
-  const { user, tournaments, addTournament, registrations, pendingRequests,
+  const { user, tournaments, addTournament, registrations, myTournamentPendingIds,
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
+          acceptTournamentRequest, declineTournamentRequest,
           updateUser } = useApp();
 
   const userCountry = user.country ?? 'Malaysia';
@@ -243,12 +245,14 @@ export default function Tournaments() {
           <TournamentRow key={t.id} tournament={t} myMMR={user.mmr}
             myDisplayName={user.displayName}
             isRegistered={!!registrations[t.id]}
-            isPending={!!pendingRequests[t.id]}
+            isPending={myTournamentPendingIds.includes(t.id)}
             onRegister={() => setRegTarget(t)}
             onUnregister={() => setUnregTarget(t)}
             onRequest={() => requestToJoin(t.id)}
             onCancelRequest={() => cancelRequest(t.id)}
-            onViewParticipants={() => setViewParticipants(t)}/>
+            onViewParticipants={() => setViewParticipants(t)}
+            onApproveRequest={uid => acceptTournamentRequest(t.id, uid)}
+            onDeclineRequest={uid => declineTournamentRequest(t.id, uid)}/>
         ))}
       </div>
 
@@ -279,12 +283,13 @@ export default function Tournaments() {
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants }: {
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest }: {
   tournament: Tournament; myMMR: number; myDisplayName: string;
   isRegistered: boolean; isPending: boolean;
   onRegister: () => void; onUnregister: () => void;
   onRequest: () => void; onCancelRequest: () => void;
   onViewParticipants: () => void;
+  onApproveRequest: (uid: string) => void; onDeclineRequest: (uid: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft   = t.maxPlayers - t.currentPlayers;
@@ -294,6 +299,24 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
   const isMyTourney = t.hostUid === 'me' || t.organiser === myDisplayName;
   // Can see full details if: public, or user is registered/host
   const canSeeDetails = !t.isPrivate || isRegistered || isMyTourney;
+
+  // Requesters may be real accounts not in any local roster — resolve their
+  // display names/usernames on demand, same pattern as ClubDetailClient's
+  // pendingMembers lookup.
+  const pendingIds = t.pendingRequesterIds ?? [];
+  const pendingKey = pendingIds.join(',');
+  const [requesterProfiles, setRequesterProfiles] = useState<Record<string, { displayName: string; username: string } | null>>({});
+  useEffect(() => {
+    const uids = pendingIds.filter(uid => uid && uid !== 'me' && !(uid in requesterProfiles));
+    if (uids.length === 0) return;
+    let cancelled = false;
+    Promise.all(uids.map(async uid => {
+      const data = await lookupUserByUid(uid).catch(() => null);
+      return [uid, data ? { displayName: data.displayName ?? 'Player', username: data.username ?? uid } : null] as const;
+    })).then(results => { if (!cancelled) setRequesterProfiles(prev => ({ ...prev, ...Object.fromEntries(results) })); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingKey]);
 
   return (
     <div className={`border rounded-2xl overflow-hidden transition-all
@@ -410,6 +433,42 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
                   </button>
                 )}
               </div>
+
+              {/* Host-facing pending requests — private events only */}
+              {isMyTourney && t.isPrivate && (
+                <div className="bg-slate-800 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-700/60">
+                    <p className="text-sm font-semibold">Pending Requests <span className="text-slate-500 font-normal">({pendingIds.length})</span></p>
+                  </div>
+                  {pendingIds.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">No pending requests.</p>
+                  ) : (
+                    <div className="divide-y divide-slate-700/60">
+                      {pendingIds.map(uid => {
+                        const p = requesterProfiles[uid];
+                        return (
+                          <div key={uid} className="flex items-center gap-3 px-4 py-2.5">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">{p?.displayName ?? 'Loading…'}</p>
+                              {p?.username && <p className="text-[11px] text-slate-500">@{p.username}</p>}
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button onClick={e => { e.stopPropagation(); onApproveRequest(uid); }}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors">
+                                <Check size={12}/> Accept
+                              </button>
+                              <button onClick={e => { e.stopPropagation(); onDeclineRequest(uid); }}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold transition-colors">
+                                <X size={12}/> Decline
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {t.prizePool > 0 && (
                 <div className="flex gap-2 flex-wrap">

@@ -613,6 +613,7 @@ function tournamentRowToObj(row: Record<string, unknown>): Tournament {
     isPrivate: row.is_private as boolean | undefined, bracket: row.bracket as Tournament['bracket'], tags: (row.tags as string[]) ?? [],
     description: row.description as string | undefined, organiser: row.organiser as string | undefined,
     hostUid: row.host_uid as string | undefined, participants: row.participants as Tournament['participants'],
+    pendingRequesterIds: (row.pending_requester_ids as string[]) ?? [],
   };
 }
 
@@ -623,6 +624,7 @@ function tournamentObjToRow(t: Tournament): Record<string, unknown> {
     max_players: t.maxPlayers, current_players: t.currentPlayers, state: t.state, venue: t.venue,
     date: t.date, time: t.time, is_private: t.isPrivate, bracket: t.bracket, tags: t.tags,
     description: t.description, organiser: t.organiser, host_uid: t.hostUid, participants: t.participants,
+    pending_requester_ids: t.pendingRequesterIds,
   };
 }
 
@@ -655,6 +657,40 @@ export async function createTournamentDoc(t: Tournament) {
 
 export async function updateTournamentDoc(id: string, patch: Partial<Tournament>) {
   await supabase.from('tournaments').update(tournamentObjToRow(patch as Tournament)).eq('id', id);
+}
+
+// "Request to Join" for private tournaments — mirrors mutateClubArray/
+// addClubPending/removeClubPending above (same read-modify-write tradeoff).
+async function mutateTournamentPending(id: string, add: string[], remove: string[]) {
+  const { data } = await supabase.from('tournaments').select('pending_requester_ids').eq('id', id).maybeSingle();
+  const row = data as { pending_requester_ids?: string[] } | null;
+  const existing = (row?.pending_requester_ids ?? []).filter(u => !remove.includes(u));
+  const next = [...new Set([...existing, ...add])];
+  await supabase.from('tournaments').update({ pending_requester_ids: next }).eq('id', id);
+}
+
+export async function addTournamentPending(id: string, uid: string) {
+  await mutateTournamentPending(id, [uid], []);
+}
+export async function removeTournamentPending(id: string, uid: string) {
+  await mutateTournamentPending(id, [], [uid]);
+}
+
+// Approve = add to participants/increment currentPlayers (same as
+// registerTournament) + drop from the pending list, in one call.
+export async function approveTournamentRequest(id: string, uid: string) {
+  const [{ data }, profile] = await Promise.all([
+    supabase.from('tournaments').select('current_players, participants').eq('id', id).maybeSingle(),
+    lookupUserByUid(uid),
+  ]);
+  const row = data as { current_players?: number; participants?: { displayName: string; username: string }[] } | null;
+  if (profile?.displayName && profile?.username) {
+    await supabase.from('tournaments').update({
+      current_players: (row?.current_players ?? 0) + 1,
+      participants: [...(row?.participants ?? []), { displayName: profile.displayName, username: profile.username }],
+    }).eq('id', id);
+  }
+  await mutateTournamentPending(id, [], [uid]);
 }
 
 export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) => void, max = 50): () => void {
