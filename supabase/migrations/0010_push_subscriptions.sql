@@ -1,8 +1,8 @@
--- NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor.
--- Backs real Web Push (background/closed-app notifications). Until Lok runs
--- this AND deploys the send-push Edge Function (see supabase/functions/send-push),
--- subscribeToPush() below degrades to a no-op — same graceful pattern as every
--- prior migration in this file before it's applied.
+-- APPLIED 2026-07-26 by Lok in the Supabase SQL editor.
+-- Backs real Web Push (background/closed-app notifications). Still needs the
+-- send-push Edge Function deployed (see supabase/functions/send-push) before
+-- an actual push message can go out — subscribeToPush() below already works
+-- against this table, but nothing sends the notification until that's live.
 
 create table push_subscriptions (
   id uuid primary key default gen_random_uuid(),
