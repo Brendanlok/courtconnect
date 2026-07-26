@@ -17,6 +17,11 @@ type EligFilter = 'All' | 'Eligible';
 
 function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament; onClose: () => void }) {
   const participants = t.participants ?? [];
+  // currentPlayers is the count shown on the row that opened this modal —
+  // use it as the source of truth here too so the header/progress bar can
+  // never contradict what the user just saw (participants is only a roster
+  // of known names, which can be shorter than the real signup count).
+  const count = t.currentPlayers;
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, `${t.name} participants`);
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
@@ -24,13 +29,15 @@ function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament;
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
           <div>
             <h3 className="font-bold text-sm">{t.name}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{participants.length} / {t.maxPlayers} players signed up</p>
+            <p className="text-xs text-slate-400 mt-0.5">{count} / {t.maxPlayers} players signed up</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
         </div>
         <div className="p-4 max-h-[60vh] overflow-y-auto">
           {participants.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-6">No players signed up yet.</p>
+            <p className="text-slate-500 text-sm text-center py-6">
+              {count > 0 ? 'Players are signed up, but the name list isn\'t available.' : 'No players signed up yet.'}
+            </p>
           ) : (
             <div className="space-y-2">
               {participants.map((p, i) => (
@@ -49,9 +56,9 @@ function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament;
         </div>
         <div className="px-4 pb-4">
           <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width:`${Math.round((participants.length / t.maxPlayers) * 100)}%` }}/>
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width:`${Math.round((count / t.maxPlayers) * 100)}%` }}/>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5 text-right">{t.maxPlayers - participants.length} spots remaining</p>
+          <p className="text-xs text-slate-500 mt-1.5 text-right">{t.maxPlayers - count} spots remaining</p>
         </div>
       </div>
     </div>
@@ -63,7 +70,7 @@ function ParticipantsModal({ tournament: t, onClose }: { tournament: Tournament;
 export default function Tournaments() {
   const { user, tournaments, addTournament, registrations, pendingRequests,
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
-          updateUser, clubs } = useApp();
+          updateUser } = useApp();
 
   const userCountry = user.country ?? 'Malaysia';
   const userRegion  = user.region ?? user.state ?? '';
@@ -241,14 +248,13 @@ export default function Tournaments() {
             onUnregister={() => setUnregTarget(t)}
             onRequest={() => requestToJoin(t.id)}
             onCancelRequest={() => cancelRequest(t.id)}
-            onViewParticipants={() => setViewParticipants(t)}
-            myClubs={clubs.filter(c => c.adminId === 'me' || (c.moderatorIds ?? []).includes('me'))}/>
+            onViewParticipants={() => setViewParticipants(t)}/>
         ))}
       </div>
 
       {/* Modals */}
       {hostOpen && (
-        <HostModal onClose={() => setHostOpen(false)} onSubmit={t => { addTournament(t); setHostOpen(false); }}/>
+        <HostModal onClose={() => setHostOpen(false)} onSubmit={addTournament}/>
       )}
       {regTarget && (
         <RegisterWarningModal tournament={regTarget}
@@ -273,13 +279,12 @@ export default function Tournaments() {
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, myClubs }: {
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants }: {
   tournament: Tournament; myMMR: number; myDisplayName: string;
   isRegistered: boolean; isPending: boolean;
   onRegister: () => void; onUnregister: () => void;
   onRequest: () => void; onCancelRequest: () => void;
   onViewParticipants: () => void;
-  myClubs: import('@/types').Club[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft   = t.maxPlayers - t.currentPlayers;
@@ -582,7 +587,9 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
 
 // ─── Host Event Modal ─────────────────────────────────────────────────────────
 
-function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: Tournament) => void }) {
+function todayISO(): string { return new Date().toISOString().slice(0, 10); }
+
+function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: Tournament) => Promise<string | null> }) {
   const { user, clubs } = useApp();
 
   // Clubs where user is owner or moderator — can host on behalf of club
@@ -605,6 +612,8 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
   const [advOpen,    setAdvOpen]    = useState(false);
   // 'me' = individual, otherwise = club id
   const [hostAs,     setHostAs]     = useState<'me' | string>('me');
+  const [error,      setError]      = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Host an Event');
 
@@ -612,7 +621,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
 
   const hostingClub = myKeyClubs.find(c => c.id === hostAs);
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim() || !date || !venue.trim()) return;
     const t: Tournament = {
       id: `t_${Date.now()}`,
@@ -627,12 +636,15 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
       maxPlayers,     currentPlayers: 0,
       isPrivate,
       organiser:      hostingClub ? hostingClub.name : user.displayName,
-      hostUid:        'me',
       description:    desc.trim() || undefined,
       tags: [MATCH_TYPE_LABEL[type], isPrivate ? 'Private' : 'Open'],
       participants: [],
     };
-    onSubmit(t);
+    setError(''); setSubmitting(true);
+    const err = await onSubmit(t);
+    setSubmitting(false);
+    if (err) { setError(err); return; }
+    onClose();
   };
 
   return (
@@ -723,7 +735,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Date *</span>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
+              <input type="date" value={date} min={todayISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
             </label>
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Start Time</span>
@@ -800,14 +812,17 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
           )}
         </div>
 
-        <div className="px-5 pb-5 flex gap-3 shrink-0 border-t border-slate-800 pt-4">
-          <Button variant="secondary" onClick={onClose} className="flex-1">
-            Cancel
-          </Button>
-          <Button variant="amber" onClick={submit} disabled={!name.trim() || !date || !venue.trim()}
-            icon={<Trophy size={14}/>} className="flex-1 font-bold">
-            Create Event
-          </Button>
+        <div className="px-5 pb-5 shrink-0 border-t border-slate-800 pt-4 space-y-3">
+          {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/25 px-3 py-2 rounded-xl">{error}</p>}
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button variant="amber" onClick={submit} disabled={submitting || !name.trim() || !date || !venue.trim()}
+              icon={<Trophy size={14}/>} className="flex-1 font-bold">
+              {submitting ? 'Creating…' : 'Create Event'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

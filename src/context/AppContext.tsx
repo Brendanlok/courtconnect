@@ -17,6 +17,7 @@ import {
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
+  subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
@@ -123,6 +124,13 @@ function toLocalClub(c: Club, myUid: string): Club {
 }
 const toRealUid = (localUid: string, myUid: string) => localUid === 'me' ? myUid : localUid;
 
+// Same normalization for tournaments: hostUid is a real Supabase uid on the
+// shared row, translated to 'me' for the signed-in host's own display/equality
+// checks (e.g. TournamentRow's `t.hostUid === 'me'`).
+function toLocalTournament(t: Tournament, myUid: string): Tournament {
+  return { ...t, hostUid: t.hostUid === myUid ? 'me' : t.hostUid };
+}
+
 interface AppCtx {
   user: UserProfile;
   matches: Match[];
@@ -142,7 +150,7 @@ interface AppCtx {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   tournaments: Tournament[];
-  addTournament: (t: Tournament) => void;
+  addTournament: (t: Tournament) => Promise<string | null>;
   registrations: Record<string, { registeredAt: string }>;
   pendingRequests: Record<string, { requestedAt: string }>;
   registerTournament: (id: string) => void;
@@ -230,7 +238,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [matches]);
   const [localConversations, setLocalConversations] = useState<Conversation[]>(SEED_CONVS);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tournaments,      setTournaments]      = useState<Tournament[]>(SEED_TOURNAMENTS);
+  // Tournaments live in Supabase now (see subscribeTournaments below), same
+  // pattern as rawClubs — rawTournaments holds real Supabase uids on hostUid,
+  // `tournaments` (translated for display) is derived further down.
+  const [rawTournaments,   setRawTournaments]    = useState<Tournament[]>(SEED_TOURNAMENTS);
   const [registrations,    setRegistrations]    = useState<Record<string, { registeredAt: string }>>({});
   const [pendingRequests,  setPendingRequests]  = useState<Record<string, { requestedAt: string }>>({});
   const [localChallenges,  setLocalChallenges]  = useState<Challenge[]>([]);
@@ -439,7 +450,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const uid = authUser.uid;
       ensureSeedClubsExist(SEED_CLUBS).catch(() => {});
+      ensureSeedTournamentsExist(SEED_TOURNAMENTS).catch(() => {});
       realUnsubsRef.current = [
+        subscribeTournaments(setRawTournaments),
         subscribeChallengesFor('toUid', uid, docs => {
           const prev = prevIncomingChallengesRef.current;
           if (challengesLoadedRef.current) {
@@ -681,29 +694,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed(c => !c), []);
 
-  const addTournament       = useCallback((t: Tournament) => setTournaments(ts => [t, ...ts]), []);
+  // Tournaments — real Supabase rows now (see rawTournaments/subscribeTournaments
+  // above), same translate-to-'me' + write-then-rely-on-subscription pattern as
+  // clubs. myRealUid is declared here (not down by the clubs section) because
+  // these callbacks need it too.
+  const myRealUid = auth.currentUser?.uid ?? '';
+  const tournaments: Tournament[] = useMemo(() => rawTournaments.map(t => toLocalTournament(t, myRealUid)), [rawTournaments, myRealUid]);
+
+  const addTournament = useCallback(async (t: Tournament): Promise<string | null> => {
+    if (!myRealUid) return 'Session expired. Please sign in again.';
+    try {
+      await createTournamentDoc({ ...t, hostUid: myRealUid });
+      return null;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
+    }
+  }, [myRealUid]);
   const registerTournament  = useCallback((id: string) => {
     const reg = { registeredAt: new Date().toISOString() };
     setRegistrations(r => ({ ...r, [id]: reg }));
-    setTournaments(ts => ts.map(t => t.id === id ? {
-      ...t,
+    const t = tournaments.find(x => x.id === id);
+    if (t) updateTournamentDoc(id, {
       currentPlayers: t.currentPlayers + 1,
       participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
-    } : t));
+    }).catch(() => {});
     addNotification({ type: 'event_registered', title: 'Event Registration', body: 'You have registered for the event!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveTournamentReg(uid, id, reg).catch(() => {});
-  }, [user.displayName, user.username]);
+  }, [tournaments, user.displayName, user.username]);
   const unregisterTournament = useCallback((id: string) => {
     setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
-    setTournaments(ts => ts.map(t => t.id === id ? {
-      ...t,
+    const t = tournaments.find(x => x.id === id);
+    if (t) updateTournamentDoc(id, {
       currentPlayers: Math.max(0, t.currentPlayers - 1),
       participants: (t.participants ?? []).filter(p => p.username !== user.username),
-    } : t));
+    }).catch(() => {});
     const uid = auth.currentUser?.uid;
     if (uid) deleteTournamentReg(uid, id).catch(() => {});
-  }, [user.username]);
+  }, [tournaments, user.username]);
   const requestToJoin = useCallback((id: string) => setPendingRequests(r => ({ ...r, [id]: { requestedAt: new Date().toISOString() } })), []);
   const cancelRequest = useCallback((id: string) => setPendingRequests(r => { const n = { ...r }; delete n[id]; return n; }), []);
 
@@ -747,7 +776,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // columns — see mutateClubArray's ponytail note, not atomic under
   // concurrent edits) and relies on the live subscription above to reflect
   // the change back, rather than managing local copies.
-  const myRealUid = auth.currentUser?.uid ?? '';
   // Memoized: without this, `clubs` (and everything derived from it) would be
   // a brand-new array on every AppContext render — including ones triggered
   // by totally unrelated state elsewhere in the app — which cascades into

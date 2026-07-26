@@ -1,5 +1,88 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-26] — Feature: real tournament persistence (was local-tab-only) + 3 smaller Tournaments bugs
+
+**Trigger:** 5am scheduled auto-dev session. Both queued To-Do items (pose-tracking
+heatmap, shuttle auto-detect) remain gated on Lok's real-court testing, and the 1am
+session already covered leaderboard/clubs/settings/endorsements — so this session swept
+fresh ground: Tournaments + Partner Finder.
+
+**Partner Finder isn't a real gap** — it's a `lookingForPartner` toggle on the existing
+Players page filter, already fully wired end to end. Nothing to fix there. (Noted one
+dead field in passing: `preferredFormats` round-trips through Supabase but is never
+rendered anywhere — not fixed, no bug, just unused.)
+
+**Tournaments had a real 🔴 bug: zero backend persistence.** `addTournament` only ever
+did `setTournaments(ts => [t, ...ts])` — local React state, no Supabase write, despite
+a full `tournaments` table + RLS already existing in the schema and never being used.
+Hosting an event via "Host an Event" created a tournament that vanished on refresh and
+was invisible to every other user/device — the entire flow was a no-op beyond the
+current browser tab. Compounding bug: `registerTournament` still wrote a real
+registration row for that phantom local tournament id, so on reload the user believed
+they were registered for an event that no longer existed anywhere.
+
+**Fixed:** wired tournaments into Supabase, mirroring the existing clubs architecture
+exactly (`subscribeTournaments`/`ensureSeedTournamentsExist`/`createTournamentDoc`/
+`updateTournamentDoc` in `supabaseService.ts`; `rawTournaments` + a `toLocalTournament`
+uid-translate `useMemo`, same pattern as `rawClubs`/`toLocalClub`, in `AppContext.tsx`).
+`HostModal` is now async with proper submitting/error UI (was fire-and-close before).
+Also fixed a latent bug this surfaced: `HostModal` hardcoded `hostUid: 'me'` on the
+tournament object — harmless while local-only, but `'me'` isn't a valid uuid, so writing
+it straight to the real `host_uid uuid` column would have failed every insert.
+`addTournament` now sets the real signed-in uid itself.
+
+**🔴 BLOCKED — needs Lok to run one SQL statement in the Supabase dashboard before
+registration counts will actually persist:** the `tournaments` table's only UPDATE
+policy is host-only (`auth.uid() = host_uid`), but `registerTournament`/
+`unregisterTournament` update `current_players`/`participants` on whatever tournament a
+user is registering for — on their OWN behalf, not the host's. This is the exact same
+bug class Lok already found and fixed for clubs + court_sessions on 2026-07-15 (see the
+"CRITICAL BUG" writeup in `supabase/migrations/0005_club_self_service_rls.sql`) —
+RLS silently rejects the update (0 rows affected, no error thrown), so the app will show
+"You have registered for the event!" while nothing actually lands on the shared row.
+**Hosting a new tournament already works today** (insert isn't affected — the existing
+"auth insert" policy is already `auth.uid() is not null`). It's specifically joining
+someone else's tournament that's still blocked, same as clubs were before 0005.
+This session has no DB execution access (same limitation noted in 0005) and a direct
+`Write` to a new `supabase/migrations/` file was blocked by the permission system, so
+the fix is documented here instead — run this in the Supabase SQL editor:
+
+```sql
+drop policy "host update" on tournaments;
+create policy "auth update" on tournaments for update using (auth.uid() is not null);
+```
+
+Same tradeoff as 0005's Option A: any signed-in user could, via a direct API call,
+rewrite any tournament's fields — this app already extends that exact trust level to
+clubs/court_sessions/challenges/matches/live_matches.
+
+**Also fixed, smaller:**
+- **Participants Modal contradicted its own row.** Showed "No players signed up yet"
+  when opened from a row already reading "16 players participated" — `t1`/`t5` in the
+  seed data have a nonzero `currentPlayers` but no `participants` array, and the modal
+  computed everything from the array only. Now uses `currentPlayers` as the header/
+  progress-bar count (matches what the user already saw on the row) and only falls back
+  to "no name list available" instead of "no players" when the roster itself is empty
+  but the count isn't.
+- **Host Event date field had no past-date guard**, unlike every other date picker in
+  the app. Added `min={todayISO()}`, matching `AvailabilityTab`'s existing pattern.
+- **Dead prop:** `myClubs` was computed fresh per-render and passed into every
+  `TournamentRow`, never read inside it. Deleted (adjacent to it: `clubs` was also no
+  longer used anywhere else on the Tournaments page after that, removed too).
+
+**Deliberately NOT built this session — private tournaments' "Request to Join" still has
+no approval path anywhere** (confirmed still true, traced in detail: no data-model field
+for requesters, no service functions, no host-facing UI, even though `HostModal`'s own
+copy promises "You review and approve each one"). This was blocked on tournament
+persistence not existing at all — no longer true after this session, but building a real
+approval flow (new column/table, service functions, host-facing accept/decline UI) is
+its own scoped feature, not a quick follow-on fix. Left as a known gap for a future
+session, same as the prior audit found it.
+
+**Verified:** `npx next build` clean. Not click-tested live — same recurring limitation,
+no demo/guest login in this environment past the auth wall; the RLS block above also
+means live registration testing wouldn't prove anything until Lok applies the SQL fix.
+
 ## [2026-07-26] — Fix: leaderboard state filter, unenforced club MMR minimum, Settings location/photo-upload bugs
 
 **Trigger:** 1am scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap,

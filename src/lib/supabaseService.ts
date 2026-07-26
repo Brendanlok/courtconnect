@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase';
 import { getTier, maxClubsForTier } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue } from '@/types';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -595,6 +595,66 @@ export async function setClubModerator(id: string, uid: string, isModerator: boo
 
 export async function sendClubMessageDoc(clubId: string, msg: ClubMessage) {
   await supabase.from('club_messages').insert({ id: msg.id, club_id: clubId, sender_id: msg.senderId, sender_name: msg.senderName, text: msg.text, sent_at: msg.sentAt });
+}
+
+// ── Tournaments ─────────────────────────────────────────────────────────────
+// Was local-React-state-only until now (see DEVLOG) — a hosted event never
+// left the tab that created it. Mirrors the clubs pattern above: real row in
+// Supabase, host_uid is a real uid (AppContext translates it to/from the
+// local 'me' convention), realtime subscription is the source of truth.
+
+function tournamentRowToObj(row: Record<string, unknown>): Tournament {
+  return {
+    id: row.id as string, isDummy: row.is_dummy as boolean | undefined, country: row.country as string | undefined,
+    name: row.name as string, type: row.type as Tournament['type'], status: row.status as Tournament['status'],
+    prizePool: row.prize_pool as number, entryFee: row.entry_fee as number, minMMR: row.min_mmr as number | undefined,
+    maxMMR: row.max_mmr as number | undefined, maxPlayers: row.max_players as number, currentPlayers: row.current_players as number,
+    state: row.state as MalaysiaState, venue: row.venue as string, date: row.date as string, time: row.time as string | undefined,
+    isPrivate: row.is_private as boolean | undefined, bracket: row.bracket as Tournament['bracket'], tags: (row.tags as string[]) ?? [],
+    description: row.description as string | undefined, organiser: row.organiser as string | undefined,
+    hostUid: row.host_uid as string | undefined, participants: row.participants as Tournament['participants'],
+  };
+}
+
+function tournamentObjToRow(t: Tournament): Record<string, unknown> {
+  return {
+    id: t.id, is_dummy: t.isDummy, country: t.country, name: t.name, type: t.type, status: t.status,
+    prize_pool: t.prizePool, entry_fee: t.entryFee, min_mmr: t.minMMR, max_mmr: t.maxMMR,
+    max_players: t.maxPlayers, current_players: t.currentPlayers, state: t.state, venue: t.venue,
+    date: t.date, time: t.time, is_private: t.isPrivate, bracket: t.bracket, tags: t.tags,
+    description: t.description, organiser: t.organiser, host_uid: t.hostUid, participants: t.participants,
+  };
+}
+
+export function subscribeTournaments(cb: (tournaments: Tournament[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('tournaments').select('*');
+    cb((data ?? []).map(tournamentRowToObj));
+  };
+  load();
+  const channel = supabase.channel('tournaments')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+// Seeds the static demo tournaments into Supabase once, so they're visible
+// to every real account instead of only the browser tab that happened to
+// initialize local state first.
+export async function ensureSeedTournamentsExist(seedTournaments: Tournament[]): Promise<void> {
+  await Promise.all(seedTournaments.map(async t => {
+    const { data: existing } = await supabase.from('tournaments').select('id').eq('id', t.id).maybeSingle();
+    if (!existing) await supabase.from('tournaments').insert(tournamentObjToRow(t));
+  }));
+}
+
+export async function createTournamentDoc(t: Tournament) {
+  const { error } = await supabase.from('tournaments').insert(tournamentObjToRow(t));
+  if (error) throw error;
+}
+
+export async function updateTournamentDoc(id: string, patch: Partial<Tournament>) {
+  await supabase.from('tournaments').update(tournamentObjToRow(patch as Tournament)).eq('id', id);
 }
 
 export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) => void, max = 50): () => void {

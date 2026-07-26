@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-26] — Feature: real tournament persistence + 3 smaller Tournaments fixes
+
+### 🔴 Critical
+**Why:** Scheduled 5am auto-dev audit; both open To-Do items still gated on Lok's
+real-world testing, so this session swept fresh ground (Tournaments, Partner Finder).
+
+- **Tournaments had zero backend persistence.** "Host an Event" only wrote to local
+  React state — a hosted tournament vanished on refresh and was invisible to every other
+  user/device. Wired into Supabase, mirroring the existing clubs architecture (real-time
+  subscription, uid-translate pattern). Hosting a new tournament now persists and syncs.
+- **🔴 Needs Lok:** registering for someone else's tournament won't yet persist the
+  headcount — the `tournaments` table's UPDATE policy is host-only, same bug class
+  already fixed for clubs/court_sessions in 0005. Exact SQL fix is in today's DEVLOG
+  entry; couldn't apply it directly (no DB access, and a migrations-file write was
+  blocked by the permission system this session runs under).
+
+### 🟡 Medium
+- **Participants Modal contradicted the tournament row it was opened from** — showed
+  "No players signed up yet" under a "16 players participated" row. Now uses the same
+  count (`currentPlayers`) in both places.
+- **Host Event date field had no past-date guard**, unlike every other date picker in
+  the app. Added `min={today}`.
+- Deleted a dead unused prop (`myClubs`) threaded through every `TournamentRow`.
+
 ## [2026-07-26] — Fix: leaderboard state filter wrong for non-MY countries, unenforced club MMR minimum, Settings location/photo-upload bugs
 
 ### 🟠 High
