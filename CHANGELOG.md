@@ -5,6 +5,26 @@
 
 ---
 
+## [2026-07-26] — Feature: weekly recap card, real Web Push foundation, 2 new milestone badges
+
+### 🟠 High
+**Why:** Lok asked to build on 4 pitched feature ideas. Head-to-head stats and milestone badges
+turned out to already be shipped from prior sessions — built the other two.
+
+- **Weekly Recap card on Home** — this week's MMR delta, matches played, wins, and best win, with
+  a native Web Share API share button.
+- **2 new milestone badges** — `first_ten` (10 matches), `half_century` (50 matches), alongside the
+  existing `century_club` (100).
+- **Real Web Push notifications — foundation shipped, needs one-time setup:** the existing Settings
+  toggle only ever fired notifications while the app tab was open in the background, never when
+  fully closed. New: VAPID-keyed push subscriptions, a service-worker `push` handler, an Edge
+  Function to send the actual push, and the two highest-traffic notification types (new message,
+  challenge received) now write a real row the moment they happen instead of only existing in the
+  recipient's own browser session.
+- **🔴 Needs Lok:** run `0010_push_subscriptions.sql`, deploy the `send-push` Edge Function with the
+  VAPID private key as a secret, and wire a Database Webhook — exact steps in today's DEVLOG entry.
+  Nothing regresses until then; the existing in-background notification behavior is unchanged.
+
 ## [2026-07-26] — Feature: real tournament persistence + 3 smaller Tournaments fixes
 
 ### 🔴 Critical

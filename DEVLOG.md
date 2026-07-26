@@ -1,5 +1,63 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-26] — Feature: weekly recap card + real Web Push notifications (foundation) + 2 new milestone badges
+
+**Trigger:** interactive session — Lok asked for 4 feature ideas pitched earlier (head-to-head
+rivalry stats, milestone badges, weekly recap, real push notifications). Code read-through found
+head-to-head (`PlayerProfileClient.tsx`) and milestone badges (`src/lib/achievements.ts`) already
+fully shipped from prior sessions — no work needed there. Built the other two.
+
+**Shipped — Weekly Recap card (`src/app/page.tsx`):** shows this week's MMR delta, matches played,
+wins, and best win (opponent + MMR gain), computed from data already loaded for the rest of the
+Home page — no new schema. Includes a Share button using the native Web Share API where supported
+(mobile Safari/Chrome), skipped custom canvas-to-image export since the native API already covers
+the "shareable" ask.
+
+**Shipped — 2 more milestone badges:** `first_ten` (10 confirmed matches) and `half_century` (50)
+in `src/lib/achievements.ts`, alongside the existing `century_club` (100). Added a self-check
+(`src/lib/achievements.selfcheck.ts`) — this function had none before despite non-trivial branching
+logic (streaks, thresholds). Skipped a "tournament win" badge Lok also mentioned — the `Tournament`
+type has no champion/winner field, only per-round `BracketMatch.winner`, so there's nothing solid
+to key a badge on yet.
+
+**Shipped — real Web Push notifications, foundation + two wired event types:**
+Found the existing "Push Notifications" toggle in Settings only ever fired `reg.showNotification()`
+from the client's own `addNotification()` — that only works while the tab is still open in the
+background, never when the app/phone is fully closed. Also found the Supabase `notifications` table
+(from the original Firebase-era schema) was completely dead — nothing ever wrote to it; every
+notification in this app is computed client-side from realtime subscriptions, which only run while
+the recipient's own tab happens to be open. That means a closed app never even learns "you got a
+message" — there was nothing for a push webhook to fire on.
+
+Fix, in three parts:
+1. `sendSharedMessage`/`sendChallengeDoc` (`src/lib/supabaseService.ts`) now also insert a real row
+   into `notifications` for the recipient at write time, via a new `notifyUser()` helper — the two
+   highest-traffic cross-user events. Other notification types (club/tournament accept, badge
+   earned, etc.) remain client-only-while-open for now; extending them later is the same one-line
+   `notifyUser()` call at their existing write functions.
+2. `src/lib/push.ts` (subscribe/unsubscribe against a generated VAPID keypair), `public/sw.js` (new
+   `push` event handler), and the Settings toggle now actually subscribes via `pushManager` on grant
+   instead of just asking OS permission.
+3. `supabase/functions/send-push/index.ts` — a Deno Edge Function that reads `push_subscriptions`
+   for the notified user and sends the real Web Push message via `web-push`.
+
+**🔴 BLOCKED — three manual steps only Lok can do, same shape as every prior schema/infra gate:**
+- Run `supabase/migrations/0010_push_subscriptions.sql` in the Supabase SQL editor (new table +
+  the RLS insert-policy fix that lets a sender write a notification row for someone else).
+- Deploy the Edge Function: `supabase login && supabase link && supabase functions deploy send-push`,
+  after `supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=...` (private key handed to Lok
+  directly in chat, never committed — public key is safe and is already hardcoded in `push.ts`).
+- Wire a Database Webhook in the Supabase Dashboard (Database → Webhooks): on `notifications` INSERT
+  → HTTP POST to the deployed function's URL.
+Until all three are done, the Settings toggle still grants OS notification permission and the
+in-background behavior keeps working exactly as before — nothing regresses, the new path is purely
+additive.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass (added one new). Not
+click-tested live — same recurring limitation as every prior session, no demo/guest login past the
+real Supabase auth wall in this environment. Confirmed by code read-through and the type-checked
+build instead.
+
 ## [2026-07-26] — Fix: real chat previews froze after the first message, list stopped re-sorting
 
 **Trigger:** scheduled auto-dev session. All 3 open To-Do items (pose-tracking heatmap,
