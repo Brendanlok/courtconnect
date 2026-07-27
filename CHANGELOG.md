@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-27] — Chore: storage bucket migration for existing avatar/clip upload
+
+### 🟡 Medium
+- ✅ `supabase/migrations/0013_storage_buckets.sql` — repeatable, idempotent creation of the
+  `avatars` (public) and `clips` (private) Storage buckets + RLS policies that the existing
+  photo-upload and match-clip-recording features already depend on. Previously only documented
+  as a manual dashboard step. Needs Lok to run in the Supabase SQL editor.
+
+---
+
 ## [2026-07-26] — Feature: full tournament bracket system + champion tracking
 
 ### 🟠 High

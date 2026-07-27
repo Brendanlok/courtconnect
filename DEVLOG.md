@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-07-27] — Auto-dev: storage bucket migration, roadmap sync
+
+**Trigger:** scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap, shuttle-hit
+detection tuning) are gated on Lok testing live on an actual court — nothing further to build blind
+on either. Checked the Roadmap for other unblocked work instead.
+
+**Roadmap item "Photo upload for avatars" was stale — already fully shipped.** Same pattern as the
+paused-match-indicator note above: `Avatar.tsx`, `SettingsModal.tsx` upload flow, and the
+`photo_url` column all already exist and work. The one real gap: the `avatars`/`clips` Storage
+buckets they upload to were documented as "create manually in the Supabase dashboard" with no
+migration behind them.
+
+**Shipped:** `supabase/migrations/0013_storage_buckets.sql` — creates both buckets (idempotent,
+no-op if already created manually) plus their RLS policies (avatars: owner-scoped
+insert/update, public read; clips: authenticated insert/read, matches the existing signed-URL
+read pattern in `ClipRecorder.tsx`). Same "needs Lok to run in SQL editor" pattern as every other
+migration here — no automatic runner exists in this project.
+
+**Not done:** couldn't verify whether the buckets already exist from manual creation, since this
+environment has no Supabase dashboard/service-role access — if they're already there the migration
+is a safe no-op either way.
+
 ## [2026-07-26] — Feature: full tournament bracket system + champion tracking, more push notification types
 
 **Trigger:** interactive session, continuing the feature list from earlier today. Lok asked for
