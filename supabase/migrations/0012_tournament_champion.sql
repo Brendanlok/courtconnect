@@ -1,4 +1,4 @@
--- NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor.
+-- APPLIED 2026-07-27 by Lok in the Supabase SQL editor.
 -- Backs the new full bracket system: host starts a tournament (generates the
 -- bracket from participants), reports each live match's result, and once the
 -- final match resolves these two columns record who actually won — nothing

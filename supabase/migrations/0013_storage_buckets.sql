@@ -1,4 +1,4 @@
--- NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor.
+-- APPLIED 2026-07-27 by Lok in the Supabase SQL editor.
 -- Creates the `avatars` and `clips` Storage buckets that SettingsModal.tsx and
 -- ClipRecorder.tsx already upload to (supabase.storage.from('avatars'/'clips')).
 -- These were previously documented as "create manually in the dashboard" (see
