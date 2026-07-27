@@ -85,7 +85,7 @@ export function Topbar() {
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(o => !o)} aria-label="Account menu" aria-expanded={menuOpen}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-800 transition-colors">
-              <Avatar name={user.displayName} size="sm" />
+              <Avatar name={user.displayName} photoURL={user.photoURL} size="sm" />
               <div className="text-left hidden sm:block">
                 <p className="text-xs font-semibold leading-tight">{user.displayName}</p>
                 <p className="text-[10px] text-slate-400">@{user.username}</p>
@@ -97,7 +97,7 @@ export function Topbar() {
               <div className="popover-anim origin-top-right absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
                 <div className="p-4 border-b border-slate-800">
                   <div className="flex items-center gap-3">
-                    <Avatar name={user.displayName} />
+                    <Avatar name={user.displayName} photoURL={user.photoURL} />
                     <div>
                       <p className="font-bold text-sm">{user.displayName}</p>
                       <p className="text-xs text-slate-400">@{user.username}</p>

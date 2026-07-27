@@ -162,7 +162,7 @@ export default function Chat() {
           <button key={c.id} onClick={() => openConv(c.id)} className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left
             ${c.id === activeId ? 'bg-slate-800' : 'hover:bg-slate-800/50'}`}>
             <div className="relative">
-              <Avatar name={c.participant.displayName} size="sm"/>
+              <Avatar name={c.participant.displayName} size="sm" photoURL={c.participant.photoURL}/>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
             </div>
             <div className="flex-1 min-w-0">
@@ -189,7 +189,7 @@ export default function Chat() {
         </button>
         <a href={profileHref(active.participant)} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
-            <Avatar name={active.participant.displayName} size="sm"/>
+            <Avatar name={active.participant.displayName} size="sm" photoURL={active.participant.photoURL}/>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
           </div>
           <div className="min-w-0">
@@ -220,7 +220,7 @@ export default function Chat() {
           const isMe = m.senderId === user.uid;
           return (
             <div key={m.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-              {!isMe && <Avatar name={active.participant.displayName} size="sm" className="mb-0.5 shrink-0"/>}
+              {!isMe && <Avatar name={active.participant.displayName} size="sm" photoURL={active.participant.photoURL} className="mb-0.5 shrink-0"/>}
               <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
                 ${isMe ? 'bg-emerald-600/80 text-white rounded-br-sm' : 'bg-slate-800 text-slate-200 rounded-bl-sm'}`}>
                 {m.text}

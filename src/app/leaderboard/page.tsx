@@ -221,7 +221,7 @@ export default function Leaderboard() {
           {/* Your rank callout */}
           {!query && meInList && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3">
-              <Avatar name={user.displayName} size="sm"/>
+              <Avatar name={user.displayName} size="sm" photoURL={user.photoURL}/>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-emerald-300">
                   {tab === 'Nationwide' ? `National Rank #${meInList.tabRank}` : `${tab} Rank #${meInList.tabRank}`}

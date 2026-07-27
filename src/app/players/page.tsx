@@ -87,10 +87,10 @@ export default function PlayersPage() {
       </div>
       <MMRInfoModal open={mmrInfoOpen} onClose={() => setMmrInfoOpen(false)}/>
 
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shrink-0 whitespace-nowrap
               ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
             {t === 'Following' && <UserCheck size={13}/>}
             {t === 'Clubs'    && <Shield size={13}/>}
@@ -177,7 +177,7 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
     <Link href={profileHref(p)}
       className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[84px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
       <span className={`text-sm font-bold w-7 shrink-0 text-right ${rankColor}`}>#{rank}</span>
-      <Avatar name={p.displayName}/>
+      <Avatar name={p.displayName} photoURL={p.photoURL}/>
       <div className="flex-1 min-w-0">
         {/* Row 1: display name + status badges */}
         <div className="flex items-center gap-1 min-w-0 overflow-hidden">

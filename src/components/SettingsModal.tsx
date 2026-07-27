@@ -9,6 +9,7 @@ import { supabase, auth } from '@/lib/supabase';
 import { deleteAccountData } from '@/lib/supabaseService';
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { Avatar } from '@/components/ui/Avatar';
+import { AvatarCropModal } from '@/components/AvatarCropModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 
@@ -73,19 +74,26 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [photoURL,    setPhotoURL]    = useState<string | null>(user.photoURL ?? null);
   const [uploadPct,   setUploadPct]   = useState<number | null>(null);
   const [uploadError, setUploadError] = useState('');
+  const [cropFile,    setCropFile]    = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file later
     if (!file) return;
+    setCropFile(file);
+  };
+
+  const handleCropConfirm = (blob: Blob) => {
+    setCropFile(null);
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    const path = `${uid}/${Date.now()}_${file.name}`;
+    const path = `${uid}/${Date.now()}.jpg`;
     setUploadPct(0);
     setUploadError('');
     // ponytail: supabase-js storage upload has no progress events (unlike
     // Firebase's uploadBytesResumable) — jump straight to 100 on success.
-    supabase.storage.from('avatars').upload(path, file, { upsert: true }).then(({ error }) => {
+    supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true }).then(({ error }) => {
       if (error) { setUploadPct(null); setUploadError('Upload failed. Please try again.'); return; }
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       setPhotoURL(data.publicUrl);

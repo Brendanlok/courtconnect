@@ -578,7 +578,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               <div className="divide-y divide-slate-800/60">
                 {pendingMembers.map(p => (
                   <div key={p.uid} className="flex items-center gap-3 px-5 py-3">
-                    <Avatar name={p.displayName} size="sm"/>
+                    <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{p.displayName}</p>
                       <p className="text-[11px] text-slate-500">{p.mmr} MMR · {p.tier}</p>
@@ -619,7 +619,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                   ) : (
                     inviteable.slice(0, 8).map(p => (
                       <div key={p.uid} className="flex items-center gap-3 px-3 py-2 bg-slate-800/50 rounded-xl">
-                        <Avatar name={p.displayName} size="sm"/>
+                        <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{p.displayName}</p>
                           <p className="text-[11px] text-slate-500">{p.mmr} MMR · {p.tier}</p>
