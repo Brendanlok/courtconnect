@@ -208,13 +208,22 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </div>
               )}
             </div>
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
-              {photoURL ? 'Change photo' : 'Add photo'}
-            </button>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+                {photoURL ? 'Change photo' : 'Add photo'}
+              </button>
+              {photoURL && (
+                <button type="button" onClick={() => setPhotoURL(null)}
+                  className="text-[11px] text-slate-500 hover:text-red-400 font-semibold transition-colors">
+                  Remove photo
+                </button>
+              )}
+            </div>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange}/>
             {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
           </div>
+          {cropFile && <AvatarCropModal file={cropFile} onCancel={() => setCropFile(null)} onConfirm={handleCropConfirm}/>}
 
           {/* Name */}
           <label className="block">
