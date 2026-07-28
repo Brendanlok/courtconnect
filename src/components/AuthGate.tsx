@@ -9,6 +9,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { ExitGuard } from '@/components/ExitGuard';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ToastStack } from '@/components/ToastStack';
+import { SeasonRecapModal } from '@/components/SeasonRecapModal';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { authUser, isLoading, needsEmailVerification, needsProfileSetup } = useAuth();
@@ -59,6 +60,7 @@ function AppShell({ children, onboardingDone, setOnboardingDone }: {
     <>
       {!onboardingDone && <OnboardingModal onComplete={() => setOnboardingDone(true)}/>}
       <ToastStack />
+      <SeasonRecapModal />
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">

@@ -17,6 +17,7 @@ export interface UserProfile {
   email: string;
   mmr: number;
   tier: Tier;
+  seasonNumber?: number; // which ranked season this mmr belongs to — undefined = season 1, never rolled over
   placementMatchesPlayed?: number; // undefined or <10 = still in calibration
   globalRank: number;
   state: MalaysiaState;
@@ -300,6 +301,16 @@ export interface LiveMatch {
   liveStats?: LiveMatchStats;
   pointLog?: ('a' | 'b')[][];        // rally-by-rally winner log, one array per game — populated on completion
   activeSecondsAccumulated?: number; // running elapsed time banked so far, carried across a pause/resume
+}
+
+// A closed ranked season's final standing — only mmr_end/tier_end are
+// stored; win/loss record for that season is derived on demand from
+// matches whose playedAt falls within that season's date range (seasons.ts).
+export interface SeasonHistoryEntry {
+  seasonNumber: number;
+  mmrEnd: number;
+  tierEnd: Tier;
+  endedAt: string;
 }
 
 export interface Conversation {

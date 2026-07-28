@@ -6,6 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName } from '@/lib/utils';
+import { seasonNumberForDate, daysUntilSeasonEnd } from '@/lib/seasons';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, Tier } from '@/types';
@@ -72,7 +73,12 @@ export default function Leaderboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Leaderboard</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-bold">Leaderboard</h1>
+          <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/30 px-2 py-0.5 rounded-full">
+            Season {seasonNumberForDate(new Date())} · {daysUntilSeasonEnd(new Date())}d left
+          </span>
+        </div>
         <p className="text-slate-400 text-sm mt-1 flex items-center gap-1">
           <span>{countryData?.flag ?? '🌐'}</span> {countryFilter} — {list.length} players ranked
         </p>

@@ -7,9 +7,10 @@ import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { timeAgo, maxClubsForTier, getTier, profileHref } from '@/lib/utils';
-import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, type StoredMatch } from '@/lib/supabaseService';
+import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref } from '@/lib/utils';
+import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, subscribeMatchesForClubMembers, type StoredMatch } from '@/lib/supabaseService';
 import { computeLadder } from '@/lib/clubLadder';
+import { computeClubRivalries } from '@/lib/clubRivalry';
 import { auth } from '@/lib/supabase';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
@@ -167,6 +168,23 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   }, [memberKey]);
   const toLocalId = (realUid: string) => realUid === myRealUid ? 'me' : realUid;
   const ladder = computeLadder(ladderMatches, toLocalId);
+
+  // Club rivalries — this club's confirmed singles record against every
+  // other club it's crossed paths with, computed client-side from existing
+  // match + membership data (same "no new ranking system" approach as the
+  // ladder above, just grouped by opposing club instead of opposing player).
+  const toRealUid = (id: string) => id === 'me' ? myRealUid : id;
+  const [rivalryMatches, setRivalryMatches] = useState<StoredMatch[]>([]);
+  useEffect(() => {
+    const realUids = memberKey.split(',').map(toRealUid).filter((id): id is string => !!id);
+    return subscribeMatchesForClubMembers(realUids, setRivalryMatches);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberKey]);
+  const thisClubRealMemberIds = club.memberIds.map(toRealUid).filter((id): id is string => !!id);
+  const otherClubsRealIds = clubs.filter(c => c.id !== clubId).map(c => ({
+    id: c.id, memberIds: c.memberIds.map(toRealUid).filter((id): id is string => !!id),
+  }));
+  const rivalries = computeClubRivalries(rivalryMatches, thisClubRealMemberIds, otherClubsRealIds);
 
   // Keep announce in sync when club updates
   useEffect(() => {
@@ -504,6 +522,39 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               {members.length - ladder.length} member{members.length - ladder.length === 1 ? '' : 's'} not yet on the board — play a confirmed singles match against a club member to appear.
             </p>
           )}
+        </div>
+      )}
+
+      {/* ── Club Rivalries ── */}
+      {tab === 'Ladder' && rivalries.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-800">
+            <p className="text-sm font-semibold">Club Rivalries</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">This club's record against other clubs, from confirmed singles matches</p>
+          </div>
+          <div className="divide-y divide-slate-800/60">
+            {rivalries.map(r => {
+              const rival = clubs.find(c => c.id === r.clubId);
+              if (!rival) return null;
+              return (
+                <Link key={r.clubId} href={clubHref(rival)}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">
+                  <div className={`w-9 h-9 ${rival.color} rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0`}>
+                    {rival.logoInitials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{rival.name}</p>
+                    <p className="text-[11px] text-slate-500">{r.played} match{r.played === 1 ? '' : 'es'} played</p>
+                  </div>
+                  <p className="text-sm font-bold text-right shrink-0">
+                    <span className="text-emerald-400">{r.wins}W</span>
+                    <span className="text-slate-600"> – </span>
+                    <span className="text-red-400">{r.losses}L</span>
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

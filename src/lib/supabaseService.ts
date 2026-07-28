@@ -11,7 +11,7 @@
 import { supabase } from '@/lib/supabase';
 import { getTier, maxClubsForTier } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
-import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament } from '@/types';
+import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament, SeasonHistoryEntry } from '@/types';
 
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
@@ -26,6 +26,7 @@ function userRowToProfile(row: Record<string, unknown>): Partial<UserProfile> {
     email: row.email as string,
     mmr: row.mmr as number,
     tier: row.tier as UserProfile['tier'],
+    seasonNumber: row.season_number as number | undefined,
     placementMatchesPlayed: row.placement_matches_played as number | undefined,
     globalRank: row.global_rank as number,
     state: row.state as MalaysiaState,
@@ -61,7 +62,7 @@ function userRowToProfile(row: Record<string, unknown>): Partial<UserProfile> {
 function profilePatchToRow(patch: Partial<UserProfile>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   const map: Record<string, string> = {
-    isDummy: 'is_dummy', displayName: 'display_name', mmr: 'mmr', tier: 'tier',
+    isDummy: 'is_dummy', displayName: 'display_name', mmr: 'mmr', tier: 'tier', seasonNumber: 'season_number',
     placementMatchesPlayed: 'placement_matches_played', globalRank: 'global_rank', state: 'state', area: 'area',
     bio: 'bio', available: 'available', openToPlay: 'open_to_play', gender: 'gender', postcode: 'postcode',
     disciplineMMR: 'discipline_mmr', lookingForPartner: 'looking_for_partner', preferredFormats: 'preferred_formats',
@@ -89,6 +90,25 @@ export async function saveUserProfile(uid: string, patch: Partial<UserProfile>) 
 export async function loadUserProfile(uid: string): Promise<Partial<UserProfile> | null> {
   const { data } = await supabase.from('users').select('*').eq('uid', uid).maybeSingle();
   return data ? userRowToProfile(data) : null;
+}
+
+// ── Ranked seasons ──────────────────────────────────────────────────────────
+// Requires migration 0014_ranked_seasons.sql to be applied.
+
+export async function saveSeasonHistoryEntry(uid: string, entry: SeasonHistoryEntry): Promise<void> {
+  await supabase.from('season_history').upsert({
+    uid, season_number: entry.seasonNumber, mmr_end: entry.mmrEnd, tier_end: entry.tierEnd, ended_at: entry.endedAt,
+  }, { onConflict: 'uid,season_number' });
+}
+
+export async function loadSeasonHistory(uid: string): Promise<SeasonHistoryEntry[]> {
+  const { data } = await supabase.from('season_history').select('*').eq('uid', uid).order('season_number', { ascending: false });
+  return (data ?? []).map(row => ({
+    seasonNumber: row.season_number as number,
+    mmrEnd: row.mmr_end as number,
+    tierEnd: row.tier_end as Tier,
+    endedAt: row.ended_at as string,
+  }));
 }
 
 // Other-player lookups (opponent search, club members, chat contacts, shared
@@ -812,6 +832,27 @@ export function subscribeMatchesAmong(uids: string[], cb: (docs: StoredMatch[]) 
   };
   load();
   const channel = supabase.channel(`club_ladder:${uids.slice().sort().join(',')}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
+    .subscribe();
+  return () => { cancelled = true; supabase.removeChannel(channel); };
+}
+
+// Confirmed singles matches involving ANY of the given uids on either side —
+// unlike subscribeMatchesAmong, the other side doesn't have to be in the same
+// set. Powers club-vs-club rivalry records (clubRivalry.ts computes the
+// per-rival-club breakdown from this raw list client-side).
+export function subscribeMatchesForClubMembers(uids: string[], cb: (docs: StoredMatch[]) => void): () => void {
+  if (uids.length === 0) { cb([]); return () => {}; }
+  let cancelled = false;
+  const list = uids.join(',');
+  const load = async () => {
+    const { data } = await supabase.from('matches').select('*')
+      .or(`player1_id.in.(${list}),player2_id.in.(${list})`)
+      .in('type', ['MS', 'WS']).eq('status', 'Confirmed');
+    if (!cancelled) cb((data ?? []).map(matchRowToStored));
+  };
+  load();
+  const channel = supabase.channel(`club_rivalry:${uids.slice().sort().join(',')}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
     .subscribe();
   return () => { cancelled = true; supabase.removeChannel(channel); };

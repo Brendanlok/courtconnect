@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
-import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier, Venue } from '@/types';
+import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier, Venue, SeasonHistoryEntry } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier, BASE_PATH } from '@/lib/utils';
@@ -25,7 +25,9 @@ import {
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
   subscribeVenues,
+  saveSeasonHistoryEntry, loadSeasonHistory,
 } from '@/lib/supabaseService';
+import { seasonNumberForDate, softResetMmr } from '@/lib/seasons';
 
 // A uid is "real" (a genuine Supabase-authenticated account) if it isn't the
 // local demo user ('me') or one of the static seed players from lib/data.ts.
@@ -224,6 +226,10 @@ interface AppCtx {
   markAllNotifsRead: () => void;
   // Achievements
   earnedBadgeIds: string[];
+  // Ranked seasons
+  pastSeasons: SeasonHistoryEntry[];
+  seasonRecap: SeasonHistoryEntry | null;
+  dismissSeasonRecap: () => void;
 }
 
 const Ctx = createContext<AppCtx>({} as AppCtx);
@@ -241,6 +247,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return ME;
   });
   const [profileLoading, setProfileLoading] = useState(true);
+  const [pastSeasons, setPastSeasons] = useState<SeasonHistoryEntry[]>([]);
+  const [seasonRecap, setSeasonRecap] = useState<SeasonHistoryEntry | null>(null);
   // Matches logged against demo/seed opponents have no backend row (no real
   // uid to satisfy the matches table's FK), so localStorage is what makes
   // them survive a reload — same pattern as every other cc_* local-only
@@ -398,6 +406,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // reset to empty every reload (risking a double-endorse that looks like
       // a toggle-off since the UI thought the skill was never given).
       loadEndorsementsGiven(authUser.uid).then(given => setMyEndorsements(e => ({ ...e, ...given }))).catch(() => {});
+      loadSeasonHistory(authUser.uid).then(setPastSeasons).catch(() => {});
     });
     return unsub;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1198,6 +1207,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [earnedBadgeIds]);
 
+  // Ranked season rollover — see src/lib/seasons.ts for the season-boundary
+  // math and softResetMmr formula. No cron/server exists in this static-export
+  // app, so this effect IS the cron: whichever client of this user happens to
+  // load next after a season boundary has passed performs the rollover for
+  // their own account (RLS only allows writing your own season_history row).
+  const seasonRollingOverRef = useRef(false);
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || profileLoading || seasonRollingOverRef.current) return;
+    const closingSeason = user.seasonNumber ?? 1;
+    const currentSeason = seasonNumberForDate(new Date());
+    if (currentSeason <= closingSeason) return;
+    seasonRollingOverRef.current = true;
+
+    const mmrEnd = user.mmr;
+    const tierEnd = getTier(mmrEnd);
+    const entry: SeasonHistoryEntry = { seasonNumber: closingSeason, mmrEnd, tierEnd, endedAt: new Date().toISOString() };
+    const nextMmr = softResetMmr(mmrEnd);
+    const nextTier = getTier(nextMmr);
+
+    saveSeasonHistoryEntry(uid, entry).catch(() => {});
+    saveUserProfile(uid, { mmr: nextMmr, tier: nextTier, seasonNumber: currentSeason }).catch(() => {});
+    setUser(u => ({ ...u, mmr: nextMmr, tier: nextTier, seasonNumber: currentSeason }));
+    setPastSeasons(prev => [entry, ...prev.filter(p => p.seasonNumber !== entry.seasonNumber)]);
+    setSeasonRecap(entry);
+  }, [user.mmr, user.seasonNumber, profileLoading]);
+  const dismissSeasonRecap = useCallback(() => setSeasonRecap(null), []);
+
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
     for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
@@ -1222,6 +1259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
       earnedBadgeIds,
+      pastSeasons, seasonRecap, dismissSeasonRecap,
     }}>
       {children}
     </Ctx.Provider>

@@ -10,7 +10,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE } from '@/lib/utils';
 import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
@@ -68,7 +68,7 @@ function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: bo
 }
 
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile, earnedBadgeIds } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile, earnedBadgeIds, pastSeasons } = useApp();
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -675,6 +675,33 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             </div>
           )}
         </div>
+
+        {/* Season History — own profile only; past seasons are only ever
+            snapshotted for the signed-in account itself (season_history RLS
+            allows inserting your own row, and only the owner's client ever
+            performs a rollover for their own account). */}
+        {isMe && pastSeasons.length > 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-3">Season History</h2>
+            <div className="space-y-2">
+              {pastSeasons.map(s => {
+                const style = TIER_STYLE[s.tierEnd];
+                return (
+                  <div key={s.seasonNumber}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 border ${style.bg} ${style.text} ${style.border}`}>
+                      {style.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">Season {s.seasonNumber}</p>
+                      <p className={`text-xs ${style.text}`}>{s.tierEnd} · {s.mmrEnd} MMR</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Stage 2: Match Analytics ──────────────────────────────── */}
         {(() => {
