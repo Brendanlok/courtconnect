@@ -201,7 +201,7 @@ function CompleteProfileView() {
 }
 
 export function AuthModal() {
-  const { signIn, signUp, loginWithGoogle, resetPassword, needsEmailVerification, needsProfileSetup } = useAuth();
+  const { signIn, signUp, loginWithGoogle, loginWithFacebook, resetPassword, needsEmailVerification, needsProfileSetup } = useAuth();
   const [tab, setTab]       = useState<Tab>('login');
   const [view, setView]     = useState<View>('main');
   const [error, setError]   = useState('');
@@ -246,6 +246,13 @@ export function AuthModal() {
   const handleGoogle = async () => {
     clear(); setLoading(true);
     const err = await loginWithGoogle();
+    setLoading(false);
+    if (err) setError(err);
+  };
+
+  const handleFacebook = async () => {
+    clear(); setLoading(true);
+    const err = await loginWithFacebook();
     setLoading(false);
     if (err) setError(err);
   };
@@ -318,6 +325,15 @@ export function AuthModal() {
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               </svg>
               Continue with Google
+            </button>
+
+            {/* Facebook button */}
+            <button onClick={handleFacebook} disabled={loading}
+              className="w-full flex items-center justify-center gap-3 py-2.5 bg-[#1877F2] hover:bg-[#1465D8] disabled:opacity-60 text-white font-semibold rounded-xl text-sm transition-colors mb-4">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.89v2.25h3.32l-.53 3.49h-2.79V24C19.61 23.09 24 18.1 24 12.07z"/>
+              </svg>
+              Continue with Facebook
             </button>
 
             <div className="flex items-center gap-3 mb-4">
