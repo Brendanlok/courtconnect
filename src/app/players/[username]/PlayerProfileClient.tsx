@@ -11,10 +11,9 @@ import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref } from '@/lib/utils';
-import { exportMatchHistoryPdf } from '@/lib/exportMatchesPdf';
 import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award, Download } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
@@ -611,15 +610,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
         <div className="grid md:grid-cols-2 gap-5">
           {/* Match history */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Match History</h2>
-              {canSeeMatchHistory && playerMatches.length > 0 && (
-                <button onClick={() => exportMatchHistoryPdf(player.displayName, playerMatches, player.uid)}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors">
-                  <Download size={12}/> Export PDF
-                </button>
-              )}
-            </div>
+            <h2 className="font-semibold mb-3">Match History</h2>
             {!canSeeMatchHistory ? (
               <p className="text-slate-500 text-sm py-4 text-center">
                 {matchHistoryVisibility === 'private' ? 'This player has hidden their match history.' : 'Only followers can see this player\'s match history.'}
