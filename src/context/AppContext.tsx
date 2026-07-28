@@ -594,26 +594,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Durable across reloads/devices via mmrAppliedBy on the shared doc (not
   // just in-memory state) — a match confirmed while this device was offline
   // still needs its delta applied the next time it's seen.
+  // Bug fix 2026-07-28: this used to only call setUser (local React state),
+  // never saveUserProfile — mmrAppliedBy WAS persisted, so on the next
+  // reload/device those matches looked "already applied" and got skipped,
+  // but the mmr/stats delta itself only ever lived in memory. Net effect:
+  // every real user's mmr and win/loss record silently reverted to their
+  // last-saved Supabase value (usually the 1200 signup default) on every
+  // fresh session. Computing the batch here (not one setUser call per match)
+  // also means a device that was offline for several confirmed matches does
+  // one write instead of N.
   const mmrApplyingRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    realMatches.forEach(m => {
-      if (m.status !== 'Confirmed' || m.mmrAppliedBy.includes(uid) || mmrApplyingRef.current.has(m.id)) return;
-      mmrApplyingRef.current.add(m.id);
-      // Casual/practice matches are recorded but never touch MMR or ranked
-      // win/loss stats — still need mmrAppliedBy set so this effect stops
-      // retrying it every render.
-      if (m.mode !== 'casual') {
+    const toApply = realMatches.filter(m =>
+      m.status === 'Confirmed' && !m.mmrAppliedBy.includes(uid) && !mmrApplyingRef.current.has(m.id)
+    );
+    if (toApply.length === 0) return;
+    toApply.forEach(m => mmrApplyingRef.current.add(m.id));
+
+    let persisted: { mmr: number; tier: Tier; stats: UserProfile['stats'] } | null = null;
+    setUser(u => {
+      let mmr = u.mmr;
+      let { wins, losses, totalMatches } = u.stats;
+      toApply.forEach(m => {
+        // Casual/practice matches are recorded but never touch MMR or ranked
+        // win/loss stats — still get marked applied below so this effect
+        // stops retrying them every render.
+        if (m.mode === 'casual') return;
         const iWon = m.winnerId === uid;
         const delta = (m.reporterUid === uid ? m.mmrChange : m.mmrChange !== undefined ? -m.mmrChange : undefined) ?? 0;
-        setUser(u => ({
-          ...u, mmr: u.mmr + delta,
-          stats: { wins: u.stats.wins + (iWon ? 1 : 0), losses: u.stats.losses + (iWon ? 0 : 1), totalMatches: u.stats.totalMatches + 1 },
-        }));
-      }
-      markMatchMmrApplied(m.id, uid).catch(() => { mmrApplyingRef.current.delete(m.id); });
+        mmr += delta;
+        if (iWon) wins++; else losses++;
+        totalMatches++;
+      });
+      const tier = getTier(mmr);
+      const stats = { wins, losses, totalMatches };
+      persisted = { mmr, tier, stats };
+      return { ...u, mmr, tier, stats };
     });
+    if (persisted) saveUserProfile(uid, persisted).catch(() => {});
+
+    toApply.forEach(m => markMatchMmrApplied(m.id, uid).catch(() => { mmrApplyingRef.current.delete(m.id); }));
   }, [realMatches]);
 
   useEffect(() => {
