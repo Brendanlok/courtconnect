@@ -201,7 +201,7 @@ function CompleteProfileView() {
 }
 
 export function AuthModal() {
-  const { signIn, signUp, loginWithGoogle, loginWithFacebook, resetPassword, needsEmailVerification, needsProfileSetup } = useAuth();
+  const { signIn, signUp, loginWithGoogle, resetPassword, needsEmailVerification, needsProfileSetup } = useAuth();
   const [tab, setTab]       = useState<Tab>('login');
   const [view, setView]     = useState<View>('main');
   const [error, setError]   = useState('');
@@ -246,13 +246,6 @@ export function AuthModal() {
   const handleGoogle = async () => {
     clear(); setLoading(true);
     const err = await loginWithGoogle();
-    setLoading(false);
-    if (err) setError(err);
-  };
-
-  const handleFacebook = async () => {
-    clear(); setLoading(true);
-    const err = await loginWithFacebook();
     setLoading(false);
     if (err) setError(err);
   };
@@ -325,15 +318,6 @@ export function AuthModal() {
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               </svg>
               Continue with Google
-            </button>
-
-            {/* Facebook button */}
-            <button onClick={handleFacebook} disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] disabled:opacity-60 text-white font-semibold rounded-xl text-sm transition-colors mb-4">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-              Continue with Facebook
             </button>
 
             <div className="flex items-center gap-3 mb-4">
