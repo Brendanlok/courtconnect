@@ -593,13 +593,11 @@ confirm a match like a real account.
 
 | Feature | Priority | Notes |
 |---|---|---|
-| Real backend (Supabase/Firebase) | 🔴 | Currently all in-memory localStorage — data lost on refresh |
-| Push notifications | 🟠 | Browser Push API for challenges, match confirmations |
-| Real-time updates | 🟠 | WebSocket or Supabase realtime for live match scores |
-| Player photos / avatars | 🟡 | Currently initials-only avatars |
 | Match history export (PDF) | 🟡 | Download your match history as PDF |
-| Dark/light theme toggle | 🟢 | Currently dark-only |
-| Onboarding flow | 🟠 | New user setup wizard (pick tier, area, formats) |
-| Google/Facebook OAuth | 🟠 | Currently email-only auth |
-| Club chat rooms | 🟡 | Group messaging within clubs |
-| Tournament bracket generation | 🟠 | Auto-generate brackets when tournament starts |
+| Facebook OAuth | 🟢 | Google OAuth already shipped; email-only otherwise |
+| On-device pose tracking (real court heatmap) | 🟡 | Gated on Lok testing Phase 2 on an actual court |
+| Auto-detect shuttle hits tuning | 🟢 | Heuristic shipped, threshold tuning gated on real-match testing |
+
+_Everything else formerly listed here (Supabase backend, push notifications, realtime updates,
+avatars, dark/light toggle, onboarding flow, Google OAuth, club chat, tournament brackets) has
+shipped — see dated entries above. Table was stale, corrected 2026-07-28._
