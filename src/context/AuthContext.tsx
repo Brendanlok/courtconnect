@@ -14,6 +14,7 @@ interface AuthCtx {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<string | null>;
   loginWithGoogle: () => Promise<string | null>;
+  loginWithFacebook: () => Promise<string | null>;
   resendVerificationEmail: () => Promise<string | null>;
   refreshVerificationStatus: () => Promise<void>;
   checkUsernameAvailable: (username: string) => Promise<boolean>;
@@ -129,6 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? friendlyError(error.message) : null;
   };
 
+  const loginWithFacebook = async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
+  };
+
   const resendVerificationEmail = async (): Promise<string | null> => {
     if (!authUser?.email) return 'You need to be signed in.';
     const { error } = await supabase.auth.resend({ type: 'signup', email: authUser.email, options: { emailRedirectTo: verificationRedirectUrl() } });
@@ -177,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       authUser, isLoading, needsEmailVerification, needsProfileSetup,
-      signIn, signUp, loginWithGoogle, resendVerificationEmail, refreshVerificationStatus,
+      signIn, signUp, loginWithGoogle, loginWithFacebook, resendVerificationEmail, refreshVerificationStatus,
       checkUsernameAvailable, completeProfile, logout, resetPassword,
     }}>
       {children}
