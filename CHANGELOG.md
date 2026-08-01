@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-08-01] — Fix: missing RLS update policy on season_history (ranked seasons)
+
+### 🔴 Critical
+- ✅ `supabase/migrations/0015_season_history_update_policy.sql` — `season_history` (from
+  0014, ranked seasons) only had an INSERT policy, but its one write path is an upsert
+  that explicitly expects update-on-conflict. Two tabs/devices for the same user both
+  crossing a season boundary would silently drop the second write. Needs Lok to run in
+  the Supabase SQL editor.
+
+---
+
 ## [2026-07-27] — Chore: storage bucket migration for existing avatar/clip upload
 
 ### 🟡 Medium

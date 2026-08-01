@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-01] — Auto-dev: found + fixed missing RLS update policy on season_history
+
+**Trigger:** scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap,
+shuttle-hit detection) are still on hold per Lok's 28.07 comment — he can't get court
+time soon, will flag when he can. Roadmap has nothing else unblocked (Monetization
+needs a product decision, not something to build blind). Swept fresh ground instead:
+the ranked-seasons feature (migration 0014, built in an interactive session 2026-07-28,
+not yet covered by any prior sweep).
+
+**🔴 Found: `season_history` has no UPDATE policy, but its only write path is an
+upsert that explicitly expects one.** `saveSeasonHistoryEntry()` (`supabaseService.ts`)
+does `.upsert({...}, { onConflict: 'uid,season_number' })` — deliberately expects to
+hit an update-on-conflict. The table (`0014_ranked_seasons.sql`) only has `"own insert"
+for insert with check (auth.uid() = uid)`. Same recurring bug class already hit three
+times in this app (clubs/court_sessions in 0005, the undocumented conversations fix
+2026-07-26) — a write path assumes upsert semantics but RLS only covers insert.
+
+Realistic trigger: the same user with two tabs/devices open, both crossing the season
+boundary and both running AppContext's season-rollover effect for the same closing
+season (the in-session `seasonRollingOverRef` guard only dedupes within one mount, not
+across tabs). The second write silently no-ops — `.catch(() => {})`, 0 rows affected,
+no thrown error — same silent-failure shape as every prior instance of this bug class.
+
+**Fixed:** `supabase/migrations/0015_season_history_update_policy.sql` — adds
+`create policy "own update" on season_history for update using (auth.uid() = uid)`.
+Unlike the clubs/tournaments fix, this one doesn't need the broad "any authenticated
+user" widening — INSERT and UPDATE are always the same actor here (the season owner),
+so the narrow policy is also the precise one. No app-code change needed.
+
+**🔴 Needs Lok:** run `0015_season_history_update_policy.sql` in the Supabase SQL
+editor — same "needs Lok to run it" pattern as every other migration in this project.
+
+**Verified:** `npx next build` clean (SQL-only change, no app code touched). Not
+click-tested live — same recurring limitation as every prior auto-dev session, no
+demo/guest login past the real Supabase auth wall in this environment; confirmed by
+tracing the actual RLS policy against the actual upsert call, not guessed.
+
 ## [2026-07-27] — Auto-dev: storage bucket migration, roadmap sync
 
 **Trigger:** scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap, shuttle-hit
