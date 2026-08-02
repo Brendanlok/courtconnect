@@ -1,5 +1,45 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Follow-up: the freshChannel fix didn't work, found the real cause
+
+**Trigger:** continuing the same day's live click-through sweep. The entry below
+this one (`freshChannel()`, commit 53369e8) was picked up from an interrupted
+parallel session and looked like the fix for the club-detail-page crash — but
+re-testing live after its deploy showed the exact same crash, now at least
+caught cleanly by the new error boundary (`error.tsx`/`global-error.tsx`, added
+this session since none existed anywhere in the app) instead of blanking the
+whole page.
+
+**`freshChannel()`'s remove-then-recreate approach has a race:**
+`supabase.removeChannel()` is asynchronous, so calling it and then immediately
+creating a new channel with the identical name doesn't guarantee the old one
+has actually torn down first — the client can still throw synchronously
+("cannot add `postgres_changes` callbacks... after `subscribe()`") if the
+old registration is still live.
+
+**Root cause:** `subscribeClubMessages` is called from two independent places
+for the same club at the same time — `AppContext` keeps a persistent listener
+alive for every club you're a member of (for the club-message notification
+badge), while `ClubDetailClient` independently subscribes again whenever that
+club's own page is open. Both built their channel name purely from `clubId`,
+so viewing your own club's page always raced two subscribers for one channel
+name.
+
+**Actual fix:** stopped trying to share/reuse a channel name at all — every
+`freshChannel()` call now gets its own unique suffix (`${topic}:${++channelSeq}`),
+so concurrent subscribers never collide regardless of teardown timing. This
+also fully explains why demo clubs (never a member, never in
+`AppContext`'s per-club listener) always 404'd cleanly instead of crashing —
+they only ever had one subscriber.
+
+**Verified:** `npx next build` clean, pushed (commit 179d5f3). Live-tested with
+the test account: the same club page that crashed on every previous attempt
+this session now renders its Overview, Members, and Chat tabs correctly, no
+errors. (One wrinkle mid-debugging: the deployed fix appeared not to be live
+for several checks in a row — turned out to be the service worker's cache-first
+policy serving a stale JS chunk; unregistering it and clearing caches confirmed
+the real, current build.)
+
 ## [2026-08-02] — Auto-dev: fixed realtime channel crash across all subscriptions
 
 **Trigger:** scheduled session found no safe To-Do item (both open backlog items
