@@ -1,5 +1,6 @@
 'use client';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { PLAYERS, ME } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -507,7 +508,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             ) : (
             <div className="space-y-2">
               {playerClubs.map(club => (
-                <a key={club.id} href={clubHref(club)}
+                <Link key={club.id} href={clubHref(club)}
                   className="flex items-center gap-4 p-3 bg-slate-800/60 border border-slate-700 hover:border-violet-500/40 rounded-2xl transition-colors group">
                   {/* Club logo */}
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black border ${club.color}`}>
@@ -529,7 +530,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                     </div>
                   </div>
                   <span className="text-slate-600 group-hover:text-violet-400 transition-colors text-sm shrink-0">›</span>
-                </a>
+                </Link>
               ))}
             </div>
             )}

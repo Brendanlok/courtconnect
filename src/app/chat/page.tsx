@@ -187,7 +187,7 @@ export default function Chat() {
         <button onClick={() => setMobileView('list')} className="md:hidden text-slate-400 hover:text-white mr-1">
           <ArrowLeft size={18}/>
         </button>
-        <a href={profileHref(active.participant)} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+        <Link href={profileHref(active.participant)} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
             <Avatar name={active.participant.displayName} size="sm" photoURL={active.participant.photoURL}/>
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
@@ -204,7 +204,7 @@ export default function Chat() {
               <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
             </div>
           </div>
-        </a>
+        </Link>
         <button
           onClick={() => {
             const href = profileHref(active.participant);
