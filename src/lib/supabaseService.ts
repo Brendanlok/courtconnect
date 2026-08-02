@@ -749,7 +749,15 @@ export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) 
     cb((data ?? []).map(r => ({ id: r.id as string, senderId: r.sender_id as string, senderName: r.sender_name as string, text: r.text as string, sentAt: r.sent_at as string })).reverse());
   };
   load();
-  const channel = supabase.channel(`club_messages:${clubId}`)
+  // Channel names are keyed only by clubId, not a unique instance id — a fast
+  // remount (rapid navigation away and back) can start a new subscription
+  // before the previous one's async teardown finishes, and the client throws
+  // synchronously ("cannot add postgres_changes callbacks... after
+  // subscribe()") if a channel with this exact topic is still registered.
+  // Removing any stale one first makes this idempotent instead of a crash.
+  const topic = `club_messages:${clubId}`;
+  supabase.getChannels().filter(c => c.topic === `realtime:${topic}`).forEach(c => supabase.removeChannel(c));
+  const channel = supabase.channel(topic)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'club_messages', filter: `club_id=eq.${clubId}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
