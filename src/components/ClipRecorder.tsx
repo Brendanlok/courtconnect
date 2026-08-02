@@ -6,6 +6,7 @@ import type { LiveMatch, CourtPosition } from '@/types';
 import { computeHomography, applyHomography, CALIBRATION_CORNER_ORDER, type PixelPoint, type Homography } from '@/lib/courtCalibration';
 import { computeCoverCrop, toGrayscale, motionCentroid } from '@/lib/motionDetect';
 import { detectShuttleHits } from '@/lib/shuttleDetect';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 const CORNER_LABELS: Record<typeof CALIBRATION_CORNER_ORDER[number], string> = {
   nearLeft: 'near-left corner (closest to you, left side)',
@@ -391,6 +392,15 @@ export default function ClipRecorder({
     else closeModal();
   }, [onRequestExit, closeModal]);
 
+  // Every other full-screen/modal surface in the app gets Escape-to-close +
+  // a trapped Tab cycle via this hook (see AvatarCropModal, ChallengeModal,
+  // CourtTrackModal) — this one never did. `open` covers both full-screen
+  // states below (instructions, and requesting/previewing/recording/done/
+  // uploading); the small idle button, uploaded chip, and native file-input
+  // row aren't overlays so they're excluded.
+  const modalOpen = !nativeMode && state !== 'idle' && !(state === 'uploaded' && !matchComplete);
+  const { ref: panelRef, dialogProps } = useModalA11y(modalOpen, requestExit, 'Record match clip');
+
   const uploadClip = useCallback(async () => {
     const blob = blobRef.current;
     if (!blob) return;
@@ -499,7 +509,7 @@ export default function ClipRecorder({
   // ── Setup instructions ──
   if (state === 'instructions') {
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div ref={panelRef} {...dialogProps} className="fixed inset-0 z-50 bg-black flex flex-col outline-none">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
           <p className="font-bold text-white">Set up your camera</p>
           <button onClick={requestExit} aria-label="Close" className="text-slate-400 hover:text-white p-1"><X size={18}/></button>
@@ -533,7 +543,7 @@ export default function ClipRecorder({
   // Screen is split 1/3 score (top) / 2/3 court + controls (bottom) — controls
   // overlay the bottom of the court area instead of taking their own strip.
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div ref={panelRef} {...dialogProps} className="fixed inset-0 z-50 bg-black flex flex-col outline-none">
       {/* Score section — only when this recording IS the live scoring surface
           (LiveMatchModal video mode). Everywhere else (plain /live recording,
           Track & Record) canScore is false and there's nothing to tap, so the

@@ -38,7 +38,7 @@ export function ToastStack() {
   if (!toasts.length) return null;
 
   return (
-    <div className="fixed top-3 inset-x-3 z-[70] flex flex-col gap-2 items-center pointer-events-none">
+    <div role="status" aria-live="polite" className="fixed top-3 inset-x-3 z-[70] flex flex-col gap-2 items-center pointer-events-none">
       {toasts.map(n => (
         <div key={n.id}
           className="toast-anim pointer-events-auto w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl shadow-black/50 flex items-start gap-3 px-4 py-3 cursor-pointer"
