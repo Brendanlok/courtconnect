@@ -7,9 +7,16 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 // /players/[username]/ only pre-renders the demo roster (static export) — a
 // real account's username 404s there, so real players route through
-// /profile/?uid=X instead (works for any signed-in account).
+// /profile/?uid=X instead (works for any signed-in account). The current
+// user's own entries carry the local 'me' sentinel uid rather than their
+// real one (e.g. the leaderboard row for "you"), so uid==='me' needs its own
+// branch too — routing it through /players/${username}/ 404s the same way,
+// since your real username isn't in the pre-rendered demo roster either.
+// /profile/ with no uid already means "whoever is signed in", which is
+// exactly this case.
 export function profileHref(p: { uid: string; username: string; isDummy?: boolean }): string {
-  return p.isDummy || p.uid === 'me' ? `/players/${p.username}/` : `/profile/?uid=${p.uid}`;
+  if (p.uid === 'me') return '/profile/';
+  return p.isDummy ? `/players/${p.username}/` : `/profile/?uid=${p.uid}`;
 }
 
 // Same static-export limitation as profileHref, for clubs: /clubs/[id]/ only
