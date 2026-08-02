@@ -1,5 +1,43 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: live click-through sweep, removed dead preferredFormats field
+
+**Trigger:** asked to find more things to add and fix, continuing the same day's
+sweep. Used the live test-account session (still authenticated from earlier) to
+click through Matches, Tournaments, Chat, Players, and Clubs looking for real bugs
+instead of only tracing code.
+
+**Ruled out as false leads (verified, not bugs):**
+- A planned match past its date still showing "Awaiting RSVPs" + a "Past" badge
+  under the Planned tab — this is deliberate (`isPast` badge is cosmetic, Edit/
+  Cancel stay available), not a stuck state.
+- `/players/brendanlok/` (a real account, not in the seed demo roster) rendering
+  oddly on direct URL load — already a known, documented limitation. `output:
+  'export'` can't pre-render pages for real Supabase users, and `PlayerProfileClient`
+  itself explains this in a comment; the actual fix (`/profile/?uid=X`) already
+  shipped earlier and is what the Players list correctly links to. Confirmed by
+  clicking through the UI (routes to `/profile/?uid=...`, works correctly) rather
+  than trusting the raw URL behavior.
+- The Players-page tab bar (Leaderboard/Following/Clubs/This Week/Venues) appearing
+  to cut off tabs at 380px — an intentional `overflow-x-auto` horizontal scroller,
+  confirmed correct on fresh page load (Leaderboard fully visible, no bug).
+
+**Found and fixed: `preferredFormats` was fully dead code**, flagged in passing on
+2026-07-26 ("round-trips through Supabase but is never rendered anywhere... not
+fixed, no bug, just unused") but never resolved. Checked it again — unlike the
+availability field fixed earlier today, this one has no write path anywhere (only
+seed demo data hardcodes values), so there's no real user data to preserve or
+surface. Building a format-preference UI + matching logic for a feature that was
+never actually wired up would be speculative scope. Removed instead: the field from
+`UserProfile` (`src/types/index.ts`), the read/write column mapping
+(`supabaseService.ts`), and all 7 seed occurrences (`data.ts`). Left the
+`preferred_formats` Supabase column alone — a harmless orphan, not worth a migration
+to drop.
+
+**Verified:** `npx next build` clean, pushed (commit 0cec3f9). Confirmed no console
+errors live on the home and players-list pages (the pages most likely to touch every
+`UserProfile` field).
+
 ## [2026-08-02] — Live-verified with test account + shipped the availability field
 
 **Trigger:** Lok offered test-account access so the accessibility fixes below could
