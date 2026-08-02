@@ -1,5 +1,48 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: fixed 404 on your own leaderboard entry; live match scoring checks out
+
+**Trigger:** asked to keep digging, into Leaderboard and Live Match scoring, continuing
+the day's live click-through sweep.
+
+**Found and fixed: clicking your own name in the Leaderboard 404s.** `profileHref()`
+(`src/lib/utils.ts`) routes any entry with `uid === 'me'` to `/players/${username}/` —
+a route that only pre-renders the demo seed roster (static export limitation, same
+class of bug fixed earlier today for chat/club-card links). The leaderboard's own row
+for "you" carries the local `'me'` sentinel uid rather than your real Supabase one, so
+it hit that branch and 404'd — while every other real player's row (using their real
+uid) already correctly routed through `/profile/?uid=X`. The fix for exactly this case
+already existed (`/profile/` with no uid means "whoever is signed in") — `profileHref`
+just never routed `uid === 'me'` through it. Reordered the branches so `uid === 'me'`
+is checked first and goes to `/profile/`, before the `isDummy`/real-uid split.
+**Verified:** `npx next build` clean, pushed (commit 22a2fdd). Live-tested: clicking my
+own row in Nationwide leaderboard now opens my actual profile instead of a 404.
+
+**Also hit, mid-verification: a chunk-level CDN inconsistency**, not a code bug — after
+this fix deployed, the live site got stuck on the loading spinner with a specific JS
+chunk 404ing, even though `curl` confirmed the server's HTML was already fully fresh
+and didn't reference that chunk at all. This was the browser's own HTTP cache (not the
+already-cleared service worker) holding an old page; a cache-busting query param
+resolved it immediately. Noting this here since it cost real debugging time before
+being correctly identified as a caching artifact, not a regression — matches the
+"suspect caching layers" guidance for exactly this kind of symptom.
+
+**Live Match scoring — played a full match end to end.** Best of 1, scored to 21-0 via
+direct DOM clicks (the browser tool's own `repeat` click parameter turned out not to
+fire reliably against this button — a testing-tool quirk, not an app issue), hit FINAL
+state correctly with the win banner and trophy icon. Tested "Log to Profile" → Casual/
+Practice mode (correctly explains it won't affect MMR) → searched and selected a real
+opponent (Lok) → opened the score-entry form correctly. Also tested ending a match
+early (0-0, no confirmation dialog before ending) — works, just noting it's the one
+action in the app that doesn't have a confirm step where several similar ones
+(disbanding a club, tournament registration) do; minor polish, not a functional bug,
+left as-is rather than guessing at the right threshold without asking.
+
+**Leaderboard — checked all filter tabs** (Nationwide/By State/Nearby/Following),
+sort/tier filters, and the podium/rank-card layout. By State correctly picked up my
+own profile's location (Kuala Lumpur) after today's earlier location fix. No other
+bugs found.
+
 ## [2026-08-02] — Auto-dev: tournaments + profile settings live check, no new bugs
 
 **Trigger:** asked to keep digging, this time into Tournaments and Profile Settings,
