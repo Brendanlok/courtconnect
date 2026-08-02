@@ -1,5 +1,33 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: Club Members + Ladder tabs check out clean
+
+**Trigger:** asked to keep digging, into Clubs' Members and Ladder tabs specifically,
+continuing the day's live click-through sweep.
+
+**Members tab:** used the Admin tab's "invite by exact username" to add Lok's real
+account to the test club created earlier today — confirmed instantly ("Added to the
+club"), correctly shows 2/30 members, `+Mod` promotion control, after the same
+reload-needed delay already flagged as a known pattern (club membership count didn't
+update until a fresh fetch, consistent with everything else in that backlog item).
+No new bugs.
+
+**Ladder tab:** clean, well-explained empty state ("No ranked matches between members
+yet... 2 members not yet on the board — play a confirmed singles match against a club
+member to appear"). Confirmed why it can't go further in this environment: every
+logged match — ranked or Casual/Practice — starts as `status: 'Pending'`
+(`LogMatchModal.tsx`) and needs the other account's own confirmation before it counts
+toward the ladder, same limitation as every other "needs a second real account"
+feature this session (tournament brackets, etc.). Not a bug — a genuine environment
+constraint, not something fixable from one account. Club Rivalries section (same tab)
+correctly stays hidden with zero cross-club matches.
+
+**Left Lok's account as a member of the test club** rather than remove it — harmless,
+reversible, and he's the one directing this session, so flagging it here rather than
+spending more time on cleanup.
+
+No code changes this round — this pass found both tabs working as designed.
+
 ## [2026-08-02] — Auto-dev: fixed 404 on your own leaderboard entry; live match scoring checks out
 
 **Trigger:** asked to keep digging, into Leaderboard and Live Match scoring, continuing
