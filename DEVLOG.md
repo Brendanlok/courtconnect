@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: fixed a withdrawn match rendering as a win with MMR gained
+
+**Trigger:** continuing the day's sweep, checking endorsements and the match confirm/
+dispute flow after the challenge fix.
+
+**Endorsements checked clean:** unlike Follow, `endorsePlayer` correctly branches on
+`isRealUid(targetUid)` and writes to the target's real Supabase subcollection — gave
+Lok a real endorsement, worked as expected. No bug.
+
+**Match confirm/dispute flow checked clean from the reporter's side:** logged a real
+casual match against Lok (21-15), and correctly saw "Pending... waiting on 1 more
+player to confirm" with a withdraw option — not confirm/dispute controls, which only
+the actual opponent should see (and does, on the Home page's separate
+`ChallengesSection`-style incoming view). No bug.
+
+**🔴 Found and fixed: withdrawing that same match while still pending rendered it as
+a WIN with MMR gained.** `MatchHistoryCard` (Matches → History) only ever checked
+`m.status === 'Pending'` — never `'Cancelled'` or `'Disputed'` — so `iWon` read
+`m.winnerId === 'me'` unconditionally. A withdrawn match still has `winnerId` set from
+when it was originally reported, so the card showed a green "W" badge and a "+MMR"
+credit for a match that was never actually confirmed by anyone. The sibling
+`MatchCard.tsx` component (used elsewhere) already had the correct `isUnresolved`
+gate for this exact case — this fix just brings `MatchHistoryCard` in line with it.
+Audited every other `winnerId` check in the codebase afterward (home page streak/
+weekly-wins, achievements, anti-cheat daily-cap) — all correctly operate on
+pre-filtered `Confirmed`-only match lists; this bug was isolated to the one card.
+**Verified:** `npx next build` clean, pushed (commit 049a227). Live-tested: the same
+withdrawn match now correctly shows "!" and "Cancelled" instead of "W" and "+MMR".
+
 ## [2026-08-02] — Auto-dev: sender could fake a challenge's acceptance; Follow is local-only
 
 **Trigger:** continuing the day's live click-through sweep, asked to keep going after
