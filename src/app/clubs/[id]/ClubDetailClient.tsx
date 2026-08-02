@@ -43,15 +43,21 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   } = useApp();
 
   const club = clubs.find(c => c.id === clubId);
-  if (!club) return notFound();
 
-  const isMember  = club.memberIds.includes('me');
-  const isOwner   = club.adminId === 'me';
-  const isMod     = (club.moderatorIds ?? []).includes('me');
+  // club.xxx below must all tolerate club being undefined: subscribeClubs
+  // fully replaces the clubs array on every realtime event (see
+  // supabaseService.ts), so a transient reload — most likely right after
+  // creating a club, since that write triggers its own reload — can briefly
+  // omit this club and flip `club` from found to undefined on a re-render.
+  // React requires the same hooks to run every render regardless, so the
+  // "not found" bail-out has to happen after all of them, not before.
+  const isMember  = club?.memberIds.includes('me') ?? false;
+  const isOwner   = club?.adminId === 'me';
+  const isMod     = (club?.moderatorIds ?? []).includes('me');
   const canManage = isOwner || isMod;
-  const isPending = club.pendingIds.includes('me');
+  const isPending = club?.pendingIds.includes('me') ?? false;
   const hasRequested = myClubPendingIds.includes(clubId);
-  const isFull    = club.memberIds.length >= club.maxMembers;
+  const isFull    = club ? club.memberIds.length >= club.maxMembers : false;
 
   // null = looked up and not found (so a deleted/bad uid isn't retried forever)
   const [realProfiles, setRealProfiles] = useState<Record<string, UserProfile | null>>({});
@@ -62,8 +68,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   // array fields) is recomputed fresh on every AppContext render regardless
   // of whether membership actually changed, so depending on the arrays
   // directly would re-run this on every unrelated app render.
-  const memberKey  = club.memberIds.join(',');
-  const pendingKey = club.pendingIds.join(',');
+  const memberKey  = club?.memberIds.join(',') ?? '';
+  const pendingKey = club?.pendingIds.join(',') ?? '';
   useEffect(() => {
     const uids = [...memberKey.split(','), ...pendingKey.split(',')].filter(uid =>
       uid && uid !== 'me' && !ALL_PLAYERS.some(p => p.uid === uid) && !(uid in realProfiles)
@@ -89,28 +95,9 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberKey, pendingKey]);
 
-  const resolveProfile = (uid: string): UserProfile | undefined =>
-    uid === 'me' ? user : ALL_PLAYERS.find(p => p.uid === uid) ?? realProfiles[uid] ?? undefined;
-
-  const members: UserProfile[] = club.memberIds
-    .map(resolveProfile)
-    .filter((p): p is UserProfile => !!p);
-
-  const pendingMembers: UserProfile[] = club.pendingIds
-    .map(resolveProfile)
-    .filter((p): p is UserProfile => !!p);
-
-  // club.avgMMR is set once at creation and never recalculated — compute it
-  // live from actual resolved members instead of trusting the stale field.
-  // Falls back to the stored value only while member profiles are still
-  // loading (members.length can lag club.memberIds.length briefly).
-  const liveAvgMMR = members.length > 0
-    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
-    : club.avgMMR;
-
   const [tab,           setTab]          = useState<Tab>('Overview');
   const [chatInput,     setChatInput]    = useState('');
-  const [announce,      setAnnounce]     = useState(club.announcement ?? '');
+  const [announce,      setAnnounce]     = useState(club?.announcement ?? '');
   const [editAnnounce,  setEditAnnounce] = useState(false);
   const [inviteQuery,   setInviteQuery]  = useState('');
   const [realInviteName, setRealInviteName] = useState('');
@@ -119,15 +106,15 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [disbandInput,  setDisbandInput] = useState('');
   const [leaveModal,    setLeaveModal]   = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club.name}`);
-  const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club.name}`);
+  const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club?.name ?? 'club'}`);
+  const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club?.name ?? 'club'}`);
 
   // Club chat lives in its own `club_messages` table, not embedded on the
   // clubs row — scoped to this one club, not the full clubs listener.
   // Messages carry the real Supabase uid as senderId (written straight to
   // the table, never passed through the app's local 'me' translation), so
   // it's normalized here the same way toLocalClub does for membership.
-  const [messages, setMessages] = useState<ClubMessage[]>(club.clubMessages ?? []);
+  const [messages, setMessages] = useState<ClubMessage[]>(club?.clubMessages ?? []);
   useEffect(() => {
     // Security rules restrict club chat reads to current members — don't
     // even attempt the subscription otherwise (it would just fail/no-op).
@@ -148,10 +135,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     // or clear the legacy field — a non-member's attempt would just fail.
     if (!isMember) return;
     if (legacyMigratedRef.current) return;
-    if (!club.clubMessages || club.clubMessages.length === 0) return;
+    if (!club?.clubMessages || club.clubMessages.length === 0) return;
     legacyMigratedRef.current = true;
     migrateLegacyClubMessages(clubId, club.clubMessages).catch(() => { legacyMigratedRef.current = false; });
-  }, [clubId, club.clubMessages, isMember]);
+  }, [clubId, club?.clubMessages, isMember]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -180,16 +167,41 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     return subscribeMatchesForClubMembers(realUids, setRivalryMatches);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberKey]);
+
+  // Keep announce in sync when club updates
+  useEffect(() => {
+    if (!editAnnounce) setAnnounce(club?.announcement ?? '');
+  }, [club?.announcement, editAnnounce]);
+
+  // All hooks have now run unconditionally regardless of whether club was
+  // found this render — safe to bail out here without risking a "rendered
+  // fewer hooks than expected" crash on a render where it briefly isn't.
+  if (!club) return notFound();
+
+  const resolveProfile = (uid: string): UserProfile | undefined =>
+    uid === 'me' ? user : ALL_PLAYERS.find(p => p.uid === uid) ?? realProfiles[uid] ?? undefined;
+
+  const members: UserProfile[] = club.memberIds
+    .map(resolveProfile)
+    .filter((p): p is UserProfile => !!p);
+
+  const pendingMembers: UserProfile[] = club.pendingIds
+    .map(resolveProfile)
+    .filter((p): p is UserProfile => !!p);
+
+  // club.avgMMR is set once at creation and never recalculated — compute it
+  // live from actual resolved members instead of trusting the stale field.
+  // Falls back to the stored value only while member profiles are still
+  // loading (members.length can lag club.memberIds.length briefly).
+  const liveAvgMMR = members.length > 0
+    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
+    : club.avgMMR;
+
   const thisClubRealMemberIds = club.memberIds.map(toRealUid).filter((id): id is string => !!id);
   const otherClubsRealIds = clubs.filter(c => c.id !== clubId).map(c => ({
     id: c.id, memberIds: c.memberIds.map(toRealUid).filter((id): id is string => !!id),
   }));
   const rivalries = computeClubRivalries(rivalryMatches, thisClubRealMemberIds, otherClubsRealIds);
-
-  // Keep announce in sync when club updates
-  useEffect(() => {
-    if (!editAnnounce) setAnnounce(club.announcement ?? '');
-  }, [club.announcement, editAnnounce]);
 
   const sendMessage = () => {
     if (!chatInput.trim()) return;
