@@ -13,6 +13,16 @@ import { getTier, maxClubsForTier, BASE_PATH } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
 import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament, SeasonHistoryEntry } from '@/types';
 
+// Removes any stale channel still registered under this topic before creating a
+// fresh one. A fast remount (rapid navigation away and back) can start a new
+// subscription before the previous one's async teardown finishes, and the client
+// throws synchronously ("cannot add postgres_changes callbacks... after
+// subscribe()") if a channel with this exact topic is still registered.
+function freshChannel(topic: string) {
+  supabase.getChannels().filter(c => c.topic === `realtime:${topic}`).forEach(c => supabase.removeChannel(c));
+  return supabase.channel(topic);
+}
+
 // ── User profile ──────────────────────────────────────────────────────────────
 // users.stats is split across wins/losses/total_matches columns (not jsonb) —
 // every user row read/write splits or re-joins that one field explicitly.
@@ -270,7 +280,7 @@ export function subscribeLiveMatch(id: string, cb: (m: LiveMatch | null) => void
     cb(data ? liveMatchRowToObj(data) : null);
   };
   load();
-  const channel = supabase.channel(`live_match:${id}`)
+  const channel = freshChannel(`live_match:${id}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'live_matches', filter: `id=eq.${id}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -317,7 +327,7 @@ export function subscribeCourtSession(id: string, cb: (s: CourtSession | null) =
     cb(data ? courtSessionRowToObj(data) : null);
   };
   load();
-  const channel = supabase.channel(`court_session:${id}`)
+  const channel = freshChannel(`court_session:${id}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'court_sessions', filter: `id=eq.${id}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -387,7 +397,7 @@ export function subscribeMySharedConversations(myUid: string, cb: (cs: SharedCon
     if (!cancelled) cb(built);
   };
   load();
-  const channel = supabase.channel(`my_conversations:${myUid}`)
+  const channel = freshChannel(`my_conversations:${myUid}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, load)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_messages' }, load)
     .subscribe();
@@ -440,7 +450,7 @@ export function subscribeChallengesFor(field: 'fromUid' | 'toUid', myUid: string
     cb((data ?? []).map(challengeRowToObj));
   };
   load();
-  const channel = supabase.channel(`challenges:${col}:${myUid}`)
+  const channel = freshChannel(`challenges:${col}:${myUid}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges', filter: `${col}=eq.${myUid}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -478,7 +488,7 @@ export function subscribeEndorsementsReceived(myUid: string, cb: (bySkill: Recor
     cb(counts);
   };
   load();
-  const channel = supabase.channel(`endorsements:${myUid}`)
+  const channel = freshChannel(`endorsements:${myUid}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'endorsements', filter: `to_uid=eq.${myUid}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -526,7 +536,7 @@ export function subscribeClubs(cb: (clubs: Club[]) => void): () => void {
     cb((data ?? []).map(clubRowToObj));
   };
   load();
-  const channel = supabase.channel('clubs')
+  const channel = freshChannel('clubs')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clubs' }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -680,7 +690,7 @@ export function subscribeTournaments(cb: (tournaments: Tournament[]) => void): (
     cb((data ?? []).map(tournamentRowToObj));
   };
   load();
-  const channel = supabase.channel('tournaments')
+  const channel = freshChannel('tournaments')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -749,15 +759,7 @@ export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) 
     cb((data ?? []).map(r => ({ id: r.id as string, senderId: r.sender_id as string, senderName: r.sender_name as string, text: r.text as string, sentAt: r.sent_at as string })).reverse());
   };
   load();
-  // Channel names are keyed only by clubId, not a unique instance id — a fast
-  // remount (rapid navigation away and back) can start a new subscription
-  // before the previous one's async teardown finishes, and the client throws
-  // synchronously ("cannot add postgres_changes callbacks... after
-  // subscribe()") if a channel with this exact topic is still registered.
-  // Removing any stale one first makes this idempotent instead of a crash.
-  const topic = `club_messages:${clubId}`;
-  supabase.getChannels().filter(c => c.topic === `realtime:${topic}`).forEach(c => supabase.removeChannel(c));
-  const channel = supabase.channel(topic)
+  const channel = freshChannel(`club_messages:${clubId}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'club_messages', filter: `club_id=eq.${clubId}` }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -816,7 +818,7 @@ export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) 
     if (!cancelled) cb((data ?? []).map(matchRowToStored));
   };
   load();
-  const channel = supabase.channel(`my_matches:${myUid}`)
+  const channel = freshChannel(`my_matches:${myUid}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
     .subscribe();
   return () => { cancelled = true; supabase.removeChannel(channel); };
@@ -838,7 +840,7 @@ export function subscribeMatchesAmong(uids: string[], cb: (docs: StoredMatch[]) 
     if (!cancelled) cb((data ?? []).map(matchRowToStored));
   };
   load();
-  const channel = supabase.channel(`club_ladder:${uids.slice().sort().join(',')}`)
+  const channel = freshChannel(`club_ladder:${uids.slice().sort().join(',')}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
     .subscribe();
   return () => { cancelled = true; supabase.removeChannel(channel); };
@@ -859,7 +861,7 @@ export function subscribeMatchesForClubMembers(uids: string[], cb: (docs: Stored
     if (!cancelled) cb((data ?? []).map(matchRowToStored));
   };
   load();
-  const channel = supabase.channel(`club_rivalry:${uids.slice().sort().join(',')}`)
+  const channel = freshChannel(`club_rivalry:${uids.slice().sort().join(',')}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, load)
     .subscribe();
   return () => { cancelled = true; supabase.removeChannel(channel); };
@@ -950,7 +952,7 @@ export function subscribeAvailability(cb: (entries: AvailabilityEntry[]) => void
     cb((data ?? []).map(availabilityRowToEntry));
   };
   load();
-  const channel = supabase.channel('availability')
+  const channel = freshChannel('availability')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
@@ -986,7 +988,7 @@ export function subscribeVenues(cb: (venues: Venue[]) => void): () => void {
     cb((data ?? []).map(venueRowToVenue));
   };
   load();
-  const channel = supabase.channel('venues')
+  const channel = freshChannel('venues')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, load)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
