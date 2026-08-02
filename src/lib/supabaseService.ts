@@ -9,7 +9,7 @@
  * call sites needed a one-line import swap, not a rewrite.
  */
 import { supabase } from '@/lib/supabase';
-import { getTier, maxClubsForTier } from '@/lib/utils';
+import { getTier, maxClubsForTier, BASE_PATH } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
 import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament, SeasonHistoryEntry } from '@/types';
 
@@ -412,7 +412,7 @@ export async function sendSharedMessage(
   await supabase.from('conversation_messages').insert({ id: msg.id, conversation_id: chatId, sender_id: msg.senderId, text: msg.text, sent_at: msg.sentAt });
   const senderName = participants[msg.senderId]?.displayName ?? 'Someone';
   participantUids.filter(uid => uid !== msg.senderId).forEach(uid =>
-    notifyUser(uid, { type: 'new_message', title: `New message from ${senderName}`, body: msg.text, linkTo: `/chat/?realUid=${msg.senderId}` }));
+    notifyUser(uid, { type: 'new_message', title: `New message from ${senderName}`, body: msg.text, linkTo: `${BASE_PATH}/chat/?realUid=${msg.senderId}` }));
 }
 
 // ── Real challenges between two real accounts ─────────────────────────────────
