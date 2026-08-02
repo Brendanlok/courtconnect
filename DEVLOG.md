@@ -1,5 +1,41 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: tournaments + profile settings live check, no new bugs
+
+**Trigger:** asked to keep digging, this time into Tournaments and Profile Settings,
+continuing the same day's live click-through sweep with the test account.
+
+**Tournaments — hosted a real event end to end.** Created "Auto-Dev Test Event"
+via Host → filled the form → it didn't appear in any tab until a page reload,
+confirming the same missing-optimistic-update pattern already flagged for clubs/
+chat also applies to `addTournament`. Registered for it as a participant: the
+"✓ Registered" button state updated instantly (that piece IS optimistic, driven
+by local `registrations` state), but the visible player count stayed at 0/16
+until reload — same pattern, different field (`currentPlayers`/`participants`
+come from the tournament doc itself, not touched optimistically). Also found,
+while testing, that "Register Now" opens a confirmation dialog (commitment +
+late-withdrawal MMR penalty warning) that I'd been missing in earlier clicks —
+not a bug, just a step I'd skipped. No new bugs. Left the test event live
+(clearly named, dated 31 Dec 2026, same precedent as other test data left this
+session) rather than spend time on host-side deletion, which needs more
+digging to find the mechanism.
+
+**Profile Settings — checked every tab.** Location: postcode lookup correctly
+resolved 56000 → Cheras, Kuala Lumpur, saved and reflected on the home dashboard
+immediately (this one path IS optimistic). Privacy: per-category visibility
+toggles (Match History/Planned Matches/Friend List/Club Membership/Event
+History × Public/Followers/Only Me) all switch and save cleanly. Account: push
+notification permission status, username-locked field, and delete-account
+button all render correctly (didn't touch delete, obviously). Theme toggle:
+full light/dark switch works cleanly across the whole app, including the
+Settings modal itself. QR code: correctly builds its payload through
+`BASE_PATH` (verified in code — this was exactly the bug class fixed earlier
+today in 2 other places, but this one was already right).
+
+**Verified:** all of the above tested live via the test account, no build
+changes needed this round — this pass found the app in solid shape rather than
+new bugs, unlike the clubs/chat sweep.
+
 ## [2026-08-02] — Follow-up: the freshChannel fix didn't work, found the real cause
 
 **Trigger:** continuing the same day's live click-through sweep. The entry below
