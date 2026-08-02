@@ -1,5 +1,51 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: sender could fake a challenge's acceptance; Follow is local-only
+
+**Trigger:** continuing the day's live click-through sweep, asked to keep going after
+the Club Members/Ladder check.
+
+**🔴 Found and fixed a real security/integrity bug: challenge senders could fabricate
+the recipient's acceptance.** Sent a real challenge to Lok's real account via his
+profile's Challenge button, then noticed the "✓ Simulate: Lok accepts" button was
+still there on my own sent-challenge card — this is meant to be a demo-only affordance
+(the code even says `// Demo: simulate opponent accepting`), but it rendered
+unconditionally for every pending outgoing challenge, real or not. Clicking it calls
+`acceptChallenge()`, which for a real challenge writes `status='accepted'` straight to
+the shared `challenges` table — meaning the SENDER could unilaterally mark their own
+sent challenge as accepted, with zero involvement from the actual recipient. Confirmed
+the legitimate real accept/decline flow already exists separately and correctly
+(`ChallengesSection` on the home page, gated by `toId === userId` so only the true
+recipient's own account can trigger it) — untouched by this fix. Fixed by exposing
+`isRealChallengeId` through `AppContext` and hiding the simulate button whenever the
+challenge is real. **Verified:** `npx next build` clean, pushed (commit 992f68e).
+Cancelled the real test challenge afterward so it doesn't sit pending on Lok's account.
+
+**🔴 Found, not fixed — needs a product decision, not a quick patch: the entire Follow
+feature is local-device-only, never migrated to Supabase.** Went to follow Lok's real
+account to test the Following tab and found no Follow button anywhere on a real
+account's profile (`PlayerActionCard.tsx` — the compact card `/profile/?uid=X` renders
+for real accounts — has zero follow-related code). Traced why: `followPlayer`/
+`unfollowPlayer` (`AppContext.tsx`) only ever write to `localStorage`
+(`cc_following`/`cc_followRequestsSent`) — there's no Supabase table backing follow
+relationships at all (checked every migration: `users` only has `followers_count`/
+`following_count` integer columns, never incremented by anything, no actual
+follower↔followed junction table exists). The rich Follow button, follow-request flow,
+and follower/following counts DO exist in `PlayerProfileClient.tsx` (used for demo
+seed players and for viewing your own real profile), but that component is never
+reached when viewing another real account. Real-world impact: following a real player
+only updates your own browser's local storage — doesn't sync across devices, doesn't
+notify the other person for real (the "request accepted" notification is a fake
+client-side timer, not their actual action), and doesn't work at all cross-account.
+**This also means the "Followers"-only tier in Settings → Privacy** (verified working
+as a UI toggle earlier today) **can never actually be satisfied between two real
+accounts** — there's no way to become a real follower of someone, so that visibility
+tier is effectively dead for real users. Left unbuilt and flagged as a backlog item
+rather than attempting a partial migration blind — this needs a new Supabase table +
+RLS policies + wiring up `PlayerActionCard`, a genuine feature build, not a bug fix,
+and the CLAUDE.md guidance is explicit that data-model decisions need Lok's input
+before building.
+
 ## [2026-08-02] — Auto-dev: Club Members + Ladder tabs check out clean
 
 **Trigger:** asked to keep digging, into Clubs' Members and Ladder tabs specifically,
