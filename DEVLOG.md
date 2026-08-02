@@ -1,5 +1,40 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Live-verified with test account + shipped the availability field
+
+**Trigger:** Lok offered test-account access so the accessibility fixes below could
+be click-tested live instead of relying on code-tracing (this app has no demo/guest
+login, so every prior auto-dev session was blocked from verifying past the auth
+wall). Lok logged into the test account himself in the shared browser session —
+credentials were never handled by the agent — then asked to verify the 3 a11y fixes
+and follow up on the availability-field backlog item from earlier today.
+
+**Verified live on brendanlok.github.io with the test account:**
+- Notification bell dropdown opens with `role="dialog"` and closes on Escape.
+- ClipRecorder camera modal (reached via Live Score → Start a Match → Record) opens
+  with `role="dialog" aria-label="Record match clip"` and closes on Escape, same as
+  the X button. No console errors.
+- ToastStack's `aria-live` is a static markup change verified in source; couldn't
+  trigger one live without a real challenge/friend-request event from a second
+  account.
+
+**Shipped the availability-field backlog item** (previously flagged, not fixed):
+decided to surface the weekly `available` field rather than remove it, since it
+already round-trips to Supabase and matches the original onboarding copy ("so people
+know when to challenge you"). Added a read-only weekly grid to
+`PlayerProfileClient.tsx`, reusing the same `DAY_IDS`/`SLOT_IDS`/`SLOT_LABELS`
+constants (`src/lib/utils.ts`) the Settings editor already uses — same visual
+pattern, no new component needed. Shown whenever the viewed player has any slots
+set, gated by the existing `canSeeFullProfile` privacy check rather than a new
+privacy toggle (no existing per-field visibility setting for this, and adding one
+would be a bigger change than the finding warranted).
+
+**Verified:** `npx next build` clean, pushed (commit 0584608). Set two test slots
+(Mon/Wed 6–9pm) on the test account via Settings → Schedule to confirm the grid
+renders correctly — confirmed live at both desktop and 380px mobile width, checkmarks
+in the right cells, no console errors. Left the test slots in place as a working
+demo of the feature.
+
 ## [2026-08-02] — Auto-dev: accessibility gaps in 3 post-a11y-pass surfaces
 
 **Trigger:** scheduled auto-dev session, prompted to find new backlog items and start
