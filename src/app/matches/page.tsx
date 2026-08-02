@@ -737,17 +737,22 @@ function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer, on
 
 function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Match; onClick: () => void }) {
   const isPending = m.status === 'Pending';
-  const iWon = m.winnerId === 'me';
+  // Cancelled/Disputed matches were never confirmed - showing a win badge or
+  // MMR credit for one would be flat-out wrong, not just stale (this card
+  // used to skip this check entirely; see MatchCard.tsx's isUnresolved for
+  // the same gate on the equivalent card used elsewhere).
+  const isUnresolved = m.status === 'Disputed' || m.status === 'Cancelled';
+  const iWon = m.status === 'Confirmed' && m.winnerId === 'me';
   const myScore  = m.games.map(g => g.p1).join('-');
   const oppScore = m.games.map(g => g.p2).join('-');
   const date = new Date(m.playedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
     <button onClick={onClick}
-      className={`w-full text-left bg-slate-900 border rounded-2xl p-4 space-y-2 hover:border-slate-700 transition-colors ${isPending ? 'border-amber-500/25' : iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
+      className={`w-full text-left bg-slate-900 border rounded-2xl p-4 space-y-2 hover:border-slate-700 transition-colors ${isPending || isUnresolved ? 'border-amber-500/25' : iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isPending ? 'bg-amber-500/15 text-amber-400' : iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-            {isPending ? '?' : iWon ? 'W' : 'L'}
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isPending || isUnresolved ? 'bg-amber-500/15 text-amber-400' : iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {isPending ? '?' : isUnresolved ? '!' : iWon ? 'W' : 'L'}
           </span>
           <div>
             <span className="text-sm font-semibold">vs {m.player2Name}</span>
@@ -761,6 +766,8 @@ function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Matc
         <p className="text-xs text-slate-400">{myScore} · {oppScore}</p>
         {isPending
           ? <span className="text-xs text-amber-400 font-medium">Tap to confirm or dispute</span>
+          : isUnresolved
+          ? <span className="text-xs text-amber-400 font-medium">{m.status}</span>
           : m.mmrChange !== undefined && (
             <span className={`text-xs font-bold ${m.mmrChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {m.mmrChange >= 0 ? '+' : ''}{m.mmrChange} MMR
