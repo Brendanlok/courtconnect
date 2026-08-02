@@ -62,6 +62,45 @@ than leaving 12 of them still crash-prone.
 
 **Verified:** `npx next build` clean, pushed (commit 53369e8).
 
+## [2026-08-02] — Found the club-detail crash, added error boundaries, fixed 2 basePath link bugs
+
+**Trigger:** continuing the live click-through sweep on the test account. Creating
+a real club and opening its shareable link (`/clubs/view/?id=X`) crashed the whole
+page — blank screen, zero console output, no error UI of any kind.
+
+**Found: `ClubDetailClient` called `notFound()` before declaring any hooks.**
+`subscribeClubs` fully replaces the clubs array on every realtime event with no
+error/race handling, so a transient reload (most likely right after creating a
+club, since that write triggers its own reload) could briefly omit the new club
+and flip `club` from found to `undefined` on a re-render — a classic "rendered
+fewer hooks than expected" crash, since React requires the same hooks to run
+every render regardless of the early return. Moved the not-found bail-out to
+after all hooks, with safe fallbacks for the handful that read club fields
+before that point.
+
+**Also added error boundaries app-wide** (`error.tsx`, `global-error.tsx`) —
+nothing existed anywhere in the app to catch a crash like this one; it would
+have blanked to a white screen with nothing logged instead of showing recovery
+UI. Matches the app's existing visual style, logs the real error via
+`console.error` so future crashes are actually diagnosable.
+
+**Found and fixed 2 unrelated basePath link bugs while in the same area:**
+- `profileHref()`/`clubHref()` (`src/lib/utils.ts`) return bare paths like
+  `/profile/?uid=X`, correct when used with `next/link`'s `<Link>` (which
+  auto-prepends `basePath`) but two call sites (chat header, Club Membership
+  card) used plain `<a href>` instead, linking to the literal root path and
+  404ing on GitHub Pages. Swapped both to match every other call site.
+- `notifyUser`'s `linkTo` for `new_message` push notifications was built as a
+  bare `/chat/?realUid=X` instead of prefixing `BASE_PATH`, unlike its sibling
+  in-app toast call in `AppContext.tsx` which already did this correctly —
+  tapping a push notification for a new message 404'd instead of opening the
+  conversation.
+
+**Verified:** `npx next build` clean, pushed (commits 3f97a4c, f2220f7, 202d814).
+The club-detail crash itself turned out to have a second, deeper cause — see the
+two entries above this one (error boundary catch → duplicate realtime-channel
+crash → real fix).
+
 ## [2026-08-02] — Auto-dev: live click-through sweep, removed dead preferredFormats field
 
 **Trigger:** asked to find more things to add and fix, continuing the same day's
