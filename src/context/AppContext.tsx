@@ -782,8 +782,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTournament = useCallback(async (t: Tournament): Promise<string | null> => {
     if (!myRealUid) return 'Session expired. Please sign in again.';
+    const stored: Tournament = { ...t, hostUid: myRealUid };
     try {
-      await createTournamentDoc({ ...t, hostUid: myRealUid });
+      await createTournamentDoc(stored);
+      // Optimistic local echo — the subscription reconciles once Supabase confirms.
+      setRawTournaments(p => [stored, ...p.filter(x => x.id !== stored.id)]);
       return null;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
@@ -953,6 +956,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     try {
       await createClubDoc(stored);
+      // Optimistic local echo — the subscription reconciles once Supabase confirms.
+      setRawClubs(p => [stored, ...p.filter(x => x.id !== stored.id)]);
       return null;
     } catch (e: unknown) {
       // Supabase errors (PostgrestError) are plain {message, code, ...}
@@ -1163,6 +1168,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       [otherUid]: otherProfile,
     };
     sendSharedMessage(chatId, [realUid, otherUid], participants, msg).catch(() => {});
+    // Optimistic local echo — the subscription reconciles once Supabase confirms.
+    setRealConversationDocs(prev => {
+      const existing = prev.find(c => c.id === chatId);
+      if (existing) {
+        return prev.map(c => c.id === chatId
+          ? { ...c, messages: [...c.messages, msg], lastMessage: msg.text, lastAt: msg.sentAt }
+          : c);
+      }
+      return [...prev, { id: chatId, participantUids: [realUid, otherUid], participants, messages: [msg], lastMessage: msg.text, lastAt: msg.sentAt }];
+    });
   }, [user.displayName, user.username, user.tier, user.mmr, user.photoURL]);
 
   const markRealConvRead = useCallback((chatId: string) => {

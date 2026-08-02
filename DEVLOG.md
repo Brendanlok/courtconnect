@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-03] — Auto-dev: fixed the missing-optimistic-update pattern for clubs, tournaments, chat
+
+**Trigger:** Notion To-Do item confirmed live — sending a chat message and creating
+a club/tournament all wrote to Supabase correctly but didn't show up in the UI until
+a full page reload, since `createClub`/`addTournament`/`sendRealMessage` in
+`AppContext.tsx` fired the write and then relied entirely on the realtime
+subscription to reflect it back, with no local state update in between.
+
+**Fixed all three** the same way `sendChallenge` already handled it (optimistic
+local echo, reconciled once the subscription's next snapshot lands): `createClub`
+prepends the new club to `rawClubs`, `addTournament` prepends to `rawTournaments`,
+`sendRealMessage` appends the message to the matching conversation in
+`realConversationDocs` (or creates one if this is the first message in that chat).
+
+**Verified:** `npx next build` clean. Could not click-test live — this app has no
+demo/guest login and this session ran unattended (no one to authenticate the shared
+test account), same limitation noted in every prior auto-dev session before Lok
+manually signs in. Traced the fix against the exact pattern `sendChallenge` already
+uses successfully in production, and against the flow already confirmed broken live
+in the [2026-08-02 auto-dev session that first found this bug in Tournaments]
+(same file, same missing-update shape in all 3 places).
+
 ## [2026-08-02] — Auto-dev: This Week board checks out; Venues confirmed blocked on a pending migration
 
 **Trigger:** continuing the sweep into the Players page's remaining tabs — "This Week"
