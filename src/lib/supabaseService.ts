@@ -13,14 +13,21 @@ import { getTier, maxClubsForTier, BASE_PATH } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
 import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament, SeasonHistoryEntry } from '@/types';
 
-// Removes any stale channel still registered under this topic before creating a
-// fresh one. A fast remount (rapid navigation away and back) can start a new
-// subscription before the previous one's async teardown finishes, and the client
-// throws synchronously ("cannot add postgres_changes callbacks... after
-// subscribe()") if a channel with this exact topic is still registered.
+// Every subscribeX function below names its channel deterministically from
+// an id (e.g. `club_messages:${clubId}`) - fine when there's only ever one
+// subscriber per id, but several ids (club messages, tournaments, clubs) are
+// legitimately subscribed to from more than one place at once (e.g. a
+// per-club notification listener that lives in AppContext for as long as
+// you're a member, plus a page-specific listener while that club's detail
+// page is open). supabase.removeChannel() is async, so a "remove the old
+// one, then create a new one with the same name" approach still races - the
+// client throws synchronously ("cannot add postgres_changes callbacks...
+// after subscribe()") if the old one hasn't finished tearing down yet.
+// Sidesteps the whole race: give every call its own uniquely-suffixed
+// channel name so concurrent subscribers never share one to begin with.
+let channelSeq = 0;
 function freshChannel(topic: string) {
-  supabase.getChannels().filter(c => c.topic === `realtime:${topic}`).forEach(c => supabase.removeChannel(c));
-  return supabase.channel(topic);
+  return supabase.channel(`${topic}:${++channelSeq}`);
 }
 
 // ── User profile ──────────────────────────────────────────────────────────────
