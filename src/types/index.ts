@@ -30,7 +30,6 @@ export interface UserProfile {
   postcode?: string;
   disciplineMMR?: Partial<Record<MatchType, number>>;
   lookingForPartner?: boolean;
-  preferredFormats?: MatchType[];
   distKm?: number;
   joinedAt: string;
   birthday?: string;                     // ISO date e.g. "1997-04-15"
