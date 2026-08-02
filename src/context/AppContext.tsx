@@ -186,6 +186,7 @@ interface AppCtx {
   acceptChallenge: (id: string) => void;
   declineChallenge: (id: string) => void;
   cancelChallenge: (id: string) => void;
+  isRealChallengeId: (id: string) => boolean;
   // Clubs
   clubs: Club[];
   myClubIds: string[];
@@ -1250,7 +1251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       acceptTournamentRequest, declineTournamentRequest, startTournamentBracket, reportBracketResult,
-      challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge,
+      challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge, isRealChallengeId,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       inviteToClub, sendClubMessage,

@@ -144,7 +144,7 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch } = useApp();
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, isRealChallengeId } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [watchCode, setWatchCode] = useState('');
   const [watchErr,  setWatchErr]  = useState('');
@@ -423,11 +423,16 @@ export default function MatchesPage() {
                   Cancel
                 </button>
               </div>
-              {/* Demo: simulate opponent accepting */}
-              <button onClick={() => handleAcceptChallenge(ch.id)}
-                className="w-full py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold transition-colors">
-                ✓ Simulate: {ch.toName} accepts
-              </button>
+              {/* Demo-only: simulate opponent accepting. A real challenge has
+                  a real recipient who has to respond from their own account -
+                  showing this for real challenges would let the sender
+                  fabricate the other person's acceptance themselves. */}
+              {!isRealChallengeId(ch.id) && (
+                <button onClick={() => handleAcceptChallenge(ch.id)}
+                  className="w-full py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold transition-colors">
+                  ✓ Simulate: {ch.toName} accepts
+                </button>
+              )}
             </div>
           ))}
 
