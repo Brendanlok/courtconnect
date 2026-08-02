@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: fixed realtime channel crash across all subscriptions
+
+**Trigger:** scheduled session found no safe To-Do item (both open backlog items
+are explicitly on hold pending Lok's real-court testing), so checked repo state
+first per the gotcha about checking for pending work — found an uncommitted,
+undocumented fix to `subscribeClubMessages` in `supabaseService.ts` from an
+earlier interrupted session: a stale realtime channel left registered under the
+same topic (fast navigate-away-and-back before async teardown finishes) throws
+synchronously on resubscribe ("cannot add postgres_changes callbacks... after
+subscribe()").
+
+**Root-caused instead of just committing the one-off fix:** the same
+`supabase.channel(topic)` pattern was repeated in 13 places across the file (live
+match, court session, conversations, challenges, endorsements, clubs,
+tournaments, club messages, my matches, club ladder, club rivalry, availability,
+venues) — all subject to the identical crash. Pulled the fix into one
+`freshChannel()` helper (removes any stale channel registered under the topic
+before creating a new one) and routed all 13 subscriptions through it, rather
+than leaving 12 of them still crash-prone.
+
+**Verified:** `npx next build` clean, pushed (commit 53369e8).
+
 ## [2026-08-02] — Auto-dev: live click-through sweep, removed dead preferredFormats field
 
 **Trigger:** asked to find more things to add and fix, continuing the same day's
