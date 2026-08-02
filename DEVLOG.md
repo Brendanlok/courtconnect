@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: This Week board checks out; Venues confirmed blocked on a pending migration
+
+**Trigger:** continuing the sweep into the Players page's remaining tabs — "This Week"
+and "Venues" — that hadn't been touched yet.
+
+**"This Week" availability board works correctly.** Posted a real "I'm free to play"
+entry, removed it — both round-tripped through Supabase correctly (same reload-needed
+delay as everything else in that backlog item, not a new issue). No bug.
+
+**Venues confirmed genuinely broken right now — not a code bug, a pending migration.**
+Adding a venue failed with "Could not add — try again." every time. Traced it: `0008_
+venues.sql` is the one migration in the whole `supabase/migrations/` folder still
+marked "NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor" (every
+other migration's header says "APPLIED" with a date). The `venues` table simply
+doesn't exist in production yet, so the insert fails outright. Reads degrade
+gracefully (empty list, no crash — `subscribeVenues` already handles a missing table
+the same way `0007_availability.sql` did before it was applied), but writes have no
+such fallback. **Nothing to fix in code** — this is purely "please run `0008_venues.
+sql` in the Supabase SQL editor," the exact same recurring pattern as every other
+migration in this project (no automated runner exists). Flagging clearly rather than
+filing as a new bug, since the fix is entirely on Lok's side.
+
 ## [2026-08-02] — Auto-dev: fixed a withdrawn match rendering as a win with MMR gained
 
 **Trigger:** continuing the day's sweep, checking endorsements and the match confirm/
