@@ -10,7 +10,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS } from '@/lib/utils';
 import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
@@ -167,6 +167,11 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
   const canSeeClubMembership = canSeeFullProfile && (isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer));
   const playerClubs = canSeeClubMembership ? clubs.filter(c => c.memberIds.includes(player.uid)) : [];
+
+  // Weekly availability: collected in onboarding/Settings, shown here so other
+  // players know when to challenge someone — same public/followers/private
+  // gate as the rest of this section (canSeeFullProfile), no separate toggle.
+  const availSlots = (player.available ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
   // Event history privacy: same public/followers/private rule
   const eventHistoryVisibility = player.privacy?.eventHistory ?? 'public';
@@ -528,6 +533,37 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               ))}
             </div>
             )}
+          </div>
+        )}
+
+        {/* ── Availability ── */}
+        {availSlots.length > 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Clock size={15} className="text-emerald-400"/> Availability
+            </h2>
+            <div className="space-y-1">
+              <div className="flex gap-0.5 ml-7">
+                {SLOT_LABELS.map(l => (
+                  <div key={l} className="flex-1 text-center text-[8px] text-slate-600 leading-tight">{l}</div>
+                ))}
+              </div>
+              {(DAY_IDS as readonly string[]).map((day, di) => (
+                <div key={day} className="flex items-center gap-0.5">
+                  <span className="text-[10px] text-slate-500 w-6 shrink-0 font-medium">{DAY_LABELS[di]}</span>
+                  {(SLOT_IDS as readonly string[]).map(slot => {
+                    const on = availSlots.includes(`${day}_${slot}`);
+                    return (
+                      <div key={slot}
+                        className={`flex-1 h-7 rounded text-[9px] font-bold flex items-center justify-center border
+                          ${on ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/40'}`}>
+                        {on ? '✓' : ''}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
