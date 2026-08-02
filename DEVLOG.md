@@ -1,5 +1,46 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-02] — Auto-dev: accessibility gaps in 3 post-a11y-pass surfaces
+
+**Trigger:** scheduled auto-dev session, prompted to find new backlog items and start
+working on them. Both queued To-Do items (pose-tracking heatmap, shuttle auto-detect)
+remain on hold per Lok. Ruled out the RLS-upsert bug class (already fully swept across
+0005/0006/0015) and grepped for TODO/FIXME markers (none exist) before running a wider
+Explore sweep for genuine, unblocked gaps.
+
+**Found: 3 overlays built or reworked after the "Accessibility pass across all modals"
+devlog entry never got the same treatment as the other 18+ modals in the app.**
+- `ClipRecorder.tsx` (full-screen camera capture modal, reworked 2026-07-09 and
+  2026-07-21) had zero a11y wiring — no Escape-to-close, no Tab focus trap, no
+  `role="dialog"`. Every other modal in the app uses the shared `useModalA11y` hook;
+  this one was missed both times it was touched.
+- `ToastStack.tsx` (challenge/friend-request popup banners, built 2026-07-24) had no
+  `aria-live` — a screen-reader user gets zero signal when one appears, only the bell
+  badge.
+- `NotificationPanel.tsx` (bell dropdown, touched by every user) had click-outside-to-
+  close but no Escape key handler and no dialog role/label.
+
+**Fixed, app-code only, no migration needed:**
+- `ClipRecorder.tsx`: wired `useModalA11y` — `open` covers both full-screen states
+  (setup instructions, and requesting/previewing/recording/done/uploading), excluding
+  the small idle button, the uploaded-chip, and the native-file-input row (none of
+  those are overlays). `onClose` maps to the existing `requestExit` callback, so
+  Escape behaves identically to the existing X button.
+- `ToastStack.tsx`: added `role="status" aria-live="polite"` to the toast container.
+- `NotificationPanel.tsx`: added an Escape `keydown` listener alongside the existing
+  mousedown-outside handler, plus `role="dialog" aria-label="Notifications"`.
+
+**Also added to the To-Do backlog (not fixed — needs a product call):** the weekly
+`available` field collected in Onboarding/Settings and synced to Supabase is never
+displayed anywhere (same dead-field shape as the already-known unused
+`preferredFormats`). Surfaced it for Lok to decide: show it somewhere, or drop the ask.
+
+**Verified:** `npx next build` clean, pushed (commit b6b24d8). Confirmed the app still
+sits behind the real Supabase auth wall in this environment (no console errors on the
+reachable login screen) — same recurring limitation as every prior auto-dev session,
+so the fixes were verified by tracing the actual code against the shared
+`useModalA11y` pattern used by every other modal, not click-tested past login.
+
 ## [2026-08-01] — Auto-dev: found + fixed missing RLS update policy on season_history
 
 **Trigger:** scheduled auto-dev session. Both open To-Do items (pose-tracking heatmap,
