@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-08-03] — Feature: real cross-account Follow
+
+### 🟠 High
+- ✅ Follow feature now works between real accounts, not just localStorage. Public
+  accounts follow immediately; private accounts require the target's approval via a new
+  "Follow requests" inbox in the notification panel. `supabase/migrations/
+  0016_follow_requests.sql` — needs Lok to run in the Supabase SQL editor for private
+  requests and live follower/following counts (public following works without it).
+
 ## [2026-08-01] — Fix: missing RLS update policy on season_history (ranked seasons)
 
 ### 🔴 Critical

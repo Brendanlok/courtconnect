@@ -2,6 +2,7 @@
 import { useRef, useEffect } from 'react';
 import { Bell, X, Swords, Users, Shield, CheckCircle, MessageCircle, UserPlus, UserCheck, Calendar, Trophy, Award } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { Avatar } from '@/components/ui/Avatar';
 import { timeAgo } from '@/lib/utils';
 import type { Notification } from '@/types';
 
@@ -32,7 +33,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
-  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount } = useApp();
+  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount, incomingFollowRequests, respondToFollowRequest, allRealPlayers } = useApp();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,6 +67,29 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
           </button>
         )}
       </div>
+
+      {incomingFollowRequests.length > 0 && (
+        <div className="border-b border-slate-800 px-4 py-3 space-y-2">
+          <p className="text-[11px] font-semibold text-slate-400">Follow requests</p>
+          {incomingFollowRequests.map(uid => {
+            const requester = allRealPlayers.find(p => p.uid === uid);
+            return (
+              <div key={uid} className="flex items-center gap-2">
+                <Avatar name={requester?.displayName ?? 'Player'} photoURL={requester?.photoURL} size="sm"/>
+                <p className="flex-1 min-w-0 text-xs font-medium text-slate-200 truncate">{requester?.displayName ?? 'Someone'}</p>
+                <button onClick={() => respondToFollowRequest(uid, true)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25">
+                  <CheckCircle size={14}/>
+                </button>
+                <button onClick={() => respondToFollowRequest(uid, false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">
+                  <X size={14}/>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="max-h-80 overflow-y-auto">
         {notifications.length === 0 ? (

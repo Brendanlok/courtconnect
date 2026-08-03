@@ -15,6 +15,7 @@ import {
   subscribeChallengesFor, sendChallengeDoc, updateChallengeStatus, type StoredChallenge,
   subscribeMySharedConversations, sendSharedMessage, chatIdFor, type SharedConversation, type SharedParticipant,
   subscribeEndorsementsReceived, setEndorsementDoc, loadEndorsementsGiven,
+  followUser, unfollowUser, respondToFollowRequest, subscribeFollowing, subscribeIncomingFollowRequests,
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
@@ -210,6 +211,8 @@ interface AppCtx {
   followRequestsSent: string[];
   followPlayer: (uid: string, isTargetPrivate?: boolean) => void;
   unfollowPlayer: (uid: string) => void;
+  incomingFollowRequests: string[];      // real accounts with a pending request to follow me
+  respondToFollowRequest: (requesterUid: string, accept: boolean) => void;
   // Clip Credits & Court
   clipCredits: number;
   awardClipCredits: (amount: number) => void;
@@ -309,7 +312,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // derived from it further down, same 'me'-normalization as challenges.
   const [rawClubs,         setRawClubs]          = useState<Club[]>(SEED_CLUBS);
   const [notifications,    setNotifications]    = useState<Notification[]>([]);
-  const [following,              setFollowing]             = useState<string[]>(() => {
+  // Local (demo-player) following state, localStorage-backed. Real-account
+  // following is separate (realFollowingAccepted/Pending below, Supabase-synced)
+  // — `following`/`followRequestsSent` in the context value merge both, same
+  // pattern as `challenges` merging localChallenges + real*Challenges.
+  const [localFollowing,         setLocalFollowing]        = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('cc_following');
@@ -318,7 +325,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return [];
   });
-  const [followRequestsSent,     setFollowRequestsSent]    = useState<string[]>(() => {
+  const [localFollowRequestsSent, setLocalFollowRequestsSent] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('cc_followRequestsSent');
@@ -327,6 +334,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return [];
   });
+  const [realFollowingAccepted,  setRealFollowingAccepted] = useState<string[]>([]);
+  const [realFollowingPending,   setRealFollowingPending]  = useState<string[]>([]);
+  const [incomingFollowRequests, setIncomingFollowRequests] = useState<string[]>([]);
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
   const [clipCredits,      setClipCredits]      = useState<number>(() => {
@@ -469,6 +479,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const challengesLoadedRef    = useRef(false);
   const conversationsLoadedRef = useRef(false);
   const matchesLoadedRef       = useRef(false);
+  const followingLoadedRef     = useRef(false);
+  const incomingFollowsLoadedRef = useRef(false);
+  const prevFollowingPendingRef  = useRef<string[]>([]);
+  const prevIncomingFollowsRef   = useRef<string[]>([]);
   const realUnsubsRef = useRef<(() => void)[]>([]);
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (authUser) => {
@@ -477,9 +491,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
         setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
+        setRealFollowingAccepted([]); setRealFollowingPending([]); setIncomingFollowRequests([]);
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = []; prevTournamentsRef.current = [];
+        prevFollowingPendingRef.current = []; prevIncomingFollowsRef.current = [];
         challengesLoadedRef.current = false; conversationsLoadedRef.current = false; matchesLoadedRef.current = false;
+        followingLoadedRef.current = false; incomingFollowsLoadedRef.current = false;
         return;
       }
       const uid = authUser.uid;
@@ -548,6 +565,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setRealConversationDocs(docs);
         }),
         subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
+        subscribeFollowing(uid, (accepted, pending) => {
+          if (followingLoadedRef.current) {
+            const prevPending = prevFollowingPendingRef.current;
+            prevPending.filter(u => !pending.includes(u) && accepted.includes(u))
+              .forEach(() => addNotification({ type: 'friend_accepted', title: 'Follow Request Accepted', body: 'They accepted your follow request.' }));
+          }
+          followingLoadedRef.current = true;
+          prevFollowingPendingRef.current = pending;
+          setRealFollowingAccepted(accepted);
+          setRealFollowingPending(pending);
+        }),
+        subscribeIncomingFollowRequests(uid, requesters => {
+          if (incomingFollowsLoadedRef.current) {
+            const prev = prevIncomingFollowsRef.current;
+            requesters.filter(u => !prev.includes(u))
+              .forEach(() => addNotification({ type: 'friend_request', title: 'New Follow Request', body: 'Someone wants to follow you.' }));
+          }
+          incomingFollowsLoadedRef.current = true;
+          prevIncomingFollowsRef.current = requesters;
+          setIncomingFollowRequests(requesters);
+        }),
         subscribeVenues(setVenues),
         subscribeClubs(docs => {
           const prev = prevClubsRef.current;
@@ -1078,9 +1116,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const followPlayer = useCallback((uid: string, isTargetPrivate?: boolean) => {
+    if (isRealUid(uid)) {
+      // Real target: write straight to the shared `friends` table (optimistic
+      // local echo below, reconciled once subscribeFollowing's next snapshot
+      // lands) — no fake timer, the target's own accept action is what moves
+      // a pending row to accepted (see respondToFollowRequest).
+      const realUid = auth.currentUser?.uid;
+      if (!realUid) return;
+      if (isTargetPrivate) setRealFollowingPending(p => p.includes(uid) ? p : [...p, uid]);
+      else setRealFollowingAccepted(p => p.includes(uid) ? p : [...p, uid]);
+      followUser(realUid, user.displayName, uid, !!isTargetPrivate).catch(() => {});
+      return;
+    }
     const targetName = ALL_PLAYERS.find(p => p.uid === uid)?.displayName ?? 'this player';
     if (isTargetPrivate) {
-      setFollowRequestsSent(p => {
+      setLocalFollowRequestsSent(p => {
         const next = p.includes(uid) ? p : [...p, uid];
         try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
         return next;
@@ -1090,7 +1140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // but only if the request hasn't been cancelled (unfollowPlayer) in the meantime.
       setTimeout(() => {
         let stillPending = false;
-        setFollowRequestsSent(p => {
+        setLocalFollowRequestsSent(p => {
           stillPending = p.includes(uid);
           if (!stillPending) return p;
           const next = p.filter(id => id !== uid);
@@ -1098,7 +1148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return next;
         });
         if (!stillPending) return;
-        setFollowing(p => {
+        setLocalFollowing(p => {
           const next = p.includes(uid) ? p : [...p, uid];
           try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
           return next;
@@ -1107,26 +1157,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }, 2500);
       return;
     }
-    setFollowing(p => {
+    setLocalFollowing(p => {
       const next = p.includes(uid) ? p : [...p, uid];
       try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
-  }, []);
+  }, [user.displayName]);
 
   const unfollowPlayer = useCallback((uid: string) => {
-    setFollowRequestsSent(p => {
+    if (isRealUid(uid)) {
+      const realUid = auth.currentUser?.uid;
+      if (!realUid) return;
+      setRealFollowingAccepted(p => p.filter(id => id !== uid));
+      setRealFollowingPending(p => p.filter(id => id !== uid));
+      unfollowUser(realUid, uid).catch(() => {});
+      return;
+    }
+    setLocalFollowRequestsSent(p => {
       if (!p.includes(uid)) return p;
       const next = p.filter(id => id !== uid);
       try { localStorage.setItem('cc_followRequestsSent', JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
-    setFollowing(p => {
+    setLocalFollowing(p => {
       const next = p.filter(id => id !== uid);
       try { localStorage.setItem('cc_following', JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   }, []);
+
+  const respondToFollowRequestAction = useCallback((requesterUid: string, accept: boolean) => {
+    const realUid = auth.currentUser?.uid;
+    if (!realUid) return;
+    setIncomingFollowRequests(p => p.filter(id => id !== requesterUid));
+    respondToFollowRequest(realUid, user.displayName, requesterUid, accept).catch(() => {});
+  }, [user.displayName]);
 
   // Endorsements — toggle: endorse if not given, remove if already given
   const endorsePlayer = useCallback((targetUid: string, skill: string) => {
@@ -1259,6 +1324,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ...playerEndorsements, me: meCounts };
   }, [playerEndorsements, realEndorsementCounts]);
 
+  // Merge local (demo-player) following state with real-account state, same
+  // pattern as `challenges` merging localChallenges + real*Challenges.
+  const following = useMemo(() => [...localFollowing, ...realFollowingAccepted], [localFollowing, realFollowingAccepted]);
+  const followRequestsSent = useMemo(() => [...localFollowRequestsSent, ...realFollowingPending], [localFollowRequestsSent, realFollowingPending]);
+
   return (
     <Ctx.Provider value={{
       user, profileLoading, matches: allMatches, addMatch, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, updateUser,
@@ -1271,6 +1341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
       inviteToClub, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
+      incomingFollowRequests, respondToFollowRequest: respondToFollowRequestAction,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,

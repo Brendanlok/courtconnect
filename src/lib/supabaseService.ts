@@ -514,6 +514,63 @@ export async function loadEndorsementsGiven(fromUid: string): Promise<Record<str
   return result;
 }
 
+// ── Real follows between real accounts ─────────────────────────────────────────
+// `friends` (user_id follows friend_id) existed since 0001_init.sql but nothing
+// ever wrote to it — see 0016_follow_requests.sql for the status column + RLS
+// this needs. Following a public account works today on the original policy;
+// a private target's row lands 'pending' until they accept via respondToFollowRequest.
+
+export async function followUser(myUid: string, myName: string, targetUid: string, targetIsPrivate: boolean) {
+  const status = targetIsPrivate ? 'pending' : 'accepted';
+  await supabase.from('friends').upsert({ user_id: myUid, friend_id: targetUid, status }, { onConflict: 'user_id,friend_id' });
+  notifyUser(targetUid, status === 'pending'
+    ? { type: 'friend_request', title: 'Follow Request', body: `${myName} wants to follow you.` }
+    : { type: 'friend_request', title: 'New Follower', body: `${myName} started following you.` });
+}
+
+export async function unfollowUser(myUid: string, targetUid: string) {
+  await supabase.from('friends').delete().eq('user_id', myUid).eq('friend_id', targetUid);
+}
+
+export async function respondToFollowRequest(myUid: string, myName: string, requesterUid: string, accept: boolean) {
+  if (accept) {
+    await supabase.from('friends').update({ status: 'accepted' }).eq('user_id', requesterUid).eq('friend_id', myUid);
+    notifyUser(requesterUid, { type: 'friend_accepted', title: 'Follow Request Accepted', body: `${myName} accepted your follow request.` });
+  } else {
+    await supabase.from('friends').delete().eq('user_id', requesterUid).eq('friend_id', myUid);
+  }
+}
+
+// Who I follow (accepted) and who I've requested to follow (pending) — the
+// real-account counterpart to the local cc_following/cc_followRequestsSent state.
+export function subscribeFollowing(myUid: string, cb: (accepted: string[], pending: string[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('friends').select('friend_id, status').eq('user_id', myUid);
+    const rows = data ?? [];
+    cb(rows.filter(r => r.status === 'accepted').map(r => r.friend_id as string),
+       rows.filter(r => r.status === 'pending').map(r => r.friend_id as string));
+  };
+  load();
+  const channel = freshChannel(`friends_out:${myUid}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${myUid}` }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+// Real accounts with a pending request to follow me — degrades to empty until
+// 0016_follow_requests.sql's "see incoming follows" policy is applied.
+export function subscribeIncomingFollowRequests(myUid: string, cb: (requesterUids: string[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('friends').select('user_id').eq('friend_id', myUid).eq('status', 'pending');
+    cb((data ?? []).map(r => r.user_id as string));
+  };
+  load();
+  const channel = freshChannel(`friends_in:${myUid}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'friends', filter: `friend_id=eq.${myUid}` }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
 // ── Clubs (real, shared rows — membership/moderation visible to everyone) ─────
 
 function clubRowToObj(row: Record<string, unknown>): Club {

@@ -1,5 +1,52 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-03] — Auto-dev: built the real Follow feature (P1 backlog item)
+
+**Trigger:** Notion To-Do P1 item — "Follow feature is local-only, doesn't work between
+real accounts" (flagged 2026-08-02, left unbuilt as a genuine feature build needing
+priority input rather than a quick fix — see that day's DEVLOG entry for the original
+investigation). Priority was since set to P1, so built it this session.
+
+**What was actually missing:** `followPlayer`/`unfollowPlayer` in `AppContext.tsx` only
+ever wrote to `localStorage` — no real cross-account follow relationship existed at all.
+Turned out the `friends` table (follower_id/friend_id) has existed in the live schema
+since `0001_init.sql`, RLS already enabled — just never written to by any UI, and missing
+the pieces a real private-account approval flow needs.
+
+**Built:**
+- `0016_follow_requests.sql` (not yet applied — same async pattern as every other pending
+  migration in this project, Lok runs it in the Supabase SQL editor): adds a `status`
+  column (`pending`/`accepted`) to `friends`, two new RLS policies so the *target* of a
+  follow can see and accept/decline it (the original 0001 policy only covered the
+  requester's own row), and a trigger to finally maintain `users.followers_count`/
+  `following_count` (existing columns, never incremented by anything until now).
+  Following a **public** real account already works with zero schema change, on the
+  original 2026-07 policy — this migration is only needed for private-account requests
+  and live counts.
+- `supabaseService.ts`: `followUser`/`unfollowUser`/`respondToFollowRequest` (writes +
+  `notifyUser` push) and `subscribeFollowing`/`subscribeIncomingFollowRequests` (real-time
+  reads), same shape as the existing endorsements functions.
+- `AppContext.tsx`: `followPlayer`/`unfollowPlayer` now branch on `isRealUid`, same
+  pattern `endorsePlayer` already used correctly — local demo path unchanged, real path
+  writes to Supabase with an optimistic local echo. Added `incomingFollowRequests` +
+  `respondToFollowRequest` to context.
+- `PlayerActionCard.tsx` — the component that actually renders for another real
+  account's profile (`/profile/?uid=X`) — had **zero** follow-related code before this
+  (the rich Follow button only ever existed in `PlayerProfileClient.tsx`, which is
+  statically pre-rendered for demo players only and never reached for a real account,
+  per the 08-02 investigation). Added a Follow/Requested/Following button plus live
+  follower/following counts.
+- `NotificationPanel.tsx` — added a "Follow requests" inbox section so a private
+  account actually has somewhere to accept/decline incoming requests (nothing like this
+  existed before; the old demo-only flow auto-accepted after a fake 2.5s timer).
+
+**Verified:** `npx next build` clean. Could not click-test live — no demo/guest login
+exists in this app and this session ran unattended, same limitation as every prior
+auto-dev session. Traced the full read/write path against the existing, already-working
+`endorsePlayer`/`subscribeEndorsementsReceived` pattern rather than inventing a new
+shape. **Needs Lok to run `0016_follow_requests.sql`** for private-account requests and
+live follower counts to work — public-account following works immediately post-deploy.
+
 ## [2026-08-03] — Auto-dev: fixed the missing-optimistic-update pattern for clubs, tournaments, chat
 
 **Trigger:** Notion To-Do item confirmed live — sending a chat message and creating
