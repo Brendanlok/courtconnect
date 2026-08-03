@@ -27,6 +27,7 @@ import {
   loadAllRealUsers,
   subscribeVenues,
   saveSeasonHistoryEntry, loadSeasonHistory,
+  subscribeOnlinePresence,
 } from '@/lib/supabaseService';
 import { seasonNumberForDate, softResetMmr } from '@/lib/seasons';
 
@@ -213,6 +214,7 @@ interface AppCtx {
   unfollowPlayer: (uid: string) => void;
   incomingFollowRequests: string[];      // real accounts with a pending request to follow me
   respondToFollowRequest: (requesterUid: string, accept: boolean) => void;
+  onlineUids: Set<string>;               // real uids currently connected (Supabase Presence)
   // Clip Credits & Court
   clipCredits: number;
   awardClipCredits: (amount: number) => void;
@@ -337,6 +339,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realFollowingAccepted,  setRealFollowingAccepted] = useState<string[]>([]);
   const [realFollowingPending,   setRealFollowingPending]  = useState<string[]>([]);
   const [incomingFollowRequests, setIncomingFollowRequests] = useState<string[]>([]);
+  const [onlineUids, setOnlineUids] = useState<Set<string>>(new Set());
   const [myEndorsements,   setMyEndorsements]   = useState<Record<string, string[]>>({});
   const [playerEndorsements, setPlayerEndorsements] = useState<Record<string, Record<string, number>>>({});
   const [clipCredits,      setClipCredits]      = useState<number>(() => {
@@ -491,7 +494,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
         setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
-        setRealFollowingAccepted([]); setRealFollowingPending([]); setIncomingFollowRequests([]);
+        setRealFollowingAccepted([]); setRealFollowingPending([]); setIncomingFollowRequests([]); setOnlineUids(new Set());
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = []; prevTournamentsRef.current = [];
         prevFollowingPendingRef.current = []; prevIncomingFollowsRef.current = [];
@@ -632,6 +635,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           prevMatchesRef.current = docs;
           setRealMatches(docs);
         }),
+        subscribeOnlinePresence(uid, setOnlineUids),
       ];
     });
     return () => { unsubAuth(); realUnsubsRef.current.forEach(fn => fn()); };
@@ -1342,6 +1346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       inviteToClub, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
       incomingFollowRequests, respondToFollowRequest: respondToFollowRequestAction,
+      onlineUids,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
       notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,

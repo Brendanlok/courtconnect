@@ -1,5 +1,30 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-03] — Real online/offline presence tracking (chat)
+
+**Trigger:** Lok noticed brendanlok shown as "● Online" in a chat conversation on his
+phone despite not actually being online. Root cause: the "Online" badge in `/chat` was
+completely hardcoded — every conversation partner showed it unconditionally, for
+everyone, always. There was no presence tracking anywhere in the app. First fixed by
+removing the fake indicator entirely; Lok then asked for the real thing.
+
+**Built:** `subscribeOnlinePresence()` in `supabaseService.ts` using Supabase Realtime
+Presence — every signed-in client joins one shared channel (`presence:online`, fixed
+name, not the usual per-subscriber `freshChannel` pattern, since presence only works
+when everyone's on the same channel) and tracks itself under its own uid. Disconnects
+(tab close, network drop) are handled by Supabase automatically — no heartbeat, no
+last-seen column, no cron cleanup needed. `AppContext.tsx` wires this into the existing
+sign-in/sign-out subscription lifecycle (same array as follows/matches/clubs/etc.,
+torn down together on sign-out) and exposes `onlineUids: Set<string>`. `/chat` now
+shows the green dot + "● Online" only when the participant's real uid is in that set,
+and "Offline" (no dot) otherwise — real per-user state instead of a hardcoded string.
+
+**Verified:** `npx next build` clean, local dev server loads with no console errors.
+Could not click-test live — no demo/guest login exists in this app and I don't create
+accounts or enter passwords, same recurring limitation as every prior session. Two real
+accounts (or two browser sessions of the same test account) would be needed to see the
+dot flip live — worth Lok trying with his phone + a second logged-in tab next check-in.
+
 ## [2026-08-03] — Club Pro Phase 1: manual flag, higher member cap, club settings, analytics
 
 **Trigger:** Lok asked to sketch monetization options; picked "Club Pro" (a per-club paid

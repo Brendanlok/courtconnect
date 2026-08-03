@@ -15,7 +15,7 @@ import { getTier } from '@/lib/utils';
 const isRealUid = (uid: string) => uid !== 'me' && ![ME, ...PLAYERS].some(p => p.uid === uid);
 
 export default function Chat() {
-  const { user, conversations: convs, setConversations: setConvs, sendRealMessage, markRealConvRead } = useApp();
+  const { user, conversations: convs, setConversations: setConvs, sendRealMessage, markRealConvRead, onlineUids } = useApp();
   const [activeId,   setActiveId]   = useState<string | null>(convs[0]?.id ?? null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [input,      setInput]      = useState('');
@@ -163,6 +163,9 @@ export default function Chat() {
             ${c.id === activeId ? 'bg-slate-800' : 'hover:bg-slate-800/50'}`}>
             <div className="relative">
               <Avatar name={c.participant.displayName} size="sm" photoURL={c.participant.photoURL}/>
+              {onlineUids.has(c.participant.uid) && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
@@ -189,6 +192,9 @@ export default function Chat() {
         <Link href={profileHref(active.participant)} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
             <Avatar name={active.participant.displayName} size="sm" photoURL={active.participant.photoURL}/>
+            {onlineUids.has(active.participant.uid) && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"/>
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -196,6 +202,12 @@ export default function Chat() {
               <p className="text-xs text-slate-500 shrink-0">@{active.participant.username}</p>
             </div>
             <div className="flex items-center gap-1 flex-nowrap overflow-hidden">
+              {onlineUids.has(active.participant.uid) ? (
+                <span className="text-xs text-emerald-400 shrink-0">● Online</span>
+              ) : (
+                <span className="text-xs text-slate-500 shrink-0">Offline</span>
+              )}
+              <span className="text-slate-600 shrink-0">·</span>
               <TierBadge tier={active.participant.tier}/>
               <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
             </div>

@@ -571,6 +571,24 @@ export function subscribeIncomingFollowRequests(myUid: string, cb: (requesterUid
   return () => { supabase.removeChannel(channel); };
 }
 
+// ── Presence (who's currently online) ──────────────────────────────────────
+// Every signed-in client joins the same fixed-name channel (not freshChannel —
+// presence only works when everyone shares one channel) and tracks itself
+// under its own uid. Supabase Realtime removes a client from the shared state
+// automatically on disconnect (tab close, network drop), so there's no
+// heartbeat or last-seen column to maintain.
+export function subscribeOnlinePresence(myUid: string, cb: (onlineUids: Set<string>) => void): () => void {
+  const channel = supabase.channel('presence:online', { config: { presence: { key: myUid } } });
+  channel
+    .on('presence', { event: 'sync' }, () => {
+      cb(new Set(Object.keys(channel.presenceState())));
+    })
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') channel.track({ online_at: new Date().toISOString() }).catch(() => {});
+    });
+  return () => { supabase.removeChannel(channel); };
+}
+
 // ── Clubs (real, shared rows — membership/moderation visible to everyone) ─────
 
 function clubRowToObj(row: Record<string, unknown>): Club {

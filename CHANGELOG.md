@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-08-03] — Fix + Feature: real online/offline presence in chat
+
+### 🟡 Medium
+- ✅ Fixed: chat showed every contact as "Online" unconditionally — it was a hardcoded
+  label, not real data.
+- ✅ Built real presence tracking via Supabase Realtime — chat now shows accurate
+  online/offline status per contact, no schema changes needed.
+
 ## [2026-08-03] — Feature: Club Pro Phase 1 (manual flag, no billing yet)
 
 ### 🟡 Medium
