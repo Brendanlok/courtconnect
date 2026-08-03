@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-04] — Fix: "Continue with Google" did nothing on Lok's phone
+
+**Trigger:** Lok reported tapping "Continue with Google" produced no response at all —
+no error, no redirect, nothing.
+
+**Investigation:** Confirmed via the browser tools that the Supabase/Google Cloud
+config itself is correct — captured a real, valid Google OAuth authorize URL with the
+right client ID and the right Supabase callback address, so this was never a dashboard
+misconfiguration. Root cause: `@supabase/supabase-js` (v2.110) defaults to the 'pkce'
+OAuth flow, which runs an async `crypto.subtle.digest` hash (for the PKCE code
+challenge) between the tap and the actual redirect to Google. Strict mobile browsers
+(iOS Safari, in-app WebViews) can silently drop a redirect that happens even slightly
+after the tap — it no longer reads as directly tied to the touch, and there's no error
+thrown, just nothing. This is a known, fairly common class of bug with Supabase OAuth
+on mobile.
+
+**Fix:** `src/lib/supabase.ts` — added `{ auth: { flowType: 'implicit' } }` to
+`createClient`. Implicit flow skips the PKCE crypto step entirely, so the redirect
+fires immediately on tap with no async gap. Facebook sign-in uses the same code path
+and gets the same fix. Doesn't affect email confirmation/password-reset links, which
+navigate via a real link click in the email, not a JS-triggered redirect.
+
+**Verified:** `npx next build` clean. Could NOT reproduce the actual failure locally —
+every test environment available here (the browser tools' Chromium) tolerated the PKCE
+async gap fine and redirected to Google successfully both before and after the fix, so
+I can't prove this fixes it, only that it removes the most likely cause for exactly the
+symptom described (silent no-op, no error) on stricter mobile browsers. Needs Lok to
+confirm on his actual phone.
+
 ## [2026-08-03] — Real online/offline presence tracking (chat)
 
 **Trigger:** Lok noticed brendanlok shown as "● Online" in a chat conversation on his

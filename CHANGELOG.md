@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-08-04] — Fix: Google/Facebook sign-in button unresponsive on mobile
+
+### 🔴 Critical
+- ✅ "Continue with Google" (and Facebook) could silently do nothing on strict mobile
+  browsers — switched the auth client to the 'implicit' OAuth flow to remove an async
+  delay between tap and redirect that some phones treat as no longer user-initiated.
+  Needs real-device confirmation.
+
+---
+
 ## [2026-08-03] — Fix + Feature: real online/offline presence in chat
 
 ### 🟡 Medium

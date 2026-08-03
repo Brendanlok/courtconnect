@@ -1,8 +1,15 @@
 import { createClient, type User as SupaUser } from '@supabase/supabase-js';
 
+// flowType: 'implicit' — the default 'pkce' flow does an async crypto.subtle
+// hash between the button tap and the redirect to Google/Facebook. Strict
+// mobile browsers (iOS Safari, in-app WebViews) can silently drop a redirect
+// that happens even slightly after the tap, since it no longer reads as
+// directly tied to the touch — no error, the button just does nothing.
+// Implicit flow redirects immediately, no crypto step in between.
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { auth: { flowType: 'implicit' } }
 );
 
 // ── Firebase-Auth compat shim ──────────────────────────────────────────────
