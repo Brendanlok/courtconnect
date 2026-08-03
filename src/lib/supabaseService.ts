@@ -607,7 +607,7 @@ function clubObjToRow(c: Club): Record<string, unknown> {
   return {
     id: c.id, is_dummy: c.isDummy, name: c.name, short_name: c.shortName, description: c.description, purpose: c.purpose,
     state: c.state, area: c.area, logo_initials: c.logoInitials, color: c.color, max_members: c.maxMembers, min_mmr: c.minMMR,
-    is_private: c.isPrivate, admin_id: c.adminId, moderator_ids: c.moderatorIds ?? [], member_ids: c.memberIds, pending_ids: c.pendingIds,
+    is_private: c.isPrivate, admin_id: c.adminId, moderator_ids: c.moderatorIds, member_ids: c.memberIds, pending_ids: c.pendingIds,
     avg_mmr: c.avgMMR, top_players: c.topPlayers, tags: c.tags, founded_year: c.foundedYear, announcement: c.announcement,
     is_pro: c.isPro,
   };
