@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-04] — Google sign-in fully resolved: real root cause was a stale Client Secret
+
+**Follow-up to the entry directly below.** The `flowType: 'implicit'` code fix (and the
+Supabase redirect-URL trailing-slash fix that came after it) were both real, worthwhile
+fixes, but neither was the actual blocker — they just got Lok further into the flow
+each time, surfacing the next failure. Live-debugged together over several rounds
+(Lok clicking through on his real phone/PC/incognito + screenshots, me tracing what
+each result meant): once he could see the actual redirect URL after landing back on
+the login screen, it read `error=server_error&error_code=unexpected_failure
+&error_description=Unable+to+exchange+external+code...` — Supabase's GoTrue server
+signature for "the Client Secret on file for the Google provider doesn't match Google's
+current one." Lok re-copied the Client Secret from Google Cloud Console → Credentials
+into Supabase Dashboard → Authentication → Providers → Google, and it started working
+immediately. No app code involved in the actual fix — pure dashboard config drift,
+probably from whenever that secret was first set up.
+
+**Confirmed live by Lok:** Google sign-in works on both phone and PC now.
+
 ## [2026-08-04] — Fix: "Continue with Google" did nothing on Lok's phone
 
 **Trigger:** Lok reported tapping "Continue with Google" produced no response at all —
@@ -49,10 +67,8 @@ shows the green dot + "● Online" only when the participant's real uid is in th
 and "Offline" (no dot) otherwise — real per-user state instead of a hardcoded string.
 
 **Verified:** `npx next build` clean, local dev server loads with no console errors.
-Could not click-test live — no demo/guest login exists in this app and I don't create
-accounts or enter passwords, same recurring limitation as every prior session. Two real
-accounts (or two browser sessions of the same test account) would be needed to see the
-dot flip live — worth Lok trying with his phone + a second logged-in tab next check-in.
+Could not click-test live at the time — no demo/guest login exists in this app and I
+don't create accounts or enter passwords. **Confirmed working live by Lok on 2026-08-04.**
 
 ## [2026-08-03] — Club Pro Phase 1: manual flag, higher member cap, club settings, analytics
 

@@ -5,23 +5,28 @@
 
 ---
 
-## [2026-08-04] — Fix: Google/Facebook sign-in button unresponsive on mobile
+## [2026-08-04] — Fix: Google sign-in completely broken (three stacked issues)
 
 ### 🔴 Critical
-- ✅ "Continue with Google" (and Facebook) could silently do nothing on strict mobile
-  browsers — switched the auth client to the 'implicit' OAuth flow to remove an async
-  delay between tap and redirect that some phones treat as no longer user-initiated.
-  Needs real-device confirmation.
+- ✅ Confirmed working end-to-end by Lok on phone and PC. Three separate issues stacked
+  on top of each other, found one at a time as each fix revealed the next:
+  1. Mobile browsers could silently drop the tap-to-redirect (fixed: switched to
+     'implicit' OAuth flow, no async delay before redirect).
+  2. Supabase's allowed return-address list was missing the trailing slash the app
+     always redirects to (fixed: added the correct address in Supabase's dashboard).
+  3. The actual blocker: Supabase's stored Google Client Secret didn't match Google's
+     current one, so the final login handshake failed server-side every time (fixed:
+     re-synced the secret between Google Cloud Console and Supabase's dashboard).
 
 ---
 
 ## [2026-08-03] — Fix + Feature: real online/offline presence in chat
 
 ### 🟡 Medium
-- ✅ Fixed: chat showed every contact as "Online" unconditionally — it was a hardcoded
-  label, not real data.
-- ✅ Built real presence tracking via Supabase Realtime — chat now shows accurate
-  online/offline status per contact, no schema changes needed.
+- ✅ Confirmed working live by Lok. Fixed: chat showed every contact as "Online"
+  unconditionally — it was a hardcoded label, not real data. Built real presence
+  tracking via Supabase Realtime — chat now shows accurate online/offline status per
+  contact, no schema changes needed.
 
 ## [2026-08-03] — Feature: Club Pro Phase 1 (manual flag, no billing yet)
 
