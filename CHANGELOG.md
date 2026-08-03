@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-08-03] — Feature: Club Pro Phase 1 (manual flag, no billing yet)
+
+### 🟡 Medium
+- ✅ New Club Settings screen (name/description/colour/member cap), reachable from a
+  club's Admin tab — first way to edit a club after creation besides the announcement.
+- ✅ Clubs flagged `isPro` (manually granted, no in-app toggle yet) get a raised member
+  cap (500 vs. 200 free) and a new Analytics tab (avg MMR, member count, most active
+  members). `supabase/migrations/0018_club_pro.sql` needs Lok to run in the Supabase SQL
+  editor before the flag can be set on any club.
+
 ## [2026-08-03] — Feature: real cross-account Follow
 
 ### 🟠 High

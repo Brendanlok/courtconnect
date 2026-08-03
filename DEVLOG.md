@@ -1,5 +1,37 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-03] — Club Pro Phase 1: manual flag, higher member cap, club settings, analytics
+
+**Trigger:** Lok asked to sketch monetization options; picked "Club Pro" (a per-club paid
+tier) as the cheapest one to test demand for, and asked to build Phase 1 — no real
+billing yet, just the feature set behind a manually-flipped flag so a couple of test
+clubs can try it before any payment integration gets built.
+
+**Built:**
+- `supabase/migrations/0018_club_pro.sql` (not yet applied — same pattern as every other
+  pending migration in this project, Lok runs it in the Supabase SQL editor): adds
+  `is_pro boolean not null default false` to `clubs`. No app-facing way to set this yet
+  by design — Lok flips it by hand per club until real billing exists.
+- `src/components/ClubSettingsModal.tsx` — brand new. Before this, the only way to edit
+  a club after creation was the Admin tab's announcement box; name/description/colour/
+  member-cap were fixed forever at creation. Now the owner can edit all of those from a
+  "Club Settings" button in the Admin tab. Free clubs cap at 200 members (unchanged from
+  today's creation-time max); Pro clubs can raise the cap to 500.
+- New "Analytics" tab in `ClubDetailClient.tsx`, visible only to the owner/mods of a Pro
+  club: average MMR, member count vs. cap, and a "Most Active Members" list. Reuses the
+  `ladder` data already computed for the existing Ladder tab (match counts per member) —
+  no new data fetching added.
+- Small "Pro" badge next to the club name when `isPro` is true.
+- `Club` type (`src/types/index.ts`) and the Supabase row mapping in
+  `supabaseService.ts` both gained the `isPro`/`is_pro` field.
+
+**Verified:** `npx next build` clean. Could not click-test live — no demo/guest login
+exists in this app, same recurring limitation as every prior session (see entries below).
+Traced the settings-save path against the existing `updateClub`/`updateClubDoc` pattern
+already used and proven live by the announcement-edit feature (partial-patch updates rely
+on `JSON.stringify` dropping `undefined` keys, which the working announcement save
+already depends on) — same mechanism, not new risk.
+
 ## [2026-08-03] — Auto-dev: built the real Follow feature (P1 backlog item)
 
 **Trigger:** Notion To-Do P1 item — "Follow feature is local-only, doesn't work between
