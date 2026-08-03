@@ -197,6 +197,7 @@ export interface Club {
   foundedYear: number;
   announcement?: string;
   clubMessages?: ClubMessage[];
+  isPro?: boolean;          // Club Pro tier — manually granted for now, raises maxMembers ceiling + unlocks Analytics tab
 }
 
 export interface Notification {

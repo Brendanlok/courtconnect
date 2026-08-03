@@ -581,7 +581,7 @@ function clubRowToObj(row: Record<string, unknown>): Club {
     isPrivate: row.is_private as boolean, adminId: row.admin_id as string, moderatorIds: (row.moderator_ids as string[]) ?? [],
     memberIds: (row.member_ids as string[]) ?? [], pendingIds: (row.pending_ids as string[]) ?? [], avgMMR: row.avg_mmr as number,
     topPlayers: (row.top_players as string[]) ?? [], tags: (row.tags as string[]) ?? [], foundedYear: row.founded_year as number,
-    announcement: row.announcement as string | undefined,
+    announcement: row.announcement as string | undefined, isPro: (row.is_pro as boolean | undefined) ?? false,
   };
 }
 
@@ -591,6 +591,7 @@ function clubObjToRow(c: Club): Record<string, unknown> {
     state: c.state, area: c.area, logo_initials: c.logoInitials, color: c.color, max_members: c.maxMembers, min_mmr: c.minMMR,
     is_private: c.isPrivate, admin_id: c.adminId, moderator_ids: c.moderatorIds ?? [], member_ids: c.memberIds, pending_ids: c.pendingIds,
     avg_mmr: c.avgMMR, top_players: c.topPlayers, tags: c.tags, founded_year: c.foundedYear, announcement: c.announcement,
+    is_pro: c.isPro,
   };
 }
 

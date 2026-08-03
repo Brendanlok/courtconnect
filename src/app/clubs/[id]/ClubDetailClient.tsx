@@ -6,6 +6,7 @@ import { PLAYERS, ME } from '@/lib/data';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
+import { ClubSettingsModal } from '@/components/ClubSettingsModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref } from '@/lib/utils';
 import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, subscribeMatchesForClubMembers, type StoredMatch } from '@/lib/supabaseService';
@@ -15,7 +16,7 @@ import { auth } from '@/lib/supabase';
 import {
   Shield, Users, Star, Lock, Globe, Crown, MessageCircle,
   Send, ArrowLeft, Megaphone, UserPlus, Trash2, ChevronRight,
-  Search, Check, X, AlertTriangle, Trophy,
+  Search, Check, X, AlertTriangle, Trophy, Settings, BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { UserProfile, ClubMessage } from '@/types';
@@ -30,7 +31,7 @@ const PURPOSE_COLOR: Record<string, string> = {
   Youth:        'bg-amber-500/20 text-amber-400 border-amber-500/30',
 };
 
-type Tab = 'Overview' | 'Members' | 'Ladder' | 'Chat' | 'Admin';
+type Tab = 'Overview' | 'Members' | 'Ladder' | 'Chat' | 'Admin' | 'Analytics';
 
 export function ClubDetailClient({ clubId }: { clubId: string }) {
   const {
@@ -103,6 +104,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [realInviteName, setRealInviteName] = useState('');
   const [realInviteStatus, setRealInviteStatus] = useState<'idle' | 'loading' | 'not-found' | 'already-member' | 'sent'>('idle');
   const [disbandModal,  setDisbandModal] = useState(false);
+  const [settingsModal, setSettingsModal] = useState(false);
   const [disbandInput,  setDisbandInput] = useState('');
   const [leaveModal,    setLeaveModal]   = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -237,7 +239,9 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     p.displayName.toLowerCase().includes(inviteQuery.toLowerCase())
   );
 
-  const tabs: Tab[] = ['Overview', 'Members', 'Ladder', 'Chat', ...(canManage ? ['Admin' as Tab] : [])];
+  const tabs: Tab[] = ['Overview', 'Members', 'Ladder', 'Chat',
+    ...(club?.isPro && canManage ? ['Analytics' as Tab] : []),
+    ...(canManage ? ['Admin' as Tab] : [])];
 
   const purposeClass = PURPOSE_COLOR[club.purpose] ?? 'bg-slate-700 text-slate-300 border-slate-600';
 
@@ -316,6 +320,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${purposeClass}`}>{club.purpose}</span>
+              {club.isPro && <span className="text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1"><Crown size={9}/>Pro</span>}
               {isMember && <span className="text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">My Club</span>}
               {isOwner  && <span className="text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1"><Crown size={9}/>Owner</span>}
               {isMod    && <span className="text-[11px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full flex items-center gap-1"><Shield size={9}/>Mod</span>}
@@ -388,6 +393,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             {t === 'Ladder' && <Trophy size={11} className="inline mr-1"/>}
             {t === 'Chat' && <MessageCircle size={11} className="inline mr-1"/>}
             {t === 'Admin' && <Shield size={11} className="inline mr-1"/>}
+            {t === 'Analytics' && <BarChart3 size={11} className="inline mr-1"/>}
             {t}
           </button>
         ))}
@@ -745,6 +751,14 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             )}
           </div>
 
+          {/* Club Settings (owner only) */}
+          {isOwner && (
+            <button onClick={() => setSettingsModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 border border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-sm font-medium transition-colors">
+              <Settings size={14}/> Club Settings
+            </button>
+          )}
+
           {/* Disband (owner only) */}
           {isOwner && (
             <button onClick={() => setDisbandModal(true)}
@@ -753,6 +767,55 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             </button>
           )}
         </div>
+      )}
+
+      {/* ── Analytics (Pro only) ── */}
+      {tab === 'Analytics' && club.isPro && canManage && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <p className="text-[11px] text-slate-500 font-semibold">Average MMR</p>
+              <p className="text-2xl font-bold mt-1">{Math.round(club.avgMMR)}</p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <p className="text-[11px] text-slate-500 font-semibold">Members</p>
+              <p className="text-2xl font-bold mt-1">{club.memberIds.length}<span className="text-sm text-slate-600">/{club.maxMembers}</span></p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800">
+              <p className="text-sm font-semibold">Most Active Members</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">By confirmed singles matches played against fellow members</p>
+            </div>
+            {ladder.length === 0 ? (
+              <p className="text-sm text-slate-600 text-center py-6">No matches between members yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-800/60">
+                {ladder.flatMap(entry => {
+                  const p = resolveProfile(entry.uid);
+                  return p ? [{ entry, p }] : [];
+                }).slice(0, 5).map(({ entry, p }, i) => (
+                  <Link key={entry.uid} href={profileHref(p)}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">
+                    <span className="text-xs text-slate-600 w-5 shrink-0">#{i + 1}</span>
+                    <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{p.displayName}</p>
+                    </div>
+                    <p className="text-sm font-bold text-emerald-400 shrink-0">{entry.played} played</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {settingsModal && (
+        <ClubSettingsModal club={club}
+          onSave={patch => updateClub(clubId, patch)}
+          onClose={() => setSettingsModal(false)}/>
       )}
     </div>
   );
