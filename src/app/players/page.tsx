@@ -756,17 +756,31 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
     if (!uid) { setError('Could not post — try again.'); return; }
     setPosting(true);
     setError('');
+    const entry = {
+      uid, displayName: user.displayName, username: user.username,
+      day, timeLabel, venue: venue.trim() || undefined, note: note.trim() || undefined,
+    };
     try {
-      await createAvailabilityEntry({
-        uid, displayName: user.displayName, username: user.username,
-        day, timeLabel, venue: venue.trim() || undefined, note: note.trim() || undefined,
-      });
+      await createAvailabilityEntry(entry);
+      // Own post doesn't reach us back through the subscription (no realtime
+      // publication grant on this table yet — see DEVLOG), so add it to local
+      // state directly rather than waiting for a broadcast that never comes.
+      setEntries(prev => [...prev, { ...entry, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
       setFormOpen(false);
       setDay(todayISO()); setTimeLabel('Evening'); setVenue(''); setNote('');
     } catch {
       setError('Could not post — try again.');
     } finally {
       setPosting(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    setEntries(prev => prev.filter(e => e.id !== id)); // optimistic, same reason as post above
+    try {
+      await deleteAvailabilityEntry(id);
+    } catch {
+      setError('Could not remove — try again.');
     }
   };
 
@@ -831,7 +845,7 @@ function AvailabilityTab({ user }: { user: UserProfile }) {
                   </p>
                 </div>
                 {e.uid === auth.currentUser?.uid && (
-                  <button onClick={() => deleteAvailabilityEntry(e.id).catch(() => setError('Could not remove — try again.'))} aria-label="Remove"
+                  <button onClick={() => remove(e.id)} aria-label="Remove"
                     className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
                 )}
               </div>
