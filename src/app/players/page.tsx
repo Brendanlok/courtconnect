@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -730,8 +730,8 @@ function dayLabel(iso: string): string {
   return d.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
-function todayISO(): string { return new Date().toISOString().slice(0, 10); }
-function addDaysISO(days: number): string { return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10); }
+function todayISO(): string { return localDateISO(); }
+function addDaysISO(days: number): string { return localDateISO(days); }
 
 function AvailabilityTab({ user }: { user: UserProfile }) {
   const [entries,  setEntries]  = useState<AvailabilityEntry[]>([]);

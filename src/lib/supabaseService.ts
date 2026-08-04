@@ -9,7 +9,7 @@
  * call sites needed a one-line import swap, not a rewrite.
  */
 import { supabase } from '@/lib/supabase';
-import { getTier, maxClubsForTier, BASE_PATH } from '@/lib/utils';
+import { getTier, maxClubsForTier, BASE_PATH, localDateISO } from '@/lib/utils';
 import { resubmitRecipient } from '@/lib/matchDispute';
 import type { Match, UserProfile, Club, ClubMessage, MalaysiaState, LiveMatchStats, Tier, AvailabilityEntry, Venue, Tournament, SeasonHistoryEntry } from '@/types';
 
@@ -1030,7 +1030,7 @@ function availabilityRowToEntry(row: Record<string, unknown>): AvailabilityEntry
 // result set, no cleanup job needed.
 export function subscribeAvailability(cb: (entries: AvailabilityEntry[]) => void): () => void {
   const load = async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateISO();
     const { data } = await supabase.from('availability').select('*').gte('day', today).order('day', { ascending: true });
     cb((data ?? []).map(availabilityRowToEntry));
   };

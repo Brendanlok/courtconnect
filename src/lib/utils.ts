@@ -81,6 +81,17 @@ export function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+// Local calendar date as YYYY-MM-DD, offset by whole days. NOT
+// `new Date().toISOString().slice(0,10)` — that converts to UTC first, which
+// silently shows/files "today" as the wrong calendar day for roughly 8 hours
+// a day in Malaysia (UTC+8), right around when someone posts availability
+// for tonight. Bug found + fixed 2026-08-05, see DEVLOG.
+export function localDateISO(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   if (diff < 0) {
