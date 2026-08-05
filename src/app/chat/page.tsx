@@ -84,6 +84,14 @@ export default function Chat() {
     if (real) { setPendingRealConv(null); setActiveId(real.id); }
   }, [convs, pendingRealConv]);
 
+  // convs loads async from Supabase after mount, so the convs[0]?.id ?? null
+  // initializer above usually locks in null before any conversation exists —
+  // default-select the first one once it arrives, unless something (the uid/
+  // realUid query-param flow) already picked one.
+  useEffect(() => {
+    if (activeId === null && convs.length > 0) setActiveId(convs[0].id);
+  }, [convs, activeId]);
+
   const active = (pendingRealConv?.id === activeId ? pendingRealConv : null) ?? convs.find(c => c.id === activeId) ?? null;
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [active?.messages]);
