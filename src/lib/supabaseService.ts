@@ -628,8 +628,17 @@ export function subscribeClubs(cb: (clubs: Club[]) => void): () => void {
 // Seeds the static demo clubs into Supabase once, so real accounts can
 // actually join them. club_messages is a separate table now — any seed
 // clubMessages go there, not on the clubs row.
+// ponytail: clubs.admin_id is `uuid not null references users(uid)` — seed
+// clubs authored for local/single-player mode use dummy admin ids ('p1' etc,
+// see src/lib/data.ts) that were never real Supabase users, so the insert
+// below can never succeed for them (confirmed: every load has been 400ing
+// on this since the 2026-07-12 migration, clubs never actually created).
+// Skip those rather than retry a write that's permanently doomed. Real fix
+// needs a product decision (nullable admin_id + RLS update, or a real system
+// user) — flagged to Lok, not done here since it's a schema change.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function ensureSeedClubsExist(seedClubs: Club[]): Promise<void> {
-  await Promise.all(seedClubs.map(async c => {
+  await Promise.all(seedClubs.filter(c => UUID_RE.test(c.adminId)).map(async c => {
     const { data: existing } = await supabase.from('clubs').select('id, member_ids, pending_ids, moderator_ids').eq('id', c.id).maybeSingle();
     if (!existing) {
       // Seed data (src/lib/data.ts) was authored for pure local/single-player
