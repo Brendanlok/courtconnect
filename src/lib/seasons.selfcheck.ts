@@ -40,12 +40,12 @@ console.log('PASS 1ms before the boundary is still the prior season');
 }
 console.log('PASS seasonStartDate/seasonEndDate bracket exactly the matching season number');
 
-// 6. Soft reset regresses halfway toward the 1200 anchor, both above and below it.
+// 6. Soft reset regresses halfway toward the 1000 anchor, both above and below it.
 {
-  assert.strictEqual(softResetMmr(2000), 1600); // 1200 + (2000-1200)*0.5
-  assert.strictEqual(softResetMmr(800),  1000); // 1200 + (800-1200)*0.5
-  assert.strictEqual(softResetMmr(1200), 1200); // already at anchor, no change
+  assert.strictEqual(softResetMmr(2000), 1500); // 1000 + (2000-1000)*0.5
+  assert.strictEqual(softResetMmr(800),  900);  // 1000 + (800-1000)*0.5
+  assert.strictEqual(softResetMmr(1000), 1000); // already at anchor, no change
 }
-console.log('PASS soft reset regresses halfway toward the 1200 anchor in both directions');
+console.log('PASS soft reset regresses halfway toward the 1000 anchor in both directions');
 
 console.log('ALL PASS seasons');

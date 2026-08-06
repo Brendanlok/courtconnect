@@ -7,10 +7,10 @@
 export const SEASON_LENGTH_DAYS = 60; // ~2 months, standard ranked-season cadence
 export const SEASON_EPOCH = '2026-07-28T00:00:00Z'; // season 1 start
 
-// New accounts start at 1200 (AuthContext signup default) — soft reset
+// New accounts start at 1000 (AuthContext signup default) — soft reset
 // regresses toward that same anchor so a fresh season isn't a harsher climb
 // for a high-mmr veteran than it was for them as a brand-new player.
-const SOFT_RESET_ANCHOR = 1200;
+const SOFT_RESET_ANCHOR = 1000;
 const SOFT_RESET_FACTOR = 0.5; // halfway back toward the anchor each season
 
 export function seasonNumberForDate(d: Date): number {
