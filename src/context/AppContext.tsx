@@ -1260,12 +1260,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Combine local/demo state with the real, Supabase-synced cross-account
   // state. myRealUid (declared above, next to the club logic) is '' when
   // signed out, so isRealUid-keyed lookups just fall through to nothing
-  // rather than mismatching against a stale uid.
-  const challenges: Challenge[] = useMemo(() => [
-    ...localChallenges,
-    ...realIncomingChallenges.map(c => toLocalChallenge(c, myRealUid)),
-    ...realOutgoingChallenges.map(c => toLocalChallenge(c, myRealUid)),
-  ], [localChallenges, realIncomingChallenges, realOutgoingChallenges, myRealUid]);
+  // rather than mismatching against a stale uid. Deduped by id: the
+  // optimistic echo in sendChallenge and the incoming/outgoing subscriptions
+  // update independently, so a challenge can briefly exist in two of these
+  // lists at once — without this, ChallengesSection renders it twice
+  // (reported as a duplicate "Declined" row on Home).
+  const challenges: Challenge[] = useMemo(() => {
+    const merged = [
+      ...localChallenges,
+      ...realIncomingChallenges.map(c => toLocalChallenge(c, myRealUid)),
+      ...realOutgoingChallenges.map(c => toLocalChallenge(c, myRealUid)),
+    ];
+    return [...new Map(merged.map(c => [c.id, c])).values()];
+  }, [localChallenges, realIncomingChallenges, realOutgoingChallenges, myRealUid]);
   const conversations: Conversation[] = useMemo(() => [
     ...localConversations,
     ...realConversationDocs.map(c => toLocalConversation(c, myRealUid, realLastRead)),
