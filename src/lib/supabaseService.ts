@@ -45,6 +45,8 @@ function userRowToProfile(row: Record<string, unknown>): Partial<UserProfile> {
     tier: row.tier as UserProfile['tier'],
     seasonNumber: row.season_number as number | undefined,
     placementMatchesPlayed: row.placement_matches_played as number | undefined,
+    recalibrationMatchesPlayed: row.recalibration_matches_played as number | null | undefined,
+    lastRecalibrationAt: row.last_recalibration_at as string | undefined,
     globalRank: row.global_rank as number,
     state: row.state as MalaysiaState,
     area: row.area as string,
@@ -80,6 +82,7 @@ function profilePatchToRow(patch: Partial<UserProfile>): Record<string, unknown>
   const map: Record<string, string> = {
     isDummy: 'is_dummy', displayName: 'display_name', mmr: 'mmr', tier: 'tier', seasonNumber: 'season_number',
     placementMatchesPlayed: 'placement_matches_played', globalRank: 'global_rank', state: 'state', area: 'area',
+    recalibrationMatchesPlayed: 'recalibration_matches_played', lastRecalibrationAt: 'last_recalibration_at',
     bio: 'bio', available: 'available', openToPlay: 'open_to_play', gender: 'gender', postcode: 'postcode',
     disciplineMMR: 'discipline_mmr', lookingForPartner: 'looking_for_partner',
     joinedAt: 'joined_at', birthday: 'birthday', country: 'country', countryCode: 'country_code', region: 'region',

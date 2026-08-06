@@ -2,25 +2,18 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { postcodeToLocation, COUNTRIES, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS } from '@/lib/utils';
-import type { CountryCode, Tier } from '@/types';
+import type { CountryCode } from '@/types';
 import { ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-const SKILL_OPTIONS: { tier: Tier; label: string; desc: string; mmr: number }[] = [
-  { tier: 'Beginner',  label: 'Just Starting',     desc: 'I\'m new to badminton or still learning the basics.',       mmr: 600  },
-  { tier: 'Bronze',    label: 'Casual Player',      desc: 'I play occasionally and know the fundamentals.',            mmr: 900  },
-  { tier: 'Silver',    label: 'Regular Club Player', desc: 'I play in club sessions and occasional competitions.',     mmr: 1200 },
-  { tier: 'Gold',      label: 'Competitive',        desc: 'I compete regularly and win most local matches.',           mmr: 1500 },
-  { tier: 'Platinum',  label: 'Advanced',           desc: 'I have tournament experience and a strong technical game.', mmr: 1800 },
-  { tier: 'Diamond',   label: 'Elite',              desc: 'State/national level player.',                             mmr: 2100 },
-];
-
-const STEPS = ['Welcome', 'Skill Level', 'Location', 'Availability', 'Done'] as const;
+// Skill-level picker removed 2026-08-06 — every account now starts flat at
+// 1000 MMR (set at signup, see AuthContext.createUserRow) and real rating is
+// established via placement/recalibration matches instead of self-reported level.
+const STEPS = ['Welcome', 'Location', 'Availability', 'Done'] as const;
 
 export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
   const { user, updateUser } = useApp();
   const [step,        setStep]        = useState(0);
-  const [skillIdx,    setSkillIdx]    = useState(2); // default Silver
   const [countryCode, setCountryCode] = useState<CountryCode>('MY');
   const [postcode,    setPostcode]    = useState('');
   const [region,      setRegion]      = useState('');
@@ -36,11 +29,8 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
   const next = () => setStep(s => s + 1);
 
   const finish = () => {
-    const skill = SKILL_OPTIONS[skillIdx];
     const isMY  = countryCode === 'MY';
     updateUser({
-      tier:      skill.tier,
-      mmr:       skill.mmr,
       countryCode,
       country:   countryData.name,
       postcode:  isMY ? postcode : undefined,
@@ -95,33 +85,8 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {/* ── Step 1: Skill Level ── */}
+          {/* ── Step 1: Location ── */}
           {step === 1 && (
-            <div className="space-y-3">
-              <div>
-                <h2 className="text-lg font-bold">What&apos;s your skill level?</h2>
-                <p className="text-slate-400 text-sm mt-0.5">We&apos;ll set your starting MMR. You can always adjust it later.</p>
-              </div>
-              <div className="space-y-2 max-h-72 overflow-y-auto">
-                {SKILL_OPTIONS.map((opt, i) => (
-                  <button key={opt.tier} type="button" onClick={() => setSkillIdx(i)}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition-colors
-                      ${skillIdx === i
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                        : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'}`}>
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-sm">{opt.label}</p>
-                      <p className="text-xs text-slate-500">{opt.mmr} MMR</p>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 2: Location ── */}
-          {step === 2 && (
             <div className="space-y-3">
               <div>
                 <h2 className="text-lg font-bold">Where are you based?</h2>
@@ -167,8 +132,8 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {/* ── Step 3: Availability ── */}
-          {step === 3 && (
+          {/* ── Step 2: Availability ── */}
+          {step === 2 && (
             <div className="space-y-3">
               <div>
                 <h2 className="text-lg font-bold">When are you usually free?</h2>
@@ -203,14 +168,15 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
             </div>
           )}
 
-          {/* ── Step 4: Done ── */}
-          {step === 4 && (
+          {/* ── Step 3: Done ── */}
+          {step === 3 && (
             <div className="text-center space-y-4 py-2">
               <div className="text-5xl">✅</div>
               <div>
                 <h2 className="text-xl font-bold">You&apos;re all set!</h2>
                 <p className="text-slate-400 text-sm mt-2">
-                  Starting at <span className="text-amber-400 font-bold">{SKILL_OPTIONS[skillIdx].mmr} MMR</span> ({SKILL_OPTIONS[skillIdx].tier}).
+                  Starting at <span className="text-amber-400 font-bold">1000 MMR</span>. Your first 10 ranked
+                  matches count as placement — bigger MMR swings while your real rating gets established.
                   Head to the Players tab to find opponents, or browse upcoming tournaments.
                 </p>
               </div>

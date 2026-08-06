@@ -33,6 +33,16 @@ export default function Home() {
     : user.mmr;
   const progress   = tierProgress(avgMMR, user.tier);
 
+  // Recalibration: unlocked once placement (first 10 matches) is done and at
+  // least 10 total matches are logged, gated to once every 3 months.
+  const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
+  const recalActive   = user.recalibrationMatchesPlayed != null && user.recalibrationMatchesPlayed < 5;
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const recalEligible = placementDone && !recalActive
+    && user.stats.totalMatches >= 10
+    && (!user.lastRecalibrationAt || new Date(user.lastRecalibrationAt) <= threeMonthsAgo);
+
   let streak = 0;
   for (const m of confirmed) {
     if (m.winnerId === user.uid) streak++;
@@ -90,7 +100,7 @@ export default function Home() {
                   {user.displayName.split(' ')[0]} <span className="wave inline-block">👋</span>
                 </h1>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <TierBadge tier={user.tier}/>
+                  <TierBadge tier={user.tier} placementMatchesPlayed={user.placementMatchesPlayed} recalibrationMatchesPlayed={user.recalibrationMatchesPlayed}/>
                   <span className="text-xs text-slate-500">·</span>
                   <span className="text-xs text-slate-400 flex items-center gap-1">
                     <MapPin size={11} className="text-emerald-400"/>{user.area}, {user.state}
@@ -132,6 +142,19 @@ export default function Home() {
                     style={{ width:`${progress}%` }}/>
                 </div>
               </div>
+            )}
+
+            {/* Recalibration offer */}
+            {recalEligible && (
+              <button
+                onClick={() => updateUser({ recalibrationMatchesPlayed: 0 })}
+                className="mt-3 w-full flex items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 rounded-xl px-3 py-2.5 text-left transition-colors">
+                <div>
+                  <p className="text-xs font-bold text-amber-300">⚡ Recalibrate your MMR</p>
+                  <p className="text-[11px] text-slate-400">Your next 5 ranked matches count for bigger swings, resetting your rating to match your current level.</p>
+                </div>
+                <ChevronRight size={16} className="text-amber-400 shrink-0"/>
+              </button>
             )}
 
             {/* Status toggles — inline */}

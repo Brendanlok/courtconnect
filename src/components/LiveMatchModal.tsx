@@ -15,7 +15,7 @@ import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { VenueInput } from '@/components/VenueInput';
 import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
-import { calcMMRChange } from '@/lib/utils';
+import { calcMMRChange, marginMultiplier } from '@/lib/utils';
 import { antiCheatCheck, liveMatchIntegrityCheck, liveBonusEligible, LIVE_BONUS_MULTIPLIER } from '@/lib/antiCheat';
 
 type RecordMode = 'manual' | 'video';
@@ -1022,7 +1022,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const myTeamMMR = isDoubles && partner ? Math.round((user.mmr + mmrOf(partner.uid)) / 2) : user.mmr;
     const oppTeamMMR = isDoubles && opp && opp2 ? Math.round((mmrOf(opp.uid) + mmrOf(opp2.uid)) / 2) : mmrOf(opp?.uid);
     const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
-    const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, placementDone ? 32 : 48);
+    const recalActive   = placementDone && (user.recalibrationMatchesPlayed ?? 5) < 5;
+    const kFactor = (!placementDone || recalActive) ? 48 : 32;
+    const mMult = marginMultiplier(gameScores);
+    const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, kFactor, mMult);
     const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
     const mmrChange = Math.round((iWon ? gain : loss) * bonus);
 
@@ -1051,7 +1054,14 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
-    if (!placementDone) updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
+    if (!placementDone) {
+      updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
+    } else if (recalActive) {
+      const played = (user.recalibrationMatchesPlayed ?? 0) + 1;
+      updateUser(played >= 5
+        ? { recalibrationMatchesPlayed: null, lastRecalibrationAt: new Date().toISOString() }
+        : { recalibrationMatchesPlayed: played });
+    }
     clearPausedMatch();
     const loggedPlannedId = plannedMatch?.id ?? resumedPlannedId;
     if (loggedPlannedId) onMatchLogged?.(loggedPlannedId);

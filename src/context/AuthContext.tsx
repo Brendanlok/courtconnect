@@ -46,8 +46,8 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     display_name: extra.displayName,
     username: extra.username,
     photo_url: user.photoURL,
-    mmr: 1200,
-    tier: 'Beginner',
+    mmr: 1000, // flat starting MMR for every account — no skill-level picker, see OnboardingModal
+    tier: 'Silver', // getTier(1000)
     country: extra.country,
     region: extra.region,
     wins: 0, losses: 0, total_matches: 0,

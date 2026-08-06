@@ -19,6 +19,8 @@ export interface UserProfile {
   tier: Tier;
   seasonNumber?: number; // which ranked season this mmr belongs to — undefined = season 1, never rolled over
   placementMatchesPlayed?: number; // undefined or <10 = still in calibration
+  recalibrationMatchesPlayed?: number | null; // 0-4 = mid recalibration window; null/undefined = not recalibrating
+  lastRecalibrationAt?: string; // ISO date of last completed recalibration — 3-month cooldown gate
   globalRank: number;
   state: MalaysiaState;
   area: string;              // e.g. "Petaling Jaya"

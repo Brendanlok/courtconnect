@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { previewMMRChange, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -479,9 +479,12 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
 
   const isDoubles = DOUBLES.includes(type);
 
-  // Calibration: first 10 matches use 1.5× K
+  // Calibration: first 10 matches use 1.5× K. A recalibration window (5
+  // matches, unlockable after 10 total matches, 3-month cooldown between
+  // them — see the Home hero card) gets the same bump while it's active.
   const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
-  const kFactor = placementDone ? 32 : 48;
+  const recalActive   = placementDone && (user.recalibrationMatchesPlayed ?? 5) < 5;
+  const kFactor = (!placementDone || recalActive) ? 48 : 32;
 
   // MMR preview: for doubles average team MMR vs enemy team MMR
   const myTeamMMR   = isDoubles && teammate ? Math.round((user.mmr + teammate.mmr) / 2) : user.mmr;
@@ -520,8 +523,15 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   const submit = () => {
     if (!opp1 || !isDecisive) return;
     if (mode === 'ranked' && !mmrPreview) return;
-    const iWon    = myGameWins > oppGameWins;
-    const change  = mode === 'ranked' ? (iWon ? mmrPreview!.gain : mmrPreview!.loss) : undefined;
+    const iWon  = myGameWins > oppGameWins;
+    // Recompute for real off the final scores (mmrPreview above was shown
+    // before scores existed, so it couldn't factor in margin of victory).
+    const mMult = marginMultiplier(parsedGames);
+    const change = mode === 'ranked'
+      ? (iWon
+          ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor, mMult).gain
+          : calcMMRChange(oppTeamMMR, myTeamMMR, kFactor, mMult).loss)
+      : undefined;
 
     addMatch({
       id: `m-${Date.now()}`, type, status: 'Pending',
@@ -544,10 +554,17 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
       ...(plannedMatchId ? { plannedMatchId } : {}),
     } as Match);
 
-    // Placement calibration is a ranked-only concept — a casual match
-    // shouldn't burn one of the 10 placement games.
-    if (mode === 'ranked' && !placementDone) {
-      updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
+    // Placement/recalibration are ranked-only concepts — a casual match
+    // shouldn't burn one of the 5/10 calibration games.
+    if (mode === 'ranked') {
+      if (!placementDone) {
+        updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
+      } else if (recalActive) {
+        const played = (user.recalibrationMatchesPlayed ?? 0) + 1;
+        updateUser(played >= 5
+          ? { recalibrationMatchesPlayed: null, lastRecalibrationAt: new Date().toISOString() }
+          : { recalibrationMatchesPlayed: played });
+      }
     }
 
     if (plannedMatchId) onLogged?.(plannedMatchId);

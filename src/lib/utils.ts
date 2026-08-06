@@ -119,10 +119,23 @@ export function formatTime(iso: string): string {
 // on how big an upset it was. Do not call this with "my side" always first;
 // see previewMMRChange below for computing both hypothetical outcomes before
 // the result is known.
-export function calcMMRChange(winnerMMR: number, loserMMR: number, k = 32) {
+export function calcMMRChange(winnerMMR: number, loserMMR: number, k = 32, marginMult = 1) {
   const exp = 1 / (1 + Math.pow(10, (loserMMR - winnerMMR) / 400));
-  const delta = Math.round(k * (1 - exp));
+  const delta = Math.round(k * marginMult * (1 - exp));
   return { gain: delta, loss: -delta };
+}
+
+// Margin-of-victory multiplier from the actual game scores: a narrow win
+// (e.g. 21-19) sits near 1x, a dominant sweep (e.g. 21-5, 21-8) tops out at
+// 1.3x — nudging the base MMR-difference formula rather than overriding it.
+// Capped both ends so one lopsided game can't swing MMR more than a big
+// rating gap already does. Only known once scores are in, so previews shown
+// before scores are entered (see previewMMRChange) can't use this.
+export function marginMultiplier(games: { p1: number; p2: number }[]): number {
+  const p1Total = games.reduce((s, g) => s + g.p1, 0);
+  const p2Total = games.reduce((s, g) => s + g.p2, 0);
+  const diff = Math.abs(p1Total - p2Total);
+  return Math.min(1.3, Math.max(0.85, 0.85 + diff / 100));
 }
 
 // For a preview shown before the outcome is known (e.g. Log a Match's "Win:

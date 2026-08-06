@@ -1,6 +1,6 @@
 // Offline proof of MMR math. Run with: npx tsx src/lib/utils.selfcheck.ts
 import assert from 'node:assert';
-import { calcMMRChange, previewMMRChange } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -40,5 +40,21 @@ console.log('PASS a favorite upset loses close to the full K penalty');
   assert.ok(Math.abs(favorite.loss) >= 28, `favorite's upset loss should be near-max K, got ${favorite.loss}`);
 }
 console.log('PASS previewMMRChange gives each side its own correct gain/loss before the outcome is known');
+
+// 5. marginMultiplier: a razor-close match sits near the floor, a blowout
+//    sweep tops out at the cap — and it's clamped both ends so one lopsided
+//    game can't swing MMR further than a big rating gap already allows.
+{
+  const close = marginMultiplier([{ p1: 21, p2: 19 }, { p1: 19, p2: 21 }, { p1: 21, p2: 19 }]);
+  assert.ok(close >= 0.85 && close <= 1.0, `expected close match near floor, got ${close}`);
+
+  const blowout = marginMultiplier([{ p1: 30, p2: 0 }, { p1: 30, p2: 0 }]);
+  assert.strictEqual(blowout, 1.3, `expected blowout capped at 1.3x, got ${blowout}`);
+
+  const dominant = calcMMRChange(1500, 1500, 32, marginMultiplier([{ p1: 21, p2: 5 }, { p1: 21, p2: 8 }]));
+  const narrow   = calcMMRChange(1500, 1500, 32, marginMultiplier([{ p1: 22, p2: 20 }, { p1: 22, p2: 20 }]));
+  assert.ok(dominant.gain > narrow.gain, 'a dominant win should gain more MMR than a narrow one at equal MMR');
+}
+console.log('PASS marginMultiplier scales MMR by how lopsided the score was, capped both ends');
 
 console.log('ALL PASS utils (MMR)');
