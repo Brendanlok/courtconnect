@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X, Swords, MapPin, Calendar, MessageSquare } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
@@ -19,6 +19,7 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
   const [time,    setTime]    = useState('');
   const [message, setMessage] = useState('');
   const [sent,    setSent]    = useState(false);
+  const submitted = useRef(false); // ponytail: ref guard blocks a double-click firing submit() twice before the "sent" re-render lands
 
   const { ref: panelRef, dialogProps } = useModalA11y(!sent, onClose, `Challenge ${opponent.displayName}`);
 
@@ -27,6 +28,8 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!venue.trim() || !date || !time) return;
+    if (submitted.current) return;
+    submitted.current = true;
 
     const c: Challenge = {
       id: `ch_${Date.now()}`,
