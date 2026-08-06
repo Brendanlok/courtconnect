@@ -4,12 +4,12 @@ import { TIER_STYLE } from '@/lib/utils';
 interface Props {
   tier: Tier;
   className?: string;
-  placementMatchesPlayed?: number;
+  placementMatchesPlayed?: number | null;
   recalibrationMatchesPlayed?: number | null;
 }
 
 export function TierBadge({ tier, className = '', placementMatchesPlayed, recalibrationMatchesPlayed }: Props) {
-  const inPlacement    = placementMatchesPlayed !== undefined && placementMatchesPlayed < 10;
+  const inPlacement    = placementMatchesPlayed != null && placementMatchesPlayed < 10;
   const inRecalibration = !inPlacement && recalibrationMatchesPlayed != null && recalibrationMatchesPlayed < 5;
   if (inPlacement || inRecalibration) {
     return (

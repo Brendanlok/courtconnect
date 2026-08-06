@@ -44,7 +44,7 @@ function userRowToProfile(row: Record<string, unknown>): Partial<UserProfile> {
     mmr: row.mmr as number,
     tier: row.tier as UserProfile['tier'],
     seasonNumber: row.season_number as number | undefined,
-    placementMatchesPlayed: row.placement_matches_played as number | undefined,
+    placementMatchesPlayed: row.placement_matches_played as number | null | undefined,
     recalibrationMatchesPlayed: row.recalibration_matches_played as number | null | undefined,
     lastRecalibrationAt: row.last_recalibration_at as string | undefined,
     globalRank: row.global_rank as number,
