@@ -5,6 +5,28 @@
 
 ---
 
+## [2026-08-06] — Feature: MMR overhaul (flat start, recalibration, margin-of-victory)
+
+### 🟠 High
+- ✅ Removed the skill-level onboarding picker — every new account starts flat at
+  1000 MMR instead of self-reporting a level (600–2100 MMR range).
+- ✅ New **recalibration** system: once placement (first 10 matches) is done and
+  10+ matches are logged total, players can opt into a 5-match window with bigger
+  MMR swings, gated to once every 3 months. Needs `supabase/migrations/0019_recalibration.sql`
+  applied (done).
+- ✅ MMR changes now scale with score margin, not just MMR gap — a blowout win/loss
+  is worth up to 30% more than a narrow one.
+- ✅ Season soft-reset anchor updated 1200 → 1000 to match the new default.
+
+### 🟢 Low
+- ✅ Fixed: `TierBadge` showed "Placement null/10" for an account with no placement
+  progress (Supabase returns `null`, not `undefined`, for an unset column).
+- ✅ Fixed: duplicate "Declined" challenge rows on Home were real leftover test data
+  (two genuinely different DB rows), not a bug — deleted live. Added a double-submit
+  guard to the Challenge form as real hardening found along the way.
+
+---
+
 ## [2026-08-04] — Fix: Google sign-in completely broken (three stacked issues)
 
 ### 🔴 Critical

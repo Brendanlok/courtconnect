@@ -1,5 +1,58 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-06] — MMR overhaul: flat 1000 start, recalibration, margin-of-victory scaling
+
+**Trigger:** Lok asked to check the live site for the duplicate-challenge fix; while
+verifying, live data (via a new Supabase secret-key/service-role setup, saved to
+`.claude-secrets/supabase.env`) showed the two "duplicate" Declined rows were
+genuinely different challenge records — leftover test data from earlier QA under the
+Test account (different ids, 15 min apart, different venue/message), not a rendering
+bug. Deleted both stale rows live (Lok confirmed). Also shipped a real hardening fix
+found while investigating: `ChallengeModal` had no double-submit guard, so a fast
+double-click could create a genuine duplicate in the future — added a ref guard
+(commit 831b8e8).
+
+**Then Lok specified a real feature, iterated live in chat:**
+1. Every new account now starts flat at **1000 MMR** — removed the old "pick your
+   skill level" onboarding step (`OnboardingModal.tsx`) entirely.
+2. **Recalibration**: once a player finishes placement (first 10 matches, pre-existing
+   system) and has 10+ matches logged total, a "⚡ Recalibrate your MMR" card appears
+   on Home. Opting in makes their next 5 ranked matches count with bigger K-factor
+   swings (same rate as placement), then locks for 3 months. New `users` columns
+   `recalibration_matches_played` / `last_recalibration_at`
+   (`supabase/migrations/0019_recalibration.sql` — Lok ran it manually, no automated
+   migration runner in this project).
+3. **Margin-of-victory now affects MMR**: `calcMMRChange` takes a `marginMult` param;
+   a new `marginMultiplier()` scales it by total point differential across games
+   (0.85x razor-close, up to 1.3x a blowout, capped both ends). Recomputed for real at
+   match-submit time in both `LogMatchModal` and `LiveMatchModal` — the pre-score
+   preview shown before submit still can't know the margin, so it stays unscaled.
+4. Season soft-reset anchor (`seasons.ts`) updated from 1200 → 1000 to match the new
+   default, at Lok's explicit follow-up ask.
+
+**Deploy troubleshooting (the actual time sink):** GitHub Actions had a genuine
+multi-commit backlog tonight — 4 straight pushes triggered zero automatic runs, and a
+manual `workflow_dispatch` sat in "Waiting" for 11+ minutes before getting cancelled
+by a delayed push-triggered run that finally fired. Confirmed clean on our end (no
+required reviewers / wait timer on the `github-pages` environment, branch restriction
+correctly allows `main`). Second deploy (the null-badge fix below) hit the same
+multi-minute delay; a second manual dispatch actually went `in_progress` and finished
+clean. No code-side cause found — flag if it recurs.
+
+**Bug caught during live verification:** resetting the Test account to a genuine
+fresh state (`mmr:1000, placement_matches_played:null, total_matches:0`, at Lok's
+request, since it's meant to represent a real new account) surfaced `TierBadge`
+rendering **"Placement null/10"** — Supabase returns `null` for an unset nullable int
+column, but the badge's gate only excluded `undefined`
+(`placementMatchesPlayed !== undefined`). Fixed at the one call site that had it wrong
+(every other consumer already used `?? 0`, which is null-safe) — commit 8756504.
+
+**Confirmed live end-to-end:** bundle-diffed old skill-picker text gone / new
+recalibration strings present after each deploy, Home page screenshot-verified showing
+correct MMR/tier/badge state, `users` table double-checked afterward — only the two
+real accounts (`brendanlok`, `test`) exist, `brendanlok` was never touched, `test`
+left in the intended fresh-reset state.
+
 ## [2026-08-04] — Google sign-in fully resolved: real root cause was a stale Client Secret
 
 **Follow-up to the entry directly below.** The `flowType: 'implicit'` code fix (and the
