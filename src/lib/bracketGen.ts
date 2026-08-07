@@ -2,6 +2,12 @@
 // over the existing flat BracketMatch[] shape (round + player1/player2/winner
 // strings) that the seed demo tournaments already used — real tournaments
 // never had anything populating this until now.
+//
+// player1/player2/winner store each participant's *username*, not their
+// display name — usernames are guaranteed unique, display names aren't, and
+// two participants sharing a display name used to let a bracket result
+// silently advance/credit the wrong account. Callers resolve username ->
+// display name for rendering (tournament.participants already has both).
 import type { BracketMatch } from '@/types';
 
 interface Participant { displayName: string; username: string }
@@ -31,11 +37,11 @@ export function generateBracket(participants: Participant[]): BracketMatch[] {
     const id = `b1_${i / 2}`;
     if (!p1 || !p2) {
       // Bye — the real side auto-advances, no live match to play.
-      const winnerName = (p1 ?? p2)!.displayName;
-      round1.push({ id, round: 1, player1: p1?.displayName ?? 'BYE', player2: p2?.displayName ?? 'BYE', winner: winnerName, score: undefined });
-      prevNames.push(winnerName);
+      const winnerUsername = (p1 ?? p2)!.username;
+      round1.push({ id, round: 1, player1: p1?.username ?? 'BYE', player2: p2?.username ?? 'BYE', winner: winnerUsername, score: undefined });
+      prevNames.push(winnerUsername);
     } else {
-      round1.push({ id, round: 1, player1: p1.displayName, player2: p2.displayName, winner: undefined, score: undefined });
+      round1.push({ id, round: 1, player1: p1.username, player2: p2.username, winner: undefined, score: undefined });
       prevNames.push(null);
     }
   }
@@ -61,13 +67,14 @@ export function generateBracket(participants: Participant[]): BracketMatch[] {
   return rounds.flat();
 }
 
-// Records a live match's result and propagates the winner's name into the
-// correct slot of the next round (index/2 within the round, same pairing
-// convention generateBracket lays out). Returns the whole updated bracket.
-export function reportBracketResult(bracket: BracketMatch[], matchId: string, winnerName: string, score?: string): BracketMatch[] {
+// Records a live match's result and propagates the winner's username into
+// the correct slot of the next round (index/2 within the round, same
+// pairing convention generateBracket lays out). Returns the whole updated
+// bracket.
+export function reportBracketResult(bracket: BracketMatch[], matchId: string, winnerUsername: string, score?: string): BracketMatch[] {
   const match = bracket.find(b => b.id === matchId);
   if (!match) return bracket;
-  const updated = bracket.map(b => b.id === matchId ? { ...b, winner: winnerName, score } : b);
+  const updated = bracket.map(b => b.id === matchId ? { ...b, winner: winnerUsername, score } : b);
 
   const roundMatches = updated.filter(b => b.round === match.round);
   const posInRound = roundMatches.findIndex(b => b.id === matchId);
@@ -75,9 +82,11 @@ export function reportBracketResult(bracket: BracketMatch[], matchId: string, wi
   if (!nextMatch) return updated; // that was the final
 
   const isFirstSlot = posInRound % 2 === 0;
-  return updated.map(b => b.id === nextMatch.id ? { ...b, [isFirstSlot ? 'player1' : 'player2']: winnerName } : b);
+  return updated.map(b => b.id === nextMatch.id ? { ...b, [isFirstSlot ? 'player1' : 'player2']: winnerUsername } : b);
 }
 
+// Returns the champion's username (not display name) - resolve to a
+// display name via tournament.participants at render/notify time.
 export function bracketChampion(bracket: BracketMatch[]): string | null {
   if (bracket.length === 0) return null;
   const maxRound = Math.max(...bracket.map(b => b.round));

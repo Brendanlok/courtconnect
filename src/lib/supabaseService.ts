@@ -696,7 +696,11 @@ async function mutateClubArray(id: string, column: 'member_ids' | 'pending_ids' 
   await supabase.from('clubs').update({ [column]: next }).eq('id', id);
 }
 
-export async function addClubMember(id: string, uid: string) {
+// Returns true if uid ends up a member (including "already was"), false if
+// rejected (club full / uid over their tier's club limit) - callers that show
+// their own optimistic "Joined!" feedback (e.g. AppContext.joinClub) need
+// this to avoid claiming success on a silent server-side rejection.
+export async function addClubMember(id: string, uid: string): Promise<boolean> {
   // Every path that adds a member (self-join, accept request, admin invite,
   // accept invite) routes through here — enforce max_members AND the
   // per-user tier club limit once, in the one place all of them share,
@@ -705,7 +709,7 @@ export async function addClubMember(id: string, uid: string) {
   const row = data as { name?: string; member_ids?: string[]; max_members?: number } | null;
   const alreadyMember = (row?.member_ids ?? []).includes(uid);
   if (!alreadyMember) {
-    if (row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return;
+    if (row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return false;
     // users_public (not users) — the actor here is often a club admin, not
     // the target user themselves, and the base users table is owner-read-only.
     const [{ data: userRow }, { data: memberOfRows }] = await Promise.all([
@@ -713,7 +717,7 @@ export async function addClubMember(id: string, uid: string) {
       supabase.from('clubs').select('id').contains('member_ids', [uid]),
     ]);
     const tier = ((userRow as { tier?: Tier } | null)?.tier) ?? 'Beginner';
-    if ((memberOfRows?.length ?? 0) >= maxClubsForTier(tier)) return;
+    if ((memberOfRows?.length ?? 0) >= maxClubsForTier(tier)) return false;
   }
   await mutateClubArray(id, 'member_ids', [uid], []);
   await mutateClubArray(id, 'pending_ids', [], [uid]);
@@ -722,6 +726,7 @@ export async function addClubMember(id: string, uid: string) {
   // the joiner's own client (if it's even open) has no way to know an admin
   // just accepted/added them from their side.
   if (!alreadyMember) notifyUser(uid, { type: 'club_accepted', title: 'Joined Club', body: row?.name ? `You joined ${row.name}!` : 'You joined a new club!' });
+  return true;
 }
 export async function removeClubMember(id: string, uid: string) {
   await mutateClubArray(id, 'member_ids', [], [uid]);
@@ -979,7 +984,17 @@ export async function sendMatchDoc(m: StoredMatch) {
 export async function confirmSharedMatch(id: string, confirmingUid: string) {
   const { data } = await supabase.from('matches').select('pending_confirmations').eq('id', id).maybeSingle();
   const remaining = ((data?.pending_confirmations as string[] | undefined) ?? []).filter(u => u !== confirmingUid);
-  await supabase.from('matches').update({ pending_confirmations: remaining, status: 'Confirmed' }).eq('id', id);
+  // Only finalize once every other confirmer has signed off too - matches
+  // the local-match multi-party path in AppContext.confirmMatch, which stays
+  // 'Pending' (and doesn't apply MMR) until remaining.length === 0. Real
+  // cross-account matches only ever have one pending confirmer today (addMatch
+  // routes doubles/multi-party matches to the local path), so this is
+  // currently a no-op in practice - but it stops the first confirmer from
+  // finalizing a match while a second confirmation is still outstanding, the
+  // moment that changes.
+  const patch: { pending_confirmations: string[]; status?: string } = { pending_confirmations: remaining };
+  if (remaining.length === 0) patch.status = 'Confirmed';
+  await supabase.from('matches').update(patch).eq('id', id);
 }
 
 async function patchExtra(id: string, patch: Partial<ExtraMeta>) {

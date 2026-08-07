@@ -890,15 +890,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // also marks the tournament Completed and pushes the champion a real
   // notification (reaches them even with the app closed, same pattern as
   // sendChallengeDoc/sendSharedMessage).
-  const reportBracketResult = useCallback((tournamentId: string, matchId: string, winnerName: string, score?: string) => {
+  const reportBracketResult = useCallback((tournamentId: string, matchId: string, winnerUsername: string, score?: string) => {
     const t = tournaments.find(x => x.id === tournamentId);
     if (!t?.bracket) return;
-    const updated = computeBracketResult(t.bracket, matchId, winnerName, score);
-    const champion = bracketChampion(updated);
+    const updated = computeBracketResult(t.bracket, matchId, winnerUsername, score);
+    const champion = bracketChampion(updated); // username, guaranteed unique - no name-collision risk
     const patch: Partial<Tournament> = { bracket: updated };
     if (champion) {
       patch.status = 'Completed';
-      const participant = (t.participants ?? []).find(p => p.displayName === champion);
+      const participant = (t.participants ?? []).find(p => p.username === champion);
       if (participant) {
         patch.championUsername = participant.username;
         patch.championDisplayName = participant.displayName;
@@ -965,12 +965,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const myClubPendingIds = useMemo(() => clubs.filter(c => c.pendingIds.includes('me')).map(c => c.id), [clubs]);
   const clubLimit = maxClubsForTier(user.tier);
 
-  const joinClub = useCallback((id: string) => {
+  const joinClub = useCallback(async (id: string) => {
     const club = clubs.find(c => c.id === id);
     if (myClubIds.includes(id) || myClubIds.length >= clubLimit || !myRealUid) return;
     if (club?.minMMR && user.mmr < club.minMMR) return;
-    addClubMember(id, myRealUid).catch(() => {});
-    addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
+    // These client-side checks can be stale (another join/leave happened
+    // since this render) - only show success once the server confirms it,
+    // not optimistically, so a rejected join (club filled up, tier cap hit)
+    // doesn't tell you "Joined!" when you weren't actually added.
+    const joined = await addClubMember(id, myRealUid).catch(() => false);
+    if (joined) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
+    else addNotification({ type: 'club_declined', title: 'Could not join', body: club?.name ? `${club.name} is full or unavailable right now.` : 'This club is full or unavailable right now.' });
   }, [clubs, myClubIds, clubLimit, myRealUid, user.mmr]);
 
   const requestJoinClub = useCallback((id: string) => {

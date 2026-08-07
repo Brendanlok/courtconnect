@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
          AlertTriangle, X, Filter, Info, Eye, Search, Check } from 'lucide-react';
@@ -282,9 +282,9 @@ export default function Tournaments() {
         <ParticipantsModal tournament={viewParticipants} onClose={() => setViewParticipants(null)}/>
       )}
       {resultTarget && (
-        <ReportResultModal match={resultTarget.match} onClose={() => setResultTarget(null)}
-          onSubmit={(winnerName, score) => {
-            reportBracketResult(resultTarget.tournament.id, resultTarget.match.id, winnerName, score);
+        <ReportResultModal match={resultTarget.match} participants={resultTarget.tournament.participants ?? []} onClose={() => setResultTarget(null)}
+          onSubmit={(winnerUsername, score) => {
+            reportBracketResult(resultTarget.tournament.id, resultTarget.match.id, winnerUsername, score);
             setResultTarget(null);
           }}/>
       )}
@@ -517,7 +517,7 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">
                     {t.status === 'Active' ? 'Live Bracket' : 'Final Bracket'}
                   </p>
-                  <BracketView bracket={t.bracket} onReportResult={isMyTourney && t.status === 'Active' ? onReportResult : undefined}/>
+                  <BracketView bracket={t.bracket} participants={t.participants ?? []} onReportResult={isMyTourney && t.status === 'Active' ? onReportResult : undefined}/>
                 </div>
               )}
 
@@ -624,13 +624,15 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
 
 // ─── Report Bracket Result Modal ───────────────────────────────────────────────
 
-function ReportResultModal({ match: m, onClose, onSubmit }: {
-  match: BracketMatch; onClose: () => void; onSubmit: (winnerName: string, score?: string) => void;
+function ReportResultModal({ match: m, participants, onClose, onSubmit }: {
+  match: BracketMatch; participants: Tournament['participants']; onClose: () => void; onSubmit: (winnerUsername: string, score?: string) => void;
 }) {
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Report Match Result');
-  const [winner, setWinner] = useState<string | null>(null);
+  const [winner, setWinner] = useState<string | null>(null); // holds a username, not a display name
   const [score,  setScore]  = useState('');
-  const players = [m.player1!, m.player2!];
+  const nameByUsername = new Map((participants ?? []).map(p => [p.username, p.displayName]));
+  // m.player1/player2 are usernames now - display the real name, key/submit by username.
+  const players = [m.player1!, m.player2!].map(username => ({ username, name: nameByUsername.get(username) ?? username }));
 
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
@@ -643,12 +645,12 @@ function ReportResultModal({ match: m, onClose, onSubmit }: {
           <div>
             <p className="text-xs text-slate-400 mb-2">Who won?</p>
             <div className="space-y-2">
-              {players.map(name => (
-                <button key={name} onClick={() => setWinner(name)}
+              {players.map(p => (
+                <button key={p.username} onClick={() => setWinner(p.username)}
                   className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl border text-left text-sm font-medium transition-colors
-                    ${winner === name ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}>
-                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 ${winner === name ? 'border-emerald-400 bg-emerald-400' : 'border-slate-600'}`}/>
-                  {name}
+                    ${winner === p.username ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'}`}>
+                  <span className={`w-4 h-4 rounded-full border-2 shrink-0 ${winner === p.username ? 'border-emerald-400 bg-emerald-400' : 'border-slate-600'}`}/>
+                  {p.name}
                 </button>
               ))}
             </div>
@@ -989,7 +991,13 @@ function roundTopPad(ri: number): number {
   return (f1 + f2) / 2 - CARD_H / 2;
 }
 
-function BracketView({ bracket, onReportResult }: { bracket: BracketMatch[]; onReportResult?: (match: BracketMatch) => void }) {
+function BracketView({ bracket, participants, onReportResult }: {
+  bracket: BracketMatch[]; participants: Tournament['participants']; onReportResult?: (match: BracketMatch) => void;
+}) {
+  // player1/player2/winner are usernames (unique) - resolve to display names
+  // for the card text here, once, rather than at every BracketCard.
+  const nameByUsername = useMemo(() => new Map((participants ?? []).map(p => [p.username, p.displayName])), [participants]);
+  const nameFor = (username?: string) => !username || username === 'BYE' || username === 'TBD' ? username : (nameByUsername.get(username) ?? username);
   const rounds      = [...new Set(bracket.map(b => b.round))].sort();
   const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
   const r1Count     = byRound[0]?.length ?? 1;
@@ -1019,7 +1027,7 @@ function BracketView({ bracket, onReportResult }: { bracket: BracketMatch[]; onR
           return (
             <div key={ri} className="flex items-start shrink-0">
               <div className="flex flex-col shrink-0" style={{ paddingTop: pad, gap }}>
-                {matches.map(m => <BracketCard key={m.id} match={m} onReportResult={onReportResult}/>)}
+                {matches.map(m => <BracketCard key={m.id} match={m} nameFor={nameFor} onReportResult={onReportResult}/>)}
               </div>
               {!isLast && (
                 <svg width={CONN_W} height={totalH} className="shrink-0 overflow-visible">
@@ -1048,7 +1056,9 @@ function BracketView({ bracket, onReportResult }: { bracket: BracketMatch[]; onR
   );
 }
 
-function BracketCard({ match: m, onReportResult }: { match: BracketMatch; onReportResult?: (match: BracketMatch) => void }) {
+function BracketCard({ match: m, nameFor, onReportResult }: {
+  match: BracketMatch; nameFor: (username?: string) => string | undefined; onReportResult?: (match: BracketMatch) => void;
+}) {
   const isLive = !m.winner && !!m.player1 && m.player1 !== 'TBD' && !!m.player2 && m.player2 !== 'TBD';
   const canReport = isLive && !!onReportResult;
   // A hover-reveal overlay would be invisible on touch devices — this app is
@@ -1060,15 +1070,16 @@ function BracketCard({ match: m, onReportResult }: { match: BracketMatch; onRepo
       className={`relative rounded-xl overflow-hidden border text-sm flex flex-col
         ${canReport ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}
         ${isLive ? 'border-amber-500/50' : m.winner ? 'border-slate-700' : 'border-slate-800/80'}`}>
-      {[m.player1, m.player2].map((name, i) => (
+      {/* username identity drives isWinner/highlight logic; nameFor() only affects display text */}
+      {[m.player1, m.player2].map((username, i) => (
         <div key={i} className={`flex-1 px-3 flex flex-col justify-center gap-0.5 border-b last:border-0 border-slate-800
-          ${name === m.winner ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
-            : !name || name === 'TBD' ? 'text-slate-600' : 'text-slate-300'}`}>
+          ${username === m.winner ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+            : !username || username === 'TBD' ? 'text-slate-600' : 'text-slate-300'}`}>
           <div className="flex items-center justify-between">
-            <span className="truncate text-xs">{name || 'TBD'}</span>
+            <span className="truncate text-xs">{nameFor(username) || 'TBD'}</span>
             {isLive && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse shrink-0 ml-1"/>}
           </div>
-          {m.score && name === m.winner && (
+          {m.score && username === m.winner && (
             <span className="text-[9px] text-slate-500 leading-tight truncate" title={m.score}>{m.score}</span>
           )}
         </div>

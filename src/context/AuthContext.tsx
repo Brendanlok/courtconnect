@@ -178,6 +178,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
+    // Local-only state (matches, following, court heatmap, clip credits, etc.)
+    // is keyed by un-namespaced cc_* keys, not by account — without this, the
+    // next person to sign in on this device inherits the previous account's
+    // leftover local data until each feature happens to overwrite it. Keep
+    // cc_theme: it's a device display preference, not account state.
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('cc_') && k !== 'cc_theme')
+      .forEach(k => localStorage.removeItem(k));
   };
 
   return (

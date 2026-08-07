@@ -12,8 +12,9 @@ const p = (n: string) => ({ displayName: n, username: n.toLowerCase() });
   const r2 = bracket.filter(b => b.round === 2);
   assert.strictEqual(r1.length, 2);
   assert.strictEqual(r2.length, 1);
+  // player1/player2 store usernames now, not display names.
   const r1Names = r1.flatMap(m => [m.player1, m.player2]).sort();
-  assert.deepStrictEqual(r1Names, ['A', 'B', 'C', 'D']);
+  assert.deepStrictEqual(r1Names, ['a', 'b', 'c', 'd']);
   assert.ok(r1.every(m => !m.winner));
   assert.strictEqual(r2[0].player1, 'TBD');
   assert.strictEqual(r2[0].player2, 'TBD');
@@ -66,5 +67,21 @@ console.log('PASS reporting results propagates winners round to round, champion 
   assert.deepStrictEqual(result, bracket);
 }
 console.log('PASS unknown match id is a no-op');
+
+// 5. Two participants sharing a display name still resolve to distinct
+// identities throughout - the actual bug this was built to prevent
+// (previously player1/player2/winner stored displayName, so a name
+// collision could advance/credit the wrong account).
+{
+  const dup1 = { displayName: 'Alex', username: 'alex_kl' };
+  const dup2 = { displayName: 'Alex', username: 'alex_penang' };
+  const bracket = generateBracket([dup1, dup2]);
+  const r1Usernames = [bracket[0].player1, bracket[0].player2].sort();
+  assert.deepStrictEqual(r1Usernames, ['alex_kl', 'alex_penang'], 'same display name must still produce distinct usernames in the bracket');
+
+  const afterResult = reportBracketResult(bracket, bracket[0].id, 'alex_penang', '21-10');
+  assert.strictEqual(bracketChampion(afterResult), 'alex_penang', 'champion resolves to the exact username that won, not just a matching display name');
+}
+console.log('PASS duplicate display names stay distinguishable by username');
 
 console.log('ALL PASS bracketGen');
