@@ -236,7 +236,8 @@ export default function Leaderboard() {
                   {tab === 'By State' ? `Top ${meInList.tabRank} in ${selState}` :
                    tab === 'Nearby'   ? `Top ${meInList.tabRank} within 10km` :
                    tab === 'Following' ? `Top ${meInList.tabRank} among following` :
-                   `You need ${Math.max(0, (list[99]?.mmr ?? 2000) - user.mmr)} more MMR to break into the top 100`}
+                   meInList.tabRank <= 100 ? `You're ranked #${meInList.tabRank} nationally — in the top 100` :
+                   `You need ${(list[99]?.mmr ?? 2000) - user.mmr} more MMR to break into the top 100`}
                 </p>
               </div>
               <p className="text-2xl font-bold text-amber-400">{user.mmr.toLocaleString()}</p>
