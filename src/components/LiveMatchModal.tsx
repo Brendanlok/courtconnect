@@ -140,7 +140,9 @@ function SetupView({ me, onStart, onJoin }: {
   const buildTeamName = (slots: (LiveMatchPlayer | null)[]) =>
     slots.filter(Boolean).map(p => p!.displayName.split(' ')[0]).join(' & ') || '—';
 
-  const canStart = venue.trim() && teamBSlots.some(Boolean);
+  // Doubles formats need your partner picked too, or the null slot silently
+  // becomes `me` in handleStart — pairing you with yourself.
+  const canStart = venue.trim() && teamBSlots.some(Boolean) && (ts < 2 || teamASlots[1] != null);
 
   const handleStart = (recordMode: RecordMode) => {
     if (!canStart) return;
@@ -881,7 +883,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   onMatchLogged?: (plannedMatchId: string) => void;
   onMatchCancelled?: (plannedMatchId: string) => void;
 }) {
-  const { user, matches, addMatch, updateUser } = useApp();
+  const { user, matches, addMatch, updateUser, allRealPlayers } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
@@ -1018,7 +1020,8 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const opp2 = m.teamB[1] ?? null;
     const isDoubles = teamSize(m.format) === 2;
 
-    const mmrOf = (uid?: string, fallback = user.mmr) => uid === user.uid ? user.mmr : PLAYERS.find(p => p.uid === uid)?.mmr ?? fallback;
+    const mmrOf = (uid?: string, fallback = user.mmr) => uid === user.uid ? user.mmr
+      : (PLAYERS.find(p => p.uid === uid) ?? allRealPlayers.find(p => p.uid === uid))?.mmr ?? fallback;
     const myTeamMMR = isDoubles && partner ? Math.round((user.mmr + mmrOf(partner.uid)) / 2) : user.mmr;
     const oppTeamMMR = isDoubles && opp && opp2 ? Math.round((mmrOf(opp.uid) + mmrOf(opp2.uid)) / 2) : mmrOf(opp?.uid);
     const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
