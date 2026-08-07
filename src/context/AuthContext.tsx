@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
 import { lookupUserByUsername } from '@/lib/supabaseService';
+import { seasonNumberForDate } from '@/lib/seasons';
 import { BASE_PATH } from '@/lib/utils';
 
 interface AuthCtx {
@@ -48,6 +49,12 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     photo_url: user.photoURL,
     mmr: 1000, // flat starting MMR for every account — no skill-level picker, see OnboardingModal
     tier: 'Silver', // getTier(1000)
+    // Without this, AppContext's season-rollover effect falls back to `?? 1`
+    // for a brand-new account, indistinguishable from "still finishing
+    // season 1" — once season 2+ starts, every fresh signup would trigger a
+    // bogus rollover for a season they never played (fake season_history
+    // row + a Season Recap popup right after signing up).
+    season_number: seasonNumberForDate(new Date()),
     country: extra.country,
     region: extra.region,
     wins: 0, losses: 0, total_matches: 0,

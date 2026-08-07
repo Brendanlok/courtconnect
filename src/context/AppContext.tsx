@@ -1069,7 +1069,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // add/remove is handled explicitly in the body); a separate mount-only
   // effect below handles the true-unmount case.
   const clubMsgUnsubsRef = useRef<Record<string, () => void>>({});
-  const prevClubMsgsRef  = useRef<Record<string, ClubMessage[]>>({});
+  // Tracks the last-seen message id per club, not the full array — the
+  // subscription is a sliding window of the most recent 10 messages, not an
+  // append-only history, so `msgs.length` stops changing (pinned at 10) once
+  // a club passes 10 total messages, and diffing by array length went silent
+  // forever past that point. Diffing by id survives the window sliding.
+  const lastSeenClubMsgIdRef = useRef<Record<string, string | undefined>>({});
   useEffect(() => {
     if (!myRealUid) return;
     const wanted = new Set(myClubIds);
@@ -1077,21 +1082,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (wanted.has(id)) return;
       clubMsgUnsubsRef.current[id]();
       delete clubMsgUnsubsRef.current[id];
-      delete prevClubMsgsRef.current[id];
+      delete lastSeenClubMsgIdRef.current[id];
     });
     myClubIds.forEach(id => {
       if (clubMsgUnsubsRef.current[id]) return;
       const clubName = clubs.find(c => c.id === id)?.name ?? 'Club';
       clubMsgUnsubsRef.current[id] = subscribeClubMessages(id, msgs => {
-        const prev = prevClubMsgsRef.current[id] ?? [];
-        if (prev.length > 0) {
-          const newFromOthers = msgs.slice(prev.length).filter(m => m.senderId !== myRealUid);
+        const lastSeenId = lastSeenClubMsgIdRef.current[id];
+        if (lastSeenId !== undefined) {
+          const seenIdx = msgs.findIndex(m => m.id === lastSeenId);
+          // seenIdx === -1 means the last-seen message aged out of the
+          // window (a burst of >10 new messages) - treat the whole window
+          // as new rather than silently dropping the notification.
+          const newFromOthers = (seenIdx === -1 ? msgs : msgs.slice(seenIdx + 1)).filter(m => m.senderId !== myRealUid);
           if (newFromOthers.length > 0) {
             const last = newFromOthers[newFromOthers.length - 1];
             addNotification({ type: 'club_message', title: clubName, body: `${last.senderName}: ${last.text}` });
           }
         }
-        prevClubMsgsRef.current[id] = msgs;
+        lastSeenClubMsgIdRef.current[id] = msgs[msgs.length - 1]?.id;
       }, 10); // only need to detect new arrivals here, not full history
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
