@@ -59,7 +59,15 @@ export function detectHitsFromEnergies(energies: Float32Array, frameMs = FRAME_M
     const stddev = Math.sqrt(variance / n);
     const threshold = mean + THRESHOLD_K * stddev;
 
-    if (energies[i] > threshold && energies[i] > MIN_ENERGY && i - lastHitFrame > minGapFrames) {
+    // Sharpness check: a shuttle "thwock" is a brief impulse (~15ms) that
+    // decays almost immediately, unlike a footstep/court-squeak which stays
+    // elevated for 2+ frames. Require the very next frame to have dropped
+    // back most of the way to baseline, or it's a sustained bump, not a hit.
+    // (Synthetic stress-test in shuttleDetect.stresstest.ts: this cut
+    // footstep-noise false positives roughly in half.)
+    const decayed = i + 1 >= energies.length || energies[i + 1] < energies[i] * 0.5;
+
+    if (energies[i] > threshold && energies[i] > MIN_ENERGY && decayed && i - lastHitFrame > minGapFrames) {
       hits.push((i * frameMs) / 1000);
       lastHitFrame = i;
     }
