@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { TIER_STYLE, BASE_PATH } from '@/lib/utils';
+import { TIER_STYLE, BASE_PATH, isCalibrating } from '@/lib/utils';
 import { X, Share2, Copy, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -31,11 +31,12 @@ export function QRModal({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 function QRModalInner({ user, s, qrPayload, onClose }: {
-  user: { displayName: string; username: string; tier: string; mmr: number; globalRank: number; area: string; state: string };
+  user: { displayName: string; username: string; tier: string; mmr: number; globalRank: number; area: string; state: string; placementMatchesPlayed?: number | null };
   s: { bg: string; text: string; border: string; icon: string };
   qrPayload: string;
   onClose: () => void;
 }) {
+  const calibrating = isCalibrating(user);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'My QR Code');
@@ -78,10 +79,10 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
 
         <p className="font-bold text-xl">{user.displayName}</p>
         <p className="text-slate-400 text-sm">@{user.username}</p>
-        <span className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold border ${s.bg} ${s.text} ${s.border}`}>
-          {s.icon} {user.tier} · {user.mmr.toLocaleString()} MMR
+        <span className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold border ${calibrating ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : `${s.bg} ${s.text} ${s.border}`}`}>
+          {calibrating ? `⚡ Calibrating ${user.placementMatchesPlayed ?? 0}/10` : `${s.icon} ${user.tier} · ${user.mmr.toLocaleString()} MMR`}
         </span>
-        <p className="text-slate-500 text-xs mt-1">#{user.globalRank} National · {user.area}, {user.state}</p>
+        <p className="text-slate-500 text-xs mt-1">{calibrating ? 'Unranked' : `#${user.globalRank} National`} · {user.area}, {user.state}</p>
 
         <div className="flex gap-3 mt-6">
           <Button onClick={handleShare} className="flex-1">

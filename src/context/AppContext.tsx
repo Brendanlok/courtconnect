@@ -62,6 +62,7 @@ function toLocalConversation(c: SharedConversation, myUid: string, lastRead: Rec
     globalRank: 0, state: 'Kuala Lumpur', area: '',
     stats: { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
     photoURL: p?.photoURL ?? null,
+    placementMatchesPlayed: p?.placementMatchesPlayed,
   };
   const readAt = lastRead[c.id] ?? '';
   // conversations.last_message/last_at can't actually be written past the

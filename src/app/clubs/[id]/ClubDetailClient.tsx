@@ -8,7 +8,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { ClubSettingsModal } from '@/components/ClubSettingsModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref } from '@/lib/utils';
+import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref, isCalibrating } from '@/lib/utils';
 import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, subscribeMatchesForClubMembers, type StoredMatch } from '@/lib/supabaseService';
 import { computeLadder } from '@/lib/clubLadder';
 import { computeClubRivalries } from '@/lib/clubRivalry';
@@ -86,6 +86,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
         globalRank: 0, state: 'Kuala Lumpur', area: '',
         stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
         photoURL: data.photoURL ?? null,
+        placementMatchesPlayed: data.placementMatchesPlayed,
       };
       return [uid, profile] as const;
     })).then(results => {
@@ -435,8 +436,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                     <p className="text-sm font-semibold truncate">{p.displayName}</p>
                     <p className="text-[11px] text-slate-500">@{p.username}</p>
                   </div>
-                  <TierBadge tier={p.tier}/>
-                  <p className="text-xs text-amber-400 font-bold shrink-0">{p.mmr}</p>
+                  <TierBadge tier={p.tier} placementMatchesPlayed={p.placementMatchesPlayed}/>
+                  {!isCalibrating(p) && <p className="text-xs text-amber-400 font-bold shrink-0">{p.mmr}</p>}
                   <ChevronRight size={13} className="text-slate-600"/>
                 </Link>
               ))}
@@ -471,8 +472,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                       <p className="text-[11px] text-slate-500">@{p.username}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <TierBadge tier={p.tier}/>
-                      <p className="text-[11px] text-amber-400 font-bold mt-0.5">{p.mmr}</p>
+                      <TierBadge tier={p.tier} placementMatchesPlayed={p.placementMatchesPlayed}/>
+                      {!isCalibrating(p) && <p className="text-[11px] text-amber-400 font-bold mt-0.5">{p.mmr}</p>}
                     </div>
                   </Link>
                   {isOwner && p.uid !== 'me' && (
@@ -650,7 +651,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                     <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{p.displayName}</p>
-                      <p className="text-[11px] text-slate-500">{p.mmr} MMR · {p.tier}</p>
+                      <p className="text-[11px] text-slate-500">{isCalibrating(p) ? `⚡ Calibrating · ${p.tier}` : `${p.mmr} MMR · ${p.tier}`}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => acceptClubMember(clubId, p.uid)}
@@ -691,7 +692,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                         <Avatar name={p.displayName} size="sm" photoURL={(p as UserProfile & { photoURL?: string }).photoURL}/>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{p.displayName}</p>
-                          <p className="text-[11px] text-slate-500">{p.mmr} MMR · {p.tier}</p>
+                          <p className="text-[11px] text-slate-500">{isCalibrating(p) ? `⚡ Calibrating · ${p.tier}` : `${p.mmr} MMR · ${p.tier}`}</p>
                         </div>
                         <button onClick={() => { inviteToClub(clubId, p.uid); setInviteQuery(''); }}
                           className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-semibold transition-colors shrink-0">
