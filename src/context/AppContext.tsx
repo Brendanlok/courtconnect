@@ -704,6 +704,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // back. Doubles (or a demo opponent) keep the original local-only path.
   const addMatch      = useCallback((m: Match) => {
     const uid = auth.currentUser?.uid;
+    // Playing at all resets the inactivity clock, regardless of ranked/casual
+    // or whether the reminder ever actually fired for this dormancy cycle.
+    if (uid) updateUser({ inactivityReminderSentAt: null });
     if (uid && isRealUid(m.player2Id) && !m.player1PartnerId && !m.player2PartnerId) {
       const stored: StoredMatch = {
         id: m.id, type: m.type,
@@ -730,6 +733,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setMatches(p => [m, ...p]);
     if (uid) saveMatch(uid, m).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const confirmMatch  = useCallback((id: string, uid?: string) => {
     const realUid = auth.currentUser?.uid;
@@ -1340,6 +1344,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSeasonRecap(entry);
   }, [user.mmr, user.seasonNumber, profileLoading]);
   const dismissSeasonRecap = useCallback(() => setSeasonRecap(null), []);
+
+  // Inactivity: a player who's finished placement but hasn't played in 90+
+  // days gets re-placed — same 10-match calibration as a new account,
+  // re-using placementMatchesPlayed rather than inventing a parallel field.
+  // Their MMR keeps updating off real match results the whole time (nothing
+  // here touches user.mmr); this only hides it and pulls them off the
+  // leaderboard until they've played 10 fresh matches. A one-time reminder
+  // fires ~2 weeks before the cutoff so an at-risk player gets a heads up.
+  // ponytail: no server cron exists in this static-export app (see the
+  // season-rollover effect above) — this only runs for a client that
+  // actually loads during the window, same "whichever client loads next"
+  // pattern. A user who never reopens the app won't be reminded; upgrade to
+  // a scheduled Supabase Edge Function (send-push already has the pipeline)
+  // if reaching fully-dormant users becomes worth the infra.
+  const INACTIVITY_DAYS = 90;
+  const REMINDER_AT_DAYS = 75;
+  const inactivityCheckedRef = useRef(false);
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || profileLoading || inactivityCheckedRef.current) return;
+    if ((user.placementMatchesPlayed ?? 0) < 10) return; // already calibrating
+    const lastActive = allMatches.length > 0 ? new Date(allMatches[0].playedAt) : new Date(user.joinedAt);
+    const daysInactive = (Date.now() - lastActive.getTime()) / 86_400_000;
+    inactivityCheckedRef.current = true;
+
+    if (daysInactive >= INACTIVITY_DAYS) {
+      updateUser({ placementMatchesPlayed: 0, inactivityReminderSentAt: null });
+    } else if (daysInactive >= REMINDER_AT_DAYS && !user.inactivityReminderSentAt) {
+      const daysLeft = Math.max(1, Math.ceil(INACTIVITY_DAYS - daysInactive));
+      notifyUser(uid, {
+        type: 'inactivity_reminder',
+        title: '⏳ Your MMR is about to go on hold',
+        body: `You haven't played in a while — log a ranked match in the next ${daysLeft} days to keep your rank visible.`,
+        linkTo: `${BASE_PATH}/`,
+      });
+      updateUser({ inactivityReminderSentAt: new Date().toISOString() });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.placementMatchesPlayed, user.inactivityReminderSentAt, user.joinedAt, allMatches, profileLoading]);
 
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };

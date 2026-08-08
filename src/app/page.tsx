@@ -6,7 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
-import { tierProgress, nextTier, TIER_STYLE, BASE_PATH } from '@/lib/utils';
+import { tierProgress, nextTier, TIER_STYLE, BASE_PATH, isCalibrating } from '@/lib/utils';
 import { usePausedMatch } from '@/lib/pausedMatch';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -32,6 +32,7 @@ export default function Home() {
     ? Math.round(dmEntries.reduce((s, [,v]) => s + v, 0) / dmEntries.length)
     : user.mmr;
   const progress   = tierProgress(avgMMR, user.tier);
+  const calibrating = isCalibrating(user);
 
   // Recalibration: unlocked once placement (first 10 matches) is done and at
   // least 10 total matches are logged, gated to once every 3 months.
@@ -108,14 +109,20 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* MMR glowing badge */}
+              {/* MMR glowing badge — hidden while calibrating, see TierBadge */}
               <div className="text-right shrink-0">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">MMR</p>
-                <p className="text-3xl font-black text-amber-400 leading-none">{avgMMR.toLocaleString()}</p>
-                {weeklyMmrDelta !== 0 && (
-                  <p className={`text-[11px] font-semibold mt-0.5 ${weeklyMmrDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {weeklyMmrDelta > 0 ? '▲' : '▼'} {weeklyMmrDelta > 0 ? '+' : ''}{weeklyMmrDelta} this week
-                  </p>
+                {calibrating ? (
+                  <p className="text-lg font-black text-amber-400/70 leading-none">🔒 Hidden</p>
+                ) : (
+                  <>
+                    <p className="text-3xl font-black text-amber-400 leading-none">{avgMMR.toLocaleString()}</p>
+                    {weeklyMmrDelta !== 0 && (
+                      <p className={`text-[11px] font-semibold mt-0.5 ${weeklyMmrDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {weeklyMmrDelta > 0 ? '▲' : '▼'} {weeklyMmrDelta > 0 ? '+' : ''}{weeklyMmrDelta} this week
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -129,8 +136,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Tier progress */}
-            {nextName && (
+            {/* Tier progress — hidden while calibrating, nothing to show yet */}
+            {!calibrating && nextName && (
               <div className="mt-3">
                 <div className="flex justify-between text-[11px] text-slate-500 mb-1">
                   <span className="font-medium">{user.tier}</span>

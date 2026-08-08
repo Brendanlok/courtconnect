@@ -9,12 +9,16 @@ interface Props {
 }
 
 export function TierBadge({ tier, className = '', placementMatchesPlayed, recalibrationMatchesPlayed }: Props) {
-  const inPlacement    = placementMatchesPlayed != null && placementMatchesPlayed < 10;
-  const inRecalibration = !inPlacement && recalibrationMatchesPlayed != null && recalibrationMatchesPlayed < 5;
-  if (inPlacement || inRecalibration) {
+  // "Calibrating" covers both a brand-new account's first 10 matches and a
+  // returning account re-placed after 90+ days inactive (AppContext resets
+  // placementMatchesPlayed to 0 for both cases) — one honest label rather
+  // than distinguishing "new" from "returning" for a badge.
+  const inCalibration   = placementMatchesPlayed != null && placementMatchesPlayed < 10;
+  const inRecalibration = !inCalibration && recalibrationMatchesPlayed != null && recalibrationMatchesPlayed < 5;
+  if (inCalibration || inRecalibration) {
     return (
       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/30 ${className}`}>
-        {inPlacement ? `⚡ Placement ${placementMatchesPlayed}/10` : `⚡ Recalibrating ${recalibrationMatchesPlayed}/5`}
+        {inCalibration ? `⚡ Calibrating ${placementMatchesPlayed}/10` : `⚡ Recalibrating ${recalibrationMatchesPlayed}/5`}
       </span>
     );
   }

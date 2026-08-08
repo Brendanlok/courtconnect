@@ -10,7 +10,7 @@ import { Plus, User, Settings, LogOut, QrCode, ChevronDown, Bell, Sun, Moon } fr
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
 import { ME, PLAYERS } from '@/lib/data';
-import { BASE_PATH } from '@/lib/utils';
+import { BASE_PATH, isCalibrating } from '@/lib/utils';
 
 export function Topbar() {
   const { user, unreadNotifCount } = useApp();
@@ -103,7 +103,7 @@ export function Topbar() {
                       <p className="text-xs text-slate-400">@{user.username}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <TierBadge tier={user.tier} placementMatchesPlayed={user.placementMatchesPlayed} recalibrationMatchesPlayed={user.recalibrationMatchesPlayed}/>
-                        <span className="text-xs text-amber-400 font-bold">{user.mmr.toLocaleString()} MMR</span>
+                        {!isCalibrating(user) && <span className="text-xs text-amber-400 font-bold">{user.mmr.toLocaleString()} MMR</span>}
                       </div>
                     </div>
                   </div>

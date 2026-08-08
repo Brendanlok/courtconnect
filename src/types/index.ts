@@ -21,6 +21,7 @@ export interface UserProfile {
   placementMatchesPlayed?: number | null; // Supabase hands back null (not undefined) for an unset column — undefined/null or <10 = still in calibration
   recalibrationMatchesPlayed?: number | null; // 0-4 = mid recalibration window; null/undefined = not recalibrating
   lastRecalibrationAt?: string; // ISO date of last completed recalibration — 3-month cooldown gate
+  inactivityReminderSentAt?: string | null; // ISO date the "you're about to go inactive" nudge last fired — cleared on any new match, re-armed each dormancy cycle
   globalRank: number;
   state: MalaysiaState;
   area: string;              // e.g. "Petaling Jaya"

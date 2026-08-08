@@ -11,7 +11,7 @@ import { QRModal } from '@/components/QRModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating } from '@/lib/utils';
 import { BADGES, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
@@ -94,6 +94,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
+  const playerCalibrating = isCalibrating(player);
   const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
 
@@ -190,7 +191,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
           {/* Top row: avatar left, skill match right */}
           <div className="flex items-start justify-between">
             <Avatar name={player.displayName} size="lg" photoURL={player.photoURL} className="ring-4 ring-emerald-500/20"/>
-            {!isMe && (
+            {!isMe && !playerCalibrating && (
               <div className="group relative">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
                   ${sm>=80?'bg-emerald-500/10 border-emerald-500/25 text-emerald-400':sm>=60?'bg-amber-500/10 border-amber-500/25 text-amber-400':'bg-red-500/10 border-red-500/25 text-red-400'}`}>
@@ -210,7 +211,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-2xl font-bold">{player.displayName}</h1>
               <span className="text-slate-400 text-base">@{player.username}</span>
-              <TierBadge tier={player.tier}/>
+              <TierBadge tier={player.tier} placementMatchesPlayed={player.placementMatchesPlayed} recalibrationMatchesPlayed={isMe ? player.recalibrationMatchesPlayed : undefined}/>
               {player.isDummy && (
                 <span className="text-[10px] font-bold bg-slate-700 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full tracking-wide">
                   DEMO PROFILE
@@ -220,7 +221,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
               <MapPin size={12}/> {player.area}, {player.state}
               <span className="text-slate-600">·</span>
-              <span>#{player.globalRank} National</span>
+              <span>{playerCalibrating ? 'Calibrating — unranked' : `#${player.globalRank} National`}</span>
               {player.gender && (
                 <>
                   <span className="text-slate-600">·</span>
@@ -237,7 +238,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
 
             <div className="flex flex-wrap gap-5 mt-4">
               {[
-                { label:'MMR',      val:player.mmr.toLocaleString(), color:'text-amber-400' },
+                { label:'MMR',      val:playerCalibrating ? '🔒' : player.mmr.toLocaleString(), color:'text-amber-400' },
                 { label:'Wins',     val:player.stats.wins,           color:'text-emerald-400' },
                 { label:'Losses',   val:player.stats.losses,         color:'text-red-400' },
                 { label:'Matches',  val:player.stats.totalMatches,   color:'' },
@@ -271,7 +272,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               </div>
             )}
 
-            {nextName && (
+            {!playerCalibrating && nextName && (
               <div className="mt-4">
                 <div className="flex justify-between text-xs text-slate-500 mb-1">
                   <span>{player.tier}</span>
@@ -602,11 +603,15 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
         )}
 
         <div className="grid md:grid-cols-2 gap-5">
-          {/* MMR chart */}
+          {/* MMR chart — hidden while calibrating, same as the number itself */}
           {isMe && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <h2 className="font-semibold mb-4">MMR Progression</h2>
-              {mmrHistory.length === 0 ? (
+              {playerCalibrating ? (
+                <div className="h-[150px] flex flex-col items-center justify-center gap-2 text-center">
+                  <p className="text-xs text-slate-500">⚡ Calibrating — your MMR chart unlocks once placement is done</p>
+                </div>
+              ) : mmrHistory.length === 0 ? (
                 <div className="h-[150px] flex flex-col items-center justify-center gap-2 text-center">
                   <p className="text-xs text-slate-500">No confirmed matches in the last 30 days</p>
                 </div>

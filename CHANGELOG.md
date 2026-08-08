@@ -5,6 +5,24 @@
 
 ---
 
+## [2026-08-08] — Feature: hidden MMR during calibration + inactivity reminders
+
+### 🟠 High
+- ✅ New/returning players' MMR (and rank) is now hidden until their 10-match
+  calibration window closes — the number still updates from real match results the
+  whole time, it's just not shown on Home, other players' profiles, or the
+  leaderboard until placement is done. Leaderboard excludes calibrating players
+  entirely rather than showing a hidden number.
+- ✅ A player who finishes placement but goes 90+ days without a match gets
+  automatically re-placed (re-uses the same 10-match calibration, not a new
+  compounding penalty) — their MMR keeps running in the background, it just goes
+  back into hiding until they've played 10 fresh matches.
+- ✅ One-time reminder notification fires ~2 weeks (day 75) before the 90-day cutoff
+  so an at-risk player gets a heads up before their rank goes on hold. Client-
+  triggered (no server cron in this static-export app), same pattern as the season
+  rollover — only reaches a user who opens the app during the window.
+- Needs `supabase/migrations/0020_inactivity_reminder.sql` applied (Lok to run manually).
+
 ## [2026-08-06] — Feature: MMR overhaul (flat start, recalibration, margin-of-victory)
 
 ### 🟠 High

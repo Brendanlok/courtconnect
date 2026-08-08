@@ -1,5 +1,54 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-08] — Hidden MMR during calibration + inactivity re-placement + reminders
+
+**Trigger:** end-of-day Telegram report surfaced a P3 decision ("should season
+rollover compound MMR decay for inactive players?"). Lok answered "no" to compounding,
+then went further in the same reply: don't touch the number at all for inactive
+players — hide it and require 10 fresh games to reveal it again (MMR keeps computing
+underneath, just not shown/ranked). Same treatment for brand-new accounts' first 10
+games. Plus: remind players before they cross into that state.
+
+**What shipped:**
+1. **Unified the "calibrating" concept** (`isCalibrating()` in `lib/utils.ts`) around
+   the pre-existing `placementMatchesPlayed` field — a brand-new account and a
+   returning-after-inactivity account both just mean "placementMatchesPlayed < 10",
+   so both get the exact same hide/reveal treatment for free. Renamed the
+   `TierBadge` label from "Placement" to "Calibrating" since it now covers both cases.
+2. **Hid the MMR number** everywhere it's shown to a calibrating player or about one:
+   Home hero card (self), account-menu badge (Topbar), the player-profile header/stat
+   row/tier-progress bar/MMR chart (self or others), and the skill-match badge (which
+   would've leaked the real gap). Leaderboard drops calibrating players from the
+   ranked list entirely instead of showing a hidden number, with a "you're
+   calibrating" callout replacing the normal rank callout for self.
+3. **Automatic re-placement on inactivity**: new effect in `AppContext.tsx`, same
+   "whichever client loads next runs it" pattern as the existing season-rollover
+   effect (no server/cron in this static-export app). A player who's done with
+   placement and hasn't played (any match, ranked or casual) in 90+ days gets
+   `placementMatchesPlayed` reset to 0 next time their client loads — one clean reset,
+   not compounded per season/month away, closing the original P3 decision as intended.
+4. **Inactivity reminder**: same effect fires a push notification (reusing the
+   existing `notifyUser` → `notifications` table → `send-push` edge function pipeline,
+   already wired for chat/challenges) once, at day 75, if not already sent this
+   dormancy cycle. Cleared on any new match logged (`addMatch`) so the next dormancy
+   cycle can remind again.
+5. New nullable column `inactivity_reminder_sent_at`
+   (`supabase/migrations/0020_inactivity_reminder.sql` — Lok runs manually, same as
+   every other migration in this project).
+
+**Known gap, flagged rather than silently shipped:** the reminder only fires for a
+user who actually opens the app during the day-75–90 window — there's no server-side
+cron scanning for fully-dormant users who've stopped opening the app at all (would
+need a scheduled Supabase Edge Function; `send-push` already has the push pipeline,
+just not a trigger). Reasonable for now given the small live user base; revisit if a
+real user goes fully dark and needs reaching.
+
+**Not yet touched:** a few lower-traffic surfaces that also show a player's MMR
+(chat page badges, tournament opponent cards, club member lists, the Live
+Match/Log Match opponent picker) still show the raw number for a calibrating player.
+Flagged to Lok rather than silently left inconsistent — same `isCalibrating()` helper
+makes each one a one-line fix if he wants full coverage.
+
 ## [2026-08-06] — MMR overhaul: flat 1000 start, recalibration, margin-of-victory scaling
 
 **Trigger:** Lok asked to check the live site for the duplicate-challenge fix; while

@@ -36,6 +36,18 @@ export function getTier(mmr: number): Tier {
   return 'Elite';
 }
 
+// A player is "calibrating" — a brand-new account still on its first 10
+// ranked matches, or a returning account re-placed after 90+ days inactive
+// (see AppContext's inactivity effect) — whenever placementMatchesPlayed
+// hasn't reached 10. Their MMR keeps updating normally behind the scenes;
+// this just gates whether it's *shown* (own profile, others' profiles,
+// leaderboard rank). Seed/demo players never carry this field and must
+// never be treated as calibrating just because it's unset.
+export const CALIBRATION_GAMES = 10;
+export function isCalibrating(p: { isDummy?: boolean; placementMatchesPlayed?: number | null }): boolean {
+  return !p.isDummy && (p.placementMatchesPlayed ?? 0) < CALIBRATION_GAMES;
+}
+
 const TIER_THRESHOLDS: Record<Tier, [number, number]> = {
   Beginner: [0,    800],
   Bronze:   [800,  1000],

@@ -5,7 +5,7 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName } from '@/lib/utils';
+import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName, isCalibrating } from '@/lib/utils';
 import { seasonNumberForDate, daysUntilSeasonEnd } from '@/lib/seasons';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
@@ -44,7 +44,10 @@ export default function Leaderboard() {
   }
 
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
-  const all: UserProfile[] = [user, ...PLAYERS, ...allRealPlayers];
+  // Calibrating players (new accounts still on placement, or returning
+  // accounts re-placed after inactivity) don't appear in ranks at all —
+  // their MMR keeps updating behind the scenes, just not surfaced here.
+  const all: UserProfile[] = [user, ...PLAYERS, ...allRealPlayers].filter(p => !isCalibrating(p));
 
   const list = all
     .filter(p => (p.country ?? 'Malaysia') === countryFilter)
@@ -223,6 +226,17 @@ export default function Leaderboard() {
               })}
             </div>
           </div>
+
+          {/* Calibrating: you're not filtered by query, just not ranked yet */}
+          {!query && !meInList && isCalibrating(user) && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3">
+              <Avatar name={user.displayName} size="sm" photoURL={user.photoURL}/>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-300">⚡ Calibrating {user.placementMatchesPlayed ?? 0}/10</p>
+                <p className="text-xs text-slate-400">Your MMR is being calculated but stays hidden — including from the leaderboard — until you finish {10 - (user.placementMatchesPlayed ?? 0)} more ranked match{10 - (user.placementMatchesPlayed ?? 0) === 1 ? '' : 'es'}.</p>
+              </div>
+            </div>
+          )}
 
           {/* Your rank callout */}
           {!query && meInList && (
