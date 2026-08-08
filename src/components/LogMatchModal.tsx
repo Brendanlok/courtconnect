@@ -98,6 +98,7 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
             stats: fbUser.stats ?? { wins: 0, losses: 0, totalMatches: 0 },
             joinedAt: fbUser.joinedAt ?? new Date().toISOString(),
             gender: fbUser.gender,
+            placementMatchesPlayed: fbUser.placementMatchesPlayed,
           } as UserProfile;
         }
       }
