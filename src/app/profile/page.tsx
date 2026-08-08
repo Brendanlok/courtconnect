@@ -34,6 +34,7 @@ export default function ProfilePage() {
         globalRank: 0, state: 'Kuala Lumpur', area: '',
         stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
         photoURL: data.photoURL ?? null,
+        placementMatchesPlayed: data.placementMatchesPlayed,
       });
     }).catch(() => setNotFoundOther(true));
   }, []);

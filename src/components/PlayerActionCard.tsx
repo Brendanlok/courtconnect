@@ -7,7 +7,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import type { UserProfile } from '@/types';
-import { BASE_PATH } from '@/lib/utils';
+import { BASE_PATH, isCalibrating } from '@/lib/utils';
 
 const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
 
@@ -31,8 +31,8 @@ export function PlayerActionCard({ player }: { player: UserProfile }) {
           <p className="font-bold truncate">{player.displayName}</p>
           <p className="text-xs text-slate-500">@{player.username}</p>
           <div className="flex items-center gap-2 mt-1">
-            <TierBadge tier={player.tier}/>
-            <span className="text-xs text-slate-400">{player.mmr.toLocaleString()} MMR</span>
+            <TierBadge tier={player.tier} placementMatchesPlayed={player.placementMatchesPlayed}/>
+            {!isCalibrating(player) && <span className="text-xs text-slate-400">{player.mmr.toLocaleString()} MMR</span>}
           </div>
         </div>
       </div>
