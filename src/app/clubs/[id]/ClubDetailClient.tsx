@@ -775,7 +775,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
               <p className="text-[11px] text-slate-500 font-semibold">Average MMR</p>
-              <p className="text-2xl font-bold mt-1">{Math.round(club.avgMMR)}</p>
+              <p className="text-2xl font-bold mt-1">{liveAvgMMR.toLocaleString()}</p>
             </div>
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
               <p className="text-[11px] text-slate-500 font-semibold">Members</p>
