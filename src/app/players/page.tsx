@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO, isCalibrating } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -171,8 +171,9 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
   const wr = p.stats.totalMatches > 0 ? Math.round((p.stats.wins / p.stats.totalMatches) * 100) : 0;
   const rankColor = rank === 1 ? 'text-amber-400' : rank === 2 ? 'text-slate-300' : rank === 3 ? 'text-amber-600/80' : 'text-slate-500';
   const borderClass = isMe ? 'border-emerald-500/30 bg-emerald-500/5' : isFollowing ? 'border-emerald-500/15' : 'border-slate-800 hover:border-slate-700';
-  const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : p.mmr.toLocaleString();
-  const subLabel  = sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
+  const calibrating = isCalibrating(p);
+  const statLabel = sortKey === 'winRate' ? `${wr}% WR` : sortKey === 'wins' ? `${p.stats.wins}W` : sortKey === 'matches' ? `${p.stats.totalMatches}` : calibrating ? '🔒' : p.mmr.toLocaleString();
+  const subLabel  = calibrating && sortKey === 'mmr' ? '' : sortKey === 'mmr' ? 'MMR' : sortKey === 'matches' ? 'played' : '';
   return (
     <Link href={profileHref(p)}
       className={`flex items-center gap-3 bg-slate-900 border rounded-2xl px-3.5 h-[84px] transition-all hover:-translate-y-0.5 ${borderClass}`}>
@@ -199,7 +200,7 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
         <p className="text-[11px] text-slate-500 truncate mt-0.5">@{p.username}</p>
         {/* Row 3: tier + stats */}
         <div className="flex items-center gap-2 mt-1">
-          <TierBadge tier={p.tier}/>
+          <TierBadge tier={p.tier} placementMatchesPlayed={p.placementMatchesPlayed}/>
           <p className="text-[11px] text-slate-500">{p.stats.wins}W · {wr}% WR</p>
         </div>
       </div>
@@ -307,7 +308,10 @@ function PlayersList({ user, following, filters, realPlayers }: { user: UserProf
   const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
 
-  const all = [user, ...PLAYERS, ...realPlayers];
+  // Same treatment as the dedicated Leaderboard page — a calibrating player
+  // isn't ranked here either (they're still findable via Following, chat,
+  // clubs, etc.; just not through a sorted/ranked list built off a hidden MMR).
+  const all = [user, ...PLAYERS, ...realPlayers].filter(p => !isCalibrating(p));
   const ranked = all
     .filter(p => countryFilter === 'All' || (p.country ?? 'Malaysia') === countryFilter)
     .filter(p => regionFilter === 'All' || (p.region ?? p.state ?? '') === regionFilter)
