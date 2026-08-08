@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
-import { timeAgo, BASE_PATH, profileHref } from '@/lib/utils';
+import { timeAgo, BASE_PATH, profileHref, isCalibrating } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
 import type { Message, Conversation } from '@/types';
@@ -44,6 +44,7 @@ export default function Chat() {
           globalRank: 0, state: 'Kuala Lumpur' as const, area: '',
           stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
           photoURL: data.photoURL ?? null,
+          placementMatchesPlayed: data.placementMatchesPlayed,
         };
         setPendingRealConv({ id: `pending_${realUid}`, participant, lastMessage: '', lastAt: new Date().toISOString(), unread: 0, messages: [] });
         setActiveId(`pending_${realUid}`);
@@ -216,8 +217,8 @@ export default function Chat() {
                 <span className="text-xs text-slate-500 shrink-0">Offline</span>
               )}
               <span className="text-slate-600 shrink-0">·</span>
-              <TierBadge tier={active.participant.tier}/>
-              <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>
+              <TierBadge tier={active.participant.tier} placementMatchesPlayed={active.participant.placementMatchesPlayed}/>
+              {!isCalibrating(active.participant) && <span className="text-xs text-slate-500 shrink-0">{active.participant.mmr} MMR</span>}
             </div>
           </div>
         </Link>

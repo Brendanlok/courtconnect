@@ -368,7 +368,7 @@ export function chatIdFor(a: string, b: string): string {
 }
 
 export interface ChatMessage { id: string; senderId: string; text: string; sentAt: string }
-export interface SharedParticipant { displayName: string; username: string; tier: string; mmr: number; photoURL?: string | null }
+export interface SharedParticipant { displayName: string; username: string; tier: string; mmr: number; photoURL?: string | null; placementMatchesPlayed?: number | null }
 export interface SharedConversation {
   id: string; participantUids: string[]; participants: Record<string, SharedParticipant>;
   messages: ChatMessage[]; lastMessage: string; lastAt: string;
@@ -383,10 +383,13 @@ async function loadParticipantsMap(uids: string[]): Promise<Record<string, Share
   if (!uids.length) return {};
   // users_public, not users — chat participants are frequently NOT the
   // caller, and users' RLS is owner-only (see lookupUserByUsername above).
-  const { data } = await supabase.from('users_public').select('uid, display_name, username, tier, mmr, photo_url').in('uid', uids);
+  const { data } = await supabase.from('users_public').select('uid, display_name, username, tier, mmr, photo_url, placement_matches_played').in('uid', uids);
   const out: Record<string, SharedParticipant> = {};
   (data ?? []).forEach(r => {
-    out[r.uid as string] = { displayName: r.display_name as string, username: r.username as string, tier: r.tier as string, mmr: r.mmr as number, photoURL: r.photo_url as string | null };
+    out[r.uid as string] = {
+      displayName: r.display_name as string, username: r.username as string, tier: r.tier as string, mmr: r.mmr as number,
+      photoURL: r.photo_url as string | null, placementMatchesPlayed: r.placement_matches_played as number | null | undefined,
+    };
   });
   return out;
 }
