@@ -13,12 +13,19 @@ export function TierBadge({ tier, className = '', placementMatchesPlayed, recali
   // returning account re-placed after 90+ days inactive (AppContext resets
   // placementMatchesPlayed to 0 for both cases) — one honest label rather
   // than distinguishing "new" from "returning" for a badge.
-  const inCalibration   = placementMatchesPlayed != null && placementMatchesPlayed < 10;
+  //
+  // Must tell "prop not passed" (demo players — never calibrating) apart
+  // from "prop passed as null" (a real account Supabase hands back null for
+  // an unset column — very much still calibrating). `!= null` can't do that:
+  // it's loose equality, so it treats null and undefined as the same thing
+  // and both fall through to "not calibrating" — exactly the bug a real
+  // account with a null column hits. `!== undefined` distinguishes them.
+  const inCalibration   = placementMatchesPlayed !== undefined && (placementMatchesPlayed ?? 0) < 10;
   const inRecalibration = !inCalibration && recalibrationMatchesPlayed != null && recalibrationMatchesPlayed < 5;
   if (inCalibration || inRecalibration) {
     return (
       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/30 ${className}`}>
-        {inCalibration ? `⚡ Calibrating ${placementMatchesPlayed}/10` : `⚡ Recalibrating ${recalibrationMatchesPlayed}/5`}
+        {inCalibration ? `⚡ Calibrating ${placementMatchesPlayed ?? 0}/10` : `⚡ Recalibrating ${recalibrationMatchesPlayed}/5`}
       </span>
     );
   }
