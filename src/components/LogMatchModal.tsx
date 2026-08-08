@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -449,7 +449,11 @@ function PlayerSearch({
                     <span className="block truncate">{p.displayName} <span className="text-slate-400 font-normal">(@{p.username})</span></span>
                     {ineligible && <span className="block text-[10px] text-red-400 font-normal mt-0.5">Not eligible for this match</span>}
                   </span>
-                  {!ineligible && <span className="text-xs text-amber-400 shrink-0 ml-2">{p.mmr} MMR</span>}
+                  {!ineligible && (
+                    <span className="text-xs text-amber-400 shrink-0 ml-2">
+                      {isCalibrating(p) ? '⚡ Calibrating' : `${p.mmr} MMR`}
+                    </span>
+                  )}
                 </button>
               );
             })}
