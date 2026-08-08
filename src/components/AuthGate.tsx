@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
 import { AppProvider, useApp } from '@/context/AppContext';
@@ -10,6 +10,7 @@ import { ExitGuard } from '@/components/ExitGuard';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ToastStack } from '@/components/ToastStack';
 import { SeasonRecapModal } from '@/components/SeasonRecapModal';
+import { captureReferralFromUrl } from '@/lib/utils';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { authUser, isLoading, needsEmailVerification, needsProfileSetup } = useAuth();
@@ -17,6 +18,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return true;
     return !!localStorage.getItem('cc_onboarded');
   });
+
+  // Runs on every boot regardless of auth state — a ?ref= link may land on
+  // an already-signed-in device (nothing to do) or a brand new visitor
+  // (captured for AuthContext to consume once they finish signing up).
+  useEffect(() => { captureReferralFromUrl(); }, []);
 
   if (isLoading) {
     return (

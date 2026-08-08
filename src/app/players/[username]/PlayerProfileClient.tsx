@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { QRModal } from '@/components/QRModal';
+import { InviteModal } from '@/components/InviteModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
@@ -76,6 +77,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
 
   const [selectedMatch,  setSelectedMatch]  = useState<Match | null>(null);
   const [qrOpen,         setQrOpen]         = useState(false);
+  const [inviteOpen,     setInviteOpen]     = useState(false);
   const [challengeOpen,  setChallengeOpen]  = useState(() => {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('challenge') === '1';
@@ -326,6 +328,12 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               </>
             )}
           </div>
+          {isMe && (
+            <button onClick={() => setInviteOpen(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 rounded-xl text-sm font-semibold transition-colors">
+              <UserPlus size={14}/> Invite Friends
+            </button>
+          )}
         </div>
 
         {!canSeeFullProfile ? (

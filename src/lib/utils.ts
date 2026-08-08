@@ -5,6 +5,27 @@ import type { Tier, MalaysiaState, CountryCode } from '@/types';
 // alone doesn't include a subpath like /courtconnect on GitHub Pages.
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
+// Referral capture: an invite link opens the app at `/?ref=<username>`. The
+// referrer's username has to survive the entire unauthenticated flow (signup
+// form -> email verification -> return visit -> username picker) before
+// AuthContext can resolve and attach it, so it's parked in localStorage
+// rather than passed through component state. Captured once on app boot
+// (AuthGate), consumed once at signup completion (AuthContext.completeProfile).
+const REFERRAL_KEY = 'cc_referral';
+export function captureReferralFromUrl() {
+  if (typeof window === 'undefined') return;
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref) try { localStorage.setItem(REFERRAL_KEY, ref.toLowerCase()); } catch { /* ignore */ }
+}
+export function consumeReferral(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const ref = localStorage.getItem(REFERRAL_KEY);
+    localStorage.removeItem(REFERRAL_KEY);
+    return ref;
+  } catch { return null; }
+}
+
 // /players/[username]/ only pre-renders the demo roster (static export) — a
 // real account's username 404s there, so real players route through
 // /profile/?uid=X instead (works for any signed-in account). The current

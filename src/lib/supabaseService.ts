@@ -48,6 +48,7 @@ function userRowToProfile(row: Record<string, unknown>): Partial<UserProfile> {
     recalibrationMatchesPlayed: row.recalibration_matches_played as number | null | undefined,
     lastRecalibrationAt: row.last_recalibration_at as string | undefined,
     inactivityReminderSentAt: row.inactivity_reminder_sent_at as string | null | undefined,
+    referredBy: row.referred_by as string | null | undefined,
     globalRank: row.global_rank as number,
     state: row.state as MalaysiaState,
     area: row.area as string,
@@ -144,6 +145,13 @@ export async function lookupUserByUsername(username: string): Promise<Partial<Us
 export async function lookupUserByUid(uid: string): Promise<Partial<UserProfile> | null> {
   const { data } = await supabase.from('users_public').select('*').eq('uid', uid).maybeSingle();
   return data ? userRowToProfile(data) : null;
+}
+
+// Count-only, computed on demand rather than a stored counter — see
+// referred_by in 0021_referrals.sql for why.
+export async function countReferrals(uid: string): Promise<number> {
+  const { count } = await supabase.from('users_public').select('uid', { count: 'exact', head: true }).eq('referred_by', uid);
+  return count ?? 0;
 }
 
 // One-shot fetch of every real signed-up account, for the leaderboard's ranking

@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
 import { lookupUserByUsername } from '@/lib/supabaseService';
 import { seasonNumberForDate } from '@/lib/seasons';
-import { BASE_PATH } from '@/lib/utils';
+import { BASE_PATH, consumeReferral } from '@/lib/utils';
 
 interface AuthCtx {
   authUser: CompatUser | null;
@@ -40,7 +40,7 @@ async function userRowExists(uid: string): Promise<boolean> {
   return exists;
 }
 
-async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string }) {
+async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; referredBy?: string }) {
   await supabase.from('users').insert({
     uid: user.uid,
     email: user.email,
@@ -59,7 +59,26 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     region: extra.region,
     wins: 0, losses: 0, total_matches: 0,
     open_to_play: false,
+    // Omitted entirely (not even `null`) when there's no referral — this is
+    // every signup's insert, so unlike a patch-only column this key being
+    // present at all would break EVERY signup, not just referred ones, until
+    // Lok runs 0021_referrals.sql. Once that's applied this is safe to
+    // simplify back to always-present, but there's no reason to rush it.
+    ...(extra.referredBy ? { referred_by: extra.referredBy } : {}),
   });
+}
+
+// Resolves a captured `?ref=<username>` (see utils.captureReferralFromUrl)
+// to the referrer's uid at the moment of signup, not capture time — the
+// referrer's username is the only stable identifier available pre-signup.
+// Silently drops anything that doesn't resolve (typo'd/deleted account,
+// self-referral) rather than blocking signup over it.
+async function resolveReferrer(myUid: string): Promise<string | undefined> {
+  const refUsername = consumeReferral();
+  if (!refUsername) return undefined;
+  const ref = await lookupUserByUsername(refUsername).catch(() => null);
+  if (!ref?.uid || ref.uid === myUid) return undefined;
+  return ref.uid;
 }
 
 function friendlyError(message: string): string {
@@ -169,8 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const available = await checkUsernameAvailable(cleanUsername);
     if (!available) return 'That username is already taken.';
     try {
+      const referredBy = await resolveReferrer(auth.currentUser.uid);
       await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
-      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim() });
+      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), referredBy });
       setNeedsProfileSetup(false);
       return null;
     } catch (e: unknown) {

@@ -22,6 +22,7 @@ export interface UserProfile {
   recalibrationMatchesPlayed?: number | null; // 0-4 = mid recalibration window; null/undefined = not recalibrating
   lastRecalibrationAt?: string; // ISO date of last completed recalibration — 3-month cooldown gate
   inactivityReminderSentAt?: string | null; // ISO date the "you're about to go inactive" nudge last fired — cleared on any new match, re-armed each dormancy cycle
+  referredBy?: string | null; // uid of the account whose invite link this user signed up through
   globalRank: number;
   state: MalaysiaState;
   area: string;              // e.g. "Petaling Jaya"

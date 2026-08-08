@@ -4,9 +4,10 @@ import { useApp } from '@/context/AppContext';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { QRModal } from '@/components/QRModal';
+import { InviteModal } from '@/components/InviteModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
 import { SettingsModal } from '@/components/SettingsModal';
-import { Plus, User, Settings, LogOut, QrCode, ChevronDown, Bell, Sun, Moon } from 'lucide-react';
+import { Plus, User, Settings, LogOut, QrCode, UserPlus, ChevronDown, Bell, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPanel } from '@/components/NotificationPanel';
 import { ME, PLAYERS } from '@/lib/data';
@@ -18,6 +19,7 @@ export function Topbar() {
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [notifOpen,   setNotifOpen]   = useState(false);
   const [qrOpen,      setQrOpen]      = useState(false);
+  const [inviteOpen,  setInviteOpen]  = useState(false);
   const [logOpen,     setLogOpen]     = useState(false);
   const [settOpen,    setSettOpen]    = useState(false);
   const [isDark,      setIsDark]      = useState(() =>
@@ -117,6 +119,10 @@ export function Topbar() {
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
                     <QrCode size={15} className="text-slate-400" /> My QR Code
                   </button>
+                  <button onClick={() => { setInviteOpen(true); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
+                    <UserPlus size={15} className="text-slate-400" /> Invite Friends
+                  </button>
                   <button onClick={() => { setSettOpen(true); setMenuOpen(false); }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm">
                     <Settings size={15} className="text-slate-400" /> Settings
@@ -146,6 +152,7 @@ export function Topbar() {
       </header>
 
       {qrOpen   && <QRModal       open={true} onClose={() => setQrOpen(false)} />}
+      {inviteOpen && <InviteModal open={true} onClose={() => setInviteOpen(false)} />}
       {logOpen  && <LogMatchModal open={true} onClose={() => setLogOpen(false)} />}
       {settOpen && <SettingsModal open={true} onClose={() => setSettOpen(false)} />}
     </>
