@@ -468,7 +468,7 @@ function PlayerSearch({
 export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
   open: boolean; onClose: () => void; plannedMatchId?: string; onLogged?: (plannedMatchId: string) => void;
 }) {
-  const { user, addMatch, matches, updateUser } = useApp();
+  const { user, addMatch, matches } = useApp();
   const [done,     setDone]     = useState(false);
   const [mode,     setMode]     = useState<'ranked' | 'casual'>('ranked');
   const [type,     setType]     = useState<MatchType>(() => user.gender === 'Female' ? 'WS' : 'MS');
@@ -559,18 +559,10 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
       ...(plannedMatchId ? { plannedMatchId } : {}),
     } as Match);
 
-    // Placement/recalibration are ranked-only concepts — a casual match
-    // shouldn't burn one of the 5/10 calibration games.
-    if (mode === 'ranked') {
-      if (!placementDone) {
-        updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
-      } else if (recalActive) {
-        const played = (user.recalibrationMatchesPlayed ?? 0) + 1;
-        updateUser(played >= 5
-          ? { recalibrationMatchesPlayed: null, lastRecalibrationAt: new Date().toISOString() }
-          : { recalibrationMatchesPlayed: played });
-      }
-    }
+    // Placement/recalibration now advance on confirm, not here — see
+    // AppContext's MMR-apply effect/confirmMatch. A Pending match that gets
+    // cancelled or disputed must not burn a calibration slot (bug fix
+    // 2026-08-09: it used to increment right here at submit time).
 
     if (plannedMatchId) onLogged?.(plannedMatchId);
 

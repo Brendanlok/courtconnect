@@ -883,7 +883,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   onMatchLogged?: (plannedMatchId: string) => void;
   onMatchCancelled?: (plannedMatchId: string) => void;
 }) {
-  const { user, matches, addMatch, updateUser, allRealPlayers } = useApp();
+  const { user, matches, addMatch, allRealPlayers } = useApp();
   const [view, setView] = useState<ModalView>('setup');
   const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [isHost, setIsHost] = useState(true);
@@ -1057,14 +1057,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       plannedMatchId: plannedMatch?.id ?? resumedPlannedId,
     };
     addMatch(newMatch as import('@/types').Match);
-    if (!placementDone) {
-      updateUser({ placementMatchesPlayed: (user.placementMatchesPlayed ?? 0) + 1 });
-    } else if (recalActive) {
-      const played = (user.recalibrationMatchesPlayed ?? 0) + 1;
-      updateUser(played >= 5
-        ? { recalibrationMatchesPlayed: null, lastRecalibrationAt: new Date().toISOString() }
-        : { recalibrationMatchesPlayed: played });
-    }
+    // Placement/recalibration now advance on confirm, not here — see
+    // AppContext's MMR-apply effect/confirmMatch. A Pending match that gets
+    // cancelled or disputed must not burn a calibration slot (bug fix
+    // 2026-08-09: it used to increment right here at submit time).
     clearPausedMatch();
     const loggedPlannedId = plannedMatch?.id ?? resumedPlannedId;
     if (loggedPlannedId) onMatchLogged?.(loggedPlannedId);

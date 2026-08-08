@@ -666,25 +666,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (toApply.length === 0) return;
     toApply.forEach(m => mmrApplyingRef.current.add(m.id));
 
-    let persisted: { mmr: number; tier: Tier; stats: UserProfile['stats'] } | null = null;
+    let persisted: Partial<UserProfile> | null = null;
     setUser(u => {
       let mmr = u.mmr;
       let { wins, losses, totalMatches } = u.stats;
+      // Placement/recalibration burn a slot only once a match is actually
+      // Confirmed (bug fix 2026-08-09: used to increment at submit time, so
+      // a match that never got confirmed — cancelled, opponent ghosted —
+      // still permanently cost a calibration slot with no MMR ever applied).
+      let placementMatchesPlayed = u.placementMatchesPlayed ?? 0;
+      let recalibrationMatchesPlayed = u.recalibrationMatchesPlayed;
+      let lastRecalibrationAt = u.lastRecalibrationAt;
       toApply.forEach(m => {
-        // Casual/practice matches are recorded but never touch MMR or ranked
-        // win/loss stats — still get marked applied below so this effect
-        // stops retrying them every render.
+        // Casual/practice matches are recorded but never touch MMR, ranked
+        // win/loss stats, or calibration — still get marked applied below so
+        // this effect stops retrying them every render.
         if (m.mode === 'casual') return;
         const iWon = m.winnerId === uid;
         const delta = (m.reporterUid === uid ? m.mmrChange : m.mmrChange !== undefined ? -m.mmrChange : undefined) ?? 0;
         mmr += delta;
         if (iWon) wins++; else losses++;
         totalMatches++;
+        const placementDone = placementMatchesPlayed >= 10;
+        const recalActive = placementDone && (recalibrationMatchesPlayed ?? 5) < 5;
+        if (!placementDone) {
+          placementMatchesPlayed += 1;
+        } else if (recalActive) {
+          const played = (recalibrationMatchesPlayed ?? 0) + 1;
+          if (played >= 5) { recalibrationMatchesPlayed = null; lastRecalibrationAt = new Date().toISOString(); }
+          else recalibrationMatchesPlayed = played;
+        }
       });
       const tier = getTier(mmr);
       const stats = { wins, losses, totalMatches };
-      persisted = { mmr, tier, stats };
-      return { ...u, mmr, tier, stats };
+      persisted = { mmr, tier, stats, placementMatchesPlayed, recalibrationMatchesPlayed, lastRecalibrationAt };
+      return { ...u, ...persisted };
     });
     if (persisted) saveUserProfile(uid, persisted).catch(() => {});
 
@@ -757,10 +773,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (m.mode !== 'casual') {
         const iWon = m.winnerId === 'me';
         const delta = m.mmrChange ?? 0;
-        setUser(u => ({
-          ...u, mmr: u.mmr + delta,
-          stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
-        }));
+        setUser(u => {
+          // Placement/recalibration burn a slot only on confirm, same as MMR
+          // above — see the real-match equivalent in the mmrApplyingRef effect.
+          const placementDone = (u.placementMatchesPlayed ?? 0) >= 10;
+          const recalActive = placementDone && (u.recalibrationMatchesPlayed ?? 5) < 5;
+          const placementPatch = !placementDone
+            ? { placementMatchesPlayed: (u.placementMatchesPlayed ?? 0) + 1 }
+            : recalActive
+            ? (() => {
+                const played = (u.recalibrationMatchesPlayed ?? 0) + 1;
+                return played >= 5
+                  ? { recalibrationMatchesPlayed: null, lastRecalibrationAt: new Date().toISOString() }
+                  : { recalibrationMatchesPlayed: played };
+              })()
+            : {};
+          return {
+            ...u, mmr: u.mmr + delta, ...placementPatch,
+            stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
+          };
+        });
       }
       return { ...m, status: 'Confirmed' as const, pendingConfirmations: [] };
     }));
