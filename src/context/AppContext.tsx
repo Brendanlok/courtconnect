@@ -1152,6 +1152,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const badge: UserProfile['clipBadge'] =
         next >= 50 ? 'Broadcaster' : next >= 20 ? 'Studio' : next >= 5 ? 'Director' : 'Camera';
       setUser(u => ({ ...u, clipCredits: next, clipBadge: badge }));
+      const uid = auth.currentUser?.uid;
+      if (uid) saveUserProfile(uid, { clipCredits: next, clipBadge: badge }).catch(() => {});
       return next;
     });
   }, []);
