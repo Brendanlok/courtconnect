@@ -14,7 +14,7 @@ import {
   Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
 } from 'lucide-react';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
-import { savePlannedMatch, loadPlannedMatches } from '@/lib/supabaseService';
+import { savePlannedMatch, loadPlannedMatches, notifyUser } from '@/lib/supabaseService';
 import { loadPausedMatch } from '@/lib/pausedMatch';
 import type { UserProfile, MatchType, Match } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -79,6 +79,15 @@ const FORMAT_LABELS: Record<MatchType, string> = {
 };
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
+
+// addNotification (used throughout this file) is local-state only — it never
+// reaches the actual invited player's own account, only whoever is looking
+// at this browser tab right now. Real opponents found via player search
+// carry a genuine Supabase uid; demo roster picks (PLAYERS) and 'me' don't
+// and would just fail notifyUser's FK constraint (harmlessly, but no need to
+// try) — same isRealUid idea AppContext already uses, inlined here since
+// this file doesn't have access to that module's local player list.
+const isRealPlayerUid = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
 
 function slotsForFormat(format: MatchType): { teamSize: number } {
   return { teamSize: format === 'MS' || format === 'WS' ? 1 : 2 };
@@ -238,16 +247,14 @@ export default function MatchesPage() {
     // Notify all invited players
     const invited = [...pmFinal.teamA, ...pmFinal.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
     invited.forEach(p => {
-      addNotification({
-        id: `notif_${Date.now()}_${p.uid}`,
-        type: 'match_invite',
-        title: editId ? 'Match Updated' : pmFinal.liveRecord ? 'Live Match Invite' : 'Match Invite',
-        body: editId
-          ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
-          : `${user.displayName} invited you to a ${FORMAT_LABELS[pmFinal.format]} at ${pmFinal.venue} on ${pmFinal.date}.${pmFinal.liveRecord ? ' (Live recorded match — please confirm to enable live scoring.)' : ''}`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
+      const title = editId ? 'Match Updated' : pmFinal.liveRecord ? 'Live Match Invite' : 'Match Invite';
+      const body = editId
+        ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
+        : `${user.displayName} invited you to a ${FORMAT_LABELS[pmFinal.format]} at ${pmFinal.venue} on ${pmFinal.date}.${pmFinal.liveRecord ? ' (Live recorded match — please confirm to enable live scoring.)' : ''}`;
+      addNotification({ id: `notif_${Date.now()}_${p.uid}`, type: 'match_invite', title, body, read: false, createdAt: new Date().toISOString() });
+      // addNotification above only updates this tab's own local state — it
+      // never reaches p's actual account. This does.
+      if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_invite', title, body, linkTo: `${BASE_PATH}/matches/` });
     });
   };
 
@@ -297,14 +304,9 @@ export default function MatchesPage() {
     // Notify all parties
     const all = match ? [...match.teamA, ...match.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me') : [];
     all.forEach(p => {
-      addNotification({
-        id: `notif_cancel_${Date.now()}_${p.uid}`,
-        type: 'match_pending',
-        title: 'Match Cancelled',
-        body: `${user.displayName} cancelled the planned match at ${match?.venue ?? 'the venue'}.`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
+      const body = `${user.displayName} cancelled the planned match at ${match?.venue ?? 'the venue'}.`;
+      addNotification({ id: `notif_cancel_${Date.now()}_${p.uid}`, type: 'match_pending', title: 'Match Cancelled', body, read: false, createdAt: new Date().toISOString() });
+      if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_pending', title: 'Match Cancelled', body, linkTo: `${BASE_PATH}/matches/` });
     });
   };
 
@@ -630,14 +632,12 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
               <button onClick={() => setRemoveTarget(null)}
                 className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors">Keep</button>
               <button onClick={() => {
-                addNotification({
-                  id: `notif_remove_${Date.now()}_${removeTarget.uid}`,
-                  type: 'match_invite',
-                  title: 'Removed from Match',
-                  body: `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`,
-                  read: false,
-                  createdAt: new Date().toISOString(),
-                });
+                const body = `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`;
+                addNotification({ id: `notif_remove_${Date.now()}_${removeTarget.uid}`, type: 'match_invite', title: 'Removed from Match', body, read: false, createdAt: new Date().toISOString() });
+                // The copy above ("They will be notified") was only ever true
+                // for whoever's looking at this tab — this is what actually
+                // reaches removeTarget's own account.
+                if (isRealPlayerUid(removeTarget.uid)) notifyUser(removeTarget.uid, { type: 'match_invite', title: 'Removed from Match', body });
                 setRemoveTarget(null);
               }}
                 className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors">Remove</button>
