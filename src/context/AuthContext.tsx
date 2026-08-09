@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
-import { lookupUserByUsername } from '@/lib/supabaseService';
+import { lookupUserByUsername, notifyUser } from '@/lib/supabaseService';
 import { seasonNumberForDate } from '@/lib/seasons';
 import { BASE_PATH, consumeReferral } from '@/lib/utils';
 
@@ -191,6 +191,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const referredBy = await resolveReferrer(auth.currentUser.uid);
       await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
       await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), referredBy });
+      // Closes the referral loop — without this the referrer only finds out
+      // by reopening the Invite Friends modal and noticing the count moved.
+      // notifyUser already swallows its own errors, so a failed notify can't
+      // undo/block the signup that already succeeded above.
+      if (referredBy) {
+        notifyUser(referredBy, {
+          type: 'referral_joined',
+          title: '🎉 Someone joined via your invite',
+          body: `${displayName.trim()} signed up on CourtConnect using your invite link.`,
+        });
+      }
       setNeedsProfileSetup(false);
       return null;
     } catch (e: unknown) {
