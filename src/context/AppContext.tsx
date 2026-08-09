@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import type { UserProfile, Match, Conversation, Tournament, Challenge, Club, Notification, ClubMessage, CourtPosition, CourtProfile, Tier, Venue, SeasonHistoryEntry } from '@/types';
 import { ME, MATCHES as SEED_MATCHES, CONVERSATIONS as SEED_CONVS, TOURNAMENTS as SEED_TOURNAMENTS, CLUBS as SEED_CLUBS } from '@/lib/data';
 import { auth, onAuthStateChanged } from '@/lib/supabase';
-import { maxClubsForTier, getTier, BASE_PATH } from '@/lib/utils';
+import { maxClubsForTier, getTier, BASE_PATH, isCalibrating } from '@/lib/utils';
 import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { BADGES, computeEarnedBadgeIds } from '@/lib/achievements';
 import { generateBracket, reportBracketResult as computeBracketResult, bracketChampion } from '@/lib/bracketGen';
@@ -1418,6 +1418,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.placementMatchesPlayed, user.inactivityReminderSentAt, user.joinedAt, allMatches, profileLoading]);
+
+  // Weekly digest: a positive counterpart to the inactivity warning above —
+  // "here's your week" for anyone who's actually been playing, not a nag.
+  // Same client-triggered pattern (no server cron in this static-export
+  // app): checked once per session on load, at most once per 7 days, and
+  // only sent when there's something to report (silently resets the clock
+  // otherwise so a dormant week doesn't queue up a stale digest for later).
+  const DIGEST_INTERVAL_DAYS = 7;
+  const digestCheckedRef = useRef(false);
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || profileLoading || digestCheckedRef.current) return;
+    const lastSent = user.weeklyDigestSentAt ? new Date(user.weeklyDigestSentAt) : new Date(user.joinedAt);
+    const daysSinceSent = (Date.now() - lastSent.getTime()) / 86_400_000;
+    if (daysSinceSent < DIGEST_INTERVAL_DAYS) return;
+    digestCheckedRef.current = true;
+
+    const weekAgo = Date.now() - DIGEST_INTERVAL_DAYS * 86_400_000;
+    const weekMatches = allMatches.filter(m => m.status === 'Confirmed' && new Date(m.playedAt).getTime() >= weekAgo);
+    if (weekMatches.length === 0) { updateUser({ weeklyDigestSentAt: new Date().toISOString() }); return; }
+
+    const wins = weekMatches.filter(m => m.winnerId === 'me').length;
+    const losses = weekMatches.length - wins;
+    const mmrDelta = weekMatches.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+    const mmrPart = isCalibrating(user) ? '' : `, MMR ${mmrDelta >= 0 ? '+' : ''}${mmrDelta}`;
+    notifyUser(uid, {
+      type: 'weekly_digest',
+      title: '📅 Your week in review',
+      body: `${weekMatches.length} match${weekMatches.length === 1 ? '' : 'es'} played — ${wins}W ${losses}L${mmrPart}.`,
+      linkTo: `${BASE_PATH}/`,
+    });
+    updateUser({ weeklyDigestSentAt: new Date().toISOString() });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.weeklyDigestSentAt, user.joinedAt, allMatches, profileLoading]);
 
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };

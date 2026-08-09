@@ -23,6 +23,7 @@ export interface UserProfile {
   lastRecalibrationAt?: string; // ISO date of last completed recalibration — 3-month cooldown gate
   inactivityReminderSentAt?: string | null; // ISO date the "you're about to go inactive" nudge last fired — cleared on any new match, re-armed each dormancy cycle
   referredBy?: string | null; // uid of the account whose invite link this user signed up through
+  weeklyDigestSentAt?: string | null; // ISO date the last "your week in review" nudge fired — checked every 7 days
   globalRank: number;
   state: MalaysiaState;
   area: string;              // e.g. "Petaling Jaya"
