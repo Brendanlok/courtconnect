@@ -21,7 +21,7 @@ import {
   sendClubMessageDoc, subscribeClubMessages,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
   addTournamentPending, removeTournamentPending, approveTournamentRequest,
-  lookupUserByUsername, notifyUser,
+  lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
@@ -501,6 +501,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prevFollowingPendingRef.current = []; prevIncomingFollowsRef.current = [];
         challengesLoadedRef.current = false; conversationsLoadedRef.current = false; matchesLoadedRef.current = false;
         followingLoadedRef.current = false; incomingFollowsLoadedRef.current = false;
+        // Drop this account's DB-backed notifications so a different account
+        // signing in on the same device doesn't briefly see them; local-only
+        // ones (id-prefixed 'n_') are left alone, matching existing behavior.
+        setNotifications(prev => prev.filter(n => n.id.startsWith('n_')));
         return;
       }
       const uid = authUser.uid;
@@ -567,6 +571,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           conversationsLoadedRef.current = true;
           prevConversationsRef.current = docs;
           setRealConversationDocs(docs);
+        }),
+        // Rows written by notifyUser (tournament_win, inactivity_reminder,
+        // weekly_digest, referral_joined) — previously only ever fired a push
+        // and vanished once dismissed, with no trace in the bell/panel. Full
+        // replace on each event, same "server is the source of truth" idiom
+        // subscribeClubs uses; local-only entries (challenge/match-invite
+        // etc., id-prefixed 'n_') are kept as-is alongside these.
+        subscribeMyNotifications(uid, rows => {
+          setNotifications(prev => {
+            const local = prev.filter(n => n.id.startsWith('n_'));
+            const remote = rows.map(r => ({ id: r.id, type: r.type, title: r.title, body: r.body, read: r.read, createdAt: r.createdAt, linkTo: r.linkTo } as Notification));
+            return [...remote, ...local].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          });
         }),
         subscribeEndorsementsReceived(uid, setRealEndorsementCounts),
         subscribeFollowing(uid, (accepted, pending) => {
@@ -1273,8 +1290,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const markNotifRead    = useCallback((id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n)), []);
-  const markAllNotifsRead = useCallback(() => setNotifications(p => p.map(n => ({ ...n, read: true }))), []);
+  const markNotifRead    = useCallback((id: string) => {
+    setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n));
+    // Safe no-op for local-only ids (challenge/match-invite etc.) — nothing
+    // in the DB matches those, so the UPDATE just affects zero rows.
+    markNotificationReadRemote(id).catch(() => {});
+  }, []);
+  const markAllNotifsRead = useCallback(() => setNotifications(p => {
+    p.filter(n => !n.read && !n.id.startsWith('n_')).forEach(n => { markNotificationReadRemote(n.id).catch(() => {}); });
+    return p.map(n => ({ ...n, read: true }));
+  }), []);
   const unreadNotifCount  = notifications.filter(n => !n.read).length;
 
   // Sends a message in a real cross-account conversation (shared Supabase row,

@@ -439,6 +439,36 @@ export async function notifyUser(userId: string, n: { type: string; title: strin
   } catch { /* ignore */ }
 }
 
+// notifyUser's rows only ever fed the push trigger — nothing read them back,
+// so anything sent through it (tournament_win, inactivity_reminder,
+// weekly_digest, referral_joined) vanished the moment the OS push notice was
+// dismissed, with no trace in the app's own notification bell. Surfaces the
+// same rows there too, same subscribe-on-change idiom as challenges/clubs.
+export interface StoredNotifRow { id: string; type: string; title: string; body: string; read: boolean; createdAt: string; linkTo?: string }
+function notifRowToObj(row: Record<string, unknown>): StoredNotifRow {
+  return {
+    id: row.id as string, type: row.type as string, title: row.title as string, body: row.body as string,
+    read: row.read as boolean, createdAt: row.created_at as string, linkTo: row.link_to as string | undefined,
+  };
+}
+export function subscribeMyNotifications(uid: string, cb: (rows: StoredNotifRow[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('notifications').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(50);
+    cb((data ?? []).map(notifRowToObj));
+  };
+  load();
+  const channel = freshChannel(`notifications:${uid}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
+// Best-effort, and safe to call for a local-only (non-DB-backed) notification
+// id too — an UPDATE matching zero rows is just a no-op, not an error.
+export async function markNotificationReadRemote(id: string): Promise<void> {
+  try { await supabase.from('notifications').update({ read: true }).eq('id', id); } catch { /* ignore */ }
+}
+
 export async function sendSharedMessage(
   chatId: string, participantUids: string[], participants: Record<string, SharedParticipant>, msg: ChatMessage,
 ) {
