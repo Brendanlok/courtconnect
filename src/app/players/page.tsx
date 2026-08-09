@@ -130,7 +130,7 @@ export default function PlayersPage() {
         <PlayersList user={user} following={following} filters={sharedFilters} realPlayers={allRealPlayers}/>
       </div>
       <div className={tab !== 'Following' ? 'hidden' : ''}>
-        <FollowingTab following={following} followPlayer={followPlayer} unfollowPlayer={unfollowPlayer} user={user} filters={sharedFilters}/>
+        <FollowingTab following={following} followPlayer={followPlayer} unfollowPlayer={unfollowPlayer} user={user} filters={sharedFilters} realPlayers={allRealPlayers}/>
       </div>
       {tab === 'Clubs' && (
         <ClubsTab
@@ -355,14 +355,15 @@ function PlayersList({ user, following, filters, realPlayers }: { user: UserProf
 
 // ─── Following tab ────────────────────────────────────────────────────────────
 
-function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }: {
+function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, realPlayers }: {
   following: string[]; followPlayer: (uid: string) => void; unfollowPlayer: (uid: string) => void;
-  user: UserProfile; filters: PlayerFilters;
+  user: UserProfile; filters: PlayerFilters; realPlayers: UserProfile[];
 }) {
   const { query, countryFilter, regionFilter, tierFilter, sortKey, openToPlay, openToPartner } = filters;
   const winRate = (p: UserProfile) => p.stats.totalMatches > 0 ? p.stats.wins / p.stats.totalMatches : 0;
+  const allPlayers = [...PLAYERS, ...realPlayers];
 
-  const followedPlayers = PLAYERS
+  const followedPlayers = allPlayers
     .filter(p => following.includes(p.uid))
     .filter(p => {
       const q = query.toLowerCase();
@@ -381,8 +382,8 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters }
     });
 
   // Suggested: not yet followed, similar MMR ±300, not current user
-  const suggested = PLAYERS
-    .filter(p => !following.includes(p.uid) && Math.abs(p.mmr - user.mmr) <= 300)
+  const suggested = allPlayers
+    .filter(p => p.uid !== user.uid && !following.includes(p.uid) && Math.abs(p.mmr - user.mmr) <= 300)
     .sort((a, b) => Math.abs(a.mmr - user.mmr) - Math.abs(b.mmr - user.mmr))
     .slice(0, 3);
 
