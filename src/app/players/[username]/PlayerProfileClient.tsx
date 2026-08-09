@@ -13,7 +13,7 @@ import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating } from '@/lib/utils';
-import { BADGES, type Badge } from '@/lib/achievements';
+import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Video, Camera, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
 import CourtHeatmap from '@/components/CourtHeatmap';
@@ -71,6 +71,7 @@ function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: bo
 
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
   const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, clipCredits, courtProfile, earnedBadgeIds, pastSeasons } = useApp();
+  const matchesConfirmedCount = allMatches.filter(m => m.status === 'Confirmed').length;
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
   const staticPlayer = [ME, ...PLAYERS].find(p => p.username === username);
@@ -709,6 +710,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               <div className="grid grid-cols-2 gap-2">
                 {BADGES.map(b => {
                   const done = earnedBadgeIds.includes(b.id);
+                  const milestone = MATCH_COUNT_MILESTONE[b.id];
                   return (
                     <button key={b.id} onClick={() => setSelectedBadge(b)}
                       className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-colors
@@ -716,7 +718,11 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                       {BADGE_ICON[b.id]}
                       <div className="min-w-0">
                         <p className="text-xs font-semibold truncate">{b.name}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{b.description}</p>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {!done && milestone
+                            ? `${Math.min(matchesConfirmedCount, milestone)}/${milestone} matches`
+                            : b.description}
+                        </p>
                       </div>
                     </button>
                   );

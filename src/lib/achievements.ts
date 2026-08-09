@@ -35,6 +35,14 @@ const MARATHON_SEC = 45 * 60;
 const HOT_STREAK = 3;
 const CENTURY = 100;
 
+// Match-count badges have an obvious "X of Y" — worth surfacing on the
+// unearned card instead of leaving it a flat greyed-out tile with no sense
+// of how close you are. The other badges (streaks, one-off feats) don't have
+// a clean linear progress metric, so they're left as plain earned/not-earned.
+export const MATCH_COUNT_MILESTONE: Record<string, number> = {
+  first_ten: 10, half_century: 50, century_club: CENTURY,
+};
+
 // Matches from useApp() are always normalized so player1/games.p1 is "me" and
 // winnerId === 'me' means I won — see toLocalMatch in AppContext.
 export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tournaments: Tournament[] = []): string[] {
