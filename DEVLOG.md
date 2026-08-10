@@ -1,5 +1,35 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-10] — Auto-dev: tournament host-impersonation, registration race, missing winner
+
+**Trigger:** To-Do board still dry on the day's second session — ran a second code
+audit on less-touched areas (tournaments/clubs/chat/live) after the first sweep.
+
+**What shipped:**
+1. **Tournament host powers could be seized by renaming your display name** (P1,
+   security) — `isMyEvent`/`isMyTourney` in `app/tournaments/page.tsx` granted host
+   UI (edit, approve requests, see private details) to anyone whose `displayName`
+   happened to match a seed tournament's `organiser` string, with no uid check.
+   Fixed: that fallback now only applies to seed/dummy tournaments (`t.isDummy`),
+   which have no real `hostUid` to match against; real tournaments require
+   `hostUid === 'me'` or an actual registration.
+2. **Registration/approval had no capacity check, so two people could grab the last
+   spot at once** (P2, race) — `registerTournament` and `approveTournamentRequest`
+   both incremented `current_players` from a possibly-stale client snapshot with no
+   re-check against the live row. Fixed: added `registerForTournament` in
+   `supabaseService.ts` that re-fetches capacity and refuses over max_players (same
+   fetch-check-write guard `addClubMember` already used for clubs); applied the same
+   guard inside `approveTournamentRequest`. Both now decline gracefully with a
+   notification instead of overbooking.
+3. **Manual "End Match" on the live-match screen left the winner blank** — ending a
+   match early (before a game naturally completed) never set `winningSide`, so the
+   completion screen showed a trophy-less blank "wins!". Fixed: derive it from games
+   won, falling back to the current game's live score if scores are tied at 0 games
+   each.
+
+Build clean, deployed (commit `bf963b2`). All 3 findings logged + marked Done in the
+Notion To-Do board same session.
+
 ## [2026-08-10] — Auto-dev: 3 calibration/tier bugs from a code audit + overdue-match reminder
 
 **Trigger:** To-Do board was dry (both open items still genuinely blocked on live-court
