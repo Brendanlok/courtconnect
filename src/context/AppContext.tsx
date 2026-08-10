@@ -373,8 +373,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const profile = await loadUserProfile(authUser.uid);
           if (profile) {
+            // userRowToProfile always emits every key, so a column that
+            // hasn't been migrated in yet (e.g. weekly_digest_sent_at before
+            // 0022 is run) comes back as an explicit `undefined` — spreading
+            // that as-is clobbers a good locally-cached value with nothing
+            // every time this fires (every login/reload), which is exactly
+            // what made the weekly digest re-fire every session instead of
+            // every 7 days. Drop undefined keys so only columns Supabase
+            // actually has an answer for can overwrite local state.
+            const definedProfile = Object.fromEntries(Object.entries(profile).filter(([, v]) => v !== undefined));
             setUser(u => ({
-              ...u, ...profile,
+              ...u, ...definedProfile,
               uid: 'me', // keep the app-wide local convention — the real uid lives in auth.currentUser
               tier: getTier(profile.mmr ?? u.mmr),
               // Signup never writes disciplineMMR (only top-level mmr) — without
