@@ -805,8 +805,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   : { recalibrationMatchesPlayed: played };
               })()
             : {};
+          const mmr = u.mmr + delta;
           return {
-            ...u, mmr: u.mmr + delta, ...placementPatch,
+            ...u, mmr, tier: getTier(mmr), ...placementPatch,
             stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
           };
         });

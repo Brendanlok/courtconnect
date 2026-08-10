@@ -232,6 +232,10 @@ export default function MatchesPage() {
   const visiblePlanned   = planned.filter(m => m.status !== 'cancelled' && m.liveState !== 'completed');
   const cancelledPlanned = planned.filter(m => m.status === 'cancelled');
 
+  // Planned matches whose date has passed with no result ever started — easy to
+  // lose track of once a few upcoming matches push them down the list.
+  const overdueToLog = visiblePlanned.filter(m => !m.liveState && new Date(m.date + 'T' + m.time) < new Date());
+
   const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
 
   const handleSavePlan = (pm: PlannedMatch) => {
@@ -347,6 +351,16 @@ export default function MatchesPage() {
           <Plus size={13}/> Plan Match
         </button>
       </div>
+
+      {/* Overdue: planned matches that came and went with no result logged */}
+      {overdueToLog.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3 flex items-center gap-2.5">
+          <Clock size={15} className="text-amber-400 shrink-0"/>
+          <p className="text-xs text-amber-300 flex-1">
+            {overdueToLog.length === 1 ? 'You have 1 match to log' : `You have ${overdueToLog.length} matches to log`} — did they happen?
+          </p>
+        </div>
+      )}
 
       {/* Watch a live match */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">

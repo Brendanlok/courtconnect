@@ -381,9 +381,12 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, 
       return b.mmr - a.mmr;
     });
 
-  // Suggested: not yet followed, similar MMR ±300, not current user
+  // Suggested: not yet followed, similar MMR ±300, not current user, not still calibrating
+  // (this card renders MMR/tier directly instead of going through RankRow, so a
+  // calibrating player's hidden real MMR must never reach it — same reasoning as
+  // PlayersList above).
   const suggested = allPlayers
-    .filter(p => p.uid !== user.uid && !following.includes(p.uid) && Math.abs(p.mmr - user.mmr) <= 300)
+    .filter(p => p.uid !== user.uid && !following.includes(p.uid) && !isCalibrating(p) && Math.abs(p.mmr - user.mmr) <= 300)
     .sort((a, b) => Math.abs(a.mmr - user.mmr) - Math.abs(b.mmr - user.mmr))
     .slice(0, 3);
 
