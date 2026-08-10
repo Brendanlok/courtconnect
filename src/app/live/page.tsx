@@ -494,7 +494,16 @@ export default function LivePage() {
         )}
         {isHost && !isDone && (
           <button onClick={() => {
-            const ended: LiveMatch = { ...match, status: 'completed', completedAt: new Date().toISOString() };
+            // winningSide is normally only set when a point completes a game
+            // (see addPoint) — ending early needs its own winner, or the
+            // completion screen shows a blank "wins!" with no trophy. Fall
+            // back from games won to the current game's live score.
+            const cur = match.games[match.currentGame];
+            const winningSide: LiveMatch['winningSide'] =
+              match.gameWins.a !== match.gameWins.b ? (match.gameWins.a > match.gameWins.b ? 'A' : 'B')
+              : cur.a !== cur.b ? (cur.a > cur.b ? 'A' : 'B')
+              : undefined;
+            const ended: LiveMatch = { ...match, status: 'completed', winningSide, completedAt: new Date().toISOString() };
             mutateMatch(ended);
             setPhase('complete');
           }}

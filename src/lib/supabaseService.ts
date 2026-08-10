@@ -879,14 +879,33 @@ export async function removeTournamentPending(id: string, uid: string, notifyDec
   if (notifyDecline) notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: 'Your request to join an event was declined.' });
 }
 
+// Register/approve both add to participants + increment current_players -
+// enforce max_players once here (same fetch-check-write shape as
+// addClubMember's max_members guard) instead of trusting stale client state.
+export async function registerForTournament(id: string, displayName: string, username: string): Promise<boolean> {
+  const { data } = await supabase.from('tournaments').select('current_players, max_players, participants').eq('id', id).maybeSingle();
+  const row = data as { current_players?: number; max_players?: number; participants?: { displayName: string; username: string }[] } | null;
+  if (row?.max_players != null && (row.current_players ?? 0) >= row.max_players) return false;
+  await supabase.from('tournaments').update({
+    current_players: (row?.current_players ?? 0) + 1,
+    participants: [...(row?.participants ?? []), { displayName, username }],
+  }).eq('id', id);
+  return true;
+}
+
 // Approve = add to participants/increment currentPlayers (same as
 // registerTournament) + drop from the pending list, in one call.
-export async function approveTournamentRequest(id: string, uid: string) {
+export async function approveTournamentRequest(id: string, uid: string): Promise<boolean> {
   const [{ data }, profile] = await Promise.all([
-    supabase.from('tournaments').select('name, current_players, participants').eq('id', id).maybeSingle(),
+    supabase.from('tournaments').select('name, current_players, max_players, participants').eq('id', id).maybeSingle(),
     lookupUserByUid(uid),
   ]);
-  const row = data as { name?: string; current_players?: number; participants?: { displayName: string; username: string }[] } | null;
+  const row = data as { name?: string; current_players?: number; max_players?: number; participants?: { displayName: string; username: string }[] } | null;
+  if (row?.max_players != null && (row.current_players ?? 0) >= row.max_players) {
+    await mutateTournamentPending(id, [], [uid]);
+    notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: row?.name ? `${row.name} filled up before your request could be approved.` : 'That event filled up before your request could be approved.' });
+    return false;
+  }
   if (profile?.displayName && profile?.username) {
     await supabase.from('tournaments').update({
       current_players: (row?.current_players ?? 0) + 1,
@@ -895,6 +914,7 @@ export async function approveTournamentRequest(id: string, uid: string) {
   }
   await mutateTournamentPending(id, [], [uid]);
   notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: row?.name ? `Your request to join ${row.name} was accepted!` : 'Your request to join an event was accepted!' });
+  return true;
 }
 
 export function subscribeClubMessages(clubId: string, cb: (msgs: ClubMessage[]) => void, max = 50): () => void {

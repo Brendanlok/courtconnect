@@ -97,7 +97,7 @@ export default function Tournaments() {
   };
 
   const isMyEvent = (t: Tournament) =>
-    t.hostUid === 'me' || t.organiser === user.displayName || !!registrations[t.id];
+    t.hostUid === 'me' || (t.isDummy && t.organiser === user.displayName) || !!registrations[t.id];
 
   const isAllCountries = countryFilter === 'All';
   const selectedCountryData = isAllCountries ? null : getCountryByName(countryFilter);
@@ -308,7 +308,7 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
   const locked      = !!(t.minMMR && myMMR < t.minMMR) || !!(t.maxMMR && myMMR > t.maxMMR);
   const isFull      = spotsLeft <= 0 && !isRegistered;
   const fillPct     = Math.round((t.currentPlayers / t.maxPlayers) * 100);
-  const isMyTourney = t.hostUid === 'me' || t.organiser === myDisplayName;
+  const isMyTourney = t.hostUid === 'me' || (t.isDummy && t.organiser === myDisplayName);
   // Can see full details if: public, or user is registered/host
   const canSeeDetails = !t.isPrivate || isRegistered || isMyTourney;
 

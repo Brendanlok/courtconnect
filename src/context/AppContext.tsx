@@ -20,7 +20,7 @@ import {
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
-  addTournamentPending, removeTournamentPending, approveTournamentRequest,
+  addTournamentPending, removeTournamentPending, approveTournamentRequest, registerForTournament,
   lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
@@ -890,18 +890,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return msg || 'Something went wrong. Please try again.';
     }
   }, [myRealUid]);
-  const registerTournament  = useCallback((id: string) => {
+  const registerTournament  = useCallback(async (id: string) => {
     const reg = { registeredAt: new Date().toISOString() };
     setRegistrations(r => ({ ...r, [id]: reg }));
-    const t = tournaments.find(x => x.id === id);
-    if (t) updateTournamentDoc(id, {
-      currentPlayers: t.currentPlayers + 1,
-      participants: [...(t.participants ?? []), { displayName: user.displayName, username: user.username }],
-    }).catch(() => {});
+    // registerForTournament re-checks capacity against the live row (not the
+    // possibly-stale `tournaments` snapshot) before writing — same guard
+    // addClubMember already applies to club joins.
+    const ok = await registerForTournament(id, user.displayName, user.username).catch(() => false);
+    if (!ok) {
+      setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
+      addNotification({ type: 'event_registered', title: 'Event Full', body: 'Sorry, this event just filled up.' });
+      return;
+    }
     addNotification({ type: 'event_registered', title: 'Event Registration', body: 'You have registered for the event!' });
     const uid = auth.currentUser?.uid;
     if (uid) saveTournamentReg(uid, id, reg).catch(() => {});
-  }, [tournaments, user.displayName, user.username]);
+  }, [user.displayName, user.username]);
   const unregisterTournament = useCallback((id: string) => {
     setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
     const t = tournaments.find(x => x.id === id);
