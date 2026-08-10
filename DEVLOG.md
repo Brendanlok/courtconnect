@@ -1,5 +1,35 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-10] — Auto-dev: 3 calibration/tier bugs from a code audit + overdue-match reminder
+
+**Trigger:** To-Do board was dry (both open items still genuinely blocked on live-court
+testing, re-confirmed this session). Ran the standing "board is dry → audit the
+codebase" fallback.
+
+**What shipped:**
+1. **Suggested-to-follow card leaked a calibrating player's real MMR/tier**
+   (`app/players/page.tsx`, `FollowingTab`) — it built its own list straight from
+   `[...PLAYERS, ...realPlayers]` with no `isCalibrating` filter, unlike the sibling
+   `PlayersList` 50 lines up, and rendered `p.mmr`/`p.tier` directly instead of going
+   through `RankRow` (which already self-gates). Same bug class as the 2026-08-08
+   sweep, just a spot that sweep missed. Fixed: `suggested` now filters out
+   `isCalibrating(p)` players too.
+2. **Tier badge went stale after a locally-confirmed match crossed a threshold**
+   (`context/AppContext.tsx`, `confirmMatch`) — the local/demo-opponent confirm path
+   updated `mmr` but never recomputed `tier` (the real-match MMR-apply effect already
+   did `tier: getTier(mmr)`, this path didn't). Fixed: same recompute added.
+3. **Home page "Nat. Rank" tile showed a number while still calibrating** — every
+   other rank display (profile header, QR card) shows "Calibrating"/"Unranked" text,
+   this one didn't check at all. Fixed: gated behind the existing `calibrating` flag
+   already computed on that page.
+4. **💡 Product idea, built same session:** amber banner atop the Matches page —
+   "You have N matches to log — did they happen?" — for planned matches whose date
+   passed with no result ever logged. Previously the only signal was a small "Past"
+   badge on the card itself, easy to miss once a few upcoming matches push it down.
+
+Build clean, deployed (commit `cffef32`). All 4 items logged + marked Done in the
+Notion To-Do board same session.
+
 ## [2026-08-08] — Hidden MMR during calibration + inactivity re-placement + reminders
 
 **Trigger:** end-of-day Telegram report surfaced a P3 decision ("should season
