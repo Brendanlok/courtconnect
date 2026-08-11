@@ -9,7 +9,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { fetchPublicRankings, fetchPublicPlayer, type PublicPlayer } from '@/lib/publicData';
 import { usePublicAuth } from '@/context/PublicAuthContext';
-import { MY_STATES } from '@/lib/utils';
+import { MY_STATES, isCalibrating } from '@/lib/utils';
 import type { Tier } from '@/types';
 
 const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
@@ -43,14 +43,17 @@ export default function PublicRankings() {
     setSearching(false);
   };
 
-  const PlayerRow = ({ p, rank }: { p: PublicPlayer; rank: number }) => (
+  const PlayerRow = ({ p, rank }: { p: PublicPlayer; rank: number | null }) => (
     <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3">
-      {/* Direct-search results can surface a still-calibrating player (rank
-          0, not yet on the Top list) — "0" would read as broken, so label
-          it instead of printing a fake rank number. */}
-      {rank > 0
-        ? <span className="w-6 text-center text-sm font-bold text-slate-500 shrink-0">{rank}</span>
-        : <span className="w-6 text-center text-[9px] font-bold text-amber-400 shrink-0 leading-tight">CALIB.</span>}
+      {/* rank is a UI-computed position (list index, or lookup in the loaded
+          pool), never the DB's global_rank column — that column is never
+          populated for real accounts. Calibration status comes from
+          isCalibrating (placement matches played), not from rank presence. */}
+      {isCalibrating(p)
+        ? <span className="w-6 text-center text-[9px] font-bold text-amber-400 shrink-0 leading-tight">CALIB.</span>
+        : rank !== null
+          ? <span className="w-6 text-center text-sm font-bold text-slate-500 shrink-0">{rank}</span>
+          : <span className="w-6 text-center text-sm font-bold text-slate-600 shrink-0">—</span>}
       <Avatar name={p.displayName} photoURL={p.photoURL} size="md" />
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate">{p.displayName}</p>
@@ -89,7 +92,10 @@ export default function PublicRankings() {
               No public player found for &ldquo;@{query.trim().replace(/^@/, '')}&rdquo;.
             </p>
           ) : (
-            <PlayerRow p={searchResult} rank={searchResult.globalRank ?? 0} />
+            // Rank = position among the loaded top-N pool (sorted by MMR),
+            // not the DB's global_rank. null if they're outside the loaded
+            // pool (still ranked, just not in the Top list shown below).
+            <PlayerRow p={searchResult} rank={pool ? (pool.findIndex(x => x.uid === searchResult.uid) + 1 || null) : null} />
           )}
         </div>
       )}
