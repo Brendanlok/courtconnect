@@ -1,5 +1,39 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12b] — Public site Phase 1-4: About, Start a Club, Rankings filters, richer nav
+
+**Trigger:** continuing the public-site work from earlier today — Lok shared DUPR's
+actual homepage and asked for the site to eventually be built out to that level.
+Set a 6-phase plan (logged to Roadmap): Phases 1-4 don't need any new data exposure
+or product decisions, so built those now; Phase 5 (public tournament/event directory)
+needs an RLS decision from Lok, Phase 6 (a "Become a Coach" marketplace) is a whole
+new feature CourtConnect has no data model for — both logged as Deferred, not guessed.
+
+**What shipped:**
+1. **`/about/`** — product-focused About page. Deliberately no fabricated company
+   history or team bios (there's no real one to tell) — just an honest description
+   of what the app does and why the rating is trustworthy.
+2. **`/start-a-club/`** — explains the existing club features (ladder, rivalries,
+   admin/moderator roles) with a sign-up CTA. No real club data exposed — clubs
+   table still isn't anon-readable, this is explainer copy only.
+3. **Rankings gained state/tier filters** — one larger fetch (200 players),
+   filtered client-side so switching filters is instant, no extra round-trip.
+4. **Nav/footer expanded** to 4 links (Rankings, How Ratings Work, Start a Club,
+   About) — kept as flat links, not dropdowns: each item is exactly one page today,
+   a dropdown would just be an empty menu. Revisit once a section has 2+ pages.
+5. **Marketing home** gained a "sample player card" product visual (reuses the
+   real Avatar/TierBadge components, clearly labeled "Sample player card" — not a
+   stock photo, not a real account's data).
+
+**Verified:** `npx next build` clean. This sandbox's local dev server (`next dev` /
+Turbopack) showed stale output twice this session — once a CSS media-query gap
+(no `sm:`/`md:` breakpoints generated for *any* class, not just new ones) and once
+entirely missing new component code, despite the files on disk being correct both
+times. Production `next build` (same command CI runs) was clean both times, and
+the actual deployed site rendered everything correctly on re-check — treating local
+`next dev` as unreliable for pre-deploy visual verification in this environment;
+verify live after push instead.
+
 ## [2026-08-12] — Public DUPR-style site: marketing home, live Rankings, player lookup
 
 **Trigger:** Lok asked for "a proper full website like DUPR" — DUPR's own site is

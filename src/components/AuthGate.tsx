@@ -21,7 +21,7 @@ import { MarketingHome } from '@/components/MarketingHome';
 // Everything NOT in this list keeps the original all-gated behavior
 // unchanged (still just AuthModal when signed out), so none of the existing
 // authenticated routes/nav are affected.
-const PUBLIC_ROUTES = ['/rankings', '/how-it-works'];
+const PUBLIC_ROUTES = ['/rankings', '/how-it-works', '/about', '/start-a-club'];
 const norm = (p: string) => p.replace(/\/+$/, '') || '/';
 
 export function AuthGate({ children }: { children: ReactNode }) {

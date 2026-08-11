@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import { Trophy, Radio, Users, TrendingUp, MapPin } from 'lucide-react';
 import { fetchPublicPlayerCount } from '@/lib/publicData';
 import { usePublicAuth } from '@/context/PublicAuthContext';
-import { BASE_PATH } from '@/lib/utils';
+import { BASE_PATH, TIER_STYLE } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 
 const FEATURES = [
   { icon: TrendingUp, title: 'Real MMR ratings', desc: 'An Elo-based rating that actually reflects your level — climb it match by match.' },
@@ -47,6 +48,33 @@ export function MarketingHome() {
             <MapPin size={12}/> {playerCount.toLocaleString()} ranked players and counting
           </p>
         )}
+      </section>
+
+      {/* Product teaser — a real UI card (Avatar/TierBadge, same components
+          the app itself uses), not a stock photo or a fabricated screenshot
+          of a real account. Clearly a sample, not a real player. */}
+      <section className="pb-14 flex justify-center">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-sm">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-3">Sample player card</p>
+          <div className="flex items-center gap-3">
+            <Avatar name="Sample Player" size="lg" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold truncate">Sample Player</p>
+              <p className="text-xs text-slate-500">@sampleplayer · Selangor</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-black tabular-nums">1584</p>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIER_STYLE.Platinum.bg} ${TIER_STYLE.Platinum.text}`}>
+                {TIER_STYLE.Platinum.icon} Platinum
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-800 text-center">
+            <div><p className="font-bold text-sm">42</p><p className="text-[10px] text-slate-500">Wins</p></div>
+            <div><p className="font-bold text-sm">61%</p><p className="text-[10px] text-slate-500">Win Rate</p></div>
+            <div><p className="font-bold text-sm">#128</p><p className="text-[10px] text-slate-500">Nat. Rank</p></div>
+          </div>
+        </div>
       </section>
 
       {/* Features */}

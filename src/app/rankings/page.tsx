@@ -2,21 +2,36 @@
 // Public leaderboard + player-lookup — the DUPR-style "check anyone's
 // rating without an account" page. No auth, no AppContext: reads straight
 // from the anon-readable users_public view (see lib/publicData.ts).
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Loader2, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { fetchPublicRankings, fetchPublicPlayer, type PublicPlayer } from '@/lib/publicData';
 import { usePublicAuth } from '@/context/PublicAuthContext';
+import { MY_STATES } from '@/lib/utils';
+import type { Tier } from '@/types';
+
+const TIERS: (Tier | 'All')[] = ['All','Beginner','Bronze','Silver','Gold','Platinum','Diamond','Elite'];
 
 export default function PublicRankings() {
   const openAuth = usePublicAuth();
-  const [rankings, setRankings] = useState<PublicPlayer[] | null>(null);
+  // One larger fetch, filtered client-side — instant filter switches instead
+  // of a round-trip + spinner per dropdown change, same tradeoff the
+  // authenticated in-app leaderboard makes (see app/leaderboard).
+  const [pool, setPool] = useState<PublicPlayer[] | null>(null);
+  const [stateFilter, setStateFilter] = useState<string>('All');
+  const [tierFilter, setTierFilter] = useState<Tier | 'All'>('All');
   const [query, setQuery] = useState('');
   const [searchResult, setSearchResult] = useState<PublicPlayer | 'not-found' | null>(null);
   const [searching, setSearching] = useState(false);
 
-  useEffect(() => { fetchPublicRankings(50).then(setRankings); }, []);
+  useEffect(() => { fetchPublicRankings(200).then(setPool); }, []);
+
+  const rankings = useMemo(() => {
+    if (!pool) return null;
+    return pool.filter(p => (stateFilter === 'All' || p.state === stateFilter) && (tierFilter === 'All' || p.tier === tierFilter));
+  }, [pool, stateFilter, tierFilter]);
 
   const runSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,11 +95,23 @@ export default function PublicRankings() {
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Top Players</p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Top Players</p>
+          <div className="flex items-center gap-2">
+            <FilterDropdown label="State" value={stateFilter} defaultValue="All"
+              options={[{ value: 'All', label: 'All States' }, ...MY_STATES.map(s => ({ value: s, label: s }))]}
+              onChange={setStateFilter} />
+            <FilterDropdown label="Tier" value={tierFilter} defaultValue="All"
+              options={TIERS.map(t => ({ value: t, label: t === 'All' ? 'All Tiers' : t }))}
+              onChange={setTierFilter} />
+          </div>
+        </div>
         {rankings === null ? (
           <div className="flex items-center justify-center py-10 text-slate-500"><Loader2 className="animate-spin" size={20}/></div>
         ) : rankings.length === 0 ? (
-          <p className="text-sm text-slate-500 py-6 text-center">No ranked players yet — be the first to climb the board.</p>
+          <p className="text-sm text-slate-500 py-6 text-center">
+            {pool && pool.length > 0 ? 'No ranked players match these filters.' : 'No ranked players yet — be the first to climb the board.'}
+          </p>
         ) : (
           <div className="space-y-2">
             {rankings.map((p, i) => <PlayerRow key={p.uid} p={p} rank={i + 1} />)}
