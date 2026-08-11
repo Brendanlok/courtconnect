@@ -255,7 +255,7 @@ export default function MatchesPage() {
       const body = editId
         ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
         : `${user.displayName} invited you to a ${FORMAT_LABELS[pmFinal.format]} at ${pmFinal.venue} on ${pmFinal.date}.${pmFinal.liveRecord ? ' (Live recorded match — please confirm to enable live scoring.)' : ''}`;
-      addNotification({ id: `notif_${Date.now()}_${p.uid}`, type: 'match_invite', title, body, read: false, createdAt: new Date().toISOString() });
+      addNotification({ type: 'match_invite', title, body });
       // addNotification above only updates this tab's own local state — it
       // never reaches p's actual account. This does.
       if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_invite', title, body, linkTo: `${BASE_PATH}/matches/` });
@@ -309,7 +309,7 @@ export default function MatchesPage() {
     const all = match ? [...match.teamA, ...match.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me') : [];
     all.forEach(p => {
       const body = `${user.displayName} cancelled the planned match at ${match?.venue ?? 'the venue'}.`;
-      addNotification({ id: `notif_cancel_${Date.now()}_${p.uid}`, type: 'match_pending', title: 'Match Cancelled', body, read: false, createdAt: new Date().toISOString() });
+      addNotification({ type: 'match_pending', title: 'Match Cancelled', body });
       if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_pending', title: 'Match Cancelled', body, linkTo: `${BASE_PATH}/matches/` });
     });
   };
@@ -653,7 +653,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
                 className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors">Keep</button>
               <button onClick={() => {
                 const body = `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`;
-                addNotification({ id: `notif_remove_${Date.now()}_${removeTarget.uid}`, type: 'match_invite', title: 'Removed from Match', body, read: false, createdAt: new Date().toISOString() });
+                addNotification({ type: 'match_invite', title: 'Removed from Match', body });
                 // The copy above ("They will be notified") was only ever true
                 // for whoever's looking at this tab — this is what actually
                 // reaches removeTarget's own account.
