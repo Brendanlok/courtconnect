@@ -1,5 +1,62 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12] — Public DUPR-style site: marketing home, live Rankings, player lookup
+
+**Trigger:** Lok asked for "a proper full website like DUPR" — DUPR's own site is
+mostly public/unauthenticated (browse ratings without an account), while
+CourtConnect was 100% behind AuthGate (every route showed the login form when
+signed out, including `/`). Confirmed scope with Lok first: build the public
+site *in front of* the existing app, not expand the authenticated app itself.
+
+**What shipped (all logged-out-only — signed-in users see zero change):**
+1. **Marketing home at `/`** — replaces the bare login form with a real
+   landing page (hero, feature grid, live ranked-player-count teaser, CTAs)
+   when logged out. Signed-in `/` (the dashboard) is untouched.
+2. **Public Rankings (`/rankings/`)** — live top-MMR leaderboard + a
+   look-up-by-@username search box, no account needed. Reads straight from
+   `users_public` (`supabase/migrations/0003`), already granted to the `anon`
+   role — no new RLS/migration required. Excludes dummy/private/still-
+   calibrating players, same filters the authenticated in-app leaderboard
+   already applies.
+3. **How Ratings Work (`/how-it-works/`)** — reuses the existing
+   `MMRInfoModal` wholesale as a full page instead of writing a second copy
+   of the same formula/calibration/tiers/fair-play content.
+4. **`AuthGate`** now checks the route: `/`, `/rankings`, `/how-it-works`
+   render for logged-out visitors (via a new `PublicNav`/`PublicFooter`
+   chrome); every other route keeps the exact original all-gated behavior
+   (still just `AuthModal`) — zero risk to the authenticated app or its
+   FROZEN nav. `AuthModal` gained an optional `initialTab`/`onBack` so the
+   public pages' Log In / Sign Up CTAs can open it and return.
+
+**Caught before shipping:** the public-read filters were written as
+`.eq('is_dummy', false)` — but real accounts have `is_dummy`/`is_private` as
+SQL `NULL`, not `false`, and `NULL = false` is never true in Postgres. That
+would have silently hidden every real player from Rankings/search the moment
+they finished calibration (the exact case that matters). Fixed to
+`is_dummy.is.null,is_dummy.eq.false` (same pattern already used for
+`is_private`), verified against the real `users_public` view via curl before
+and after.
+
+**Scope explicitly deferred** (flagged, not built blind): a public
+tournament/club directory — `tournaments`/`clubs` tables aren't `anon`-
+readable today, so that needs an actual RLS decision from Lok, not a guess.
+Public per-player profile pages (`/rankings/[username]`) also deferred — a
+true static export needs every dynamic path enumerated via
+`generateStaticParams` at build time, which doesn't fit a search-driven public
+lookup; the search box on `/rankings/` covers the same "check anyone's
+rating" value without that constraint.
+
+**Verified:** `npx next build` clean. Confirmed live in the browser at 375px
+(marketing home, Rankings empty/search states, How Ratings Work) — this
+sandbox's `next dev`/Turbopack CSS pipeline only emitted 112 rules total in
+dev mode (no `sm:`/`md:` media queries generated at all, for *any* class in
+the app, not just new ones), so the desktop 2-column feature grid couldn't be
+visually confirmed pre-deploy; the identical `sm:grid-cols-N` pattern is
+already live elsewhere (`tournaments/page.tsx`), and the production
+`next build` — the same command GitHub Actions runs — compiled clean, so
+this reads as a dev-sandbox quirk, not a real bug. Re-verified full desktop
++ mobile on the actual deployed site after push.
+
 ## [2026-08-11] — Auto-dev: stale paused-match ghost + nudge for pending match confirmation
 
 **Trigger:** scheduled auto-dev session. Telegram empty, To-Do board still dry (both

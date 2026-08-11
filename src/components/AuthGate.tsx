@@ -1,5 +1,6 @@
 'use client';
 import { ReactNode, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from '@/components/AuthModal';
 import { AppProvider, useApp } from '@/context/AppContext';
@@ -11,18 +12,34 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { ToastStack } from '@/components/ToastStack';
 import { SeasonRecapModal } from '@/components/SeasonRecapModal';
 import { captureReferralFromUrl } from '@/lib/utils';
+import { PublicAuthProvider } from '@/context/PublicAuthContext';
+import { PublicNav, PublicFooter } from '@/components/PublicNav';
+import { MarketingHome } from '@/components/MarketingHome';
+
+// Routes that render for logged-out visitors instead of falling straight to
+// the login wall — the public, DUPR-style site (see DEVLOG 2026-08-12).
+// Everything NOT in this list keeps the original all-gated behavior
+// unchanged (still just AuthModal when signed out), so none of the existing
+// authenticated routes/nav are affected.
+const PUBLIC_ROUTES = ['/rankings', '/how-it-works'];
+const norm = (p: string) => p.replace(/\/+$/, '') || '/';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { authUser, isLoading, needsEmailVerification, needsProfileSetup } = useAuth();
+  const pathname = usePathname();
   const [onboardingDone, setOnboardingDone] = useState(() => {
     if (typeof window === 'undefined') return true;
     return !!localStorage.getItem('cc_onboarded');
   });
+  const [authTab, setAuthTab] = useState<'login' | 'signup' | null>(null);
 
   // Runs on every boot regardless of auth state — a ?ref= link may land on
   // an already-signed-in device (nothing to do) or a brand new visitor
   // (captured for AuthContext to consume once they finish signing up).
   useEffect(() => { captureReferralFromUrl(); }, []);
+  // Reset the auth-overlay flag once signed in, so a later logout lands back
+  // on the marketing home instead of reopening straight into AuthModal.
+  useEffect(() => { if (authUser) setAuthTab(null); }, [authUser]);
 
   if (isLoading) {
     return (
@@ -32,7 +49,26 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!authUser || needsEmailVerification || needsProfileSetup) {
+  const loggedOut = !authUser || needsEmailVerification || needsProfileSetup;
+  // Mid-signup (verify email / complete profile) always goes straight to
+  // AuthModal, same as before — only a *fully* logged-out visitor sees the
+  // public site, and only on a route that's actually public.
+  const showPublicSite = !authUser && (PUBLIC_ROUTES.includes(norm(pathname)) || norm(pathname) === '/');
+
+  if (loggedOut) {
+    // authTab is only ever set from a public page's Log In / Sign Up CTA
+    // (see PublicAuthProvider below), so this only fires where showPublicSite
+    // was already true — onBack returns to that same page.
+    if (authTab) return <AuthModal initialTab={authTab} onBack={() => setAuthTab(null)} />;
+    if (showPublicSite) {
+      return (
+        <PublicAuthProvider value={setAuthTab}>
+          <PublicNav />
+          {norm(pathname) === '/' ? <MarketingHome /> : children}
+          <PublicFooter />
+        </PublicAuthProvider>
+      );
+    }
     return <AuthModal />;
   }
 

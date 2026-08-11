@@ -200,9 +200,9 @@ function CompleteProfileView() {
   );
 }
 
-export function AuthModal() {
+export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; onBack?: () => void } = {}) {
   const { signIn, signUp, loginWithGoogle, loginWithFacebook, resetPassword, needsEmailVerification, needsProfileSetup } = useAuth();
-  const [tab, setTab]       = useState<Tab>('login');
+  const [tab, setTab]       = useState<Tab>(initialTab);
   const [view, setView]     = useState<View>('main');
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
@@ -268,6 +268,15 @@ export function AuthModal() {
   return (
     <div className="fixed inset-0 z-[100] bg-[#020817] flex items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-sm py-8">
+
+        {/* Back — only shown when there's actually a public page behind this
+            (marketing home / Rankings), never during the original all-gated
+            flow where there was nothing to go back to. */}
+        {onBack && !needsEmailVerification && !needsProfileSetup && (
+          <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-4 transition-colors">
+            <ArrowLeft size={15}/> Back to CourtConnect
+          </button>
+        )}
 
         {/* Logo */}
         <div className="text-center mb-8">
