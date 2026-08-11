@@ -17,14 +17,18 @@ interface Props {
   onDispute?: () => void;
   onCancel?: () => void;
   onResubmit?: (games: { p1: number; p2: number }[]) => void;
+  onNudge?: () => void;
 }
 
-export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel, onResubmit }: Props) {
+export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel, onResubmit, onNudge }: Props) {
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   const [correcting, setCorrecting] = useState(false);
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
   const [sharing, setSharing] = useState(false);
+  const [nudged, setNudged] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastMatchId = useRef<string | undefined>(undefined);
+  if (m && lastMatchId.current !== m.id) { lastMatchId.current = m.id; if (nudged) setNudged(false); }
   if (!m) return null;
 
   const seekTo = (t: number) => {
@@ -131,11 +135,19 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
             {hasOutstandingConfirmers && !isMyTurn ? (
               <div>
                 <span>Waiting on {m.pendingConfirmations!.length} more player{m.pendingConfirmations!.length > 1 ? 's' : ''} to confirm this result before it's final.</span>
-                {onCancel && (
-                  <button onClick={onCancel} className="block mt-1.5 text-amber-400/80 hover:text-red-400 underline underline-offset-2 transition-colors">
-                    Stop waiting — withdraw this match
-                  </button>
-                )}
+                <div className="flex items-center gap-3 mt-1.5">
+                  {onNudge && (
+                    <button onClick={() => { onNudge(); setNudged(true); }} disabled={nudged}
+                      className="text-amber-400/80 hover:text-amber-300 disabled:opacity-60 disabled:hover:text-amber-400/80 underline underline-offset-2 transition-colors">
+                      {nudged ? 'Reminder sent' : `Remind ${oppName}`}
+                    </button>
+                  )}
+                  {onCancel && (
+                    <button onClick={onCancel} className="text-amber-400/80 hover:text-red-400 underline underline-offset-2 transition-colors">
+                      Stop waiting — withdraw
+                    </button>
+                  )}
+                </div>
               </div>
             ) : hasOutstandingConfirmers && isMyTurn ? (
               <span>{oppName} reported this result. Confirm or dispute it below.</span>

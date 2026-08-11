@@ -502,6 +502,12 @@ export default function MatchesPage() {
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
         onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
         onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}
+        onNudge={selectedMatch?.status === 'Pending' && isRealPlayerUid(selectedMatch.player2Id) ? () => {
+          notifyUser(selectedMatch.player2Id, {
+            type: 'match_pending', title: 'Reminder: match awaiting your confirmation',
+            body: `${user.displayName} is waiting on you to confirm a match result.`, linkTo: `${BASE_PATH}/matches/`,
+          });
+        } : undefined}
       />
 
       {logOpen  && <LogMatchModal  open={true} onClose={() => { setLogOpen(false); setLogPlannedId(null); }}

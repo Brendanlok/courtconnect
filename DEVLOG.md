@@ -1,5 +1,46 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-11] — Auto-dev: stale paused-match ghost + nudge for pending match confirmation
+
+**Trigger:** scheduled auto-dev session. Telegram empty, To-Do board still dry (both
+open items — pose tracking, shuttle auto-detect — already re-verified genuinely
+blocked on live-court testing in the 08.08 session, no new tooling available to push
+further blind). Ran a code audit per Step 2b on less-touched flows: pause/resume live
+match, and the pending-match confirmation loop.
+
+**What shipped:**
+1. **Stale "resume paused match" ghost after a match actually finishes** (P2,
+   broken flow) — `ScorerView` (`LiveMatchModal.tsx`) saves a full paused-match
+   snapshot to localStorage on every point scored, so a real pause/resume never
+   loses the live score. But that snapshot was only ever cleared on an explicit
+   "Log to Profile" tap — if the match ran to completion and the host then hit
+   "Close" on the completion screen instead (declining to log, or blocked by an
+   anti-cheat/integrity check), the finished match stayed saved as "paused."
+   Next time they opened Record Live, the app would offer to "resume" a match
+   that was already decided, dropping them back into a scoring view for a match
+   with no more points to play. Fixed at the root: `handleComplete` now clears
+   the paused-match pointer the moment a match is actually decided, regardless
+   of which button closes the completion screen afterward.
+2. **💡 Step 2c idea (built): "Remind" button for a match stuck awaiting the
+   opponent's confirmation** — a match you log against a real opponent sits
+   `Pending` until they confirm or dispute it; before this there was no way to
+   re-notify them if they missed/ignored the original notification, only a
+   silent wait or an outright withdraw. Added a "Remind {name}" action next to
+   the existing withdraw link in `MatchDetailModal`'s pending-confirmation
+   notice — re-fires the same `match_pending` notification `notifyUser` already
+   sends on the initial report. Button disables itself after one tap per modal
+   open (no server-side rate limit — low-stakes, friends-based nudge, add one if
+   it's ever abused). Only shown to the reporter side (`onNudge` only wired up
+   when the opponent is a real account), mirrors the existing `isMyTurn` gating
+   `MatchDetailModal` already had for Confirm/Dispute/Withdraw.
+
+**Verified:** `npx next build` clean (both changes are client-only, no schema
+change). **Not click-tested live** — this environment still has no demo/guest
+login (see 2026-08-02 entry), and dev-server auth requires the test account's
+real credentials, which only Lok has entered in a shared browser session before.
+Reasoned through the change via the existing, already-live `isMyTurn`/`onCancel`
+pattern in the same component, which this directly mirrors.
+
 ## [2026-08-10] — Auto-dev: tournament host-impersonation, registration race, missing winner
 
 **Trigger:** To-Do board still dry on the day's second session — ran a second code

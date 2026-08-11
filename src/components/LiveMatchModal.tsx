@@ -999,7 +999,15 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     createLiveMatch(m).catch(() => {});
     handleStart(m, mode);
   };
-  const handleComplete = (m: LiveMatch) => { setLiveMatch(m); setView('complete'); };
+  const handleComplete = (m: LiveMatch) => {
+    // ScorerView saves a paused-match snapshot on every point (so pause/resume
+    // never loses score) — once the match is actually decided, that snapshot
+    // is stale and must not linger as a "resume" offer for a finished match,
+    // even if the user then hits Close instead of Log to Profile.
+    clearPausedMatch();
+    setLiveMatch(m);
+    setView('complete');
+  };
 
   // Computed reactively (not just at click time) so CompletionView can show the
   // block reason / bonus eligibility before the user even taps "Log to Profile".
