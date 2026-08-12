@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13c] — 0027 didn't close the gap; 0028 targets anon directly
+
+**Trigger:** re-verified 0027 with the anon key (same curl test as before)
+after Lok ran it, and after a PostgREST schema-cache reload — still `200
+false` instead of a permission error. Ruled out caching as the cause.
+
+**Likely real cause:** Supabase projects commonly set up
+`alter default privileges in schema public grant execute on functions to
+anon, authenticated` at project creation, outside this repo's tracked
+migrations — which grants `anon` an explicit execute privilege at
+function-creation time, separate from and unaffected by revoking the
+implicit `PUBLIC` grant 0027 targeted.
+
+**Fix (`0028_revoke_anon_execute_explicit.sql`):** revoke execute from
+`anon` directly on both functions, rather than relying on PUBLIC
+inheritance. Needs Lok to run it; re-verifying with the same anon-key curl
+test afterward before calling this closed.
+
 ## [2026-08-13b] — Fixed a self-caused security gap in 0026 (PUBLIC execute grant)
 
 **Trigger:** Lok ran migration 0026, asked to verify it. Testing the new RPCs
