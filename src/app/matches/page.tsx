@@ -352,14 +352,22 @@ export default function MatchesPage() {
         </button>
       </div>
 
-      {/* Overdue: planned matches that came and went with no result logged */}
+      {/* Overdue: planned matches that came and went with no result logged.
+          Clicking opens the log flow for the oldest one — same modal each
+          card's own "Log" action uses, so results feed the same place. */}
       {overdueToLog.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-3 flex items-center gap-2.5">
+        <button
+          onClick={() => {
+            const oldest = [...overdueToLog].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+            setLogPlannedId(oldest.id);
+            setLogOpen(true);
+          }}
+          className="w-full bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 rounded-2xl p-3 flex items-center gap-2.5 text-left transition-colors">
           <Clock size={15} className="text-amber-400 shrink-0"/>
           <p className="text-xs text-amber-300 flex-1">
-            {overdueToLog.length === 1 ? 'You have 1 match to log' : `You have ${overdueToLog.length} matches to log`} — did they happen?
+            {overdueToLog.length === 1 ? 'You have 1 match to log' : `You have ${overdueToLog.length} matches to log`} — did they happen? Tap to log.
           </p>
-        </div>
+        </button>
       )}
 
       {/* Watch a live match */}
