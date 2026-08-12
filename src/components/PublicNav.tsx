@@ -38,10 +38,18 @@ function DropdownMenu({ label, items }: { label: string; items: { href: string; 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+    if (!open) return;
+    const mouseHandler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    // Same Escape-to-close pattern as every modal in the app (see NotificationPanel) —
+    // was click-outside only, so a keyboard-only user had no way to dismiss the dropdown.
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', mouseHandler);
+    document.addEventListener('keydown', keyHandler);
+    return () => {
+      document.removeEventListener('mousedown', mouseHandler);
+      document.removeEventListener('keydown', keyHandler);
+    };
+  }, [open]);
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 hover:text-white transition-colors">
@@ -68,6 +76,12 @@ const ALL_LINKS = [...RATINGS_ITEMS, ...COACHING_ITEMS, ...FLAT_LINKS];
 export function PublicNav() {
   const onAuthClick = usePublicAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', keyHandler);
+    return () => document.removeEventListener('keydown', keyHandler);
+  }, [mobileOpen]);
   return (
     <header className="sticky top-0 z-30 bg-[#020817]/90 backdrop-blur border-b border-slate-800">
       <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">
