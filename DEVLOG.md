@@ -1,5 +1,26 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12e] — club_messages membership check (follow-up to 0023)
+
+**Trigger:** Lok asked to scope the club_messages gap flagged when 0023 shipped —
+that migration closed the anon-read hole but left club chat readable by any
+signed-in user for any club, not just members.
+
+**Scoping:** checked the actual schema — `clubs.member_ids` (uuid[]) already
+exists, and `club_messages` already has a working "member insert" policy using
+`auth.uid() in (select unnest(member_ids) from clubs where id = club_id)` — the
+exact check needed, just never applied to SELECT. Also confirmed the app already
+treats this as member-only client-side (`ClubDetailClient` only fetches/
+subscribes to messages when `isMember` is true) — this migration makes the
+database enforce what the client already assumes, not a new restriction the UI
+isn't ready for.
+
+**Shipped:** `supabase/migrations/0024_club_messages_membership.sql` — mirrors
+the existing "member insert" policy's exact subquery for SELECT. No app code
+changes needed (the client was already gating on membership, this only closes
+the API bypass). **Needs Lok to run it manually in the Supabase SQL editor**,
+same as 0023 — no automated migration runner in this project.
+
 ## [2026-08-12d] — Found + fixed a real anon-read security gap; shipped Events (Phase 5)
 
 **Trigger:** Lok asked to scope the Phase 5 (Events/tournament directory) decision
