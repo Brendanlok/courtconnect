@@ -789,11 +789,10 @@ export async function addClubMember(id: string, uid: string): Promise<boolean> {
   // accept invite) routes through here — enforce max_members AND the
   // per-user tier club limit once, in the one place all of them share,
   // instead of duplicating the checks at each call site.
-  const { data } = await supabase.from('clubs').select('name, member_ids, max_members').eq('id', id).maybeSingle();
-  const row = data as { name?: string; member_ids?: string[]; max_members?: number } | null;
+  const { data } = await supabase.from('clubs').select('name, member_ids').eq('id', id).maybeSingle();
+  const row = data as { name?: string; member_ids?: string[] } | null;
   const alreadyMember = (row?.member_ids ?? []).includes(uid);
   if (!alreadyMember) {
-    if (row?.max_members != null && (row.member_ids?.length ?? 0) >= row.max_members) return false;
     // users_public (not users) — the actor here is often a club admin, not
     // the target user themselves, and the base users table is owner-read-only.
     const [{ data: userRow }, { data: memberOfRows }] = await Promise.all([
@@ -803,8 +802,14 @@ export async function addClubMember(id: string, uid: string): Promise<boolean> {
     const tier = ((userRow as { tier?: Tier } | null)?.tier) ?? 'Beginner';
     if ((memberOfRows?.length ?? 0) >= maxClubsForTier(tier)) return false;
   }
-  await mutateClubArray(id, 'member_ids', [uid], []);
-  await mutateClubArray(id, 'pending_ids', [], [uid]);
+  // The max_members check + the actual member_ids/pending_ids write happen
+  // together inside this one RPC (migration 0026) — a plain select-then-
+  // update here could let two concurrent joins both pass the capacity
+  // check before either wrote, overbooking the club. The tier check above
+  // stays a separate pre-check: a race there needs the same uid joining
+  // multiple different clubs at once, not what this fix targets.
+  const { data: ok, error } = await supabase.rpc('add_club_member_atomic', { p_club_id: id, p_uid: uid });
+  if (error || !ok) return false;
   // Reaches the new member even with their app fully closed — same write-time
   // pattern as notifyUser calls in sendSharedMessage/sendChallengeDoc, since
   // the joiner's own client (if it's even open) has no way to know an admin
@@ -919,41 +924,42 @@ export async function removeTournamentPending(id: string, uid: string, notifyDec
   if (notifyDecline) notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: 'Your request to join an event was declined.' });
 }
 
-// Register/approve both add to participants + increment current_players -
-// enforce max_players once here (same fetch-check-write shape as
-// addClubMember's max_members guard) instead of trusting stale client state.
+// Register/approve both add to participants + increment current_players,
+// guarded against max_players — via register_tournament_participant
+// (migration 0026), a Postgres function that does the check-then-write
+// atomically in one transaction. A plain client-side select-then-update
+// here let two concurrent registrations both pass the capacity check
+// before either wrote, overbooking the event (found in a code audit,
+// commit bf963b2 narrowed but didn't close this).
 export async function registerForTournament(id: string, displayName: string, username: string): Promise<boolean> {
-  const { data } = await supabase.from('tournaments').select('current_players, max_players, participants').eq('id', id).maybeSingle();
-  const row = data as { current_players?: number; max_players?: number; participants?: { displayName: string; username: string }[] } | null;
-  if (row?.max_players != null && (row.current_players ?? 0) >= row.max_players) return false;
-  await supabase.from('tournaments').update({
-    current_players: (row?.current_players ?? 0) + 1,
-    participants: [...(row?.participants ?? []), { displayName, username }],
-  }).eq('id', id);
-  return true;
+  const { data: ok, error } = await supabase.rpc('register_tournament_participant', {
+    p_tournament_id: id, p_display_name: displayName, p_username: username,
+  });
+  return !error && !!ok;
 }
 
-// Approve = add to participants/increment currentPlayers (same as
-// registerTournament) + drop from the pending list, in one call.
+// Approve = same atomic register call as registerForTournament + drop from
+// the pending list, in one call.
 export async function approveTournamentRequest(id: string, uid: string): Promise<boolean> {
-  const [{ data }, profile] = await Promise.all([
-    supabase.from('tournaments').select('name, current_players, max_players, participants').eq('id', id).maybeSingle(),
+  const [{ data: nameRow }, profile] = await Promise.all([
+    supabase.from('tournaments').select('name').eq('id', id).maybeSingle(),
     lookupUserByUid(uid),
   ]);
-  const row = data as { name?: string; current_players?: number; max_players?: number; participants?: { displayName: string; username: string }[] } | null;
-  if (row?.max_players != null && (row.current_players ?? 0) >= row.max_players) {
+  const tournamentName = (nameRow as { name?: string } | null)?.name;
+  if (!profile?.displayName || !profile?.username) {
     await mutateTournamentPending(id, [], [uid]);
-    notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: row?.name ? `${row.name} filled up before your request could be approved.` : 'That event filled up before your request could be approved.' });
     return false;
   }
-  if (profile?.displayName && profile?.username) {
-    await supabase.from('tournaments').update({
-      current_players: (row?.current_players ?? 0) + 1,
-      participants: [...(row?.participants ?? []), { displayName: profile.displayName, username: profile.username }],
-    }).eq('id', id);
+  const { data: ok, error } = await supabase.rpc('register_tournament_participant', {
+    p_tournament_id: id, p_display_name: profile.displayName, p_username: profile.username,
+  });
+  if (error || !ok) {
+    await mutateTournamentPending(id, [], [uid]);
+    notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: tournamentName ? `${tournamentName} filled up before your request could be approved.` : 'That event filled up before your request could be approved.' });
+    return false;
   }
   await mutateTournamentPending(id, [], [uid]);
-  notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: row?.name ? `Your request to join ${row.name} was accepted!` : 'Your request to join an event was accepted!' });
+  notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: tournamentName ? `Your request to join ${tournamentName} was accepted!` : 'Your request to join an event was accepted!' });
   return true;
 }
 

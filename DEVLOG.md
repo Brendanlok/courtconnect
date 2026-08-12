@@ -1,5 +1,42 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13] — Closed the tournament/club overbooking race for real
+
+**Trigger:** Lok asked what's left on the Roadmap after the public-site work —
+this was the one genuinely open, non-blocked item on the To-Do board: a bug
+found in an earlier code audit (commit bf963b2 narrowed it, didn't close it).
+
+**The bug:** `registerForTournament`, `approveTournamentRequest`, and
+`addClubMember` all did a plain select-then-update from the client — read
+current_players/member count, check it against the cap in JS, then write.
+Two concurrent requests can both read the same not-yet-full count before
+either writes, so both pass the check and both write, exceeding the cap.
+PostgREST's query builder has no way to express "set column = column + 1,
+guarded by column < cap" as a single atomic write, which is why the earlier
+fix (bf963b2) could narrow the window but not close it from the client side.
+
+**Fix (`supabase/migrations/0026_atomic_capacity_checks.sql`):** two Postgres
+functions, `register_tournament_participant` and `add_club_member_atomic`,
+each doing the whole check-then-write inside one transaction with
+`SELECT ... FOR UPDATE` locking the row for the call's duration — a second
+concurrent call against the same row blocks until the first one's
+transaction finishes, so it correctly sees the already-updated count.
+`supabaseService.ts`'s three functions now call these via `supabase.rpc()`
+instead of doing the read-check-write themselves.
+
+**Scope:** only the count/capacity race. `addClubMember`'s separate
+tier-based "how many other clubs is this uid already in" check stays a
+plain pre-check, unchanged — a race there needs the same user joining
+multiple different clubs at once, a much narrower case than concurrent
+registration for the same event, and not what was found/flagged.
+
+**Verified:** `npx next build` clean. **Needs Lok to run migration 0026**
+manually in the Supabase SQL editor, same as every other migration tonight —
+until then, `registerForTournament`/`approveTournamentRequest`/
+`addClubMember` will fail (RPC function doesn't exist yet), not silently
+revert to the old racy behavior — `supabase.rpc()` returns an error the
+callers already check for.
+
 ## [2026-08-12f] — Phase 6: coaching feature (scoped down from DUPR's marketplace)
 
 **Trigger:** Lok asked to scope, then build, Phase 6 ("Become a Coach").
