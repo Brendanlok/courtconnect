@@ -4,19 +4,60 @@
 // separate from the authenticated app's Topbar/Sidebar/BottomNav (those stay
 // untouched, FROZEN nav) — this is a different surface for visitors who
 // aren't signed in yet.
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { BASE_PATH } from '@/lib/utils';
 import { usePublicAuth } from '@/context/PublicAuthContext';
 
-// One list drives both header and footer — flat links, not dropdowns: each
-// item is exactly one page today, so a dropdown menu would just be an empty
-// abstraction. Add sub-items here (and switch to a dropdown) once a section
-// actually has more than one page under it.
-const NAV_LINKS = [
+// "Ratings" is the one section with genuinely 2+ real pages under it today —
+// a real dropdown. Everything else is still exactly one page, so it stays a
+// flat link; a dropdown menu with one item is a decoration, not navigation.
+// Add sub-items here as real pages ship (e.g. Rankings gains its own filter
+// pages) rather than building the menu shell ahead of the content.
+const RATINGS_ITEMS = [
+  { href: '/how-it-works/', label: 'How It Works' },
+  { href: '/#faq', label: 'FAQ' },
+];
+const FLAT_LINKS = [
   { href: '/rankings/', label: 'Rankings' },
-  { href: '/how-it-works/', label: 'How Ratings Work' },
   { href: '/start-a-club/', label: 'Start a Club' },
   { href: '/about/', label: 'About' },
 ];
+// Footer groups everything (dropdown items included) into two honest
+// columns — DUPR's footer has 5 columns because it has 5 sections' worth of
+// real pages; we have 5 real links total, so two short columns is the
+// accurate version of the same idea, not a padded copy.
+const FOOTER_COLUMNS = [
+  { title: 'Ratings', items: RATINGS_ITEMS },
+  { title: 'More', items: [{ href: '/rankings/', label: 'Rankings' }, ...FLAT_LINKS.slice(1)] },
+];
+
+function RatingsMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 hover:text-white transition-colors">
+        Ratings <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="popover-anim origin-top-left absolute top-full mt-2 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
+          {RATINGS_ITEMS.map(l => (
+            <a key={l.href} href={`${BASE_PATH}${l.href}`} onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+              {l.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PublicNav() {
   const onAuthClick = usePublicAuth();
@@ -27,7 +68,8 @@ export function PublicNav() {
           <span>🏸</span> CourtConnect
         </a>
         <nav className="hidden md:flex items-center gap-5 text-sm text-slate-400">
-          {NAV_LINKS.map(l => (
+          <RatingsMenu />
+          {FLAT_LINKS.map(l => (
             <a key={l.href} href={`${BASE_PATH}${l.href}`} className="hover:text-white transition-colors">{l.label}</a>
           ))}
         </nav>
@@ -49,13 +91,18 @@ export function PublicNav() {
 export function PublicFooter() {
   return (
     <footer className="border-t border-slate-800 mt-16">
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-        <span>© {new Date().getFullYear()} CourtConnect · Malaysia</span>
-        <div className="flex items-center gap-4 flex-wrap justify-center">
-          {NAV_LINKS.map(l => (
-            <a key={l.href} href={`${BASE_PATH}${l.href}`} className="hover:text-slate-300 transition-colors">{l.label}</a>
-          ))}
-        </div>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-10 flex flex-col sm:flex-row gap-8 sm:gap-16">
+        {FOOTER_COLUMNS.map(col => (
+          <div key={col.title} className="space-y-2">
+            <p className="text-xs font-bold text-slate-300 uppercase tracking-wide">{col.title}</p>
+            {col.items.map(l => (
+              <a key={l.href} href={`${BASE_PATH}${l.href}`} className="block text-xs text-slate-500 hover:text-slate-300 transition-colors">{l.label}</a>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 pb-8 text-xs text-slate-600 border-t border-slate-900 pt-4">
+        © {new Date().getFullYear()} CourtConnect · Malaysia
       </div>
     </footer>
   );
