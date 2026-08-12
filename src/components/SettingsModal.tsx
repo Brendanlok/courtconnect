@@ -1,12 +1,12 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff } from 'lucide-react';
+import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff, GraduationCap } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
 import type { CountryCode, MalaysiaState } from '@/types';
 import type { UserProfile } from '@/types';
 import { supabase, auth } from '@/lib/supabase';
-import { deleteAccountData } from '@/lib/supabaseService';
+import { deleteAccountData, loadMyCoachProfile, saveCoachProfile, deleteCoachProfile, type MyCoachProfile } from '@/lib/supabaseService';
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { Avatar } from '@/components/ui/Avatar';
 import { AvatarCropModal } from '@/components/AvatarCropModal';
@@ -39,14 +39,18 @@ const PRIVACY_ITEMS: { key: keyof PrivacySettings; label: string }[] = [
 ];
 
 type DeleteStep = 'idle' | 'warn' | 'confirm';
-type SettingsTab = 'profile' | 'location' | 'availability' | 'privacy' | 'account';
+type SettingsTab = 'profile' | 'location' | 'availability' | 'privacy' | 'coaching' | 'account';
 const TABS: { key: SettingsTab; label: string }[] = [
   { key: 'profile',      label: 'Profile' },
   { key: 'location',     label: 'Location' },
   { key: 'availability', label: 'Schedule' },
   { key: 'privacy',      label: 'Privacy' },
+  { key: 'coaching',     label: 'Coaching' },
   { key: 'account',      label: 'Account' },
 ];
+
+const COACH_SPECIALTIES = ['Beginners', 'Juniors', 'Doubles Strategy', 'Footwork', 'Singles Strategy', 'Fitness'];
+const EMPTY_COACH_PROFILE: MyCoachProfile = { currency: 'MYR', specialties: [], areas: [], isActive: false };
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, updateUser } = useApp();
@@ -76,6 +80,21 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [uploadError, setUploadError] = useState('');
   const [cropFile,    setCropFile]    = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Coach profile — separate table (coach_profiles), not part of UserProfile,
+  // so it's loaded independently rather than seeded from `user` like the
+  // fields above. null = not loaded yet (or genuinely has no listing, same
+  // as EMPTY_COACH_PROFILE in effect — isActive stays false either way).
+  const [coach, setCoach] = useState<MyCoachProfile>(EMPTY_COACH_PROFILE);
+  const [coachLoaded, setCoachLoaded] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setCoachLoaded(true); return; }
+    loadMyCoachProfile(uid).then(p => { setCoach(p ?? EMPTY_COACH_PROFILE); setCoachLoaded(true); });
+  }, [open]);
+  const toggleSpecialty = (s: string) =>
+    setCoach(c => ({ ...c, specialties: c.specialties.includes(s) ? c.specialties.filter(x => x !== s) : [...c.specialties, s] }));
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,6 +151,15 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       isPrivate,
       photoURL,
     });
+    // Separate table, separate write — coach_profiles isn't part of
+    // UserProfile/updateUser. Delete the row entirely when toggled off
+    // rather than leaving an inactive row behind (is_active is also checked
+    // by coach_profiles_public, but no listing beats a stale one).
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      if (coach.isActive) saveCoachProfile(uid, coach).catch(() => {});
+      else deleteCoachProfile(uid).catch(() => {});
+    }
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 900);
   };
@@ -444,6 +472,83 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               </div>
             ))}
           </div>
+          </>)}
+
+          {/* Coach listing — self-reported only, see find-a-coach/page.tsx
+              copy: not certified or vetted by CourtConnect. */}
+          {tab === 'coaching' && (<>
+          {!coachLoaded ? (
+            <p className="text-xs text-slate-500 text-center py-6">Loading…</p>
+          ) : (<>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <GraduationCap size={13} className={coach.isActive ? 'text-emerald-400' : 'text-slate-500'}/>
+              <div>
+                <p className="text-xs font-semibold text-slate-200">List yourself as a coach</p>
+                <p className="text-[10px] text-slate-500">
+                  {coach.isActive ? 'Visible on Find a Coach — players can message you.' : 'Not listed. Turn on to appear on Find a Coach.'}
+                </p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setCoach(c => ({ ...c, isActive: !c.isActive }))}
+              className={`shrink-0 w-10 h-6 rounded-full border transition-colors relative ${
+                coach.isActive ? 'bg-emerald-500/30 border-emerald-500/50' : 'bg-slate-800 border-slate-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
+                coach.isActive ? 'translate-x-[16px] bg-emerald-400' : 'translate-x-0 bg-slate-500'}`}/>
+            </button>
+          </div>
+
+          {coach.isActive && (
+          <div className="border-t border-slate-800/80 pt-3 space-y-3">
+            <div>
+              <label className="text-[11px] text-slate-500 font-semibold block mb-1">Bio</label>
+              <textarea value={coach.bio ?? ''} onChange={e => setCoach(c => ({ ...c, bio: e.target.value }))}
+                rows={3} maxLength={300} placeholder="Your coaching background, style, who you work best with…"
+                className={inp}/>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[11px] text-slate-500 font-semibold block mb-1">Hourly rate (optional)</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500 shrink-0">RM</span>
+                  <input type="number" min="0" value={coach.hourlyRate ?? ''}
+                    onChange={e => setCoach(c => ({ ...c, hourlyRate: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="Leave blank to discuss per player" className={inp}/>
+                </div>
+              </div>
+              <div className="w-28">
+                <label className="text-[11px] text-slate-500 font-semibold block mb-1">Years coaching</label>
+                <input type="number" min="0" value={coach.yearsExperience ?? ''}
+                  onChange={e => setCoach(c => ({ ...c, yearsExperience: e.target.value ? Number(e.target.value) : undefined }))}
+                  className={inp}/>
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-semibold block mb-1.5">Specialties</label>
+              <div className="flex flex-wrap gap-1.5">
+                {COACH_SPECIALTIES.map(s => (
+                  <button key={s} type="button" onClick={() => toggleSpecialty(s)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+                      coach.specialties.includes(s)
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                        : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-semibold block mb-1">Areas/venues (comma-separated)</label>
+              <input value={coach.areas.join(', ')}
+                onChange={e => setCoach(c => ({ ...c, areas: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                placeholder="e.g. Petaling Jaya, Bukit Jalil" className={inp}/>
+            </div>
+            <p className="text-[10px] text-slate-600">
+              This listing is self-reported — CourtConnect doesn&apos;t verify or certify coaches.
+            </p>
+          </div>
+          )}
+          </>)}
           </>)}
 
           {/* Push notifications + username */}

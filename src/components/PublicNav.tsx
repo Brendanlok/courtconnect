@@ -1,22 +1,26 @@
 'use client';
 // Header/footer chrome shared by every logged-out public page (marketing
-// home, Rankings, How Ratings Work, Events, About, Start a Club). Deliberately
-// separate from the authenticated app's Topbar/Sidebar/BottomNav (those stay
-// untouched, FROZEN nav) — this is a different surface for visitors who
-// aren't signed in yet.
+// home, Rankings, How Ratings Work, Events, Find/Become a Coach, About,
+// Start a Club). Deliberately separate from the authenticated app's
+// Topbar/Sidebar/BottomNav (those stay untouched, FROZEN nav) — this is a
+// different surface for visitors who aren't signed in yet.
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { BASE_PATH } from '@/lib/utils';
 import { usePublicAuth } from '@/context/PublicAuthContext';
 
-// "Ratings" is the one section with genuinely 2+ real pages under it today —
-// a real dropdown. Everything else is still exactly one page, so it stays a
-// flat link; a dropdown menu with one item is a decoration, not navigation.
-// Add sub-items here as real pages ship (e.g. Rankings gains its own filter
-// pages) rather than building the menu shell ahead of the content.
+// Only "Ratings" and "Coaching" have 2+ real pages under them today — real
+// dropdowns. Everything else is still exactly one page, so it stays a flat
+// link; a dropdown with one item is a decoration, not navigation. Add
+// sub-items here as real pages ship rather than building menu shells ahead
+// of the content.
 const RATINGS_ITEMS = [
   { href: '/how-it-works/', label: 'How It Works' },
   { href: '/#faq', label: 'FAQ' },
+];
+const COACHING_ITEMS = [
+  { href: '/find-a-coach/', label: 'Find a Coach' },
+  { href: '/become-a-coach/', label: 'Become a Coach' },
 ];
 const FLAT_LINKS = [
   { href: '/rankings/', label: 'Rankings' },
@@ -24,16 +28,13 @@ const FLAT_LINKS = [
   { href: '/start-a-club/', label: 'Start a Club' },
   { href: '/about/', label: 'About' },
 ];
-// Footer groups everything (dropdown items included) into two honest
-// columns — DUPR's footer has 5 columns because it has 5 sections' worth of
-// real pages; we have 6 real links total, so two short columns is the
-// accurate version of the same idea, not a padded copy.
 const FOOTER_COLUMNS = [
   { title: 'Ratings', items: RATINGS_ITEMS },
+  { title: 'Coaching', items: COACHING_ITEMS },
   { title: 'More', items: [{ href: '/rankings/', label: 'Rankings' }, ...FLAT_LINKS.slice(1)] },
 ];
 
-function RatingsMenu() {
+function DropdownMenu({ label, items }: { label: string; items: { href: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -44,13 +45,13 @@ function RatingsMenu() {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 hover:text-white transition-colors">
-        Ratings <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        {label} <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="popover-anim origin-top-left absolute top-full mt-2 left-0 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[160px]">
-          {RATINGS_ITEMS.map(l => (
+          {items.map(l => (
             <a key={l.href} href={`${BASE_PATH}${l.href}`} onClick={() => setOpen(false)}
-              className="block px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+              className="block px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors whitespace-nowrap">
               {l.label}
             </a>
           ))}
@@ -62,7 +63,7 @@ function RatingsMenu() {
 
 // All real nav destinations, flattened — used for the mobile menu panel
 // where a hover dropdown doesn't make sense (no hover on touch).
-const ALL_LINKS = [...RATINGS_ITEMS, ...FLAT_LINKS];
+const ALL_LINKS = [...RATINGS_ITEMS, ...COACHING_ITEMS, ...FLAT_LINKS];
 
 export function PublicNav() {
   const onAuthClick = usePublicAuth();
@@ -74,10 +75,12 @@ export function PublicNav() {
           <span>🏸</span> CourtConnect
         </a>
         <nav className="hidden md:flex items-center gap-5 text-sm text-slate-400">
-          <RatingsMenu />
-          {FLAT_LINKS.map(l => (
-            <a key={l.href} href={`${BASE_PATH}${l.href}`} className="hover:text-white transition-colors">{l.label}</a>
-          ))}
+          <DropdownMenu label="Ratings" items={RATINGS_ITEMS} />
+          <a href={`${BASE_PATH}/rankings/`} className="hover:text-white transition-colors">Rankings</a>
+          <a href={`${BASE_PATH}/events/`} className="hover:text-white transition-colors">Events</a>
+          <DropdownMenu label="Coaching" items={COACHING_ITEMS} />
+          <a href={`${BASE_PATH}/start-a-club/`} className="hover:text-white transition-colors">Start a Club</a>
+          <a href={`${BASE_PATH}/about/`} className="hover:text-white transition-colors">About</a>
         </nav>
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => onAuthClick('login')}

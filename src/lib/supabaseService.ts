@@ -115,6 +115,46 @@ export async function loadUserProfile(uid: string): Promise<Partial<UserProfile>
   return data ? userRowToProfile(data) : null;
 }
 
+// ── Coach profiles ──────────────────────────────────────────────────────────
+// Requires migration 0025_coach_profiles.sql. Owner-only reads on the base
+// table (see that migration) — discovery goes through coach_profiles_public
+// instead, fetched via lib/publicData.ts's fetchCoaches, shared by both the
+// public /find-a-coach/ page and the in-app one.
+export interface MyCoachProfile {
+  bio?: string; hourlyRate?: number; currency: string;
+  specialties: string[]; areas: string[]; yearsExperience?: number; isActive: boolean;
+}
+
+export async function loadMyCoachProfile(uid: string): Promise<MyCoachProfile | null> {
+  const { data } = await supabase.from('coach_profiles').select('*').eq('user_id', uid).maybeSingle();
+  if (!data) return null;
+  return {
+    bio: data.bio as string | undefined,
+    hourlyRate: data.hourly_rate as number | undefined,
+    currency: data.currency as string,
+    specialties: (data.specialties as string[]) ?? [],
+    areas: (data.areas as string[]) ?? [],
+    yearsExperience: data.years_experience as number | undefined,
+    isActive: data.is_active as boolean,
+  };
+}
+
+// Upsert — a user only ever has one coach_profiles row (primary key is
+// user_id), so save always either creates or replaces it in one call.
+export async function saveCoachProfile(uid: string, profile: MyCoachProfile): Promise<void> {
+  await supabase.from('coach_profiles').upsert({
+    user_id: uid,
+    bio: profile.bio, hourly_rate: profile.hourlyRate, currency: profile.currency,
+    specialties: profile.specialties, areas: profile.areas,
+    years_experience: profile.yearsExperience, is_active: profile.isActive,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+}
+
+export async function deleteCoachProfile(uid: string): Promise<void> {
+  await supabase.from('coach_profiles').delete().eq('user_id', uid);
+}
+
 // ── Ranked seasons ──────────────────────────────────────────────────────────
 // Requires migration 0014_ranked_seasons.sql to be applied.
 

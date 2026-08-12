@@ -1,5 +1,49 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12f] — Phase 6: coaching feature (scoped down from DUPR's marketplace)
+
+**Trigger:** Lok asked to scope, then build, Phase 6 ("Become a Coach").
+
+**Scoping call:** DUPR's version is a vetted marketplace with a formal
+certification program ("Master Instructors") — that's a business/ops process
+(who reviews credentials), not something to build in code. Scoped a real,
+honest v1 instead and confirmed with Lok before building: self-reported coach
+listings, no certification, no payments/booking, no reviews — all three
+flagged as separate business decisions, not guessed at.
+
+**What shipped:**
+1. **`coach_profiles` table** (`supabase/migrations/0025_coach_profiles.sql`)
+   — bio, hourly rate, specialties, areas, years of experience. Owner-only on
+   the base table; discovery goes through a new `coach_profiles_public` view
+   (same pattern as users_public/tournaments_public) joined with users_public
+   for display info, so no new PII exposure.
+2. **Coaching tab in Settings** — a toggle + profile form, mirrors the
+   existing Privacy tab's toggle pattern exactly. Separate save path from the
+   rest of Settings (coach_profiles is its own table, not part of
+   UserProfile) — deletes the row entirely when toggled off rather than
+   leaving a stale inactive listing behind.
+3. **`/find-a-coach/`** — public + in-app directory reading
+   `coach_profiles_public`. Copy states plainly it's self-reported, not
+   platform-verified.
+4. **`/become-a-coach/`** — public info page (mirrors `/start-a-club/`),
+   explains free listing + no booking system in the middle.
+5. **Contact, with zero new infra**: "Message" deep-links to the existing
+   `/chat/?realUid=` flow (already handles opening/creating a conversation)
+   — checked first that this pattern already existed before building
+   anything new; `conversations`/`conversation_messages` were also already
+   correctly RLS'd to participants only, no gap there to fix.
+6. Nav gained a second real dropdown ("Coaching": Find a Coach + Become a
+   Coach) alongside the existing Ratings one — same "only dropdown when 2+
+   real pages exist" rule as before.
+
+**Verified:** `npx next build` clean, all new routes generated. **Needs Lok
+to run `0025_coach_profiles.sql` manually in the Supabase SQL editor**
+before any of this actually works — same pattern as 0023/0024, no automated
+migration runner in this project. Until then, Settings' Coaching tab save
+silently no-ops (caught, doesn't crash the rest of Settings' save) and
+/find-a-coach/ shows an empty state — fails closed, same as every other
+public fetch here.
+
 ## [2026-08-12e] — club_messages membership check (follow-up to 0023)
 
 **Trigger:** Lok asked to scope the club_messages gap flagged when 0023 shipped —

@@ -1,12 +1,11 @@
 // Reads for the logged-out public site (marketing home, Rankings, player
-// lookup, Events). Backed by anon-readable views only: `users_public`
-// (supabase/migrations/0003) and `tournaments_public`
-// (supabase/migrations/0023) — matches/clubs/club_messages/live_matches
-// still have no anon-safe view, so the public site doesn't surface those.
-// migrations/0023 MUST be run manually in the Supabase SQL editor (this
-// project has no automated migration runner, see every other file in that
-// folder) before tournaments_public exists — fetchPublicTournaments fails
-// closed (returns []) until then, same as every other fetch* here on error.
+// lookup, Events, Find a Coach). Backed by anon-readable views only:
+// `users_public` (0003), `tournaments_public` (0023), `coach_profiles_public`
+// (0025) — matches/clubs/club_messages/live_matches still have no anon-safe
+// view, so the public site doesn't surface those. Every migration here MUST
+// be run manually in the Supabase SQL editor (this project has no automated
+// migration runner, see every other file in that folder) before its view
+// exists — every fetch* below fails closed (returns []) until then.
 import { supabase } from './supabase';
 import { isCalibrating } from './utils';
 import type { Tier } from '@/types';
@@ -137,4 +136,36 @@ export async function fetchPublicTournaments(limit = 50): Promise<PublicTourname
     .limit(limit);
   if (error || !data) return [];
   return data.map(mapTournamentRow);
+}
+
+export interface PublicCoach {
+  uid: string; username: string; displayName: string; photoURL?: string; state?: string;
+  bio?: string; hourlyRate?: number; currency: string; specialties: string[]; areas: string[]; yearsExperience?: number;
+}
+
+function mapCoachRow(row: Record<string, unknown>): PublicCoach {
+  return {
+    uid: row.user_id as string,
+    username: row.username as string,
+    displayName: row.display_name as string,
+    photoURL: row.photo_url as string | undefined,
+    state: row.state as string | undefined,
+    bio: row.bio as string | undefined,
+    hourlyRate: row.hourly_rate as number | undefined,
+    currency: row.currency as string,
+    specialties: (row.specialties as string[]) ?? [],
+    areas: (row.areas as string[]) ?? [],
+    yearsExperience: row.years_experience as number | undefined,
+  };
+}
+
+// Self-reported coach listings for Find a Coach — not platform-verified, see
+// the app/find-a-coach page copy, which says so explicitly to visitors.
+export async function fetchCoaches(limit = 50): Promise<PublicCoach[]> {
+  const { data, error } = await supabase
+    .from('coach_profiles_public')
+    .select('user_id, username, display_name, photo_url, state, bio, hourly_rate, currency, specialties, areas, years_experience')
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map(mapCoachRow);
 }
