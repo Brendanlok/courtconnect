@@ -1098,9 +1098,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClubModerator(clubId, toRealUid(uid, myRealUid), false).catch(() => {});
   }, [myRealUid]);
 
-  const acceptClubMember = useCallback((clubId: string, uid: string) => {
-    addClubMember(clubId, toRealUid(uid, myRealUid)).catch(() => {});
-    addNotification({ type: 'club_accepted', title: 'Member Accepted', body: 'A new member joined your club.' });
+  // Mirrors acceptTournamentRequest/approveTournamentRequest: addClubMember
+  // returns false on a silent server-side rejection (club filled up since
+  // the admin saw the request) rather than throwing, so this has to check
+  // the result instead of assuming success like the old version did — an
+  // admin approving a request into a full club was told "Member Accepted"
+  // and the requester was left stuck in pending forever with no notice.
+  const acceptClubMember = useCallback(async (clubId: string, uid: string) => {
+    const realUid = toRealUid(uid, myRealUid);
+    const joined = await addClubMember(clubId, realUid).catch(() => false);
+    if (joined) {
+      addNotification({ type: 'club_accepted', title: 'Member Accepted', body: 'A new member joined your club.' });
+    } else {
+      removeClubPending(clubId, realUid, true).catch(() => {});
+      addNotification({ type: 'club_declined', title: 'Could Not Accept', body: 'This club is full — the request could not be approved.' });
+    }
   }, [myRealUid]);
 
   const declineClubMember = useCallback((clubId: string, uid: string) => {
