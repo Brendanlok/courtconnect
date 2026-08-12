@@ -1,6 +1,6 @@
 'use client';
 // Header/footer chrome shared by every logged-out public page (marketing
-// home, Rankings, How Ratings Work, About, Start a Club). Deliberately
+// home, Rankings, How Ratings Work, Events, About, Start a Club). Deliberately
 // separate from the authenticated app's Topbar/Sidebar/BottomNav (those stay
 // untouched, FROZEN nav) — this is a different surface for visitors who
 // aren't signed in yet.
@@ -20,12 +20,13 @@ const RATINGS_ITEMS = [
 ];
 const FLAT_LINKS = [
   { href: '/rankings/', label: 'Rankings' },
+  { href: '/events/', label: 'Events' },
   { href: '/start-a-club/', label: 'Start a Club' },
   { href: '/about/', label: 'About' },
 ];
 // Footer groups everything (dropdown items included) into two honest
 // columns — DUPR's footer has 5 columns because it has 5 sections' worth of
-// real pages; we have 5 real links total, so two short columns is the
+// real pages; we have 6 real links total, so two short columns is the
 // accurate version of the same idea, not a padded copy.
 const FOOTER_COLUMNS = [
   { title: 'Ratings', items: RATINGS_ITEMS },

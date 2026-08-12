@@ -1,5 +1,59 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12d] — Found + fixed a real anon-read security gap; shipped Events (Phase 5)
+
+**Trigger:** Lok asked to scope the Phase 5 (Events/tournament directory) decision
+flagged in the earlier public-site sessions. Scoping it meant actually checking
+what's readable by the anon key today, not guessing.
+
+**Found a real, pre-existing security issue, unrelated to anything built this
+week:** `matches`, `tournaments`, `clubs`, `club_messages`, and `live_matches` have
+all had a wide-open `"public read" ... using (true)` policy since the very first
+migration (0001) — readable by anyone with the public anon key, not just signed-in
+users. Same bug class `0003_restrict_users_pii.sql` already fixed for `users`
+(which had the identical policy, exposing PII) — nobody ever applied the same fix
+to these five tables. Confirmed live with curl before touching anything: a
+tournament row includes the full `participants` list (real names), pending join
+requests, and `host_uid`; `matches` returns every match ever played with both
+players' real uids; `clubs` returns the full club list.
+
+**Presented both decisions to Lok before touching production RLS** (this is a
+schema/security change on shared data, not something to guess at): (1) lock the
+five tables down now vs. flag-and-defer — Lok said fix it now; (2) what the public
+Events page should actually show — Lok said upcoming public tournaments only, no
+participant/join-request data. Also caught mid-fix and separately confirmed:
+`club_messages` (real chat content) and `live_matches` weren't in the original
+ask but have the identical bug — Lok said include those too.
+
+**Shipped (`supabase/migrations/0023_restrict_public_reads.sql` — NOT yet applied,
+per this project's established pattern every migration needs Lok to run it
+manually in the Supabase SQL editor, no automated runner exists):**
+- All five tables' read policies now require `auth.uid() is not null` — blocks
+  anon entirely, changes nothing for any signed-in user. Verified against actual
+  query patterns first, not assumed: `subscribeMatchesAmong()` (club ladder
+  computation) reads matches between *other* club members, not just the current
+  user's own, which is why `matches` got the same broad any-authenticated-user
+  gate as the rest rather than a stricter participant-only policy that would have
+  broken club ladders.
+- New `tournaments_public` view (same pattern as `users_public`): only
+  non-private, non-dummy tournaments, only the safe columns — no participants, no
+  pending_requester_ids, no host_uid, no bracket. Granted to anon + authenticated.
+- **Not fixed, flagged as a separate follow-up:** `club_messages` still has no
+  actual membership check — any authenticated user can currently read any club's
+  messages, not just members. Closing the anon-read hole doesn't fix that; it's a
+  bigger, separate RLS redesign (checking `clubs.member_ids`) that needs its own
+  pass, not a one-line role gate like this migration.
+- `/events/` — the public tournament directory itself, reading `tournaments_public`,
+  filtered to Status=Upcoming. Added to nav/footer alongside the existing public
+  pages.
+
+**Verified:** `npx next build` clean, app code deployed. **The Events page will
+show nothing until Lok actually runs migration 0023** — `fetchPublicTournaments`
+fails closed (returns `[]`) if `tournaments_public` doesn't exist yet, same as
+every other public fetch here on error, so it degrades to an empty state rather
+than a crash. Confirmed the empty state renders correctly; cannot confirm real
+tournament data renders until the migration is applied and re-checked live.
+
 ## [2026-08-12c] — Nav dropdown, How to Get Started, FAQ — from DUPR's actual homepage
 
 **Trigger:** Lok shared screenshots of DUPR's real nav dropdowns (Ratings/Rankings/

@@ -1,9 +1,12 @@
 // Reads for the logged-out public site (marketing home, Rankings, player
-// lookup). Backed by the `users_public` view (supabase/migrations/0003),
-// already granted to the `anon` role — no auth required, no new RLS needed.
-// Matches/clubs/tournaments tables are NOT anon-readable, so the public site
-// only ever surfaces player rankings/lookup, not match history or events —
-// see DEVLOG for that scope call.
+// lookup, Events). Backed by anon-readable views only: `users_public`
+// (supabase/migrations/0003) and `tournaments_public`
+// (supabase/migrations/0023) — matches/clubs/club_messages/live_matches
+// still have no anon-safe view, so the public site doesn't surface those.
+// migrations/0023 MUST be run manually in the Supabase SQL editor (this
+// project has no automated migration runner, see every other file in that
+// folder) before tournaments_public exists — fetchPublicTournaments fails
+// closed (returns []) until then, same as every other fetch* here on error.
 import { supabase } from './supabase';
 import { isCalibrating } from './utils';
 import type { Tier } from '@/types';
@@ -90,4 +93,48 @@ export async function fetchPublicPlayerCount(): Promise<number | null> {
     .gte('placement_matches_played', 10); // "ranked" = past calibration, matches isCalibrating's own threshold
   if (error) return null;
   return count ?? null;
+}
+
+export interface PublicTournament {
+  id: string; name: string; type: string; status: string; venue: string; state?: string;
+  country?: string; date: string; time?: string; entryFee: number; prizePool: number;
+  maxPlayers: number; currentPlayers: number; minMmr?: number; maxMmr?: number;
+  tags?: string[]; description?: string; organiser?: string;
+}
+
+function mapTournamentRow(row: Record<string, unknown>): PublicTournament {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    type: row.type as string,
+    status: row.status as string,
+    venue: row.venue as string,
+    state: row.state as string | undefined,
+    country: row.country as string | undefined,
+    date: row.date as string,
+    time: row.time as string | undefined,
+    entryFee: row.entry_fee as number,
+    prizePool: row.prize_pool as number,
+    maxPlayers: row.max_players as number,
+    currentPlayers: row.current_players as number,
+    minMmr: row.min_mmr as number | undefined,
+    maxMmr: row.max_mmr as number | undefined,
+    tags: row.tags as string[] | undefined,
+    description: row.description as string | undefined,
+    organiser: row.organiser as string | undefined,
+  };
+}
+
+// Upcoming public tournaments for the Events page. tournaments_public
+// already excludes dummy/private rows at the view level (migration 0023),
+// so this only needs the status filter.
+export async function fetchPublicTournaments(limit = 50): Promise<PublicTournament[]> {
+  const { data, error } = await supabase
+    .from('tournaments_public')
+    .select('id, name, type, status, venue, state, country, date, time, entry_fee, prize_pool, max_players, current_players, min_mmr, max_mmr, tags, description, organiser')
+    .eq('status', 'Upcoming')
+    .order('date', { ascending: true })
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map(mapTournamentRow);
 }
