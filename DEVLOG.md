@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13b] — Fixed a self-caused security gap in 0026 (PUBLIC execute grant)
+
+**Trigger:** Lok ran migration 0026, asked to verify it. Testing the new RPCs
+with the anon key to confirm they were properly restricted (expected a
+permission-denied error) surfaced the opposite: both returned `200 false`
+instead of an error, meaning anon could call them at all.
+
+**Root cause:** Postgres grants `EXECUTE` on a newly created function to
+`PUBLIC` by default unless explicitly revoked. 0026 added
+`grant execute ... to authenticated` but never revoked the default PUBLIC
+access — so that explicit grant was redundant, and the real gap (anon could
+still call both functions) was never closed. Both functions are
+`SECURITY DEFINER` — they bypass RLS by design — so this wasn't a cosmetic
+miss: an unauthenticated caller could have invoked
+`register_tournament_participant`/`add_club_member_atomic` directly and
+mutated tournament/club data (fake registrations, membership) with no login
+at all, undoing part of the RLS lockdown from earlier tonight.
+
+**Fix (`supabase/migrations/0027_revoke_public_execute.sql`):**
+`revoke execute ... from public` on both functions. Doesn't touch the
+`authenticated` grant from 0026 (a separate, unaffected grant) — signed-in
+users keep working exactly as before.
+
+**Verified the gap, not just assumed it** — curl'd both RPCs with only the
+anon key before writing the fix; got `200 false` (call allowed, target row
+not found) rather than a permission error, confirming the hole was real
+before claiming it needed fixing. Re-verify after 0027 runs: same curl
+should return a permission-denied error instead.
+
 ## [2026-08-13] — Closed the tournament/club overbooking race for real
 
 **Trigger:** Lok asked what's left on the Roadmap after the public-site work —
