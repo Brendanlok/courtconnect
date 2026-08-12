@@ -145,3 +145,8 @@ button:not(:disabled):active {
     animation-name: none;
   }
 }
+
+/* Public FAQ accordion (<details>/<summary>) — list-none on <summary> only
+   removes the default disclosure triangle in Firefox/Chrome; Safari still
+   needs the ::-webkit-details-marker override to hide it. */
+summary::-webkit-details-marker { display: none; }

@@ -1,5 +1,40 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-12c] — Nav dropdown, How to Get Started, FAQ — from DUPR's actual homepage
+
+**Trigger:** Lok shared screenshots of DUPR's real nav dropdowns (Ratings/Rankings/
+Events/Company/Coaching) and full homepage (How to Get Started, testimonials, blog,
+FAQ, rich footer), said "take all the inspo needed." Asked which content-dependent
+sections (testimonials, blog) he wanted — he said skip both for now rather than
+build empty/placeholder versions.
+
+**What shipped:**
+1. **A real "Ratings" nav dropdown** — How It Works + FAQ, the one section that
+   actually has 2+ real pages under it today. Everything else (Rankings, Start a
+   Club, About) stays a flat link — a dropdown with one item is a decoration, not
+   navigation; add more dropdowns as more real sub-pages ship.
+2. **Footer reorganized into columns** (Ratings / More) instead of one flat row,
+   matching DUPR's grouped-footer pattern honestly scaled to how many real pages
+   this site actually has (5, not 20+).
+3. **"How to get started" 3-step section** on the marketing home — Sign up → Log a
+   match → Get your rating. Real product flow, not filler.
+4. **FAQ accordion** (native `<details>`/`<summary>`, no JS state) — 5 real
+   questions about CourtConnect (free?, how's MMR calculated?, does my opponent
+   have to confirm?, how many matches to settle?, is my profile public?). Every
+   answer double-checked against actual app behavior before writing it (K=48/10
+   calibration matches from LiveMatchModal's kFactor logic; the private-profile
+   claim against SettingsModal's actual toggle) — no guessed numbers.
+
+**Explicitly not built:** testimonials and a blog/"stories" section — Lok confirmed
+skip rather than fabricate quotes or generate fake posts. DUPR's office address and
+App Store/Google Play badges also skipped — no physical office, and CourtConnect is
+a PWA, not a native app store listing.
+
+**Verified:** `npx next build` clean. Deployed and re-verified live (the local
+`next dev` sandbox has shown stale output twice already this session — see the
+08-12b entry — so skipped it entirely this round and went straight to the
+production build + live check, which has been reliable both prior times tonight).
+
 ## [2026-08-12b] — Public site Phase 1-4: About, Start a Club, Rankings filters, richer nav
 
 **Trigger:** continuing the public-site work from earlier today — Lok shared DUPR's
