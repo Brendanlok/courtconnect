@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
-import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch } from '@/lib/supabaseService';
+import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch, subscribeActiveLiveMatches } from '@/lib/supabaseService';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users, MapPin, X } from 'lucide-react';
 import type { LiveMatch, MatchType, CourtPosition } from '@/types';
@@ -108,6 +108,10 @@ export default function LivePage() {
   // undo stack — list of previous LiveMatch states
   const [history,    setHistory]    = useState<LiveMatch[]>([]);
 
+  // Browse list — active/paused matches, shown on the idle screen so
+  // watching doesn't require someone handing you a code.
+  const [liveNow,    setLiveNow]    = useState<LiveMatch[]>([]);
+
   // Sync from Supabase when watching
   useEffect(() => {
     if (phase !== 'watching' || !match) return;
@@ -119,6 +123,11 @@ export default function LivePage() {
     });
     return unsub;
   }, [phase, match?.id]);
+
+  useEffect(() => {
+    if (phase !== 'idle') return;
+    return subscribeActiveLiveMatches(setLiveNow);
+  }, [phase]);
 
   // ── scoring logic ──────────────────────────────────────────────────────────
 
@@ -216,6 +225,11 @@ export default function LivePage() {
     }
   }, [joinInput, user.uid]);
 
+  const watchLiveMatch = useCallback((m: LiveMatch) => {
+    setMatch(m);
+    setPhase(m.hostUid === user.uid ? 'scoring' : 'watching');
+  }, [user.uid]);
+
   const copyCode = useCallback(async () => {
     if (!match) return;
     try { await navigator.clipboard.writeText(match.joinCode); } catch { /* ignore */ }
@@ -256,6 +270,28 @@ export default function LivePage() {
         </div>
         {joinErr && <p className="text-xs text-red-400">{joinErr}</p>}
       </div>
+
+      {liveNow.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <p className="text-sm font-semibold flex items-center gap-2"><Users size={14} className="text-slate-400"/> Live Now</p>
+          <div className="space-y-2">
+            {liveNow.map(m => (
+              <button key={m.id} onClick={() => watchLiveMatch(m)}
+                className="w-full flex items-center justify-between gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2.5 text-left transition-colors">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{m.teamAName} <span className="text-slate-500 font-normal">vs</span> {m.teamBName}</p>
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                    <MapPin size={10} className="shrink-0"/> {m.venue} · {MATCH_TYPE_LABEL[m.format]}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ${m.status === 'paused' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {m.status === 'paused' ? '⏸ PAUSED' : '● LIVE'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 

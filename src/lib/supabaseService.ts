@@ -335,6 +335,22 @@ export async function getLiveMatchByCode(code: string): Promise<LiveMatch | null
   return data ? liveMatchRowToObj(data) : null;
 }
 
+// Browse list for the Live page's idle screen — matches still worth
+// discovering (active + paused, same set getLiveMatchByCode now finds),
+// most recent first, capped so the list stays a quick glance not a feed.
+export function subscribeActiveLiveMatches(cb: (matches: LiveMatch[]) => void): () => void {
+  const load = async () => {
+    const { data } = await supabase.from('live_matches').select('*')
+      .in('status', ['active', 'paused']).order('created_at', { ascending: false }).limit(8);
+    cb((data ?? []).map(liveMatchRowToObj));
+  };
+  load();
+  const channel = freshChannel('live_matches_browse')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'live_matches' }, load)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
 export function subscribeLiveMatch(id: string, cb: (m: LiveMatch | null) => void): () => void {
   const load = async () => {
     const { data } = await supabase.from('live_matches').select('*').eq('id', id).maybeSingle();
