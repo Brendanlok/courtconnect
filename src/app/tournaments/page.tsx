@@ -778,6 +778,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
       maxPlayers,     currentPlayers: 0,
       isPrivate,
       organiser:      hostingClub ? hostingClub.name : user.displayName,
+      hostClubId:     hostingClub?.id,
       description:    desc.trim() || undefined,
       tags: [MATCH_TYPE_LABEL[type], isPrivate ? 'Private' : 'Open'],
       participants: [],

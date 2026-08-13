@@ -855,6 +855,17 @@ export async function sendClubMessageDoc(clubId: string, msg: ClubMessage) {
   await supabase.from('club_messages').insert({ id: msg.id, club_id: clubId, sender_id: msg.senderId, sender_name: msg.senderName, text: msg.text, sent_at: msg.sentAt });
 }
 
+// System posts (e.g. bracket-ready announcements) — sender_id is a real
+// `uuid references users(uid)` column, so a made-up sender like 'system'
+// would fail the FK; null is the actual "no user" value and already renders
+// fine client-side (subscribeClubMessages passes it straight through,
+// ClubDetailClient falls back to senderName when no matching profile).
+export async function sendSystemClubMessage(clubId: string, text: string): Promise<void> {
+  await supabase.from('club_messages').insert({
+    id: `cm_sys_${Date.now()}`, club_id: clubId, sender_id: null, sender_name: 'CourtConnect', text, sent_at: new Date().toISOString(),
+  });
+}
+
 // ── Tournaments ─────────────────────────────────────────────────────────────
 // Was local-React-state-only until now (see DEVLOG) — a hosted event never
 // left the tab that created it. Mirrors the clubs pattern above: real row in
@@ -870,7 +881,8 @@ function tournamentRowToObj(row: Record<string, unknown>): Tournament {
     state: row.state as MalaysiaState, venue: row.venue as string, date: row.date as string, time: row.time as string | undefined,
     isPrivate: row.is_private as boolean | undefined, bracket: row.bracket as Tournament['bracket'], tags: (row.tags as string[]) ?? [],
     description: row.description as string | undefined, organiser: row.organiser as string | undefined,
-    hostUid: row.host_uid as string | undefined, participants: row.participants as Tournament['participants'],
+    hostUid: row.host_uid as string | undefined, hostClubId: row.host_club_id as string | undefined,
+    participants: row.participants as Tournament['participants'],
     pendingRequesterIds: (row.pending_requester_ids as string[]) ?? [],
     championUsername: row.champion_username as string | undefined,
     championDisplayName: row.champion_display_name as string | undefined,
@@ -883,7 +895,7 @@ function tournamentObjToRow(t: Tournament): Record<string, unknown> {
     prize_pool: t.prizePool, entry_fee: t.entryFee, min_mmr: t.minMMR, max_mmr: t.maxMMR,
     max_players: t.maxPlayers, current_players: t.currentPlayers, state: t.state, venue: t.venue,
     date: t.date, time: t.time, is_private: t.isPrivate, bracket: t.bracket, tags: t.tags,
-    description: t.description, organiser: t.organiser, host_uid: t.hostUid, participants: t.participants,
+    description: t.description, organiser: t.organiser, host_uid: t.hostUid, host_club_id: t.hostClubId, participants: t.participants,
     pending_requester_ids: t.pendingRequesterIds,
     champion_username: t.championUsername, champion_display_name: t.championDisplayName,
   };

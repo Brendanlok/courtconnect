@@ -18,7 +18,7 @@ import {
   followUser, unfollowUser, respondToFollowRequest, subscribeFollowing, subscribeIncomingFollowRequests,
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
-  sendClubMessageDoc, subscribeClubMessages,
+  sendClubMessageDoc, subscribeClubMessages, sendSystemClubMessage,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc, unregisterTournamentParticipant,
   addTournamentPending, removeTournamentPending, approveTournamentRequest, registerForTournament,
   lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
@@ -959,6 +959,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!t || (t.participants ?? []).length < 2) return;
     const bracket = generateBracket(t.participants!);
     updateTournamentDoc(tournamentId, { status: 'Active', bracket }).catch(() => {});
+    // Product idea: auto-share the bracket into the host club's chat, if this
+    // event was hosted "as" a club (hostClubId — a real FK, unlike organiser
+    // which is just the club's name for display). Individually-hosted events
+    // have no hostClubId and nothing to post to.
+    if (t.hostClubId) {
+      sendSystemClubMessage(t.hostClubId, `🏆 Bracket's up for ${t.name}! Check the Tournaments tab to follow the matches.`).catch(() => {});
+    }
   }, [tournaments]);
 
   // Host reports a live bracket match's result. Propagates the winner into

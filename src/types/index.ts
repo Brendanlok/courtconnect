@@ -130,6 +130,8 @@ export interface Tournament {
   description?: string;
   organiser?: string;
   hostUid?: string;         // uid of the user who created this tournament
+  hostClubId?: string;      // set when hosted "as" a club (Host As) — real FK,
+                             // not just the `organiser` display string
   participants?: { displayName: string; username: string }[];
   pendingRequesterIds?: string[]; // uids waiting on host approval (private events only)
   championUsername?: string;     // set once the final bracket match has a winner
