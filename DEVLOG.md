@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13d] — Shareable public player profile URLs at /rankings/[username]/
+
+**What:** Picked up the deferred "shareable per-player profile URLs" To-Do
+(previously logged as nice-to-have, not a gap, since the Rankings search box
+already covers "check anyone's rating"). Turns out it's buildable after
+all — the original blocker ("static export needs every path enumerated via
+generateStaticParams") doesn't actually rule it out; `generateStaticParams`
+can enumerate real usernames from the anon-readable `users_public` view at
+build time (GitHub Actions rebuilds on every push), same idea as the
+existing `/players/[username]/` route but with real accounts instead of the
+demo roster. New page reads fresh data client-side at runtime (not
+build-time-stale), shows avatar/tier/MMR/state/bio/wins-losses, and has a
+Share button (Web Share API + clipboard fallback, same pattern as
+QRModal). Rankings rows now link to it.
+
+**Bug found + fixed in the same pass:** first deploy served the login wall
+instead of the new page for logged-out visitors. Root cause:
+`AuthGate.tsx`'s `PUBLIC_ROUTES` allowlist only exact-matched `/rankings`,
+not its new dynamic child `/rankings/<username>` — fixed by prefix-matching
+`/rankings/` instead of exact-matching every child path.
+
+**Verified live** (both real accounts, brendanlok + test) after clearing a
+stale service-worker cache that was masking the fix in the first check —
+see `public/sw.js`, cache-first on JS chunks meant an already-loaded tab
+kept serving pre-fix code until a hard reload. Fresh loads confirm correct
+content in both light of the fix and at 380px width.
+
+Commits: aadf939 (feature), f2882e6 (AuthGate fix).
+
 ## [2026-08-13c] — 0027 didn't close the gap; 0028 targets anon directly
 
 **Trigger:** re-verified 0027 with the anon key (same curl test as before)
