@@ -20,6 +20,10 @@ export default function FindACoach() {
   // undefined then, so myUid is just undefined and no card matches it.
   const { user } = useApp();
   const myUid = user?.uid;
+  // Signed-in visitors already have Settings for this; logged-out visitors
+  // need the full become-a-coach pitch (value props + sign-up CTA) instead
+  // of a dead-end static line.
+  const becomeCoachHref = `${BASE_PATH}/become-a-coach/`;
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
@@ -33,7 +37,15 @@ export default function FindACoach() {
       {coaches === null ? (
         <div className="flex items-center justify-center py-10 text-slate-500"><Loader2 className="animate-spin" size={20}/></div>
       ) : coaches.length === 0 ? (
-        <p className="text-sm text-slate-500 py-6 text-center">No coaches listed yet.</p>
+        <div className="py-6 text-center space-y-3">
+          <p className="text-sm text-slate-500">No coaches listed yet — be the first.</p>
+          {!myUid && (
+            <a href={becomeCoachHref}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+              <GraduationCap size={14}/> Become a coach
+            </a>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           {coaches.map(c => (
@@ -74,9 +86,16 @@ export default function FindACoach() {
         </div>
       )}
 
-      <p className="text-xs text-slate-600 text-center">
-        Are you a coach? List yourself free from Settings once you&apos;re signed in.
-      </p>
+      {coaches !== null && (myUid ? (
+        <p className="text-xs text-slate-600 text-center">
+          Are you a coach? List yourself free from Settings.
+        </p>
+      ) : coaches.length > 0 && (
+        <p className="text-xs text-slate-600 text-center">
+          Are you a coach?{' '}
+          <a href={becomeCoachHref} className="text-emerald-400 hover:text-emerald-300 font-semibold">List yourself free</a>.
+        </p>
+      ))}
     </div>
   );
 }
