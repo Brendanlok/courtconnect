@@ -11,10 +11,15 @@ import { GraduationCap, MapPin, Loader2, MessageCircle } from 'lucide-react';
 import { fetchCoaches, type PublicCoach } from '@/lib/publicData';
 import { Avatar } from '@/components/ui/Avatar';
 import { BASE_PATH } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 
 export default function FindACoach() {
   const [coaches, setCoaches] = useState<PublicCoach[] | null>(null);
   useEffect(() => { fetchCoaches().then(setCoaches); }, []);
+  // useApp() outside AppProvider (logged-out visitor) returns {} — user is
+  // undefined then, so myUid is just undefined and no card matches it.
+  const { user } = useApp();
+  const myUid = user?.uid;
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
@@ -43,7 +48,7 @@ export default function FindACoach() {
                   <span className="text-sm font-bold text-amber-400 shrink-0">{c.currency}{c.hourlyRate}/hr</span>
                 )}
               </div>
-              {c.bio && <p className="text-sm text-slate-400 mt-3">{c.bio}</p>}
+              {c.bio && <p className="text-sm text-slate-400 mt-3 line-clamp-4 break-words">{c.bio}</p>}
               {c.specialties.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {c.specialties.map(s => (
@@ -54,10 +59,16 @@ export default function FindACoach() {
               {c.areas.length > 0 && (
                 <p className="text-xs text-slate-500 mt-2 flex items-center gap-1"><MapPin size={11}/> {c.areas.join(', ')}</p>
               )}
-              <a href={`${BASE_PATH}/chat/?realUid=${c.uid}`}
-                className="mt-3 flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
-                <MessageCircle size={14}/> Message
-              </a>
+              {c.uid === myUid ? (
+                <p className="mt-3 flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-slate-800 text-slate-500 font-bold text-sm rounded-xl">
+                  This is you
+                </p>
+              ) : (
+                <a href={`${BASE_PATH}/chat/?realUid=${c.uid}`}
+                  className="mt-3 flex items-center justify-center gap-1.5 w-full px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+                  <MessageCircle size={14}/> Message
+                </a>
+              )}
             </div>
           ))}
         </div>
