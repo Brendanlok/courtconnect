@@ -53,7 +53,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // Mid-signup (verify email / complete profile) always goes straight to
   // AuthModal, same as before — only a *fully* logged-out visitor sees the
   // public site, and only on a route that's actually public.
-  const showPublicSite = !authUser && (PUBLIC_ROUTES.includes(norm(pathname)) || norm(pathname) === '/');
+  // /rankings/[username]/ is a dynamic child of /rankings — prefix-matched
+  // rather than added to PUBLIC_ROUTES itself, since it's the only public
+  // route with real sub-pages right now.
+  const path = norm(pathname);
+  const showPublicSite = !authUser && (PUBLIC_ROUTES.includes(path) || path === '/' || path.startsWith('/rankings/'));
 
   if (loggedOut) {
     // authTab is only ever set from a public page's Log In / Sign Up CTA
@@ -64,7 +68,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return (
         <PublicAuthProvider value={setAuthTab}>
           <PublicNav />
-          {norm(pathname) === '/' ? <MarketingHome /> : children}
+          {path === '/' ? <MarketingHome /> : children}
           <PublicFooter />
         </PublicAuthProvider>
       );
