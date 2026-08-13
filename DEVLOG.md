@@ -1,5 +1,35 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13h] — Browse live matches instead of needing a join code
+
+**Trigger:** Lok asked for product ideas; picked one of two logged ("browse
+live matches, not just join-by-code") to build immediately as an exception
+to the one-idea-per-day rule.
+
+**The gap:** the only way to watch a live match was someone handing you
+their 6-digit code — no discovery path at all.
+
+**What shipped:** a "Live Now" list on the Live page's idle screen —
+`subscribeActiveLiveMatches` (new, mirrors `subscribeTournaments`'
+load-then-realtime-resubscribe pattern) reads `live_matches` where status is
+`active` or `paused` (the same set `getLiveMatchByCode` matches since the
+paused-match fix earlier today), newest first, capped at 8 so it stays a
+glance not a feed. Each row shows teams, venue, format, and a live/paused
+badge; tapping one calls the same join logic as entering a code
+(`setMatch` + `setPhase`), no code needed.
+
+**Scope call:** the idea was framed as "near you" but there's no geolocation
+anywhere in this app — building that would mean adding a location layer for
+one feature. Shipped the simpler global list instead (all currently
+active/paused matches); venue is shown on each row so it's still enough
+context to tell if a match is worth joining. Flagging in case Lok wants
+actual proximity filtering later.
+
+**Verified:** `npx next build` clean, deployed, page loads with no console
+errors for a logged-out visitor. Couldn't click through the list itself —
+`/live` requires a signed-in session (not in `AuthGate`'s `PUBLIC_ROUTES`),
+same constraint as every other live-page verification today.
+
 ## [2026-08-13g] — Verified migration 0029 after Lok ran it
 
 **Trigger:** Lok ran `supabase/migrations/0029_atomic_unregister.sql` and
