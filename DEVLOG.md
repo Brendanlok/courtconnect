@@ -1,5 +1,64 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13f] — Closed the tournament withdrawal race the same way 0026 closed registration
+
+**Trigger:** top unblocked item on the To-Do board — a bug found in the 1pm
+code audit: `unregisterTournament` computed `currentPlayers - 1` from a
+possibly-stale local snapshot and wrote it directly, a plain
+read-modify-write. `registerForTournament`/`approveTournamentRequest`
+already route through the atomic `register_tournament_participant` RPC
+(migration 0026) to avoid exactly this race, but withdrawal never got the
+same treatment — two concurrent withdrawals, or a withdrawal racing a
+registration, can under/over-count `current_players`.
+
+**Fix (`supabase/migrations/0029_atomic_unregister.sql`):**
+`unregister_tournament_participant`, mirroring 0026's function —
+`SELECT ... FOR UPDATE` locks the row for the call's duration so concurrent
+calls serialize instead of both reading the same stale count. Learned from
+0026's own follow-up bug (see 2026-08-13b below): this function is also
+`SECURITY DEFINER`, so the migration revokes the default `PUBLIC`/`anon`
+execute grants up front instead of shipping the gap and closing it in a
+follow-up migration.
+
+**Different from 0026's rollout on purpose:** 0026 shipped the client switch
+immediately and accepted that registration would error until Lok ran the
+migration, because the bug being closed was a real overbooking risk (P2).
+This bug is lower severity (display-drift only, not data-integrity/security —
+logged as P3), so `unregisterTournamentParticipant` in `supabaseService.ts`
+calls the new RPC first but falls back to the old read-modify-write if the
+RPC doesn't exist yet (`PGRST202`/`42883`, i.e. migration not applied) —
+withdrawal keeps working in the gap between this deploy and Lok running
+0029, and automatically switches to the atomic path the moment the migration
+lands, no further deploy needed.
+
+**Verified:** `npx next build` clean. **Needs Lok to run migration 0029**
+manually in the Supabase SQL editor, same as every other migration in this
+project — until then withdrawal uses the fallback path (same behavior as
+before this fix).
+
+## [2026-08-13e] — Live match join code rejected paused matches
+
+**Trigger:** top unblocked item on the To-Do board — a bug found in the 1pm
+code audit: `getLiveMatchByCode` filtered `.eq('status', 'active')`, but
+`LiveMatchModal` sets a match's status to `'paused'` when the host's tab
+backgrounds or the connection drops. Anyone entering the 6-digit join code
+while paused got "No active match with that code" even though the match was
+still valid and would resume — only viewers who'd already joined before the
+pause (already subscribed by id, not by code) saw the correct "scorer
+stepped away" state.
+
+**Fix:** changed the filter to `.neq('status', 'completed')` so paused
+matches are still found by code (active + paused both match; only genuinely
+finished matches are excluded). Tightened the error copy on both join paths
+("No match with that code") since it's no longer specifically about
+"active."
+
+**Verified:** `npx next build` clean, deployed. Couldn't click through the
+actual pause-then-join flow live — `/live` isn't in `AuthGate`'s
+`PUBLIC_ROUTES` allowlist, so it requires a signed-in session, and entering
+credentials (even a test account) is off-limits per standing policy. Same
+constraint as the pending tournament/club RPC live-verify item.
+
 ## [2026-08-13d] — Shareable public player profile URLs at /rankings/[username]/
 
 **What:** Picked up the deferred "shareable per-player profile URLs" To-Do
