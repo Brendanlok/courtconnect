@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13g] — Verified migration 0029 after Lok ran it
+
+**Trigger:** Lok ran `supabase/migrations/0029_atomic_unregister.sql` and
+asked to verify it live. `/tournaments` requires a signed-in session
+(`AuthGate`), and entering credentials — even a test account — is off-limits
+per standing policy, so verified the same way 0027/0028 were verified: curl'd
+`unregister_tournament_participant` with only the anon key.
+
+**Result:** `42501 permission denied for function unregister_tournament_participant`
+(HTTP 401) — the function exists (migration applied; a missing function
+would 404/PGRST202 instead) and anon is correctly denied (the PUBLIC/anon
+revoke baked into 0029 up front worked, unlike 0026's initial gap). This
+confirms `unregisterTournamentParticipant`'s primary path (the atomic RPC)
+is now live for signed-in users, with the fallback path no longer needed.
+
+**Not verified:** an actual signed-in withdraw-from-tournament click-through —
+same auth-wall constraint as the live-match-join and tournament/club
+registration items. The anon-key probe confirms the migration is correctly
+in place; it doesn't exercise the full authenticated flow.
+
 ## [2026-08-13f] — Closed the tournament withdrawal race the same way 0026 closed registration
 
 **Trigger:** top unblocked item on the To-Do board — a bug found in the 1pm
