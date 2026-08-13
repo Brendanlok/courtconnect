@@ -934,9 +934,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!myRealUid) return;
     removeTournamentPending(id, myRealUid).catch(() => {});
   }, [myRealUid]);
-  const acceptTournamentRequest = useCallback((tournamentId: string, uid: string) => {
-    approveTournamentRequest(tournamentId, toRealUid(uid, myRealUid)).catch(() => {});
-    addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: 'A player joined your event.' });
+  // Mirrors acceptClubMember: approveTournamentRequest returns false on a
+  // silent server-side rejection (event filled up since the host saw the
+  // request) rather than throwing, so this has to check the result instead
+  // of assuming success — a host approving into a now-full event was told
+  // "Request Approved" even though the requester was declined underneath.
+  const acceptTournamentRequest = useCallback(async (tournamentId: string, uid: string) => {
+    const ok = await approveTournamentRequest(tournamentId, toRealUid(uid, myRealUid)).catch(() => false);
+    if (ok) {
+      addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: 'A player joined your event.' });
+    } else {
+      addNotification({ type: 'tournament_declined', title: 'Could Not Accept', body: 'This event is full — the request could not be approved.' });
+    }
   }, [myRealUid]);
   const declineTournamentRequest = useCallback((tournamentId: string, uid: string) => {
     removeTournamentPending(tournamentId, toRealUid(uid, myRealUid), true).catch(() => {});
