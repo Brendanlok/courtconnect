@@ -169,7 +169,7 @@ function SetupView({ me, onStart, onJoin }: {
     setJoinLoading(true); setJoinError('');
     const m = await getLiveMatchByCode(joinCode.trim()).catch(() => null);
     setJoinLoading(false);
-    if (!m) { setJoinError('Match not found. Check the code and try again.'); return; }
+    if (!m) { setJoinError('No match with that code. Check and try again.'); return; }
     onJoin(m);
   };
 

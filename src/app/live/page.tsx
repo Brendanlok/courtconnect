@@ -206,7 +206,7 @@ export default function LivePage() {
     setJoinErr('');
     try {
       const found = await getLiveMatchByCode(code);
-      if (!found) { setJoinErr('No active match with that code.'); return; }
+      if (!found) { setJoinErr('No match with that code.'); return; }
       setMatch(found);
       setPhase(found.hostUid === user.uid ? 'scoring' : 'watching');
     } catch {

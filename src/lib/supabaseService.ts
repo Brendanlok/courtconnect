@@ -331,7 +331,7 @@ export async function updateLiveMatch(id: string, patch: Partial<LiveMatch>): Pr
 }
 
 export async function getLiveMatchByCode(code: string): Promise<LiveMatch | null> {
-  const { data } = await supabase.from('live_matches').select('*').eq('join_code', code.toUpperCase()).eq('status', 'active').maybeSingle();
+  const { data } = await supabase.from('live_matches').select('*').eq('join_code', code.toUpperCase()).neq('status', 'completed').maybeSingle();
   return data ? liveMatchRowToObj(data) : null;
 }
 
