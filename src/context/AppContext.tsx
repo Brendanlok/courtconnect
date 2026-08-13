@@ -19,7 +19,7 @@ import {
   subscribeClubs, ensureSeedClubsExist, createClubDoc, updateClubDoc, deleteClubDoc,
   addClubMember, removeClubMember, addClubPending, removeClubPending, setClubModerator,
   sendClubMessageDoc, subscribeClubMessages,
-  subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc,
+  subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc, unregisterTournamentParticipant,
   addTournamentPending, removeTournamentPending, approveTournamentRequest, registerForTournament,
   lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
@@ -917,14 +917,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user.displayName, user.username]);
   const unregisterTournament = useCallback((id: string) => {
     setRegistrations(r => { const n = { ...r }; delete n[id]; return n; });
-    const t = tournaments.find(x => x.id === id);
-    if (t) updateTournamentDoc(id, {
-      currentPlayers: Math.max(0, t.currentPlayers - 1),
-      participants: (t.participants ?? []).filter(p => p.username !== user.username),
-    }).catch(() => {});
+    // Atomic RPC (unregister_tournament_participant, migration 0029) closes
+    // the decrement race a plain read-modify-write here used to have — same
+    // fix as registerForTournament's earlier overbooking guard.
+    unregisterTournamentParticipant(id, user.username).catch(() => {});
     const uid = auth.currentUser?.uid;
     if (uid) deleteTournamentReg(uid, id).catch(() => {});
-  }, [tournaments, user.username]);
+  }, [user.username]);
   const requestToJoin = useCallback((id: string) => {
     if (!myRealUid) return;
     addTournamentPending(id, myRealUid).catch(() => {});

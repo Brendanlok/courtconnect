@@ -904,6 +904,29 @@ export async function updateTournamentDoc(id: string, patch: Partial<Tournament>
   await supabase.from('tournaments').update(tournamentObjToRow(patch as Tournament)).eq('id', id);
 }
 
+// Withdrawal counterpart to registerForTournament — closes the same race
+// (found in a code audit) via unregister_tournament_participant (migration
+// 0029), SELECT ... FOR UPDATE locking the row so concurrent withdrawals/
+// registrations serialize instead of both reading a stale current_players.
+// Falls back to the old read-modify-write only if the RPC doesn't exist yet
+// (migration not applied — Lok runs migrations manually, see DEVLOG), so
+// withdrawal doesn't break in the gap between deploy and migration.
+export async function unregisterTournamentParticipant(id: string, username: string): Promise<boolean> {
+  const { data: ok, error } = await supabase.rpc('unregister_tournament_participant', {
+    p_tournament_id: id, p_username: username,
+  });
+  if (!error) return !!ok;
+  if (error.code !== 'PGRST202' && error.code !== '42883') return false;
+  const { data: row } = await supabase.from('tournaments').select('current_players, participants').eq('id', id).maybeSingle();
+  if (!row) return false;
+  const participants = ((row.participants as { username?: string }[] | null) ?? []).filter(p => p.username !== username);
+  await supabase.from('tournaments').update({
+    current_players: Math.max(0, (row.current_players as number) - 1),
+    participants,
+  }).eq('id', id);
+  return true;
+}
+
 // "Request to Join" for private tournaments — mirrors mutateClubArray/
 // addClubPending/removeClubPending above (same read-modify-write tradeoff).
 async function mutateTournamentPending(id: string, add: string[], remove: string[]) {
