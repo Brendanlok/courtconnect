@@ -3,6 +3,7 @@
 // rating without an account" page. No auth, no AppContext: reads straight
 // from the anon-readable users_public view (see lib/publicData.ts).
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Search, Loader2, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -44,7 +45,7 @@ export default function PublicRankings() {
   };
 
   const PlayerRow = ({ p, rank }: { p: PublicPlayer; rank: number | null }) => (
-    <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3">
+    <Link href={`/rankings/${p.username}/`} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 hover:border-slate-700 transition-colors">
       {/* rank is a UI-computed position (list index, or lookup in the loaded
           pool), never the DB's global_rank column — that column is never
           populated for real accounts. Calibration status comes from
@@ -63,7 +64,7 @@ export default function PublicRankings() {
         <p className="font-black tabular-nums">{p.mmr}</p>
         <TierBadge tier={p.tier} className="text-[10px]" />
       </div>
-    </div>
+    </Link>
   );
 
   return (
