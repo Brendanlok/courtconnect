@@ -924,8 +924,24 @@ export async function ensureSeedTournamentsExist(seedTournaments: Tournament[]):
 }
 
 export async function createTournamentDoc(t: Tournament) {
-  const { error } = await supabase.from('tournaments').insert(tournamentObjToRow(t));
-  if (error) throw error;
+  const row = tournamentObjToRow(t);
+  const { error } = await supabase.from('tournaments').insert(row);
+  if (!error) return;
+  // host_club_id (migration 0030) not applied yet — an unknown column gets
+  // rejected outright (undefined_column/schema-cache error), not silently
+  // ignored, so a straight insert would break event creation entirely for
+  // every club-hosted event until Lok runs the migration. Retry once
+  // without it so creation keeps working in the gap; the bracket chat-share
+  // just won't fire for events created before the migration lands. Matched
+  // on the column name in the message rather than a specific error code —
+  // more reliable than guessing the exact code PostgREST/Postgres returns.
+  if ('host_club_id' in row && error.message?.includes('host_club_id')) {
+    const { host_club_id: _drop, ...withoutHostClub } = row;
+    const { error: retryError } = await supabase.from('tournaments').insert(withoutHostClub);
+    if (retryError) throw retryError;
+    return;
+  }
+  throw error;
 }
 
 export async function updateTournamentDoc(id: string, patch: Partial<Tournament>) {

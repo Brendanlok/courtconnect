@@ -1,5 +1,53 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13i] — Auto-share a tournament bracket to the host club's chat
+
+**Trigger:** Lok asked to build the second logged idea ("tournament bracket
+auto-share to club chat").
+
+**Gap found while scoping:** "Host As <club>" (the tournament creation
+modal) only ever stored the club's *name* on `organiser` — a display
+string, not a real reference. There was no reliable way to know which
+club's chat to post the bracket into (name matching would break on
+renames/duplicates). Closed that properly instead of building the chat
+feature on a shaky lookup: added `host_club_id` (migration
+`0030_tournament_host_club.sql`, `text references clubs(id)`, nullable) and
+a matching `hostClubId` field on the `Tournament` type, set at creation time
+from the club the host already picks in the "Host As" selector (that value
+existed as UI state before, just wasn't persisted).
+
+**What ships the message:** `sendSystemClubMessage` (new,
+`supabaseService.ts`) — `sender_id: null` since that column is a real
+`uuid references users(uid)` FK and a sentinel string like `'system'` would
+fail the type check; `null` already renders fine (existing club-message read
+path passes it straight through, the chat UI falls back to `senderName`
+when no matching profile is found). Hooked into `startTournamentBracket`:
+when the host starts the bracket, if the event has a `hostClubId`, post
+"🏆 Bracket's up for [name]! Check the Tournaments tab to follow the
+matches." into that club's chat.
+
+**Scope:** only wired into bracket-start, not every tournament state change
+— matches what was actually asked for. Individually-hosted events (no
+`hostClubId`) get no post, same as before this existed.
+
+**Almost shipped a real regression:** first pass had `createTournamentDoc`
+write `host_club_id` unconditionally. Checked before shipping — an unknown
+column isn't silently ignored, PostgREST/Postgres rejects the whole insert,
+which would have broken *creating* a club-hosted event entirely (for every
+Lok — not just this one feature) until the migration ran. Added a retry:
+`createTournamentDoc` tries the full insert, and only if it fails with
+`host_club_id` in the error message, retries once without that field.
+Event creation keeps working in the gap; the bracket chat-share just won't
+fire for events created before the migration lands, same fail-open shape as
+0029's withdrawal fallback.
+
+**Verified:** `npx next build` clean, deployed. Couldn't click through
+create-as-club → start-bracket → check-chat live — needs a signed-in
+session with an existing club and registered participants, same auth-wall
+constraint as everything else today. **Needs Lok to run migration 0030**
+manually in the Supabase SQL editor for the chat-share itself to start
+firing.
+
 ## [2026-08-13h] — Browse live matches instead of needing a join code
 
 **Trigger:** Lok asked for product ideas; picked one of two logged ("browse
