@@ -1,5 +1,32 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-13j] — Verified migration 0030 after Lok ran it
+
+**Trigger:** Lok ran the pending migration(s) and asked to verify live.
+Same auth-wall constraint as every other live check today (`/tournaments`
+needs a signed-in session, no credentials entered), so verified what's
+checkable without logging in.
+
+**Method (new — 0030 adds a column, not a function, so the anon-key RPC
+probe from 0026-0029 doesn't apply):** queried
+`tournaments?select=host_club_id` with only the anon key. Ran a control
+probe first against a column name that definitely doesn't exist
+(`this_column_does_not_exist_probe`) to confirm PostgREST actually
+distinguishes the two cases rather than trusting it blind — control
+correctly returned `42703 column ... does not exist` (400). The real probe
+returned `200 []` (column exists; empty array is `tournaments`' auth-only
+read policy filtering anon out, not a missing-column error) — confirms
+0030 is applied.
+
+**Also re-confirmed 0029 is still in place** (`unregister_tournament_participant`
+anon probe → `42501 permission denied`, same as when first verified) —
+belt-and-braces since both were mentioned as run together.
+
+**Not verified:** the actual create-as-club → start-bracket → chat-post
+click-through, or the bracket rendering for a real signed-in host. Column +
+function existence is the strongest confirmation available without logging
+in.
+
 ## [2026-08-13i] — Auto-share a tournament bracket to the host club's chat
 
 **Trigger:** Lok asked to build the second logged idea ("tournament bracket
