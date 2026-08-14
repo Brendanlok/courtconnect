@@ -1151,10 +1151,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Same shape as createClub above: return an error message instead of
   // swallowing it, so callers can keep the edit UI open / show what went
-  // wrong instead of assuming success and closing immediately.
+  // wrong instead of assuming success and closing immediately. Also patches
+  // rawClubs optimistically on success — found live: without this, reopening
+  // the announcement/settings editor right after Save showed the pre-edit
+  // data until the realtime subscription round-tripped or the page reloaded,
+  // even though the write had already succeeded (same stale-UI bug just
+  // fixed for editTournament). Every call site here only ever patches
+  // non-uid fields (announcement/name/description/maxMembers/color), so a
+  // raw spread is safe against rawClubs' real-uid shape.
   const updateClub = useCallback(async (id: string, patch: Partial<Club>): Promise<string | null> => {
     try {
       await updateClubDoc(id, patch);
+      setRawClubs(p => p.map(c => c.id === id ? { ...c, ...patch } : c));
       return null;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
@@ -1165,6 +1173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const disbandClub = useCallback(async (id: string): Promise<string | null> => {
     try {
       await deleteClubDoc(id);
+      setRawClubs(p => p.filter(c => c.id !== id));
       return null;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
