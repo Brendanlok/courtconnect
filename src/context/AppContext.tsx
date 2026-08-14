@@ -185,8 +185,8 @@ interface AppCtx {
   declineTournamentRequest: (tournamentId: string, uid: string) => void;
   startTournamentBracket: (tournamentId: string) => void;
   reportBracketResult: (tournamentId: string, matchId: string, winnerName: string, score?: string) => void;
-  editTournament: (id: string, patch: Partial<Tournament>) => void;
-  cancelTournament: (id: string) => void;
+  editTournament: (id: string, patch: Partial<Tournament>) => Promise<string | null>;
+  cancelTournament: (id: string) => Promise<string | null>;
   challenges: Challenge[];
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
@@ -1000,10 +1000,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Host fixes a typo or changes plans after creation (name/venue/date/time/
   // description) — previously permanent (Notion "Tournament hosts can't edit
-  // or cancel a hosted event"). Same write-and-rely-on-subscription pattern
-  // as startTournamentBracket/reportBracketResult above.
-  const editTournament = useCallback((id: string, patch: Partial<Tournament>) => {
-    updateTournamentDoc(id, patch).catch(() => {});
+  // or cancel a hosted event"). Optimistically patches rawTournaments too
+  // (found live: without this, re-opening Edit right after Save showed the
+  // pre-edit data until the realtime subscription round-tripped or the page
+  // reloaded — the write had already succeeded, the UI just hadn't caught
+  // up) and surfaces a failure instead of swallowing it, same as
+  // updateClub/disbandClub above.
+  const editTournament = useCallback(async (id: string, patch: Partial<Tournament>): Promise<string | null> => {
+    try {
+      await updateTournamentDoc(id, patch);
+      setRawTournaments(p => p.map(t => t.id === id ? { ...t, ...patch } : t));
+      return null;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
+    }
   }, []);
 
   // Host cancels a hosted event. Setting status to 'Cancelled' also drops it
@@ -1011,10 +1022,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 'Upcoming') and every in-app tab (Active/Upcoming/Completed) without
   // needing a delete policy. Notifies already-registered participants —
   // same reasoning as handleCancelMatch's notify-all-parties for planned
-  // matches, an event they signed up for just disappeared on them.
-  const cancelTournament = useCallback((id: string) => {
+  // matches, an event they signed up for just disappeared on them. Same
+  // optimistic-update + error-surfacing fix as editTournament above.
+  const cancelTournament = useCallback(async (id: string): Promise<string | null> => {
     const t = tournaments.find(x => x.id === id);
-    updateTournamentDoc(id, { status: 'Cancelled' }).catch(() => {});
+    try {
+      await updateTournamentDoc(id, { status: 'Cancelled' });
+      setRawTournaments(p => p.map(x => x.id === id ? { ...x, status: 'Cancelled' } : x));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
+    }
     (t?.participants ?? []).forEach(p => {
       lookupUserByUsername(p.username).then(profile => {
         if (profile?.uid) notifyUser(profile.uid, {
@@ -1024,6 +1042,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }).catch(() => {});
     });
+    return null;
   }, [tournaments]);
 
   const myTournamentPendingIds = useMemo(() =>

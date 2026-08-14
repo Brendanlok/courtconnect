@@ -295,11 +295,19 @@ export default function Tournaments() {
       )}
       {editTarget && (
         <EditTournamentModal tournament={editTarget} onClose={() => setEditTarget(null)}
-          onSave={patch => { editTournament(editTarget.id, patch); setEditTarget(null); }}/>
+          onSave={async patch => {
+            const err = await editTournament(editTarget.id, patch);
+            if (!err) setEditTarget(null);
+            return err;
+          }}/>
       )}
       {cancelHostTarget && (
         <CancelHostedModal tournament={cancelHostTarget} onClose={() => setCancelHostTarget(null)}
-          onConfirm={() => { cancelTournament(cancelHostTarget.id); setCancelHostTarget(null); }}/>
+          onConfirm={async () => {
+            const err = await cancelTournament(cancelHostTarget.id);
+            if (!err) setCancelHostTarget(null);
+            return err;
+          }}/>
       )}
     </div>
   );
@@ -1009,7 +1017,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
 // players have registered against them; only the low-risk fields are editable.
 
 function EditTournamentModal({ tournament: t, onClose, onSave }: {
-  tournament: Tournament; onClose: () => void; onSave: (patch: Partial<Tournament>) => void;
+  tournament: Tournament; onClose: () => void; onSave: (patch: Partial<Tournament>) => Promise<string | null>;
 }) {
   const [name,  setName]  = useState(t.name);
   const [date,  setDate]  = useState(t.date);
@@ -1017,16 +1025,21 @@ function EditTournamentModal({ tournament: t, onClose, onSave }: {
   const [venue, setVenue] = useState(t.venue);
   const [state, setState] = useState<MalaysiaState>(t.state);
   const [desc,  setDesc]  = useState(t.description ?? '');
+  const [error,   setError]   = useState('');
+  const [saving,  setSaving]  = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Edit Event');
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
 
-  const save = () => {
+  const save = async () => {
     if (!name.trim() || !date || !venue.trim()) return;
-    onSave({
+    setSaving(true);
+    const err = await onSave({
       name: name.trim(), date, time: time || undefined,
       venue: venue.trim(), state, description: desc.trim() || undefined,
     });
+    setSaving(false);
+    if (err) setError(err);
   };
 
   return (
@@ -1080,12 +1093,15 @@ function EditTournamentModal({ tournament: t, onClose, onSave }: {
           </label>
         </div>
 
-        <div className="px-5 pb-5 shrink-0 border-t border-slate-800 pt-4 flex gap-3">
-          <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-          <Button variant="amber" onClick={save} disabled={!name.trim() || !date || !venue.trim()}
-            icon={<Edit3 size={14}/>} className="flex-1 font-bold">
-            Save Changes
-          </Button>
+        <div className="px-5 pb-5 shrink-0 border-t border-slate-800 pt-4 space-y-2">
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button variant="amber" onClick={save} disabled={!name.trim() || !date || !venue.trim() || saving}
+              icon={<Edit3 size={14}/>} className="flex-1 font-bold">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -1095,9 +1111,17 @@ function EditTournamentModal({ tournament: t, onClose, onSave }: {
 // ─── Cancel hosted event ────────────────────────────────────────────────────────
 
 function CancelHostedModal({ tournament: t, onClose, onConfirm }: {
-  tournament: Tournament; onClose: () => void; onConfirm: () => void;
+  tournament: Tournament; onClose: () => void; onConfirm: () => Promise<string | null>;
 }) {
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Cancel this event?');
+  const [error,     setError]     = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const confirm = async () => {
+    setCancelling(true);
+    const err = await onConfirm();
+    setCancelling(false);
+    if (err) setError(err);
+  };
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
@@ -1114,14 +1138,15 @@ function CancelHostedModal({ tournament: t, onClose, onConfirm }: {
             </p>
           </div>
         </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose}
-            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+          <button onClick={onClose} disabled={cancelling}
+            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors">
             Keep Event
           </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
-            Yes, Cancel
+          <button onClick={confirm} disabled={cancelling}
+            className="flex-1 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-colors">
+            {cancelling ? 'Cancelling…' : 'Yes, Cancel'}
           </button>
         </div>
       </div>
