@@ -16,7 +16,7 @@ import {
 import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { savePlannedMatch, loadPlannedMatches, notifyUser } from '@/lib/supabaseService';
 import { loadPausedMatch } from '@/lib/pausedMatch';
-import type { UserProfile, MatchType, Match } from '@/types';
+import type { UserProfile, MatchType, Match, Challenge } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { VenueInput } from '@/components/VenueInput';
@@ -53,6 +53,7 @@ interface PlannedMatch {
   status: PlannedStatus;
   liveRecord?: boolean; // created via Record Live — live scoring enabled once all confirmed
   liveState?: LiveState; // set once the match has actually been played
+  sourceChallengeId?: string; // set when this plan was auto-created from an accepted challenge
 }
 
 // Friendly status vocabulary shown to the user
@@ -262,21 +263,22 @@ export default function MatchesPage() {
     });
   };
 
-  // Convert an accepted challenge into a planned match
-  const handleAcceptChallenge = (challengeId: string) => {
-    const ch = challenges.find(c => c.id === challengeId);
-    if (!ch) return;
-    acceptChallenge(challengeId);
+  // Builds a planned match from an accepted challenge, from whichever side
+  // 'me' is on (Challenge normalizes fromId/toId so exactly one of them is
+  // 'me' — see toLocalChallenge in AppContext).
+  const buildPlanFromChallenge = (ch: Challenge): PlannedMatch => {
     const isDoubles = ['MD', 'WD', 'MX'].includes(ch.format);
-    const opponent: SlotPlayer = { uid: ch.toId, displayName: ch.toName, username: ch.toUsername };
+    const opponent: SlotPlayer = ch.fromId === 'me'
+      ? { uid: ch.toId, displayName: ch.toName, username: ch.toUsername }
+      : { uid: ch.fromId, displayName: ch.fromName, username: ch.fromUsername };
     const [datePart, timeRaw] = ch.date.split('T');
     const timePart = timeRaw ? timeRaw.slice(0, 5) : '09:00';
     const teamA = isDoubles ? [me, null] : [me];
     const teamB = isDoubles ? [opponent, null] : [opponent];
-    // "Simulate accept" means the opponent has accepted the invite right away
+    // Accepting the challenge is the acceptance — both sides go straight to accepted.
     const accepted = ['me', opponent.uid];
-    const pm: PlannedMatch = {
-      id: `pm_ch_${Date.now()}`,
+    return {
+      id: crypto.randomUUID(),
       format: ch.format,
       date: datePart,
       time: timePart,
@@ -286,9 +288,45 @@ export default function MatchesPage() {
       accepted,
       declined: [],
       status: derivePlanStatus(teamA, teamB, accepted),
+      sourceChallengeId: ch.id,
     };
-    setPlanned(prev => [pm, ...prev]);
   };
+
+  // Convert an accepted challenge into a planned match (demo "Simulate accept" only —
+  // real challenges are converted by the effect below, once per side, when their
+  // status flips to accepted).
+  const handleAcceptChallenge = (challengeId: string) => {
+    const ch = challenges.find(c => c.id === challengeId);
+    if (!ch) return;
+    acceptChallenge(challengeId);
+    setPlanned(prev => [buildPlanFromChallenge(ch), ...prev]);
+  };
+
+  // Mirrors `planned` for the effect below without needing it as a dependency
+  // (avoids the effect re-firing every time it itself appends a plan).
+  const plannedRef = useRef(planned);
+  plannedRef.current = planned;
+
+  // A real challenge accept previously only flipped the challenge's status —
+  // it never created the actual match either side could show up to (see
+  // Notion To-Do "Accepting a real challenge never creates a playable
+  // match"). Each side's own client independently creates + persists its own
+  // planned-match row here the first time it sees the challenge as accepted
+  // (planned_matches is host_uid-scoped with RLS auth.uid()=host_uid, so
+  // neither side can write the other's row — this is the only way both end
+  // up with one).
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const newly = challenges.filter(ch =>
+      ch.status === 'accepted' && isRealChallengeId(ch.id) &&
+      !plannedRef.current.some(p => p.sourceChallengeId === ch.id));
+    if (!newly.length) return;
+    const newPlans = newly.map(buildPlanFromChallenge);
+    setPlanned(prev => [...newPlans, ...prev]);
+    newPlans.forEach(pm => savePlannedMatch(uid, pm).catch(() => {}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenges, isRealChallengeId]);
 
   // Demo: simulate an invited (non-organiser) player accepting their slot in a plan
   const handleSimulateAccept = (planId: string, uid: string) => {
@@ -1033,7 +1071,7 @@ function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
   const save = () => {
     if (!date || !time || !venue) return;
     const pm: PlannedMatch = {
-      id: existing?.id ?? `pm${Date.now()}`,
+      id: existing?.id ?? crypto.randomUUID(),
       format, date, time, venue, notes: notes.trim() || undefined,
       teamA, teamB,
       accepted: existing?.accepted ?? [],
