@@ -18,8 +18,6 @@ type PrivacySettings = NonNullable<UserProfile['privacy']>;
 
 const DEFAULT_PRIVACY: PrivacySettings = {
   matchHistory:   'public',
-  plannedMatches: 'public',
-  friendList:     'public',
   clubMembership: 'public',
   eventHistory:   'public',
 };
@@ -30,10 +28,13 @@ const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string; icon: React.ReactNo
   { value: 'private', label: 'Only Me', icon: <Lock   size={11}/> },
 ];
 
+// Only settings something on the profile actually reads belong here — a
+// toggle with no enforcing surface is worse than no toggle (see Notion
+// To-Do "Planned Matches/Friend List privacy toggles are inert"). Add
+// plannedMatches/friendList back if a followers list or a public planned-
+// matches section ever gets built.
 const PRIVACY_ITEMS: { key: keyof PrivacySettings; label: string }[] = [
   { key: 'matchHistory',   label: 'Match History' },
-  { key: 'plannedMatches', label: 'Planned Matches' },
-  { key: 'friendList',     label: 'Friend List' },
   { key: 'clubMembership', label: 'Club Membership' },
   { key: 'eventHistory',   label: 'Event History' },
 ];

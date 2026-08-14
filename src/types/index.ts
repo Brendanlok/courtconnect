@@ -51,8 +51,6 @@ export interface UserProfile {
   courtProfile?: CourtProfile;
   privacy?: {
     matchHistory:  'public' | 'friends' | 'private';
-    plannedMatches:'public' | 'friends' | 'private';
-    friendList:    'public' | 'friends' | 'private';
     clubMembership:'public' | 'friends' | 'private';
     eventHistory:  'public' | 'friends' | 'private';
   };
