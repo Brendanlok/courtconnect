@@ -421,8 +421,13 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               {partnerStats.slice(0, 4).map((p, i) => {
                 const played = p.wins + p.losses;
                 const wr = Math.round((p.wins / played) * 100);
+                // No username on hand here (Match only stores partner uid/name) —
+                // /profile/?uid= resolves a real account the same way chat and
+                // notification links elsewhere in the app already do.
+                const partnerHref = p.id === 'me' ? '/profile/' : `/profile/?uid=${p.id}`;
                 return (
-                  <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50">
+                  <Link key={p.id} href={`${BASE_PATH}${partnerHref}`}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors">
                     {i === 0 && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
                         MOST PLAYED
@@ -435,7 +440,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                     <div className="h-1.5 w-16 bg-slate-700 rounded-full overflow-hidden shrink-0">
                       <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${wr}%` }} />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

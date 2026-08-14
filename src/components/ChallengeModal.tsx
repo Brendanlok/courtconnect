@@ -19,6 +19,7 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
   const [time,    setTime]    = useState('');
   const [message, setMessage] = useState('');
   const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState('');
   const submitted = useRef(false); // ponytail: ref guard blocks a double-click firing submit() twice before the "sent" re-render lands
 
   const { ref: panelRef, dialogProps } = useModalA11y(!sent, onClose, `Challenge ${opponent.displayName}`);
@@ -28,6 +29,13 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!venue.trim() || !date || !time) return;
+    // The date input's min=today allows picking today, but a time already
+    // passed today isn't caught by that alone — check the combined moment.
+    if (new Date(`${date}T${time}:00`) < new Date()) {
+      setError("That time's already passed — pick a time later today or a different day.");
+      return;
+    }
+    setError('');
     if (submitted.current) return;
     submitted.current = true;
 
@@ -125,6 +133,7 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
               className={`${inp} resize-none`}/>
           </label>
 
+          {error && <p className="text-xs text-red-400">{error}</p>}
           <Button type="submit" variant="amber" icon={<Swords size={14}/>} className="w-full font-bold">
             Send Challenge
           </Button>
