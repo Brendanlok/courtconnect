@@ -17,6 +17,14 @@ export function captureReferralFromUrl() {
   const ref = new URLSearchParams(window.location.search).get('ref');
   if (ref) try { localStorage.setItem(REFERRAL_KEY, ref.toLowerCase()); } catch { /* ignore */ }
 }
+// Read-only — use this to resolve who referred someone. Consume (below) only
+// once signup has actually succeeded, so a failed attempt that gets retried
+// doesn't lose the code first (was previously removed up front regardless of
+// whether the signup it was meant for ever completed).
+export function peekReferral(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(REFERRAL_KEY); } catch { return null; }
+}
 export function consumeReferral(): string | null {
   if (typeof window === 'undefined') return null;
   try {

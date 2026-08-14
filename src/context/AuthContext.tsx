@@ -3,7 +3,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
 import { lookupUserByUsername, notifyUser } from '@/lib/supabaseService';
 import { seasonNumberForDate } from '@/lib/seasons';
-import { BASE_PATH, consumeReferral } from '@/lib/utils';
+import { BASE_PATH, peekReferral, consumeReferral } from '@/lib/utils';
+import { ME, PLAYERS } from '@/lib/data';
 
 interface AuthCtx {
   authUser: CompatUser | null;
@@ -74,7 +75,7 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
 // Silently drops anything that doesn't resolve (typo'd/deleted account,
 // self-referral) rather than blocking signup over it.
 async function resolveReferrer(myUid: string): Promise<string | undefined> {
-  const refUsername = consumeReferral();
+  const refUsername = peekReferral();
   if (!refUsername) return undefined;
   const ref = await lookupUserByUsername(refUsername).catch(() => null);
   if (!ref?.uid || ref.uid === myUid) return undefined;
@@ -174,7 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const checkUsernameAvailable = async (username: string): Promise<boolean> => {
-    const existing = await lookupUserByUsername(username.toLowerCase());
+    const clean = username.toLowerCase();
+    // A real account colliding with a seed/demo username breaks its own QR
+    // code (QRModal's isDemoUsername check would then also match a real
+    // account, pointing it at the static demo profile page instead of
+    // /profile/?uid=) — reject up front, same as a real taken username.
+    if ([ME, ...PLAYERS].some(p => p.username === clean)) return false;
+    const existing = await lookupUserByUsername(clean);
     return !existing;
   };
 
@@ -191,6 +198,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const referredBy = await resolveReferrer(auth.currentUser.uid);
       await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
       await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), referredBy });
+      // Only consumed once signup has actually gone through — resolveReferrer
+      // above peeks rather than removes, so a failed createUserRow (username
+      // race, transient error) leaves the code in place for the retry that
+      // follows instead of silently losing the referrer's credit.
+      if (referredBy) consumeReferral();
       // Closes the referral loop — without this the referrer only finds out
       // by reopening the Invite Friends modal and noticing the count moved.
       // notifyUser already swallows its own errors, so a failed notify can't
