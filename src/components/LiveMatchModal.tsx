@@ -10,7 +10,6 @@ import {
   X, ChevronRight, Users, RotateCcw, Share2, Trophy,
   Wifi, WifiOff, Radio, Search, Check, Hand, AlertTriangle, Clock,
 } from 'lucide-react';
-import ClipRecorder from '@/components/ClipRecorder';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { VenueInput } from '@/components/VenueInput';
@@ -380,7 +379,6 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
   onComplete: (match: LiveMatch) => void;
   onElapsedTick: (sec: number) => void;
 }) {
-  const { awardClipCredits } = useApp();
   const [match, setMatch] = useState<LiveMatch>(initialMatch);
   const [history, setHistory] = useState<{ games: LiveGame[]; gameWins: { a: number; b: number }; currentGame: number; pointLog: ('a' | 'b')[][] }[]>([]);
   const [pointLog, setPointLog] = useState<('a' | 'b')[][]>(initialPointLog ?? [[]]);
@@ -564,25 +562,12 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
 
   const gameWinsNeeded = Math.ceil(match.bestOf / 2);
 
-  // ── Video mode: full-screen camera is the entire scoring experience ──
-  // No separate tap-to-score grid — scoring happens by tapping the score in the camera header.
-  if (recordMode === 'video') {
-    return (
-      <ClipRecorder
-        match={match}
-        autoStart
-        canScore={isHost}
-        onAddPoint={addPoint}
-        onUndo={undoLast}
-        canUndo={isHost && history.length > 0}
-        onUploaded={(url) => { awardClipCredits(50); setMatch(m => ({ ...m, clipUrl: url })); }}
-        onShuttleHitsDetected={(hits) => setMatch(m => ({ ...m, shuttleHits: hits }))}
-        onRequestExit={onRequestExit}
-        matchComplete={match.status === 'completed'}
-        onLogResult={() => onComplete(match)}
-      />
-    );
-  }
+  // ponytail: recordMode === 'video' full-screen camera scoring UI removed —
+  // unreachable since Video Record was hidden (SetupView/PlannedMatchStart
+  // only ever start 'manual' now); the sole way to still hit 'video' was
+  // resuming a paused match snapshotted before that change, which now just
+  // falls through to the manual scoring UI below instead. Restore alongside
+  // re-enabling the Video Record toggle if that ever comes back.
 
   return (
     <div className="flex flex-col gap-4">
