@@ -5,7 +5,7 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { MY_STATES, TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName, isCalibrating } from '@/lib/utils';
+import { TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName, isCalibrating } from '@/lib/utils';
 import { seasonNumberForDate, daysUntilSeasonEnd } from '@/lib/seasons';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
@@ -34,7 +34,14 @@ export default function Leaderboard() {
   const userCountry = user.country ?? 'Malaysia';
   const [countryFilter, setCountryFilter]= useState<string>(userCountry);
   const countryData = COUNTRIES.find(c => c.name === countryFilter);
-  const regions = countryData?.regions.length ? countryData.regions : MY_STATES;
+  // Every real country's COUNTRIES entry (including Malaysia's own) carries
+  // a real regions list — only 'Other' has an empty one, since no fixed list
+  // exists for it. That used to fall back to MY_STATES, showing Malaysian
+  // state names as filter options for non-Malaysian players (never matched
+  // anything, always-empty tab) — free-text instead, same fallback every
+  // sibling location picker (SettingsModal, OnboardingModal, AuthModal) uses.
+  const hasFixedRegions = !!countryData?.regions.length;
+  const regions = countryData?.regions ?? [];
   const regionLabel = countryData?.regionLabel ?? 'State';
 
   function handleCountryChange(name: string) {
@@ -100,12 +107,21 @@ export default function Leaderboard() {
         </div>
 
         {tab === 'By State' && (
-          <FilterDropdown<string>
-            icon={<MapPin size={11} className="text-emerald-400"/>}
-            label={selState} value={selState}
-            options={regions.map(s => ({ value: s, label: s }))}
-            onChange={setSelState}
-          />
+          hasFixedRegions ? (
+            <FilterDropdown<string>
+              icon={<MapPin size={11} className="text-emerald-400"/>}
+              label={selState || `All ${regionLabel}s`} value={selState}
+              options={regions.map(s => ({ value: s, label: s }))}
+              onChange={setSelState}
+            />
+          ) : (
+            <div className="relative max-w-[200px]">
+              <MapPin size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-400"/>
+              <input value={selState} onChange={e => setSelState(e.target.value)}
+                placeholder={regionLabel}
+                className="w-full pl-7 pr-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500 transition-colors"/>
+            </div>
+          )
         )}
       </div>
 

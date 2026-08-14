@@ -38,9 +38,20 @@ export default function CourtHeatmap({ positions, className = '', showStats = tr
     onTap({ x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) });
   };
 
+  // Zones use an exclusive upper bound, so a position exactly at the far
+  // edge (x/y === 1 — reachable via a normal tap, handleClick clamps to
+  // [0,1] inclusive) matched none of the 4 zones, yet still counted toward
+  // positions.length in the "% of time" denominator below — silently
+  // undercounting. applyHomography (auto-detect) is also documented as
+  // unclamped and can produce points outside [0,1] entirely. Clamp into
+  // [0, 1) once here so every position lands in exactly one zone.
+  const clamp01 = (n: number) => Math.min(0.999999, Math.max(0, n));
   const zoneCounts = ZONES.map(z => ({
     ...z,
-    count: positions.filter(p => p.x >= z.xMin && p.x < z.xMax && p.y >= z.yMin && p.y < z.yMax).length,
+    count: positions.filter(p => {
+      const x = clamp01(p.x), y = clamp01(p.y);
+      return x >= z.xMin && x < z.xMax && y >= z.yMin && y < z.yMax;
+    }).length,
   }));
   const maxCount = Math.max(...zoneCounts.map(z => z.count), 1);
   const dominantZone = zoneCounts.reduce((best, z) => z.count > best.count ? z : best, zoneCounts[0]);

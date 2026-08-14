@@ -18,6 +18,7 @@ export function SeasonRecapModal() {
   const { user, seasonRecap, dismissSeasonRecap, matches } = useApp();
   const { ref: panelRef, dialogProps } = useModalA11y(!!seasonRecap, dismissSeasonRecap, 'Season Recap');
   const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
   if (!seasonRecap) return null;
 
   const start = seasonStartDate(seasonRecap.seasonNumber).getTime();
@@ -33,6 +34,7 @@ export function SeasonRecapModal() {
 
   const handleShare = async () => {
     setSharing(true);
+    setShareError('');
     try {
       const blob = await generateSeasonRecapBlob({
         displayName: user.displayName,
@@ -42,6 +44,11 @@ export function SeasonRecapModal() {
         wins, losses,
       });
       await shareOrDownloadRecap(blob, `courtconnect-season-${seasonRecap.seasonNumber}.png`);
+    } catch {
+      // generateSeasonRecapBlob's canvas.toBlob can genuinely resolve null,
+      // and any canvas draw error surfaces here too — previously an
+      // unhandled rejection with the button just reverting to idle.
+      setShareError('Could not generate the image. Please try again.');
     } finally {
       setSharing(false);
     }
@@ -75,12 +82,15 @@ export function SeasonRecapModal() {
           </p>
         </div>
 
-        <div className="p-5 pt-0 flex gap-2">
-          <Button variant="secondary" className="flex-1" onClick={dismissSeasonRecap}>Close</Button>
-          <Button className="flex-1 flex items-center justify-center gap-2" onClick={handleShare} disabled={sharing}>
-            {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15}/>}
-            Share
-          </Button>
+        <div className="p-5 pt-0 space-y-2">
+          {shareError && <p className="text-xs text-red-400 text-center">{shareError}</p>}
+          <div className="flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={dismissSeasonRecap}>Close</Button>
+            <Button className="flex-1 flex items-center justify-center gap-2" onClick={handleShare} disabled={sharing}>
+              {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15}/>}
+              Share
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -181,8 +181,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       // Edge Function, until that's built.
       await deleteAccountData(authUser.uid);
       await supabase.auth.signOut();
+      // cc_theme is a device display preference, not account state — same
+      // exclusion as the near-identical clear-on-logout in AuthContext.
+      // Deleting your account shouldn't silently flip your device back to
+      // light/dark default too.
       Object.keys(localStorage)
-        .filter(k => k.startsWith('cc_'))
+        .filter(k => k.startsWith('cc_') && k !== 'cc_theme')
         .forEach(k => localStorage.removeItem(k));
       setDeleteStep('idle');
       onClose();

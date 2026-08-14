@@ -26,6 +26,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
   const [correctionError, setCorrectionError] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
   const [nudged, setNudged] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastMatchId = useRef<string | undefined>(undefined);
@@ -68,6 +69,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
 
   const handleShare = async () => {
     setSharing(true);
+    setShareError('');
     try {
       const blob = await generateMatchRecapBlob({
         matchTypeLabel: MATCH_TYPE_LABEL[m.type],
@@ -78,6 +80,11 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
         dateLabel: formatDate(m.playedAt),
       });
       await shareOrDownloadRecap(blob, `courtconnect-${m.id}.png`);
+    } catch {
+      // Same failure mode as SeasonRecapModal's handleShare — canvas.toBlob
+      // can genuinely resolve null, previously an unhandled rejection with
+      // the button just reverting to idle.
+      setShareError('Could not generate the image. Please try again.');
     } finally {
       setSharing(false);
     }
@@ -349,11 +356,14 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
           </div>
 
           {!isPending && !isDisputed && !isCancelled && (
-            <button onClick={handleShare} disabled={sharing}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 rounded-xl text-sm font-semibold transition-colors">
-              {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15} className="text-emerald-400"/>}
-              {sharing ? 'Generating…' : 'Share Recap'}
-            </button>
+            <>
+              {shareError && <p className="text-xs text-red-400 text-center mt-3">{shareError}</p>}
+              <button onClick={handleShare} disabled={sharing}
+                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 rounded-xl text-sm font-semibold transition-colors">
+                {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15} className="text-emerald-400"/>}
+                {sharing ? 'Generating…' : 'Share Recap'}
+              </button>
+            </>
           )}
         </div>
 
