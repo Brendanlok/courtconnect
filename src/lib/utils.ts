@@ -152,6 +152,18 @@ export function formatTime(iso: string): string {
 // on how big an upset it was. Do not call this with "my side" always first;
 // see previewMMRChange below for computing both hypothetical outcomes before
 // the result is known.
+// Standard badminton rules: win by 2, first to 21, hard cap at 30 (30-29 ends
+// the game regardless of margin). No draws. Shared by every place a game
+// score can be entered or corrected (LogMatchModal, MatchDetailModal's
+// dispute-resubmit flow) — validate here once instead of per-caller.
+export function isValidGameScore(p1: number, p2: number): boolean {
+  if (p1 === p2) return false;
+  const hi = Math.max(p1, p2), lo = Math.min(p1, p2);
+  if (hi > 30) return false;
+  if (hi === 30) return true;
+  return hi >= 21 && hi - lo >= 2;
+}
+
 export function calcMMRChange(winnerMMR: number, loserMMR: number, k = 32, marginMult = 1) {
   const exp = 1 / (1 + Math.pow(10, (loserMMR - winnerMMR) / 400));
   const delta = Math.round(k * marginMult * (1 - exp));

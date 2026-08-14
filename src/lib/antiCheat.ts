@@ -9,6 +9,12 @@ export function antiCheatCheck(matches: Match[], userId: string, oppUids: string
 
   // Rule 1: max 3 matches vs any of the same opponents in 7 days
   const recentVsOpp = matches.filter(m => {
+    // A match that was Cancelled or Disputed (and never re-confirmed) isn't
+    // a real logged match against this opponent — it shouldn't burn a
+    // farming-limit slot. Pending still counts (it's a live attempt, just
+    // awaiting the opponent's confirmation) — only these two terminal
+    // "this didn't count" states are excluded.
+    if (m.status === 'Cancelled' || m.status === 'Disputed') return false;
     // Only the OPPOSING side counts as opponents — a teammate on my own side
     // (player1PartnerId when I'm player1, etc.) is never an opponent.
     const opponentIds = m.player1Id === userId ? [m.player2Id, m.player2PartnerId].filter(Boolean) as string[]

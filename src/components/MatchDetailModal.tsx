@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import type { Match } from '@/types';
 import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3, Share2, Loader2 } from 'lucide-react';
-import { MATCH_TYPE_LABEL, formatDate, formatTime } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, formatDate, formatTime, isValidGameScore } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   const [correcting, setCorrecting] = useState(false);
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
+  const [correctionError, setCorrectionError] = useState('');
   const [sharing, setSharing] = useState(false);
   const [nudged, setNudged] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -84,15 +85,25 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
 
   const startCorrecting = () => {
     setCorrectedGames(gameScores.map(g => ({ p1: String(g.p1), p2: String(g.p2) })));
+    setCorrectionError('');
     setCorrecting(true);
   };
-  const setCorrectedScore = (i: number, side: 'p1' | 'p2', v: string) =>
+  const setCorrectedScore = (i: number, side: 'p1' | 'p2', v: string) => {
     setCorrectedGames(g => g.map((x, idx) => idx === i ? { ...x, [side]: v } : x));
+    setCorrectionError('');
+  };
   const submitCorrection = () => {
     const parsed = correctedGames
       .filter(g => g.p1 !== '' && g.p2 !== '')
       .map(g => ({ p1: Number(g.p1) || 0, p2: Number(g.p2) || 0 }));
     if (!parsed.length) return;
+    // Same win-by-2/cap-30/no-ties rule LogMatchModal enforces on the
+    // original entry — a dispute "correction" shouldn't be able to submit an
+    // equally-bad or worse score.
+    if (parsed.some(g => !isValidGameScore(g.p1, g.p2))) {
+      setCorrectionError('Each game needs a valid badminton score — win by 2, first to 21 (capped at 30).');
+      return;
+    }
     onResubmit?.(parsed);
     setCorrecting(false);
   };
@@ -362,6 +373,7 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
                 </div>
               ))}
             </div>
+            {correctionError && <p className="text-xs text-red-400 mt-2">{correctionError}</p>}
             <p className="text-[11px] text-slate-500 mt-2">Sent back to {oppName} to confirm or dispute in turn.</p>
           </div>
         )}

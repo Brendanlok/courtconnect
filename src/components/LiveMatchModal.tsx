@@ -972,6 +972,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   };
 
   const handleDiscardPaused = () => {
+    // Mark the Supabase row completed too, not just the local snapshot —
+    // otherwise it lingers forever in the "Live Now" browse list
+    // (subscribeActiveLiveMatches only excludes completed/absent rows).
+    if (pausedMatch) updateLiveMatch(pausedMatch.id, { status: 'completed' }).catch(() => {});
     clearPausedMatch();
     setPausedMatch(null);
     setPausedRef(null);

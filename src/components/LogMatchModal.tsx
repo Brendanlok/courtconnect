@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating } from '@/lib/utils';
+import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -13,16 +13,6 @@ import { Button } from '@/components/ui/Button';
 const SINGLES = ['MS', 'WS'];
 const DOUBLES = ['MD', 'WD', 'MX'];
 const ALL_PLAYERS = [ME, ...PLAYERS];
-
-// Standard badminton rules: win by 2, first to 21, hard cap at 30 (30-29 ends
-// the game regardless of margin). No draws.
-function isValidGameScore(p1: number, p2: number): boolean {
-  if (p1 === p2) return false;
-  const hi = Math.max(p1, p2), lo = Math.min(p1, p2);
-  if (hi > 30) return false;
-  if (hi === 30) return true;
-  return hi >= 21 && hi - lo >= 2;
-}
 
 function formatDisabledForGender(format: MatchType, gender?: 'Male' | 'Female'): boolean {
   if (gender === 'Male')   return format === 'WS' || format === 'WD';
