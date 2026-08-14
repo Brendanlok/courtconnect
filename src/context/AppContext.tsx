@@ -961,9 +961,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // tournaments; real ones just never had anything populating it before.
   const startTournamentBracket = useCallback((tournamentId: string) => {
     const t = tournaments.find(x => x.id === tournamentId);
-    if (!t || (t.participants ?? []).length < 2) return;
+    // Bail if already started — guards the double-tap race (button stays
+    // visible until the subscription round-trips) that used to regenerate a
+    // second random bracket and let two writes fight over which one sticks.
+    if (!t || t.status === 'Active' || t.bracket || (t.participants ?? []).length < 2) return;
     const bracket = generateBracket(t.participants!);
     updateTournamentDoc(tournamentId, { status: 'Active', bracket }).catch(() => {});
+    // Optimistic local patch (same fix as editTournament) — without this the
+    // second tap above would still read the pre-bracket tournament until the
+    // realtime subscription caught up.
+    setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, status: 'Active', bracket } : x));
     // Product idea: auto-share the bracket into the host club's chat, if this
     // event was hosted "as" a club (hostClubId — a real FK, unlike organiser
     // which is just the club's name for display). Individually-hosted events
@@ -996,6 +1003,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     updateTournamentDoc(tournamentId, patch).catch(() => {});
+    // Optimistic local patch — without this, reporting two results
+    // back-to-back (normal for a host clearing round 1) reads a stale local
+    // bracket for the second call before the first write's realtime
+    // round-trip lands, silently losing the first result. Same fix as
+    // editTournament above.
+    setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, ...patch } : x));
   }, [tournaments]);
 
   // Host fixes a typo or changes plans after creation (name/venue/date/time/
