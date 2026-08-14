@@ -2,10 +2,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
-         AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2 } from 'lucide-react';
+         AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2, RotateCcw } from 'lucide-react';
 import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { lookupUserByUid } from '@/lib/supabaseService';
+import { undoBracketResult as computeUndoBracketResult } from '@/lib/bracketGen';
 import type { Tournament, BracketMatch, MatchType, MalaysiaState } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -72,7 +73,7 @@ export default function Tournaments() {
   const { user, tournaments, addTournament, registrations, myTournamentPendingIds,
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
           acceptTournamentRequest, declineTournamentRequest,
-          startTournamentBracket, reportBracketResult,
+          startTournamentBracket, reportBracketResult, undoBracketResult,
           editTournament, cancelTournament,
           updateUser } = useApp();
 
@@ -260,6 +261,7 @@ export default function Tournaments() {
             onDeclineRequest={uid => declineTournamentRequest(t.id, uid)}
             onStartBracket={() => startTournamentBracket(t.id)}
             onReportResult={match => setResultTarget({ tournament: t, match })}
+            onUndoResult={match => undoBracketResult(t.id, match.id)}
             onEdit={() => setEditTarget(t)}
             onCancelHost={() => setCancelHostTarget(t)}/>
         ))}
@@ -315,14 +317,14 @@ export default function Tournaments() {
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest, onStartBracket, onReportResult, onEdit, onCancelHost }: {
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest, onStartBracket, onReportResult, onUndoResult, onEdit, onCancelHost }: {
   tournament: Tournament; myMMR: number; myDisplayName: string;
   isRegistered: boolean; isPending: boolean;
   onRegister: () => void; onUnregister: () => void;
   onRequest: () => void; onCancelRequest: () => void;
   onViewParticipants: () => void;
   onApproveRequest: (uid: string) => void; onDeclineRequest: (uid: string) => void;
-  onStartBracket: () => void; onReportResult: (match: BracketMatch) => void;
+  onStartBracket: () => void; onReportResult: (match: BracketMatch) => void; onUndoResult: (match: BracketMatch) => void;
   onEdit: () => void; onCancelHost: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -555,7 +557,9 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">
                     {t.status === 'Active' ? 'Live Bracket' : 'Final Bracket'}
                   </p>
-                  <BracketView bracket={t.bracket} participants={t.participants ?? []} onReportResult={isMyTourney && t.status === 'Active' ? onReportResult : undefined}/>
+                  <BracketView bracket={t.bracket} participants={t.participants ?? []}
+                    onReportResult={isMyTourney && t.status === 'Active' ? onReportResult : undefined}
+                    onUndoResult={isMyTourney ? match => onUndoResult(match) : undefined}/>
                 </div>
               )}
 
@@ -1174,13 +1178,20 @@ function roundTopPad(ri: number): number {
   return (f1 + f2) / 2 - CARD_H / 2;
 }
 
-function BracketView({ bracket, participants, onReportResult }: {
-  bracket: BracketMatch[]; participants: Tournament['participants']; onReportResult?: (match: BracketMatch) => void;
+function BracketView({ bracket, participants, onReportResult, onUndoResult }: {
+  bracket: BracketMatch[]; participants: Tournament['participants']; onReportResult?: (match: BracketMatch) => void; onUndoResult?: (match: BracketMatch) => void;
 }) {
   // player1/player2/winner are usernames (unique) - resolve to display names
   // for the card text here, once, rather than at every BracketCard.
   const nameByUsername = useMemo(() => new Map((participants ?? []).map(p => [p.username, p.displayName])), [participants]);
   const nameFor = (username?: string) => !username || username === 'BYE' || username === 'TBD' ? username : (nameByUsername.get(username) ?? username);
+  // A match is only safely undoable if its winner hasn't already been
+  // reported further into the bracket — reuses the same guard
+  // undoBracketResult itself enforces, computed once per match here instead
+  // of duplicating the logic (or re-deriving it) inside every card.
+  const undoableIds = useMemo(() => new Set(
+    bracket.filter(m => computeUndoBracketResult(bracket, m.id) !== null).map(m => m.id)
+  ), [bracket]);
   const rounds      = [...new Set(bracket.map(b => b.round))].sort();
   const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
   const r1Count     = byRound[0]?.length ?? 1;
@@ -1210,7 +1221,8 @@ function BracketView({ bracket, participants, onReportResult }: {
           return (
             <div key={ri} className="flex items-start shrink-0">
               <div className="flex flex-col shrink-0" style={{ paddingTop: pad, gap }}>
-                {matches.map(m => <BracketCard key={m.id} match={m} nameFor={nameFor} onReportResult={onReportResult}/>)}
+                {matches.map(m => <BracketCard key={m.id} match={m} nameFor={nameFor} onReportResult={onReportResult}
+                  onUndoResult={undoableIds.has(m.id) ? onUndoResult : undefined}/>)}
               </div>
               {!isLast && (
                 <svg width={CONN_W} height={totalH} className="shrink-0 overflow-visible">
@@ -1239,11 +1251,13 @@ function BracketView({ bracket, participants, onReportResult }: {
   );
 }
 
-function BracketCard({ match: m, nameFor, onReportResult }: {
-  match: BracketMatch; nameFor: (username?: string) => string | undefined; onReportResult?: (match: BracketMatch) => void;
+function BracketCard({ match: m, nameFor, onReportResult, onUndoResult }: {
+  match: BracketMatch; nameFor: (username?: string) => string | undefined;
+  onReportResult?: (match: BracketMatch) => void; onUndoResult?: (match: BracketMatch) => void;
 }) {
   const isLive = !m.winner && !!m.player1 && m.player1 !== 'TBD' && !!m.player2 && m.player2 !== 'TBD';
   const canReport = isLive && !!onReportResult;
+  const canUndo = !!m.winner && !!onUndoResult;
   // A hover-reveal overlay would be invisible on touch devices — this app is
   // phone-first, so the report action is a small always-visible pill instead,
   // and the whole card is tappable (not hover-gated) when it's reportable.
@@ -1271,6 +1285,12 @@ function BracketCard({ match: m, nameFor, onReportResult }: {
         <span className="absolute top-0.5 right-0.5 bg-amber-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded-md">
           Report
         </span>
+      )}
+      {canUndo && (
+        <button onClick={e => { e.stopPropagation(); onUndoResult!(m); }} title="Undo result" aria-label="Undo result"
+          className="absolute top-0.5 right-0.5 p-1 rounded-md bg-slate-800/90 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors">
+          <RotateCcw size={10}/>
+        </button>
       )}
     </div>
   );

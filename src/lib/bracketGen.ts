@@ -85,6 +85,26 @@ export function reportBracketResult(bracket: BracketMatch[], matchId: string, wi
   return updated.map(b => b.id === nextMatch.id ? { ...b, [isFirstSlot ? 'player1' : 'player2']: winnerUsername } : b);
 }
 
+// Reverts a reported result — host misclick recovery (no undo existed
+// before). Returns null (blocked, caller should no-op) rather than throwing:
+// a bye match auto-advanced itself and was never "reported", and a match
+// whose winner has already been reported further down the bracket can't be
+// safely undone without cascading — host must undo that later match first.
+export function undoBracketResult(bracket: BracketMatch[], matchId: string): BracketMatch[] | null {
+  const match = bracket.find(b => b.id === matchId);
+  if (!match?.winner || match.player1 === 'BYE' || match.player2 === 'BYE') return null;
+
+  const roundMatches = bracket.filter(b => b.round === match.round);
+  const posInRound = roundMatches.findIndex(b => b.id === matchId);
+  const nextMatch = bracket.filter(b => b.round === match.round + 1)[Math.floor(posInRound / 2)];
+  if (nextMatch?.winner) return null;
+
+  const cleared = bracket.map(b => b.id === matchId ? { ...b, winner: undefined, score: undefined } : b);
+  if (!nextMatch) return cleared;
+  const isFirstSlot = posInRound % 2 === 0;
+  return cleared.map(b => b.id === nextMatch.id ? { ...b, [isFirstSlot ? 'player1' : 'player2']: 'TBD' } : b);
+}
+
 // Returns the champion's username (not display name) - resolve to a
 // display name via tournament.participants at render/notify time.
 export function bracketChampion(bracket: BracketMatch[]): string | null {

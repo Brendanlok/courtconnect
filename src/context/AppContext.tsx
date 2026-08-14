@@ -6,7 +6,7 @@ import { auth, onAuthStateChanged } from '@/lib/supabase';
 import { maxClubsForTier, getTier, BASE_PATH, isCalibrating } from '@/lib/utils';
 import { resubmitWinner, resignedMmrChange } from '@/lib/matchDispute';
 import { BADGES, computeEarnedBadgeIds } from '@/lib/achievements';
-import { generateBracket, reportBracketResult as computeBracketResult, bracketChampion } from '@/lib/bracketGen';
+import { generateBracket, reportBracketResult as computeBracketResult, undoBracketResult as computeUndoBracketResult, bracketChampion } from '@/lib/bracketGen';
 import { ME as ME_DATA, PLAYERS as ALL_PLAYERS } from '@/lib/data';
 import {
   saveMatch, saveUserProfile, saveOpenToPlay, loadUserProfile,
@@ -185,6 +185,7 @@ interface AppCtx {
   declineTournamentRequest: (tournamentId: string, uid: string) => void;
   startTournamentBracket: (tournamentId: string) => void;
   reportBracketResult: (tournamentId: string, matchId: string, winnerName: string, score?: string) => void;
+  undoBracketResult: (tournamentId: string, matchId: string) => void;
   editTournament: (id: string, patch: Partial<Tournament>) => Promise<string | null>;
   cancelTournament: (id: string) => Promise<string | null>;
   challenges: Challenge[];
@@ -1011,6 +1012,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, ...patch } : x));
   }, [tournaments]);
 
+  // Host misclick recovery — no way to undo a reported result before today.
+  // No-ops (via computeUndoBracketResult returning null) on a bye, a match
+  // with no result yet, or one whose winner already has a result recorded
+  // further into the bracket (host has to undo that one first). Reverts the
+  // tournament back to Active if this was the championship match.
+  const undoBracketResult = useCallback((tournamentId: string, matchId: string) => {
+    const t = tournaments.find(x => x.id === tournamentId);
+    if (!t?.bracket) return;
+    const updated = computeUndoBracketResult(t.bracket, matchId);
+    if (!updated) return;
+    const patch: Partial<Tournament> = { bracket: updated };
+    if (t.status === 'Completed') patch.status = 'Active';
+    updateTournamentDoc(tournamentId, patch).catch(() => {});
+    setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, ...patch } : x));
+  }, [tournaments]);
+
   // Host fixes a typo or changes plans after creation (name/venue/date/time/
   // description) — previously permanent (Notion "Tournament hosts can't edit
   // or cancel a hosted event"). Optimistically patches rawTournaments too
@@ -1637,7 +1654,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       acceptTournamentRequest, declineTournamentRequest, startTournamentBracket, reportBracketResult,
-      editTournament, cancelTournament,
+      undoBracketResult, editTournament, cancelTournament,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge, isRealChallengeId,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
