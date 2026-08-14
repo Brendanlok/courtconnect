@@ -70,10 +70,16 @@ export async function fetchPublicRankings(limit = 50): Promise<PublicPlayer[]> {
 // Single-player lookup by exact username for the public search box. Dummy/
 // private profiles come back as "not found" rather than exposing them.
 export async function fetchPublicPlayer(username: string): Promise<PublicPlayer | null> {
+  // Exact match, not a pattern match — usernames are always stored lowercase
+  // (enforced at signup, see AuthContext.completeProfile), same convention
+  // lookupUserByUsername already uses. ilike here was needless AND buggy:
+  // usernames may contain '_' (a single-char ilike wildcard), so a search
+  // for an existing username could match a second row too, making
+  // maybeSingle() error and silently report "not found".
   const { data, error } = await supabase
     .from('users_public')
     .select(SELECT_COLS)
-    .ilike('username', username.trim())
+    .eq('username', username.trim().toLowerCase())
     .or(NOT_DUMMY)
     .or(NOT_PRIVATE)
     .maybeSingle();

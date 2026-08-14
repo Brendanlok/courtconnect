@@ -377,10 +377,11 @@ function courtSessionRowToObj(row: Record<string, unknown>): CourtSession {
 }
 
 export async function createCourtSession(session: CourtSession): Promise<void> {
-  await supabase.from('court_sessions').insert({
+  const { error } = await supabase.from('court_sessions').insert({
     id: session.id, join_code: session.joinCode, host_uid: session.hostUid, status: session.status,
     positions: session.positions, planned_match_id: session.plannedMatchId, venue: session.venue,
   });
+  if (error) throw error;
 }
 
 // ponytail: read-modify-write, not atomic — two devices tapping in the exact

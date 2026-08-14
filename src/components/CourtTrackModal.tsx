@@ -38,6 +38,8 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
   const [joinErr, setJoinErr] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [startErr, setStartErr] = useState('');
+  const [starting, setStarting] = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(open, onClose, 'Track & Record');
 
@@ -52,13 +54,19 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
 
   if (!open) return null;
 
-  const startAsHost = () => {
+  const startAsHost = async () => {
     const s: CourtSession = {
       id: genId(), joinCode: genCode(), hostUid: uid, status: 'active',
       positions: [], createdAt: new Date().toISOString(),
       plannedMatchId: plannedMatch?.id, venue: plannedMatch?.venue,
     };
-    createCourtSession(s).catch(() => {});
+    setStarting(true); setStartErr('');
+    const ok = await createCourtSession(s).then(() => true).catch(() => false);
+    setStarting(false);
+    // Previously proceeded to the tracking view regardless — a failed create
+    // left the host scoring into a session that was never persisted, so a
+    // second device's join code would just fail with no clue why.
+    if (!ok) { setStartErr('Could not start the tracking session. Check your connection and try again.'); return; }
     setSession(s);
     setIsHostEnd(true);
     setView('tracking');
@@ -130,8 +138,9 @@ export function CourtTrackModal({ open, onClose, plannedMatch = null, onSessionE
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Position your phone at a 3/4 angle wherever you can see all 4 court corners — one device is all you need. After calibrating, turn on Auto-detect and it&apos;ll log positions from motion in the video automatically — or tap the court diagram yourself any time. Want extra coverage? Share the join code once you start; a second device is optional.
                 </p>
-                <Button onClick={startAsHost} className="w-full flex items-center justify-center gap-2">
-                  <Radio size={14}/> Start Tracking Session
+                {startErr && <p className="text-xs text-red-400">{startErr}</p>}
+                <Button onClick={startAsHost} disabled={starting} className="w-full flex items-center justify-center gap-2">
+                  <Radio size={14}/> {starting ? 'Starting…' : 'Start Tracking Session'}
                 </Button>
               </div>
             ) : (
