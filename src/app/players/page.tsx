@@ -463,8 +463,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
   leaveClub: (id: string) => void;
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
-  updateClub: (id: string, patch: Partial<Club>) => void;
-  disbandClub: (id: string) => void;
+  updateClub: (id: string, patch: Partial<Club>) => Promise<string | null>;
+  disbandClub: (id: string) => Promise<string | null>;
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
   clubSearch: string;
@@ -475,6 +475,8 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
   const [copiedId,       setCopiedId]       = useState<string | null>(null);
   const [disbandTarget,  setDisbandTarget]  = useState<Club | null>(null);
+  const [disbandError,   setDisbandError]   = useState('');
+  const [disbanding,     setDisbanding]     = useState(false);
   const [leaveTarget,    setLeaveTarget]    = useState<Club | null>(null);
   const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(!!leaveTarget,   () => setLeaveTarget(null),   leaveTarget ? `Leave ${leaveTarget.name}` : 'Leave club');
   const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(!!disbandTarget, () => setDisbandTarget(null), disbandTarget ? `Disband ${disbandTarget.name}` : 'Disband club');
@@ -533,7 +535,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
       {/* Disband confirmation */}
       {disbandTarget && (
-        <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setDisbandTarget(null)}>
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => { setDisbandTarget(null); setDisbandError(''); }}>
           <div ref={disbandModalRef} {...disbandModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
@@ -544,9 +546,18 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
                 <p className="text-xs text-slate-400 mt-1">This permanently closes the club and removes all {disbandTarget.memberIds.length} members. This cannot be undone.</p>
               </div>
             </div>
+            {disbandError && <p className="text-xs text-red-400">{disbandError}</p>}
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setDisbandTarget(null)} className="flex-1">Cancel</Button>
-              <Button variant="danger" onClick={() => { disbandClub(disbandTarget.id); setDisbandTarget(null); }} className="flex-1">Disband Club</Button>
+              <Button variant="secondary" onClick={() => { setDisbandTarget(null); setDisbandError(''); }} className="flex-1">Cancel</Button>
+              <Button variant="danger" disabled={disbanding} onClick={async () => {
+                setDisbanding(true);
+                const err = await disbandClub(disbandTarget.id);
+                setDisbanding(false);
+                if (err) { setDisbandError(err); return; }
+                setDisbandTarget(null);
+              }} className="flex-1">
+                {disbanding ? 'Disbanding…' : 'Disband Club'}
+              </Button>
             </div>
           </div>
         </div>

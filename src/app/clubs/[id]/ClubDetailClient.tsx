@@ -101,6 +101,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [chatInput,     setChatInput]    = useState('');
   const [announce,      setAnnounce]     = useState(club?.announcement ?? '');
   const [editAnnounce,  setEditAnnounce] = useState(false);
+  const [announceError, setAnnounceError] = useState('');
+  const [announceSaving, setAnnounceSaving] = useState(false);
+  const [disbandError,  setDisbandError] = useState('');
+  const [disbanding,    setDisbanding]   = useState(false);
   const [inviteQuery,   setInviteQuery]  = useState('');
   const [realInviteName, setRealInviteName] = useState('');
   const [realInviteStatus, setRealInviteStatus] = useState<'idle' | 'loading' | 'not-found' | 'already-member' | 'sent'>('idle');
@@ -227,8 +231,11 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     setRealInviteName('');
   };
 
-  const saveAnnouncement = () => {
-    updateClub(clubId, { announcement: announce || undefined });
+  const saveAnnouncement = async () => {
+    setAnnounceSaving(true);
+    const err = await updateClub(clubId, { announcement: announce || undefined });
+    setAnnounceSaving(false);
+    if (err) { setAnnounceError(err); return; }
     setEditAnnounce(false);
   };
 
@@ -290,10 +297,17 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             </div>
             <input value={disbandInput} onChange={e => setDisbandInput(e.target.value)}
               placeholder="DISBAND" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-red-500 transition-colors"/>
+            {disbandError && <p className="text-xs text-red-400">{disbandError}</p>}
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => { setDisbandModal(false); setDisbandInput(''); }} className="flex-1">Cancel</Button>
-              <Button variant="danger" disabled={disbandInput !== 'DISBAND'} onClick={() => { disbandClub(clubId); setDisbandModal(false); }} className="flex-1">
-                Disband
+              <Button variant="secondary" onClick={() => { setDisbandModal(false); setDisbandInput(''); setDisbandError(''); }} className="flex-1">Cancel</Button>
+              <Button variant="danger" disabled={disbandInput !== 'DISBAND' || disbanding} onClick={async () => {
+                setDisbanding(true);
+                const err = await disbandClub(clubId);
+                setDisbanding(false);
+                if (err) { setDisbandError(err); return; }
+                setDisbandModal(false);
+              }} className="flex-1">
+                {disbanding ? 'Disbanding…' : 'Disband'}
               </Button>
             </div>
           </div>
@@ -731,7 +745,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold flex items-center gap-2"><Megaphone size={14}/> Announcement</p>
               {!editAnnounce && (
-                <button onClick={() => setEditAnnounce(true)}
+                <button onClick={() => { setAnnounceError(''); setEditAnnounce(true); }}
                   className="text-xs text-emerald-400 hover:underline">Edit</button>
               )}
             </div>
@@ -740,10 +754,13 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                 <textarea value={announce} onChange={e => setAnnounce(e.target.value)} rows={3}
                   placeholder="Post a club-wide announcement…"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 resize-none transition-colors"/>
+                {announceError && <p className="text-xs text-red-400">{announceError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={saveAnnouncement}
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition-colors">Save</button>
-                  <button onClick={() => { setEditAnnounce(false); setAnnounce(club.announcement ?? ''); }}
+                  <button onClick={saveAnnouncement} disabled={announceSaving}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl text-sm font-semibold transition-colors">
+                    {announceSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={() => { setEditAnnounce(false); setAnnounce(club.announcement ?? ''); setAnnounceError(''); }}
                     className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">Cancel</button>
                 </div>
               </>

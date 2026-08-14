@@ -30,6 +30,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   tournament_accepted:     <Trophy size={14} className="text-emerald-400"/>,
   tournament_declined:     <Trophy size={14} className="text-red-400"/>,
   tournament_win:          <Trophy size={14} className="text-amber-400"/>,
+  tournament_cancelled:    <Trophy size={14} className="text-red-400"/>,
   inactivity_reminder:     <Clock size={14} className="text-amber-400"/>,
   weekly_digest:           <TrendingUp size={14} className="text-emerald-400"/>,
   referral_joined:         <UserPlus size={14} className="text-emerald-400"/>,

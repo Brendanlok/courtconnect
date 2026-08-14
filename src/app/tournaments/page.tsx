@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
-         AlertTriangle, X, Filter, Info, Eye, Search, Check } from 'lucide-react';
+         AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2 } from 'lucide-react';
 import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { lookupUserByUid } from '@/lib/supabaseService';
@@ -73,6 +73,7 @@ export default function Tournaments() {
           registerTournament, unregisterTournament, requestToJoin, cancelRequest,
           acceptTournamentRequest, declineTournamentRequest,
           startTournamentBracket, reportBracketResult,
+          editTournament, cancelTournament,
           updateUser } = useApp();
 
   const userCountry = user.country ?? 'Malaysia';
@@ -90,6 +91,8 @@ export default function Tournaments() {
   const [unregTarget,   setUnregTarget] = useState<Tournament | null>(null);
   const [viewParticipants, setViewParticipants] = useState<Tournament | null>(null);
   const [resultTarget, setResultTarget] = useState<{ tournament: Tournament; match: BracketMatch } | null>(null);
+  const [editTarget,   setEditTarget]   = useState<Tournament | null>(null);
+  const [cancelHostTarget, setCancelHostTarget] = useState<Tournament | null>(null);
 
   const isPenalty = (t: Tournament) => {
     const msUntil = new Date(`${t.date}T${t.time ?? '00:00'}`).getTime() - Date.now();
@@ -256,7 +259,9 @@ export default function Tournaments() {
             onApproveRequest={uid => acceptTournamentRequest(t.id, uid)}
             onDeclineRequest={uid => declineTournamentRequest(t.id, uid)}
             onStartBracket={() => startTournamentBracket(t.id)}
-            onReportResult={match => setResultTarget({ tournament: t, match })}/>
+            onReportResult={match => setResultTarget({ tournament: t, match })}
+            onEdit={() => setEditTarget(t)}
+            onCancelHost={() => setCancelHostTarget(t)}/>
         ))}
       </div>
 
@@ -288,13 +293,21 @@ export default function Tournaments() {
             setResultTarget(null);
           }}/>
       )}
+      {editTarget && (
+        <EditTournamentModal tournament={editTarget} onClose={() => setEditTarget(null)}
+          onSave={patch => { editTournament(editTarget.id, patch); setEditTarget(null); }}/>
+      )}
+      {cancelHostTarget && (
+        <CancelHostedModal tournament={cancelHostTarget} onClose={() => setCancelHostTarget(null)}
+          onConfirm={() => { cancelTournament(cancelHostTarget.id); setCancelHostTarget(null); }}/>
+      )}
     </div>
   );
 }
 
 // ─── Tournament row ────────────────────────────────────────────────────────────
 
-function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest, onStartBracket, onReportResult }: {
+function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPending, onRegister, onUnregister, onRequest, onCancelRequest, onViewParticipants, onApproveRequest, onDeclineRequest, onStartBracket, onReportResult, onEdit, onCancelHost }: {
   tournament: Tournament; myMMR: number; myDisplayName: string;
   isRegistered: boolean; isPending: boolean;
   onRegister: () => void; onUnregister: () => void;
@@ -302,6 +315,7 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
   onViewParticipants: () => void;
   onApproveRequest: (uid: string) => void; onDeclineRequest: (uid: string) => void;
   onStartBracket: () => void; onReportResult: (match: BracketMatch) => void;
+  onEdit: () => void; onCancelHost: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const spotsLeft   = t.maxPlayers - t.currentPlayers;
@@ -498,6 +512,22 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
                     <p className="text-sm font-bold text-amber-300">🏆 Champion: {t.championDisplayName}</p>
                     <p className="text-xs text-slate-400 mt-0.5">@{t.championUsername}</p>
                   </div>
+                </div>
+              )}
+
+              {/* Host actions: fix a typo / change plans, or cancel outright —
+                  real hosted events only (t.hostUid, not the dummy seed
+                  events isMyTourney also matches — those aren't DB rows). */}
+              {t.hostUid === 'me' && t.status === 'Upcoming' && (
+                <div className="flex gap-2">
+                  <button onClick={e => { e.stopPropagation(); onEdit(); }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-colors">
+                    <Edit3 size={12}/> Edit Details
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); onCancelHost(); }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-red-500/15 border border-slate-700 hover:border-red-500/30 text-slate-300 hover:text-red-400 transition-colors">
+                    <Trash2 size={12}/> Cancel Event
+                  </button>
                 </div>
               )}
 
@@ -966,6 +996,133 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
               {submitting ? 'Creating…' : 'Create Event'}
             </Button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Edit hosted event ─────────────────────────────────────────────────────────
+// Covers the specific pain point from the To-Do note: a typo in venue/date or
+// a change of plans was previously permanent. Deliberately not the full
+// HostModal field set — format/visibility/capacity/fees stay fixed once
+// players have registered against them; only the low-risk fields are editable.
+
+function EditTournamentModal({ tournament: t, onClose, onSave }: {
+  tournament: Tournament; onClose: () => void; onSave: (patch: Partial<Tournament>) => void;
+}) {
+  const [name,  setName]  = useState(t.name);
+  const [date,  setDate]  = useState(t.date);
+  const [time,  setTime]  = useState(t.time ?? '');
+  const [venue, setVenue] = useState(t.venue);
+  const [state, setState] = useState<MalaysiaState>(t.state);
+  const [desc,  setDesc]  = useState(t.description ?? '');
+
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Edit Event');
+  const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
+
+  const save = () => {
+    if (!name.trim() || !date || !venue.trim()) return;
+    onSave({
+      name: name.trim(), date, time: time || undefined,
+      venue: venue.trim(), state, description: desc.trim() || undefined,
+    });
+  };
+
+  return (
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col outline-none" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2">
+            <Edit3 size={16} className="text-emerald-400"/>
+            <h2 className="font-bold">Edit Event</h2>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white"><X size={18}/></button>
+        </div>
+
+        <div className="p-5 space-y-3 overflow-y-auto">
+          <label className="block">
+            <span className="text-[11px] text-slate-500 font-semibold">Event Name *</span>
+            <input value={name} onChange={e => setName(e.target.value)} className={`mt-1 ${inp}`}/>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Date *</span>
+              <input type="date" value={date} min={todayISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">Start Time</span>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)} className={`mt-1 ${inp}`}/>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block col-span-2">
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Venue Address * <span className="text-slate-600 font-normal">— start typing for suggestions</span>
+              </span>
+              <VenueInput value={venue} onChange={setVenue} className={`mt-1 ${inp}`}/>
+            </label>
+            <label className="block">
+              <span className="text-[11px] text-slate-500 font-semibold">State</span>
+              <select value={state} onChange={e => setState(e.target.value as MalaysiaState)} className={`mt-1 ${inp}`}>
+                {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="text-[11px] text-slate-500 font-semibold">Description (optional)</span>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2}
+              placeholder="Format, rules, notes for participants…"
+              className={`mt-1 ${inp} resize-none`}/>
+          </label>
+        </div>
+
+        <div className="px-5 pb-5 shrink-0 border-t border-slate-800 pt-4 flex gap-3">
+          <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+          <Button variant="amber" onClick={save} disabled={!name.trim() || !date || !venue.trim()}
+            icon={<Edit3 size={14}/>} className="flex-1 font-bold">
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cancel hosted event ────────────────────────────────────────────────────────
+
+function CancelHostedModal({ tournament: t, onClose, onConfirm }: {
+  tournament: Tournament; onClose: () => void; onConfirm: () => void;
+}) {
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Cancel this event?');
+  return (
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+            <AlertTriangle size={18} className="text-red-400"/>
+          </div>
+          <div>
+            <p className="font-bold text-sm">Cancel &quot;{t.name}&quot;?</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {t.currentPlayers > 0
+                ? `${t.currentPlayers} registered player${t.currentPlayers !== 1 ? 's' : ''} will be notified.`
+                : 'This removes the event from the Events list.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+            Keep Event
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
+            Yes, Cancel
+          </button>
         </div>
       </div>
     </div>

@@ -184,6 +184,8 @@ interface AppCtx {
   declineTournamentRequest: (tournamentId: string, uid: string) => void;
   startTournamentBracket: (tournamentId: string) => void;
   reportBracketResult: (tournamentId: string, matchId: string, winnerName: string, score?: string) => void;
+  editTournament: (id: string, patch: Partial<Tournament>) => void;
+  cancelTournament: (id: string) => void;
   challenges: Challenge[];
   sendChallenge: (c: Challenge) => void;
   acceptChallenge: (id: string) => void;
@@ -199,10 +201,10 @@ interface AppCtx {
   cancelClubRequest: (id: string) => void;
   leaveClub: (id: string) => void;
   createClub: (c: Club) => Promise<string | null>;
-  updateClub: (id: string, patch: Partial<Club>) => void;
+  updateClub: (id: string, patch: Partial<Club>) => Promise<string | null>;
   acceptClubMember: (clubId: string, uid: string) => void;
   declineClubMember: (clubId: string, uid: string) => void;
-  disbandClub: (id: string) => void;
+  disbandClub: (id: string) => Promise<string | null>;
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
@@ -993,6 +995,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTournamentDoc(tournamentId, patch).catch(() => {});
   }, [tournaments]);
 
+  // Host fixes a typo or changes plans after creation (name/venue/date/time/
+  // description) — previously permanent (Notion "Tournament hosts can't edit
+  // or cancel a hosted event"). Same write-and-rely-on-subscription pattern
+  // as startTournamentBracket/reportBracketResult above.
+  const editTournament = useCallback((id: string, patch: Partial<Tournament>) => {
+    updateTournamentDoc(id, patch).catch(() => {});
+  }, []);
+
+  // Host cancels a hosted event. Setting status to 'Cancelled' also drops it
+  // from the public Events page (fetchPublicTournaments filters status ===
+  // 'Upcoming') and every in-app tab (Active/Upcoming/Completed) without
+  // needing a delete policy. Notifies already-registered participants —
+  // same reasoning as handleCancelMatch's notify-all-parties for planned
+  // matches, an event they signed up for just disappeared on them.
+  const cancelTournament = useCallback((id: string) => {
+    const t = tournaments.find(x => x.id === id);
+    updateTournamentDoc(id, { status: 'Cancelled' }).catch(() => {});
+    (t?.participants ?? []).forEach(p => {
+      lookupUserByUsername(p.username).then(profile => {
+        if (profile?.uid) notifyUser(profile.uid, {
+          type: 'tournament_cancelled', title: 'Event Cancelled',
+          body: `${t?.name ?? 'An event'} you signed up for was cancelled by the host.`,
+          linkTo: `${BASE_PATH}/tournaments/`,
+        });
+      }).catch(() => {});
+    });
+  }, [tournaments]);
+
   const myTournamentPendingIds = useMemo(() =>
     tournaments.filter(t => (t.pendingRequesterIds ?? []).includes('me')).map(t => t.id),
   [tournaments]);
@@ -1097,12 +1127,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [myRealUid]);
 
-  const updateClub = useCallback((id: string, patch: Partial<Club>) => {
-    updateClubDoc(id, patch).catch(() => {});
+  // Same shape as createClub above: return an error message instead of
+  // swallowing it, so callers can keep the edit UI open / show what went
+  // wrong instead of assuming success and closing immediately.
+  const updateClub = useCallback(async (id: string, patch: Partial<Club>): Promise<string | null> => {
+    try {
+      await updateClubDoc(id, patch);
+      return null;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
+    }
   }, []);
 
-  const disbandClub = useCallback((id: string) => {
-    deleteClubDoc(id).catch(() => {});
+  const disbandClub = useCallback(async (id: string): Promise<string | null> => {
+    try {
+      await deleteClubDoc(id);
+      return null;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string } | null)?.message;
+      return msg || 'Something went wrong. Please try again.';
+    }
   }, []);
 
   const assignModerator = useCallback((clubId: string, uid: string) => {
@@ -1539,6 +1584,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tournaments, addTournament, registrations, myTournamentPendingIds,
       registerTournament, unregisterTournament, requestToJoin, cancelRequest,
       acceptTournamentRequest, declineTournamentRequest, startTournamentBracket, reportBracketResult,
+      editTournament, cancelTournament,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge, isRealChallengeId,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
       acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,

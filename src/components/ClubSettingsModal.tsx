@@ -21,7 +21,7 @@ const PRO_MAX_MEMBERS = 500;
 
 export function ClubSettingsModal({ club, onSave, onClose }: {
   club: Club;
-  onSave: (patch: Partial<Club>) => void;
+  onSave: (patch: Partial<Club>) => Promise<string | null>;
   onClose: () => void;
 }) {
   const [name,        setName]        = useState(club.name);
@@ -29,19 +29,23 @@ export function ClubSettingsModal({ club, onSave, onClose }: {
   const [maxMembers,  setMaxMembers]  = useState(club.maxMembers);
   const [color,       setColor]       = useState(club.color);
   const [error,       setError]       = useState('');
+  const [saving,      setSaving]      = useState(false);
 
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'Club Settings');
 
   const cap = club.isPro ? PRO_MAX_MEMBERS : FREE_MAX_MEMBERS;
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors';
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return setError('Club name is required.');
     if (!description.trim()) return setError('Description is required.');
     if (maxMembers < club.memberIds.length) return setError(`Can't set the cap below the current member count (${club.memberIds.length}).`);
     if (maxMembers < 2 || maxMembers > cap) return setError(`Max members must be between 2 and ${cap}.`);
-    onSave({ name: name.trim(), description: description.trim(), maxMembers, color });
+    setSaving(true);
+    const err = await onSave({ name: name.trim(), description: description.trim(), maxMembers, color });
+    setSaving(false);
+    if (err) return setError(err);
     onClose();
   };
 
@@ -86,7 +90,7 @@ export function ClubSettingsModal({ club, onSave, onClose }: {
             </div>
           </div>
 
-          <Button type="submit" className="w-full font-bold">Save Changes</Button>
+          <Button type="submit" disabled={saving} className="w-full font-bold">{saving ? 'Saving…' : 'Save Changes'}</Button>
         </form>
       </div>
     </div>

@@ -113,7 +113,7 @@ export interface Tournament {
   country?: string;
   name: string;
   type: MatchType;
-  status: 'Upcoming' | 'Active' | 'Completed';
+  status: 'Upcoming' | 'Active' | 'Completed' | 'Cancelled';
   prizePool: number;
   entryFee: number;
   minMMR?: number;
@@ -209,7 +209,7 @@ export interface Club {
 
 export interface Notification {
   id: string;
-  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered' | 'badge_earned' | 'tournament_request' | 'tournament_join_request' | 'tournament_accepted' | 'tournament_declined' | 'tournament_win' | 'inactivity_reminder' | 'weekly_digest' | 'referral_joined';
+  type: 'challenge_received' | 'challenge_accepted' | 'challenge_declined' | 'partner_request' | 'club_request' | 'club_join_request' | 'club_accepted' | 'club_declined' | 'club_message' | 'match_pending' | 'match_invite' | 'match_confirmed' | 'new_message' | 'friend_request' | 'friend_accepted' | 'event_invite' | 'event_registered' | 'badge_earned' | 'tournament_request' | 'tournament_join_request' | 'tournament_accepted' | 'tournament_declined' | 'tournament_win' | 'tournament_cancelled' | 'inactivity_reminder' | 'weekly_digest' | 'referral_joined';
   title: string;
   body: string;
   read: boolean;
