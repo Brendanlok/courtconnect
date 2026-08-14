@@ -37,7 +37,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
-  const { notifications, markNotifRead, markAllNotifsRead, unreadNotifCount, incomingFollowRequests, respondToFollowRequest, allRealPlayers } = useApp();
+  const { notifications, markNotifRead, markAllNotifsRead, deleteNotif, clearAllNotifs, unreadNotifCount, incomingFollowRequests, respondToFollowRequest, allRealPlayers } = useApp();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,11 +65,18 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
             <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full">{unreadNotifCount}</span>
           )}
         </div>
-        {unreadNotifCount > 0 && (
-          <button onClick={markAllNotifsRead} className="text-[11px] text-emerald-400 hover:underline">
-            Mark all read
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadNotifCount > 0 && (
+            <button onClick={markAllNotifsRead} className="text-[11px] text-emerald-400 hover:underline">
+              Mark all read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button onClick={clearAllNotifs} className="text-[11px] text-slate-500 hover:text-red-400 hover:underline">
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {incomingFollowRequests.length > 0 && (
@@ -115,6 +122,8 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
                 <p className="text-[10px] text-slate-600 mt-1">{timeAgo(n.createdAt)}</p>
               </div>
               {!n.read && <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0 mt-1.5"/>}
+              <button onClick={e => { e.stopPropagation(); deleteNotif(n.id); }} aria-label="Dismiss notification"
+                className="text-slate-600 hover:text-red-400 transition-colors shrink-0 mt-0.5"><X size={12}/></button>
             </div>
           ))
         )}

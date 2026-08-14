@@ -22,6 +22,7 @@ import {
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc, unregisterTournamentParticipant,
   addTournamentPending, removeTournamentPending, approveTournamentRequest, registerForTournament,
   lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
+  deleteNotificationRemote, deleteAllNotificationsRemote,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
   loadAllRealUsers,
@@ -233,6 +234,8 @@ interface AppCtx {
   addNotification: (n: Notification | Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
   markNotifRead: (id: string) => void;
   markAllNotifsRead: () => void;
+  deleteNotif: (id: string) => void;
+  clearAllNotifs: () => void;
   // Achievements
   earnedBadgeIds: string[];
   // Ranked seasons
@@ -1387,6 +1390,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return p.map(n => ({ ...n, read: true }));
   }), []);
   const unreadNotifCount  = notifications.filter(n => !n.read).length;
+  const deleteNotif = useCallback((id: string) => {
+    setNotifications(p => p.filter(n => n.id !== id));
+    // Safe no-op for local-only ids, same reasoning as markNotifRead above.
+    deleteNotificationRemote(id).catch(() => {});
+  }, []);
+  const clearAllNotifs = useCallback(() => {
+    setNotifications([]);
+    if (myRealUid) deleteAllNotificationsRemote(myRealUid).catch(() => {});
+  }, [myRealUid]);
 
   // Sends a message in a real cross-account conversation (shared Supabase row,
   // not the per-user demo copy). otherProfile is only needed the first time —
@@ -1594,7 +1606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       onlineUids,
       clipCredits, awardClipCredits, courtProfile, saveCourtPositions,
       myEndorsements, playerEndorsements: combinedPlayerEndorsements, endorsePlayer,
-      notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead,
+      notifications, unreadNotifCount, addNotification, markNotifRead, markAllNotifsRead, deleteNotif, clearAllNotifs,
       earnedBadgeIds,
       pastSeasons, seasonRecap, dismissSeasonRecap,
     }}>

@@ -525,6 +525,15 @@ export async function markNotificationReadRemote(id: string): Promise<void> {
   try { await supabase.from('notifications').update({ read: true }).eq('id', id); } catch { /* ignore */ }
 }
 
+// Same local-only-id safety as markNotificationReadRemote — a DELETE
+// matching zero rows is a no-op, not an error.
+export async function deleteNotificationRemote(id: string): Promise<void> {
+  try { await supabase.from('notifications').delete().eq('id', id); } catch { /* ignore */ }
+}
+export async function deleteAllNotificationsRemote(userId: string): Promise<void> {
+  try { await supabase.from('notifications').delete().eq('user_id', userId); } catch { /* ignore */ }
+}
+
 export async function sendSharedMessage(
   chatId: string, participantUids: string[], participants: Record<string, SharedParticipant>, msg: ChatMessage,
 ) {
