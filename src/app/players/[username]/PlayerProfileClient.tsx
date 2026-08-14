@@ -766,6 +766,14 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
         {/* ── Stage 2: Match Analytics ──────────────────────────────── */}
         {(() => {
           if (!canSeeMatchHistory) return null;
+          // playerMatches is built from allMatches, which only ever holds
+          // the signed-in viewer's own matches (player1Id is always the
+          // local 'me' sentinel — see toLocalMatch in AppContext). For
+          // anyone else's profile that silently degrades to "matches
+          // between me and them" — real data, but not their overall record,
+          // and shown here with no caveat. Own-profile only until there's a
+          // real per-player match fetch to back this section for others.
+          if (!isMe) return null;
           const confirmed = playerMatches.filter(m => m.status === 'Confirmed');
           if (confirmed.length === 0) return null;
 

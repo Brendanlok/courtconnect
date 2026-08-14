@@ -5,6 +5,7 @@ import { postcodeToLocation, COUNTRIES, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABE
 import type { CountryCode } from '@/types';
 import { ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 // Skill-level picker removed 2026-08-06 — every account now starts flat at
 // 1000 MMR (set at signup, see AuthContext.createUserRow) and real rating is
@@ -43,11 +44,21 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
     onComplete();
   };
 
+  // Skip bypasses the location/availability writes finish() does (nothing to
+  // save) but must still set the same flag — it previously didn't, so
+  // skipping just brought the modal right back on the next visit/reload.
+  const skip = () => {
+    localStorage.setItem('cc_onboarded', '1');
+    onComplete();
+  };
+
+  const { ref: panelRef, dialogProps } = useModalA11y(true, skip, 'Welcome to CourtConnect');
+
   const inp = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500 transition-colors';
 
   return (
     <div className="modal-backdrop fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden outline-none">
 
         {/* Progress bar */}
         <div className="h-1 bg-slate-800">
@@ -99,7 +110,7 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
               </select>
               {countryCode === 'MY' ? (
                 <>
-                  <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/,'').slice(0,5))}
+                  <input value={postcode} onChange={e => setPostcode(e.target.value.replace(/\D/g,'').slice(0,5))}
                     placeholder="Postcode (e.g. 47810)" maxLength={5} className={`${inp} font-mono`}/>
                   {location ? (
                     <p className="text-xs text-emerald-400">📍 {location.city}, {location.state}</p>
@@ -208,7 +219,7 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
           </div>
 
           {step === 0 && (
-            <button onClick={onComplete} className="w-full text-xs text-slate-600 hover:text-slate-400 transition-colors">
+            <button onClick={skip} className="w-full text-xs text-slate-600 hover:text-slate-400 transition-colors">
               Skip setup — I&apos;ll do this later
             </button>
           )}
