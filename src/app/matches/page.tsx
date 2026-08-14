@@ -192,6 +192,10 @@ export default function MatchesPage() {
       teamA: m.teamA.map((s, i) => i === 0 ? me : s),
     }))
   );
+  // See the load effect below for why this exists. State, not a ref — the
+  // challenge-conversion effect that reads it needs to actually re-run once
+  // this flips, and a ref write alone doesn't trigger that.
+  const [plannedLoaded, setPlannedLoaded] = useState(false);
 
   // liveState only lives in this page's memory — a paused live match, however,
   // is remembered in localStorage (see LiveMatchModal). Reconcile the two on
@@ -209,9 +213,17 @@ export default function MatchesPage() {
   // (savePlannedMatch above) but were never loaded back — every reload reset
   // to just the seed demo plans. Merge by id, same idiom AppContext uses for
   // real conversations, so a plan already open in this tab isn't clobbered.
+  //
+  // plannedLoadedRef gates the challenge-conversion effect further down: it
+  // was creating a genuine duplicate on every reload of an already-converted
+  // challenge (caught live) — that effect's "already converted?" check reads
+  // plannedRef, but on a fresh mount plannedRef starts from just the seed
+  // data, and this load hasn't resolved yet, so it looked unconverted and
+  // saved a second planned_matches row. Block it until this load has had one
+  // full round-trip (success, empty, or failure — any outcome unblocks it).
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, authUser => {
-      if (!authUser) return;
+      if (!authUser) { setPlannedLoaded(true); return; }
       loadPlannedMatches(authUser.uid).then(rows => {
         const loaded = rows as PlannedMatch[];
         if (!loaded.length) return;
@@ -223,7 +235,7 @@ export default function MatchesPage() {
           });
           return merged;
         });
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setPlannedLoaded(true));
     });
     return unsub;
   }, []);
@@ -318,6 +330,13 @@ export default function MatchesPage() {
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
+    // Wait for the Supabase load above to finish at least once — otherwise
+    // plannedRef only reflects the seed data and this creates a duplicate
+    // (caught live: reloading the page after a challenge was already
+    // converted saved a second planned_matches row for the same challenge).
+    // plannedLoaded is a dependency specifically so this effect re-runs the
+    // instant loading finishes, even if `challenges` doesn't change again.
+    if (!plannedLoaded) return;
     const newly = challenges.filter(ch =>
       ch.status === 'accepted' && isRealChallengeId(ch.id) &&
       !plannedRef.current.some(p => p.sourceChallengeId === ch.id));
@@ -326,7 +345,7 @@ export default function MatchesPage() {
     setPlanned(prev => [...newPlans, ...prev]);
     newPlans.forEach(pm => savePlannedMatch(uid, pm).catch(() => {}));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [challenges, isRealChallengeId]);
+  }, [challenges, isRealChallengeId, plannedLoaded]);
 
   // Demo: simulate an invited (non-organiser) player accepting their slot in a plan
   const handleSimulateAccept = (planId: string, uid: string) => {
