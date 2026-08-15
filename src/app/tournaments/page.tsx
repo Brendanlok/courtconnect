@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
          AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2, RotateCcw } from 'lucide-react';
-import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName, downloadTournamentIcs } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { lookupUserByUid } from '@/lib/supabaseService';
 import { undoBracketResult as computeUndoBracketResult } from '@/lib/bracketGen';
@@ -567,10 +567,16 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
               {t.status === 'Upcoming' && (
                 <div className="flex gap-2">
                   {isRegistered ? (
-                    <button onClick={e => { e.stopPropagation(); onUnregister(); }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-red-500/15 hover:text-red-400 transition-colors">
-                      ✓ Registered · Withdraw
-                    </button>
+                    <>
+                      <button onClick={e => { e.stopPropagation(); onUnregister(); }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-300 hover:bg-red-500/15 hover:text-red-400 transition-colors">
+                        ✓ Registered · Withdraw
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); downloadTournamentIcs(t); }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600 transition-colors">
+                        📅 Add to Calendar
+                      </button>
+                    </>
                   ) : locked ? (
                     <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm bg-slate-800 text-slate-500 cursor-not-allowed">
                       <Lock size={13}/>
