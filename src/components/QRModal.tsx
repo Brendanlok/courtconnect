@@ -39,6 +39,7 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
   const calibrating = isCalibrating(user);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, 'My QR Code');
 
   useEffect(() => {
@@ -55,14 +56,22 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
       try {
         await navigator.share({ title: `${user.displayName} on CourtConnect`, url: qrPayload });
         return;
-      } catch { /* user cancelled or not supported */ }
+      } catch (e) {
+        // AbortError = user cancelled the share sheet — respect that, don't
+        // fall through to an unwanted clipboard copy. Any other error (share
+        // API present but broken) falls through to the clipboard fallback.
+        if (e instanceof Error && e.name === 'AbortError') return;
+      }
     }
     // Fallback: copy to clipboard
     try {
       await navigator.clipboard.writeText(qrPayload);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
+    }
   };
 
   return (
@@ -86,7 +95,7 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
 
         <div className="flex gap-3 mt-6">
           <Button onClick={handleShare} className="flex-1">
-            {copied ? <><Check size={15}/> Copied!</> : <><Share2 size={15}/> Share</>}
+            {copied ? <><Check size={15}/> Copied!</> : copyFailed ? <><X size={15}/> Couldn&apos;t copy</> : <><Share2 size={15}/> Share</>}
           </Button>
           <Button variant="secondary" onClick={onClose} className="flex-1">
             Close

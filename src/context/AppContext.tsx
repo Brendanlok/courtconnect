@@ -999,7 +999,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         patch.championUsername = participant.username;
         patch.championDisplayName = participant.displayName;
         lookupUserByUsername(participant.username).then(profile => {
-          if (profile?.uid) notifyUser(profile.uid, { type: 'tournament_win', title: '🏆 Tournament Champion', body: `You won ${t.name}!` });
+          if (profile?.uid) notifyUser(profile.uid, { type: 'tournament_win', title: '🏆 Tournament Champion', body: `You won ${t.name}!`, linkTo: `${BASE_PATH}/tournaments/` });
         }).catch(() => {});
       }
     }

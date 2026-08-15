@@ -12,6 +12,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const { user } = useApp();
   const { ref: panelRef, dialogProps } = useModalA11y(open, onClose, 'Invite Friends');
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const [count, setCount] = useState<number | null>(null);
 
   const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${BASE_PATH}` : 'https://brendanlok.github.io/courtconnect';
@@ -31,13 +32,21 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
       try {
         await navigator.share({ title: 'Join me on CourtConnect', text: `Play badminton, track MMR, and find matches — join me on CourtConnect!`, url: inviteLink });
         return;
-      } catch { /* user cancelled or not supported */ }
+      } catch (e) {
+        // AbortError = user cancelled the share sheet — respect that, don't
+        // fall through to an unwanted clipboard copy. Any other error (share
+        // API present but broken) falls through to the clipboard fallback.
+        if (e instanceof Error && e.name === 'AbortError') return;
+      }
     }
     try {
       await navigator.clipboard.writeText(inviteLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
+    }
   };
 
   return (
@@ -62,7 +71,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
 
         <div className="flex gap-3 mt-6">
           <Button onClick={handleShare} className="flex-1">
-            {copied ? <><Check size={15}/> Copied!</> : <><Share2 size={15}/> Share Link</>}
+            {copied ? <><Check size={15}/> Copied!</> : copyFailed ? <><X size={15}/> Couldn&apos;t copy</> : <><Share2 size={15}/> Share Link</>}
           </Button>
           <Button variant="secondary" onClick={onClose} className="flex-1">
             Close

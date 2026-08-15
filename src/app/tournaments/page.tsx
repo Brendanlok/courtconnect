@@ -1198,7 +1198,7 @@ function BracketView({ bracket, participants, onReportResult, onUndoResult }: {
   const undoableIds = useMemo(() => new Set(
     bracket.filter(m => computeUndoBracketResult(bracket, m.id) !== null).map(m => m.id)
   ), [bracket]);
-  const rounds      = [...new Set(bracket.map(b => b.round))].sort();
+  const rounds      = [...new Set(bracket.map(b => b.round))].sort((a, b) => a - b);
   const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
   const r1Count     = byRound[0]?.length ?? 1;
   const totalH      = r1Count * CARD_H + (r1Count - 1) * BASE_GAP;

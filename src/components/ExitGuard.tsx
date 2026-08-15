@@ -84,7 +84,7 @@ export function ExitGuard() {
   if (!showToast) return null;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800/95 backdrop-blur border border-slate-700 text-slate-100 text-sm font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none">
+    <div role="status" aria-live="polite" className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800/95 backdrop-blur border border-slate-700 text-slate-100 text-sm font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none">
       Tap back again to exit
     </div>
   );
