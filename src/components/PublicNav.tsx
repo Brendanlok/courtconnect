@@ -76,14 +76,23 @@ const ALL_LINKS = [...RATINGS_ITEMS, ...COACHING_ITEMS, ...FLAT_LINKS];
 export function PublicNav() {
   const onAuthClick = usePublicAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!mobileOpen) return;
     const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    // Same click-outside pattern as DropdownMenu above — was Escape/link-tap
+    // only, so tapping anywhere else on the page (outside the panel and its
+    // own toggle button) left the menu stuck open.
+    const mouseHandler = (e: MouseEvent) => { if (headerRef.current && !headerRef.current.contains(e.target as Node)) setMobileOpen(false); };
     document.addEventListener('keydown', keyHandler);
-    return () => document.removeEventListener('keydown', keyHandler);
+    document.addEventListener('mousedown', mouseHandler);
+    return () => {
+      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('mousedown', mouseHandler);
+    };
   }, [mobileOpen]);
   return (
-    <header className="sticky top-0 z-30 bg-[#020817]/90 backdrop-blur border-b border-slate-800">
+    <header ref={headerRef} className="sticky top-0 z-30 bg-[#020817]/90 backdrop-blur border-b border-slate-800">
       <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">
         <a href={`${BASE_PATH}/`} className="flex items-center gap-2 font-black text-lg shrink-0">
           <span>🏸</span> CourtConnect

@@ -154,7 +154,11 @@ export default function Chat() {
     setInput('');
   };
 
-  const filtered = convs.filter(c => c.participant.displayName.toLowerCase().includes(query.toLowerCase()));
+  const q = query.trim().toLowerCase();
+  const filtered = convs.filter(c => !q
+    || c.participant.displayName.toLowerCase().includes(q)
+    || c.participant.username.toLowerCase().includes(q)
+    || c.lastMessage.toLowerCase().includes(q));
   const totalUnread = convs.reduce((s, c) => s + c.unread, 0);
 
   const ConvList = (
@@ -169,7 +173,9 @@ export default function Chat() {
       </div>
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 && (
-          <p className="text-slate-500 text-sm text-center py-10">No conversations yet.</p>
+          <p className="text-slate-500 text-sm text-center py-10">
+            {convs.length === 0 ? 'No conversations yet.' : 'No conversations match your search.'}
+          </p>
         )}
         {filtered.map(c => (
           <button key={c.id} onClick={() => openConv(c.id)} className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left

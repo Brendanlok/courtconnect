@@ -142,10 +142,11 @@ export async function generateMatchRecapBlob(data: RecapData): Promise<Blob> {
     y += 20;
   }
 
-  // Footer: venue + date
-  ctx.font = '500 28px sans-serif';
-  ctx.fillStyle = COLOR.slate400;
+  // Footer: venue + date — same width-fit as the name/winner text above, a
+  // long venue name was rendering off-canvas at a fixed 28px.
   const footer = [data.venue, data.dateLabel].filter(Boolean).join('  ·  ');
+  ctx.font = `500 ${fitText(ctx, footer, W - 160, 28, 500, 20)}px sans-serif`;
+  ctx.fillStyle = COLOR.slate400;
   ctx.fillText(footer, W / 2, y);
 
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
