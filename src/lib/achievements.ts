@@ -1,4 +1,5 @@
 import type { Match, Tournament, UserProfile } from '@/types';
+import { CALIBRATION_GAMES } from './utils';
 
 // Achievement badges — computed live from match history + profile on every
 // render (useMemo in AppContext), not stored anywhere. Every input already
@@ -61,7 +62,15 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tourn
   }
   if (maxStreak >= HOT_STREAK) earned.add('hot_streak');
 
-  if (wins.some(m => (m.mmrChange ?? 0) >= GIANT_SLAYER_MMR_GAIN)) earned.add('giant_slayer');
+  // ponytail: K=48 during calibration (first CALIBRATION_GAMES confirmed
+  // matches) makes mmrChange an unreliable proxy for opponent strength — a
+  // routine win can cross GIANT_SLAYER_MMR_GAIN with zero rating gap. Exclude
+  // those matches by position in the confirmed history instead of a real
+  // opponent-MMR field (would need a new Match column + write-path change).
+  // Doesn't cover a later re-placement after 90+ days inactive — upgrade to a
+  // stored per-match opponent-MMR/kFactor if that edge case matters.
+  const postCalibrationWins = confirmed.slice(CALIBRATION_GAMES).filter(m => m.winnerId === user.uid);
+  if (postCalibrationWins.some(m => (m.mmrChange ?? 0) >= GIANT_SLAYER_MMR_GAIN)) earned.add('giant_slayer');
 
   if (wins.some(m => (m.liveStats?.biggestComebackPoints ?? 0) >= COMEBACK_THRESHOLD)) earned.add('comeback_king');
 
