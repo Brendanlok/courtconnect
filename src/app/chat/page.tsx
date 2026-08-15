@@ -23,6 +23,10 @@ export default function Chat() {
   // A real conversation the user just started but hasn't sent a first message
   // for yet — no conversation row exists until then, so it isn't in `convs`.
   const [pendingRealConv, setPendingRealConv] = useState<Conversation | null>(null);
+  // Set when a ?uid=/?realUid= deep link (from Find a Coach, a player card, or a
+  // notification) can't be resolved — stale uid, network hiccup, or hidden profile
+  // all land here so the page shows something instead of silently doing nothing.
+  const [deepLinkError, setDeepLinkError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Open or create a conversation for a player uid passed via ?uid= (demo
@@ -37,7 +41,7 @@ export default function Chat() {
       const existing = convs.find(c => c.participant.uid === realUid);
       if (existing) { setActiveId(existing.id); setMobileView('chat'); return; }
       lookupUserByUid(realUid).then(data => {
-        if (!data) return;
+        if (!data) { setDeepLinkError("That player couldn't be found — their profile may be private or no longer exists."); setMobileView('chat'); return; }
         const participant = {
           uid: realUid, username: data.username ?? realUid, displayName: data.displayName ?? 'Player',
           email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
@@ -49,7 +53,7 @@ export default function Chat() {
         setPendingRealConv({ id: `pending_${realUid}`, participant, lastMessage: '', lastAt: new Date().toISOString(), unread: 0, messages: [] });
         setActiveId(`pending_${realUid}`);
         setMobileView('chat');
-      }).catch(() => {});
+      }).catch(() => { setDeepLinkError("Couldn't open that conversation — check your connection and try again."); setMobileView('chat'); });
       return;
     }
     if (!uid) return;
@@ -61,7 +65,7 @@ export default function Chat() {
       setConvs(cs => cs.map(c => c.id === existing.id ? { ...c, unread: 0 } : c));
     } else {
       const participant = [ME, ...PLAYERS].find(p => p.uid === uid);
-      if (!participant) return;
+      if (!participant) { setDeepLinkError("That player couldn't be found."); setMobileView('chat'); return; }
       const newConv = {
         id: `conv_${uid}_${Date.now()}`,
         participant,
@@ -261,9 +265,9 @@ export default function Chat() {
       </div>
     </div>
   ) : (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 text-sm h-full">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-3 text-slate-500 text-sm h-full px-6 text-center">
       <MessageCircle size={28} className="opacity-30"/>
-      <p>No conversations yet. Challenge a player to get started!</p>
+      <p>{deepLinkError || 'No conversations yet. Challenge a player to get started!'}</p>
       <Link href="/players/"
         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition-colors">
         Browse Players
