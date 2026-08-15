@@ -1,0 +1,12 @@
+User-Agent: *
+Allow: /courtconnect/
+Disallow: /courtconnect/matches
+Disallow: /courtconnect/chat
+Disallow: /courtconnect/clubs
+Disallow: /courtconnect/leaderboard
+Disallow: /courtconnect/live
+Disallow: /courtconnect/players
+Disallow: /courtconnect/profile
+Disallow: /courtconnect/tournaments
+
+Sitemap: https://brendanlok.github.io/courtconnect/sitemap.xml
