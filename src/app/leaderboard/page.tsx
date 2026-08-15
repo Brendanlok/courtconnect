@@ -28,7 +28,13 @@ export default function Leaderboard() {
   const { user, following, allRealPlayers } = useApp();
   const [tab,           setTab]          = useState<Tab>('Nationwide');
   const [query,         setQuery]        = useState('');
-  const [selState,      setSelState]     = useState<string>(user.state);
+  // Same fallback handleCountryChange uses when switching back to the
+  // user's own country below — non-MY users have their real location in
+  // .region, not .state (.state is a required-but-unused MalaysiaState
+  // default for them). Initializing from .state alone left the By-Region
+  // tab filtering on a value that could never match any non-MY player,
+  // including the user's own row, until they touched the country dropdown.
+  const [selState,      setSelState]     = useState<string>(user.region ?? user.state);
   const [sortKey,       setSortKey]      = useState<SortKey>('mmr');
   const [tierFilter,    setTierFilter]   = useState<Tier | 'All'>('All');
   const userCountry = user.country ?? 'Malaysia';
