@@ -5,6 +5,7 @@ import { lookupUserByUsername, notifyUser } from '@/lib/supabaseService';
 import { seasonNumberForDate } from '@/lib/seasons';
 import { BASE_PATH, peekReferral, consumeReferral } from '@/lib/utils';
 import { ME, PLAYERS } from '@/lib/data';
+import { trackEvent } from '@/lib/analytics';
 
 interface AuthCtx {
   authUser: CompatUser | null;
@@ -139,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { emailRedirectTo: verificationRedirectUrl() },
     });
     if (error) return friendlyError(error.message);
+    trackEvent('sign_up', { method: 'email' });
     // When email confirmation is required, Supabase returns no active session
     // for the new (unconfirmed) user, so the auth-state listener below never
     // fires and the signup form silently looked like nothing happened. Set

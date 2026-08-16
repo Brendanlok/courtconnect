@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff, GraduationCap } from 'lucide-react';
+import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff, GraduationCap, LifeBuoy } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
 import type { CountryCode, MalaysiaState } from '@/types';
@@ -564,6 +564,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <span className="text-xs text-slate-500">Username</span>
             <span className="text-xs text-slate-300 font-semibold">@{user.username} · cannot be changed</span>
           </div>
+
+          {/* Report a problem — mailto keeps this a static export, no backend needed */}
+          <a href={`mailto:chanlokk97@gmail.com?subject=${encodeURIComponent('CourtConnect — problem report')}&body=${encodeURIComponent(`What happened:\n\n\n— sent from @${user.username}'s account`)}`}
+            className="flex items-center gap-2 w-full px-3 py-2.5 border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-medium transition-colors">
+            <LifeBuoy size={13}/> Report a problem
+          </a>
 
           {/* Delete account */}
           <div className="border-t border-slate-800/80 pt-3">

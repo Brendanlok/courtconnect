@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { AuthGate } from '@/components/AuthGate';
 import { BASE_PATH } from '@/lib/utils';
+import { GA_MEASUREMENT_ID } from '@/lib/analytics';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -66,6 +67,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* Visitor analytics — no-op until NEXT_PUBLIC_GA_MEASUREMENT_ID is set.
+            Navigation here is full-page (window.location.href, no client router),
+            so GA's own config call below already fires a page_view per load —
+            no SPA route-change wiring needed. */}
+        {GA_MEASUREMENT_ID && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
+            <script dangerouslySetInnerHTML={{ __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_MEASUREMENT_ID}');
+            `}}/>
+          </>
+        )}
         {/* SW registration — must be inline script, not next/script, for static export */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{if(localStorage.getItem('cc_theme')==='light')document.documentElement.classList.add('light');}catch(e){}}());
