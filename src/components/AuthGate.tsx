@@ -10,6 +10,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { ExitGuard } from '@/components/ExitGuard';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ToastStack } from '@/components/ToastStack';
+import { InstallPrompt } from '@/components/InstallPrompt';
 import { SeasonRecapModal } from '@/components/SeasonRecapModal';
 import { captureReferralFromUrl } from '@/lib/utils';
 import { PublicAuthProvider } from '@/context/PublicAuthContext';
@@ -110,6 +111,7 @@ function AppShell({ children, onboardingDone, setOnboardingDone }: {
       <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <InstallPrompt />
           <Topbar />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-20 md:pb-6">
             <div className="max-w-5xl mx-auto">
