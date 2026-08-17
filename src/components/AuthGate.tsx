@@ -16,6 +16,7 @@ import { captureReferralFromUrl } from '@/lib/utils';
 import { PublicAuthProvider } from '@/context/PublicAuthContext';
 import { PublicNav, PublicFooter } from '@/components/PublicNav';
 import { MarketingHome } from '@/components/MarketingHome';
+import { NotFoundView } from '@/components/NotFoundView';
 
 // Routes that render for logged-out visitors instead of falling straight to
 // the login wall — the public, DUPR-style site (see DEVLOG 2026-08-12).
@@ -23,7 +24,14 @@ import { MarketingHome } from '@/components/MarketingHome';
 // unchanged (still just AuthModal when signed out), so none of the existing
 // authenticated routes/nav are affected.
 const PUBLIC_ROUTES = ['/rankings', '/how-it-works', '/about', '/start-a-club', '/events', '/find-a-coach', '/become-a-coach'];
+// Routes that exist but require login — distinct from a genuinely unknown
+// URL, so a logged-out visitor still gets the login wall here (correct: they
+// need to sign in to see it) rather than a "page not found".
+const PRIVATE_ROUTES = ['/chat', '/clubs', '/leaderboard', '/live', '/matches', '/players', '/profile', '/tournaments'];
+const PREFIX_ROUTES = ['/rankings/', '/players/', '/clubs/'];
 const norm = (p: string) => p.replace(/\/+$/, '') || '/';
+const isKnownRoute = (p: string) =>
+  p === '/' || PUBLIC_ROUTES.includes(p) || PRIVATE_ROUTES.includes(p) || PREFIX_ROUTES.some((pre) => p.startsWith(pre));
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { authUser, isLoading, needsEmailVerification, needsProfileSetup } = useAuth();
@@ -74,6 +82,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
         </PublicAuthProvider>
       );
     }
+    // A truly unknown URL (mistyped/stale link) — show "not found" instead
+    // of silently dropping the visitor onto the login wall with no
+    // explanation of why the page they wanted isn't there.
+    if (!isKnownRoute(path)) return <NotFoundView fullScreen />;
     return <AuthModal />;
   }
 
