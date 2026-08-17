@@ -1,5 +1,37 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-17a] — Real OG banner for link previews
+
+**Trigger:** Top of the To-Do board — link previews (WhatsApp/social share)
+were showing a squished 512x512 app icon instead of a proper banner, flagged
+as a placeholder in a `ponytail:` comment in `layout.tsx` from an earlier
+session ("swap for a proper OG banner if link-preview quality matters
+later"). Launch is approaching and links will spread via chat shares, so it
+mattered now.
+
+**No image-gen tooling in this environment**, but `sharp` was already a
+transitive dep (used by `scripts/gen-icons.mjs` for the PWA icon set) — new
+`scripts/gen-og-image.mjs` reuses the same racket/shuttlecock brand SVG at
+1200x630 with the CourtConnect wordmark and tagline, rasterized via sharp.
+Output: `public/og-image.png`.
+
+Wired into `layout.tsx`'s `openGraph`/`twitter` metadata (removed the old
+placeholder comment); `twitter.card` upgraded from `summary` to
+`summary_large_image` since a real banner is now available.
+
+**Caught before shipping:** the local `next build` (no `NEXT_PUBLIC_BASE_PATH`
+set) resolves `og:image` to `https://brendanlok.github.io/og-image.png` —
+looks wrong, missing `/courtconnect`. Rebuilt once with
+`NEXT_PUBLIC_BASE_PATH=/courtconnect` (matching the GitHub Actions deploy
+env) to confirm it resolves correctly to
+`.../courtconnect/og-image.png` before trusting it — it does; the local
+build just doesn't set that env var, same as every other asset path in this
+repo.
+
+**Verified live:** polled the deployed page after push — `og:image` and
+`twitter:image` both point at `.../courtconnect/og-image.png` and the file
+200s.
+
 ## [2026-08-13j] — Verified migration 0030 after Lok ran it
 
 **Trigger:** Lok ran the pending migration(s) and asked to verify live.
