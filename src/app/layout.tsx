@@ -23,23 +23,20 @@ export const metadata: Metadata = {
   title: 'CourtConnect',
   description: 'Track your MMR, find matches, and compete in badminton tournaments — Malaysia',
   applicationName: 'CourtConnect',
-  // ponytail: reuses the existing 512x512 app icon as the share-preview image
-  // (square, not the ideal 1200x630) — no image-gen tooling in this session.
-  // Swap for a proper OG banner if link-preview quality matters later.
   openGraph: {
     title: 'CourtConnect — Badminton Ranking Platform, Malaysia',
     description: 'Track your MMR, find matches, and compete in badminton tournaments — Malaysia',
     url: SITE_URL,
     siteName: 'CourtConnect',
-    images: [{ url: 'icons/icon-512x512.png', width: 512, height: 512 }],
+    images: [{ url: 'og-image.png', width: 1200, height: 630 }],
     locale: 'en_MY',
     type: 'website',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'CourtConnect — Badminton Ranking Platform, Malaysia',
     description: 'Track your MMR, find matches, and compete in badminton tournaments — Malaysia',
-    images: ['icons/icon-512x512.png'],
+    images: ['og-image.png'],
   },
   manifest: `${BASE_PATH}/manifest.json`,
   appleWebApp: {
