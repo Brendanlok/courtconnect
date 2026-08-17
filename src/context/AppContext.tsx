@@ -875,7 +875,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const next = { ...u, ...patch };
       try {
         // persist all profile fields except seed-only ones
-        const { uid, username, globalRank, stats, mmr, tier, ...rest } = next;
+        const { uid: _uid, username: _username, globalRank: _globalRank, stats: _stats, mmr: _mmr, tier: _tier, ...rest } = next;
         localStorage.setItem('cc_userProfile', JSON.stringify(rest));
       } catch { /* ignore */ }
       return next;
