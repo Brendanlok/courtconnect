@@ -1,5 +1,30 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-18b] — Log to Profile now prefills from the live match
+
+**Trigger:** Flagged in today's code audit and confirmed with Lok — the
+standalone Live Match "Log to Profile" button opened `LogMatchModal`
+completely blank, discarding the format, venue, and scores from the match
+just played. Lok's call: prefill it.
+
+`LogMatchModal` gained an optional `prefill` prop (`type`, `venue`, `games`,
+`opponentName`) — every other caller (`matches/page.tsx`) is unaffected
+since it's optional. `live/page.tsx` now passes the completed `LiveMatch`'s
+format, venue, and per-game scores straight through. Opponent auto-match is
+best-effort: `teamBName` is free-text on the live-match setup form (never
+tied to a real `uid`), so it's only matched against known players by exact
+display name, and only for singles — doubles team names aren't split
+per-player so opponent/teammate stay unmatched there (format/venue/scores
+still prefill).
+
+`ponytail:` LogMatchModal caps at 3 logged games; a bestOf-5 live match that
+actually went 4-5 games gets truncated to the first 3. Add a 4th/5th game
+slot if that turns out to matter in practice.
+
+**Verified:** `npx next build` clean. Could not click-test live — same
+recurring limitation as every prior session, no demo/guest login past the
+real Supabase auth wall in this environment.
+
 ## [2026-08-17a] — Real OG banner for link previews
 
 **Trigger:** Top of the To-Do board — link previews (WhatsApp/social share)
