@@ -395,7 +395,13 @@ function PlayerSearch({
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  // Clears the search text when the parent externally deselects (e.g. match
+  // type switch resets opp1). Must NOT fire on mount -- value starts null
+  // whenever there's no exact auto-match, and firing here would immediately
+  // wipe out the initialQuery name hint right after the state above sets it.
+  const mounted = useRef(false);
   useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
     if (!value) setQuery('');
   }, [value]);
 
