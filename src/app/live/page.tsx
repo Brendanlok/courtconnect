@@ -634,9 +634,11 @@ export default function LivePage() {
 
       {logOpen && <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)} prefill={{
         type: match.format,
-        venue: match.venue,
+        // Setup screen falls back to these labels when left blank — not real
+        // data, don't carry them into the log form as if they were.
+        venue: match.venue !== 'Venue TBD' ? match.venue : undefined,
         games: match.games.map(g => ({ p1: String(g.a), p2: String(g.b) })),
-        opponentName: match.teamBName,
+        opponentName: match.teamBName !== 'Opponent' ? match.teamBName : undefined,
       }}/>}
     </div>
   );

@@ -375,15 +375,16 @@ function ScoreWheel({ value, onChange }: { value: string; onChange: (v: string) 
 }
 
 function PlayerSearch({
-  label, value, onChange, exclude = [], format,
+  label, value, onChange, exclude = [], format, initialQuery,
 }: {
   label: string;
   value: UserProfile | null;
   onChange: (p: UserProfile | null) => void;
   exclude?: string[];
   format: MatchType;
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState(value ? `${value.displayName} (@${value.username})` : '');
+  const [query, setQuery] = useState(value ? `${value.displayName} (@${value.username})` : initialQuery ?? '');
   const [show, setShow]   = useState(false);
   const ref               = useRef<HTMLDivElement>(null);
   const { allRealPlayers } = useApp();
@@ -638,7 +639,8 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
 
               {/* Singles */}
               {!isDoubles && (
-                <PlayerSearch label="Opponent" value={opp1} onChange={setOpp1} format={type} />
+                <PlayerSearch label="Opponent" value={opp1} onChange={setOpp1} format={type}
+                  initialQuery={!opp1 ? prefill?.opponentName : undefined} />
               )}
 
               {/* Doubles */}
