@@ -1,4 +1,4 @@
-import type { Tier, MalaysiaState, CountryCode } from '@/types';
+import type { Tier, MalaysiaState, CountryCode, Match } from '@/types';
 
 // Matches next.config.ts's basePath — needed when building absolute links
 // (QR codes, share links, email redirect URLs) since window.location.origin
@@ -249,6 +249,24 @@ export function approxDistanceKm(a: { area: string; state: MalaysiaState }, b: {
 
 export function skillMatch(a: number, b: number) {
   return Math.max(0, Math.round(100 - (Math.abs(a - b) / 600) * 100));
+}
+
+// Doubles synergy: confirmed record for `myUid` when teamed with `partnerUid`
+// specifically (not partner's overall record). Used to show a "won 4/5 with
+// Zack" badge when picking a teammate, same data source as the profile-page
+// Doubles Partners section.
+export function partnerRecord(matches: Match[], myUid: string, partnerUid: string): { wins: number; losses: number } | null {
+  let wins = 0, losses = 0;
+  for (const m of matches) {
+    if (m.status !== 'Confirmed' || m.type === 'MS' || m.type === 'WS') continue;
+    const iAmP1 = m.player1Id === myUid;
+    const iAmP2 = m.player2Id === myUid;
+    if (!iAmP1 && !iAmP2) continue;
+    const myPartnerId = iAmP1 ? m.player1PartnerId : m.player2PartnerId;
+    if (myPartnerId !== partnerUid) continue;
+    if (m.winnerId === myUid) wins++; else losses++;
+  }
+  return wins + losses > 0 ? { wins, losses } : null;
 }
 
 export const MATCH_TYPE_LABEL: Record<string, string> = {

@@ -14,7 +14,7 @@ import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
 import { VenueInput } from '@/components/VenueInput';
 import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
-import { calcMMRChange, marginMultiplier } from '@/lib/utils';
+import { calcMMRChange, marginMultiplier, partnerRecord } from '@/lib/utils';
 import { antiCheatCheck, liveMatchIntegrityCheck, liveBonusEligible, LIVE_BONUS_MULTIPLIER } from '@/lib/antiCheat';
 
 type RecordMode = 'manual' | 'video';
@@ -44,7 +44,8 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { allRealPlayers } = useApp();
+  const { allRealPlayers, user, matches } = useApp();
+  const isPartnerPicker = label === 'Your partner';
   // Real signed-up opponents alongside the seed/demo roster — see same fix
   // in LogMatchModal's PlayerSearch.
   const results = [...PLAYERS, ...allRealPlayers]
@@ -92,16 +93,21 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
           <div className="max-h-40 overflow-y-auto">
             {results.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-4">No players found</p>
-            ) : results.map(p => (
-              <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username }); setOpen(false); setQ(''); }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
-                <Avatar name={p.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
-                <div>
-                  <p className="text-xs font-semibold">{p.displayName}</p>
-                  <p className="text-[10px] text-slate-500">@{p.username}</p>
-                </div>
-              </button>
-            ))}
+            ) : results.map(p => {
+              const synergy = isPartnerPicker ? partnerRecord(matches, user.uid, p.uid) : null;
+              return (
+                <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username }); setOpen(false); setQ(''); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
+                  <Avatar name={p.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
+                  <div>
+                    <p className="text-xs font-semibold">{p.displayName}</p>
+                    <p className="text-[10px] text-slate-500">
+                      @{p.username}{synergy && <span className="text-emerald-400"> · Won {synergy.wins}/{synergy.wins + synergy.losses} together</span>}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

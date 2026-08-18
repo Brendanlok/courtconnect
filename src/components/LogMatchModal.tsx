@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore } from '@/lib/utils';
+import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore, partnerRecord } from '@/lib/utils';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -387,7 +387,8 @@ function PlayerSearch({
   const [query, setQuery] = useState(value ? `${value.displayName} (@${value.username})` : initialQuery ?? '');
   const [show, setShow]   = useState(false);
   const ref               = useRef<HTMLDivElement>(null);
-  const { allRealPlayers } = useApp();
+  const { allRealPlayers, user, matches } = useApp();
+  const isTeammatePicker  = label === 'Teammate';
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShow(false); };
@@ -439,6 +440,7 @@ function PlayerSearch({
               <p className="text-xs text-slate-500 px-4 py-3 text-center">No players found</p>
             ) : filtered.map(p => {
               const ineligible = formatDisabledForGender(format, p.gender);
+              const synergy = isTeammatePicker && !ineligible ? partnerRecord(matches, user.uid, p.uid) : null;
               return (
                 <button key={p.uid} onMouseDown={() => select(p)} disabled={ineligible}
                   className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors
@@ -446,6 +448,7 @@ function PlayerSearch({
                   <span className="text-sm font-medium min-w-0">
                     <span className="block truncate">{p.displayName} <span className="text-slate-400 font-normal">(@{p.username})</span></span>
                     {ineligible && <span className="block text-[10px] text-red-400 font-normal mt-0.5">Not eligible for this match</span>}
+                    {synergy && <span className="block text-[10px] text-emerald-400 font-normal mt-0.5">Won {synergy.wins}/{synergy.wins + synergy.losses} together</span>}
                   </span>
                   {!ineligible && (
                     <span className="text-xs text-amber-400 shrink-0 ml-2">
