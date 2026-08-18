@@ -19,6 +19,7 @@ import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, User
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { auth } from '@/lib/supabase';
 
 const RESULT_FILTERS = ['All', 'Wins', 'Losses', 'Pending'] as const;
 type ResultFilter = typeof RESULT_FILTERS[number];
@@ -92,12 +93,14 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
 
   // staticPlayer.uid === 'me' only means the URL matched the ME seed
   // placeholder's username ("brendanlok") — it does NOT mean the current
-  // viewer is Lok. Once real auth resolves, ctxUser is replaced with the
-  // signed-in account's real uid/username, so /players/brendanlok/ must only
-  // count as "isMe" while ctxUser is still the pre-auth ME placeholder too;
-  // otherwise any signed-in user landing on that URL saw their OWN account's
-  // data mislabeled as this static demo page.
-  const isMe   = forceIsMe || (staticPlayer!.uid === 'me' && ctxUser.uid === 'me');
+  // viewer is Lok. ctxUser.uid is ALWAYS the 'me' sentinel by app-wide
+  // convention (see AppContext's onAuthStateChanged handler), even for a
+  // fully real signed-in account — the real uid lives in auth.currentUser,
+  // not on ctxUser. So checking ctxUser.uid here can never tell demo mode
+  // apart from a real session; check auth.currentUser directly instead.
+  // Without this, any signed-in user landing on /players/brendanlok/ saw
+  // their OWN account's data mislabeled as this static demo page.
+  const isMe   = forceIsMe || (staticPlayer!.uid === 'me' && !auth.currentUser);
   const player = isMe ? ctxUser : staticPlayer!;
 
   const progress = tierProgress(player.mmr, player.tier);
