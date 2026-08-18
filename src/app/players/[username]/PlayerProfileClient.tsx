@@ -90,7 +90,14 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
 
   if (!staticPlayer && !forceIsMe) return notFound();
 
-  const isMe   = forceIsMe || staticPlayer!.uid === 'me';
+  // staticPlayer.uid === 'me' only means the URL matched the ME seed
+  // placeholder's username ("brendanlok") — it does NOT mean the current
+  // viewer is Lok. Once real auth resolves, ctxUser is replaced with the
+  // signed-in account's real uid/username, so /players/brendanlok/ must only
+  // count as "isMe" while ctxUser is still the pre-auth ME placeholder too;
+  // otherwise any signed-in user landing on that URL saw their OWN account's
+  // data mislabeled as this static demo page.
+  const isMe   = forceIsMe || (staticPlayer!.uid === 'me' && ctxUser.uid === 'me');
   const player = isMe ? ctxUser : staticPlayer!;
 
   const progress = tierProgress(player.mmr, player.tier);
