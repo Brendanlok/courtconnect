@@ -84,4 +84,22 @@ console.log('PASS unknown match id is a no-op');
 }
 console.log('PASS duplicate display names stay distinguishable by username');
 
+// 6. Every participant count from 2-20 must generate without throwing, and
+// every round-1 match must have at least one real player (no null-vs-null
+// bye pairing). Regression test for a real crash: byes used to be appended
+// as trailing nulls, so 2+ byes (e.g. 5, 6, 9-14, 17-20 participants) paired
+// null with null and threw reading `.username` off both-null slots.
+for (let n = 2; n <= 20; n++) {
+  const participants = Array.from({ length: n }, (_, i) => p(`P${i}`));
+  const bracket = generateBracket(participants);
+  const r1 = bracket.filter(b => b.round === 1);
+  for (const m of r1) {
+    assert.ok(m.player1 !== 'BYE' || m.player2 !== 'BYE', `${n} participants: a round-1 match can't be BYE vs BYE`);
+  }
+  const totalByes = r1.filter(m => m.player1 === 'BYE' || m.player2 === 'BYE').length;
+  const size = 2 ** Math.ceil(Math.log2(n));
+  assert.strictEqual(totalByes, size - n, `${n} participants: expected ${size - n} byes`);
+}
+console.log('PASS 2-20 participants all generate without a null-vs-null bye match');
+
 console.log('ALL PASS bracketGen');

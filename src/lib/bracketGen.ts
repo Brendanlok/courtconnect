@@ -27,8 +27,15 @@ export function generateBracket(participants: Participant[]): BracketMatch[] {
   if (participants.length < 2) return [];
   const shuffled = shuffle(participants);
   const size = 2 ** Math.ceil(Math.log2(shuffled.length));
-  const slots: (Participant | null)[] = [...shuffled];
-  while (slots.length < size) slots.push(null); // null = bye
+  const byes = size - shuffled.length;
+  // Byes must be spread one-per-pair (never two to a pair) — byes is always
+  // < size/2, so giving the first `byes` participants a bye slot each covers
+  // every bye without ever pairing null with null.
+  const slots: (Participant | null)[] = [];
+  for (let i = 0; i < shuffled.length; i++) {
+    slots.push(shuffled[i]);
+    if (i < byes) slots.push(null); // null = bye
+  }
 
   const round1: BracketMatch[] = [];
   let prevNames: (string | null)[] = [];
