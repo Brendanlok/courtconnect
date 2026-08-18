@@ -455,18 +455,35 @@ function PlayerSearch({
   );
 }
 
-export function LogMatchModal({ open, onClose, plannedMatchId, onLogged }: {
+export interface LogMatchPrefill {
+  type?: MatchType;
+  venue?: string;
+  games?: { p1: string; p2: string }[];
+  /** Best-effort opponent match against known players (singles only — doubles team names aren't split per-player). */
+  opponentName?: string;
+}
+
+export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill }: {
   open: boolean; onClose: () => void; plannedMatchId?: string; onLogged?: (plannedMatchId: string) => void;
+  prefill?: LogMatchPrefill;
 }) {
-  const { user, addMatch, matches } = useApp();
+  const { user, addMatch, matches, allRealPlayers } = useApp();
   const [done,     setDone]     = useState(false);
   const [mode,     setMode]     = useState<'ranked' | 'casual'>('ranked');
-  const [type,     setType]     = useState<MatchType>(() => user.gender === 'Female' ? 'WS' : 'MS');
-  const [opp1,     setOpp1]     = useState<UserProfile | null>(null);
+  const [type,     setType]     = useState<MatchType>(() => prefill?.type ?? (user.gender === 'Female' ? 'WS' : 'MS'));
+  const [opp1,     setOpp1]     = useState<UserProfile | null>(() => {
+    if (!prefill?.opponentName || DOUBLES.includes(prefill.type ?? 'MS')) return null;
+    const q = prefill.opponentName.trim().toLowerCase();
+    return [...PLAYERS, ...allRealPlayers].find(p => p.displayName.toLowerCase() === q) ?? null;
+  });
   const [opp2,     setOpp2]     = useState<UserProfile | null>(null);
   const [teammate, setTeammate] = useState<UserProfile | null>(null);
-  const [games,    setGames]    = useState([{ p1:'', p2:'' }, { p1:'', p2:'' }]);
-  const [loc,      setLoc]      = useState('');
+  // LogMatchModal caps at 3 games; a bestOf-5 live match that went the distance
+  // (4-5 games) gets truncated to the first 3 — ponytail: rare edge case, add a
+  // 4th/5th game slot if bestOf-5 matches turn out to actually need it.
+  const [games,    setGames]    = useState(() =>
+    prefill?.games?.length ? prefill.games.slice(0, 3) : [{ p1:'', p2:'' }, { p1:'', p2:'' }]);
+  const [loc,      setLoc]      = useState(prefill?.venue ?? '');
 
   const { ref: panelRef, dialogProps } = useModalA11y(open && !done, onClose, 'Log a Match');
 

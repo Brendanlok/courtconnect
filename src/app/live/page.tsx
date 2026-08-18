@@ -632,7 +632,12 @@ export default function LivePage() {
         </div>
       )}
 
-      {logOpen && <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)}/>}
+      {logOpen && <LogMatchModal open={logOpen} onClose={() => setLogOpen(false)} prefill={{
+        type: match.format,
+        venue: match.venue,
+        games: match.games.map(g => ({ p1: String(g.a), p2: String(g.b) })),
+        opponentName: match.teamBName,
+      }}/>}
     </div>
   );
 }
