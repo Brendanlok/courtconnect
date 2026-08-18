@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
          AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2, RotateCcw } from 'lucide-react';
-import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName, downloadTournamentIcs } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName, downloadTournamentIcs, localDateISO } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { lookupUserByUid } from '@/lib/supabaseService';
 import { undoBracketResult as computeUndoBracketResult } from '@/lib/bracketGen';
@@ -777,8 +777,6 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
 
 // ─── Host Event Modal ─────────────────────────────────────────────────────────
 
-function todayISO(): string { return new Date().toISOString().slice(0, 10); }
-
 function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: Tournament) => Promise<string | null> }) {
   const { user, clubs } = useApp();
 
@@ -926,7 +924,7 @@ function HostModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (t: T
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Date *</span>
-              <input type="date" value={date} min={todayISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
+              <input type="date" value={date} min={localDateISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
             </label>
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Start Time</span>
@@ -1072,7 +1070,7 @@ function EditTournamentModal({ tournament: t, onClose, onSave }: {
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Date *</span>
-              <input type="date" value={date} min={todayISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
+              <input type="date" value={date} min={localDateISO()} onChange={e => setDate(e.target.value)} className={`mt-1 ${inp}`}/>
             </label>
             <label className="block">
               <span className="text-[11px] text-slate-500 font-semibold">Start Time</span>

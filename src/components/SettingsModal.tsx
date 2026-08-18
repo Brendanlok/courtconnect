@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Save, Trash2, AlertTriangle, Globe, Users, Lock, Camera, Bell, BellOff, GraduationCap, LifeBuoy } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName } from '@/lib/utils';
+import { DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, postcodeToLocation, COUNTRIES, getCountryByName, localDateISO } from '@/lib/utils';
 import type { CountryCode, MalaysiaState } from '@/types';
 import type { UserProfile } from '@/types';
 import { supabase, auth } from '@/lib/supabase';
@@ -293,7 +293,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 Birthday {birthday && <span className="text-slate-400 font-normal">· age {Math.floor((Date.now() - new Date(birthday).getTime()) / 31557600000)}</span>}
               </p>
               <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
-                max={new Date().toISOString().slice(0,10)}
+                max={localDateISO()}
                 className={`${inp} text-sm`}/>
             </div>
           </div>

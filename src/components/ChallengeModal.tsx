@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { X, Swords, MapPin, Calendar, MessageSquare } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { MATCH_TYPE_LABEL } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, localDateISO } from '@/lib/utils';
 import type { UserProfile, MatchType, Challenge } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -113,7 +113,7 @@ export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; o
                 <Calendar size={10}/> Date
               </p>
               <input value={date} onChange={e => setDate(e.target.value)} required
-                type="date" min={new Date().toISOString().slice(0,10)}
+                type="date" min={localDateISO()}
                 className={inp}/>
             </label>
             <label className="block">
