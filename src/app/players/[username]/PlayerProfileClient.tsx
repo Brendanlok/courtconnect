@@ -435,7 +435,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 // notification links elsewhere in the app already do.
                 const partnerHref = p.id === 'me' ? '/profile/' : `/profile/?uid=${p.id}`;
                 return (
-                  <Link key={p.id} href={`${BASE_PATH}${partnerHref}`}
+                  <Link key={p.id} href={partnerHref}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors">
                     {i === 0 && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
@@ -605,7 +605,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             ) : (
               <div className="space-y-2">
                 {playerEvents.slice(0, 5).map(t => (
-                  <a key={t.id} href={`/tournaments/`}
+                  <a key={t.id} href={`${BASE_PATH}/tournaments/`}
                     className="flex items-center gap-3 p-3 bg-slate-800/60 border border-slate-700 hover:border-amber-500/40 rounded-2xl transition-colors group">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm group-hover:text-amber-300 transition-colors truncate">{t.name}</p>
