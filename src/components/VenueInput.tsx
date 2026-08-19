@@ -37,25 +37,42 @@ interface Props {
 }
 
 export function VenueInput({ value, onChange, className, placeholder, required }: Props) {
-  const { venues } = useApp();
+  const { venues, matches } = useApp();
   const pool = useMemo(() => {
     const real = venues.map(v => v.name);
     const seen = new Set(real.map(s => s.toLowerCase()));
     return [...real, ...SEED_VENUES.filter(s => !seen.has(s.toLowerCase()))];
   }, [venues]);
 
+  // Top 3 venues this player has actually logged, most-played first — shown
+  // before they type anything so re-picking a regular court isn't a re-type.
+  // player1Id is always 'me' for the signed-in user's own matches (see Match
+  // type comment).
+  const myVenues = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of matches) {
+      if (m.player1Id !== 'me') continue;
+      const v = m.venue || m.location;
+      if (!v) continue;
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([v]) => v);
+  }, [matches]);
+
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSugg, setShowSugg]       = useState(false);
+  const [showRecent, setShowRecent]   = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShowSugg(false); };
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setShowSugg(false); setShowRecent(false); } };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
   const handleChange = (v: string) => {
     onChange(v);
+    setShowRecent(false);
     if (v.length >= 2) {
       const q = v.toLowerCase();
       const matches = pool.filter(s => s.toLowerCase().includes(q)).slice(0, 5);
@@ -66,18 +83,35 @@ export function VenueInput({ value, onChange, className, placeholder, required }
     }
   };
 
-  const pick = (s: string) => { onChange(s); setShowSugg(false); };
+  const pick = (s: string) => { onChange(s); setShowSugg(false); setShowRecent(false); };
 
   return (
     <div className="relative" ref={ref}>
       <input
         value={value}
         onChange={e => handleChange(e.target.value)}
-        onFocus={() => { if (suggestions.length > 0 && value.length >= 2) setShowSugg(true); }}
+        onFocus={() => {
+          if (suggestions.length > 0 && value.length >= 2) setShowSugg(true);
+          else if (!value && myVenues.length > 0) setShowRecent(true);
+        }}
         placeholder={placeholder ?? 'e.g. Sport Planet, No.5 Jalan SS7/19, 47301 Petaling Jaya'}
         required={required}
         className={className}
       />
+      {showRecent && (
+        <div className="absolute top-full mt-1 left-0 right-0 z-40 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+          <p className="text-[10px] text-slate-500 px-3 pt-2 pb-1 font-semibold uppercase tracking-wide flex items-center gap-1">
+            <MapPin size={9}/> Your venues
+          </p>
+          {myVenues.map((s, i) => (
+            <button key={i} type="button" onMouseDown={() => pick(s)}
+              className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
+              <span className="font-medium text-white">{s.split(',')[0]}</span>
+              <span className="text-slate-400">{s.substring(s.indexOf(','))}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {showSugg && (
         <div className="absolute top-full mt-1 left-0 right-0 z-40 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
           <p className="text-[10px] text-slate-500 px-3 pt-2 pb-1 font-semibold uppercase tracking-wide flex items-center gap-1">
