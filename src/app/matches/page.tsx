@@ -9,6 +9,7 @@ import { LogMatchModal } from '@/components/LogMatchModal';
 import { LiveMatchModal } from '@/components/LiveMatchModal';
 import { CourtTrackModal } from '@/components/CourtTrackModal';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
+import { ChallengeModal } from '@/components/ChallengeModal';
 import {
   CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
   Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
@@ -159,6 +160,7 @@ export default function MatchesPage() {
   const [watchCode, setWatchCode] = useState('');
   const [watchErr,  setWatchErr]  = useState('');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [rematchTarget, setRematchTarget] = useState<{ uid: string; displayName: string; username: string } | null>(null);
   const [logOpen,     setLogOpen]     = useState(false);
   const [logPlannedId, setLogPlannedId] = useState<string | null>(null); // planned match being logged, if any
   const [liveOpen,    setLiveOpen]    = useState(false);
@@ -573,7 +575,18 @@ export default function MatchesPage() {
             body: `${user.displayName} is waiting on you to confirm a match result.`, linkTo: `${BASE_PATH}/matches/`,
           });
         } : undefined}
+        onRematch={selectedMatch && isRealPlayerUid(
+          selectedMatch.player1Id === 'me' ? selectedMatch.player2Id : selectedMatch.player1Id
+        ) ? () => {
+          const m = selectedMatch;
+          const oppId       = m.player1Id === 'me' ? m.player2Id : m.player1Id;
+          const oppName     = m.player1Id === 'me' ? m.player2Name : m.player1Name;
+          const oppUsername = m.player1Id === 'me' ? m.player2Username : m.player1Username;
+          setRematchTarget({ uid: oppId, displayName: oppName, username: oppUsername });
+          setSelectedMatch(null);
+        } : undefined}
       />
+      {rematchTarget && <ChallengeModal opponent={rematchTarget} onClose={() => setRematchTarget(null)}/>}
 
       {logOpen  && <LogMatchModal  open={true} onClose={() => { setLogOpen(false); setLogPlannedId(null); }}
         plannedMatchId={logPlannedId ?? undefined} onLogged={handleMatchLogged}/>}

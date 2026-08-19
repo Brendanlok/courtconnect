@@ -10,7 +10,13 @@ import { VenueInput } from '@/components/VenueInput';
 
 const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 
-export function ChallengeModal({ opponent, onClose }: { opponent: UserProfile; onClose: () => void }) {
+// Only the identity fields are actually used below — narrowed (rather than
+// the full UserProfile) so callers that only have match-record data (e.g.
+// MatchDetailModal's Rematch button) can build a minimal opponent object
+// without fetching a full profile they don't otherwise need.
+type ChallengeTarget = Pick<UserProfile, 'uid' | 'displayName' | 'username'>;
+
+export function ChallengeModal({ opponent, onClose }: { opponent: ChallengeTarget; onClose: () => void }) {
   const { user, sendChallenge } = useApp();
 
   const [format,  setFormat]  = useState<MatchType>('MS');

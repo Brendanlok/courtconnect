@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import type { Match } from '@/types';
-import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3, Share2, Loader2 } from 'lucide-react';
+import { X, MapPin, Calendar, Clock, CheckCircle, XCircle, Radio, Edit3, Share2, Loader2, Swords } from 'lucide-react';
 import { MATCH_TYPE_LABEL, formatDate, formatTime, isValidGameScore } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -18,9 +18,10 @@ interface Props {
   onCancel?: () => void;
   onResubmit?: (games: { p1: number; p2: number }[]) => void;
   onNudge?: () => void;
+  onRematch?: () => void;
 }
 
-export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel, onResubmit, onNudge }: Props) {
+export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCancel, onResubmit, onNudge, onRematch }: Props) {
   const { ref: panelRef, dialogProps } = useModalA11y(!!m, onClose, 'Match Details');
   const [correcting, setCorrecting] = useState(false);
   const [correctedGames, setCorrectedGames] = useState<{ p1: string; p2: string }[]>([]);
@@ -358,11 +359,19 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
           {!isPending && !isDisputed && !isCancelled && (
             <>
               {shareError && <p className="text-xs text-red-400 text-center mt-3">{shareError}</p>}
-              <button onClick={handleShare} disabled={sharing}
-                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 rounded-xl text-sm font-semibold transition-colors">
-                {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15} className="text-emerald-400"/>}
-                {sharing ? 'Generating…' : 'Share Recap'}
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button onClick={handleShare} disabled={sharing}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 border border-slate-700 rounded-xl text-sm font-semibold transition-colors">
+                  {sharing ? <Loader2 size={15} className="animate-spin"/> : <Share2 size={15} className="text-emerald-400"/>}
+                  {sharing ? 'Generating…' : 'Share Recap'}
+                </button>
+                {onRematch && (
+                  <button onClick={onRematch}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 hover:bg-amber-500/15 border border-slate-700 hover:border-amber-500/40 rounded-xl text-sm font-semibold text-amber-400 transition-colors">
+                    <Swords size={15}/> Rematch
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
