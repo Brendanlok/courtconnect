@@ -56,12 +56,15 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
         return;
       }
 
-      // Parse the QR payload — either a profile URL (".../players/<username>/") or
-      // the legacy {"uid":"...","username":"...","displayName":"..."} JSON payload
+      // Parse the QR payload — a profile URL, either ".../players/<username>/"
+      // (demo/seed accounts) or ".../profile/?uid=<uid>" (real accounts, see
+      // QRModal.tsx) — or the legacy {"uid","username","displayName"} JSON payload
       let payload: { uid?: string; username?: string; displayName?: string } = {};
       try { payload = JSON.parse(result.data); } catch {
-        const match = result.data.match(/\/players\/([^/?#]+)\/?/);
-        if (match) payload = { username: decodeURIComponent(match[1]) };
+        const uidMatch = result.data.match(/\/profile\/?\?uid=([^&#]+)/);
+        const nameMatch = result.data.match(/\/players\/([^/?#]+)\/?/);
+        if (uidMatch) payload = { uid: decodeURIComponent(uidMatch[1]) };
+        else if (nameMatch) payload = { username: decodeURIComponent(nameMatch[1]) };
       }
 
       // First check seed players, then look up in Supabase

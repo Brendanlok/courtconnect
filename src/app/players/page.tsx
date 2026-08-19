@@ -427,7 +427,7 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, 
               <div key={p.uid} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-3.5 py-3">
                 <Avatar name={p.displayName} photoURL={p.photoURL}/>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/players/${p.username}/`} className="font-bold text-sm hover:text-emerald-300 transition-colors truncate block">{p.displayName}</Link>
+                  <Link href={profileHref(p)} className="font-bold text-sm hover:text-emerald-300 transition-colors truncate block">{p.displayName}</Link>
                   <p className="text-[11px] text-slate-500">@{p.username} · {p.mmr.toLocaleString()} MMR</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <TierBadge tier={p.tier}/>
