@@ -107,7 +107,8 @@ export function VenueInput({ value, onChange, className, placeholder, required }
             <button key={i} type="button" onMouseDown={() => pick(s)}
               className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
               <span className="font-medium text-white">{s.split(',')[0]}</span>
-              <span className="text-slate-400">{s.substring(s.indexOf(','))}</span>
+              {/* no comma (custom-typed venue) -> nothing after the name, not a duplicate of the whole string */}
+              <span className="text-slate-400">{s.includes(',') ? s.substring(s.indexOf(',')) : ''}</span>
             </button>
           ))}
         </div>
@@ -121,7 +122,7 @@ export function VenueInput({ value, onChange, className, placeholder, required }
             <button key={i} type="button" onMouseDown={() => pick(s)}
               className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-700 transition-colors border-t border-slate-700/50">
               <span className="font-medium text-white">{s.split(',')[0]}</span>
-              <span className="text-slate-400">{s.substring(s.indexOf(','))}</span>
+              <span className="text-slate-400">{s.includes(',') ? s.substring(s.indexOf(',')) : ''}</span>
             </button>
           ))}
         </div>
