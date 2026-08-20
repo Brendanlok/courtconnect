@@ -56,3 +56,4 @@ firebase-debug.log
 ui-debug.log
 .firebase/
 supabase/.temp/
+.scratch/
