@@ -491,11 +491,9 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
   });
   const [opp2,     setOpp2]     = useState<UserProfile | null>(null);
   const [teammate, setTeammate] = useState<UserProfile | null>(null);
-  // LogMatchModal caps at 3 games; a bestOf-5 live match that went the distance
-  // (4-5 games) gets truncated to the first 3 — ponytail: rare edge case, add a
-  // 4th/5th game slot if bestOf-5 matches turn out to actually need it.
+  // Caps at 5 games — the max any live match can produce (bestOf 1/3/5).
   const [games,    setGames]    = useState(() =>
-    prefill?.games?.length ? prefill.games.slice(0, 3) : [{ p1:'', p2:'' }, { p1:'', p2:'' }]);
+    prefill?.games?.length ? prefill.games.slice(0, 5) : [{ p1:'', p2:'' }, { p1:'', p2:'' }]);
   const [loc,      setLoc]      = useState(prefill?.venue ?? '');
 
   const { ref: panelRef, dialogProps } = useModalA11y(open && !done, onClose, 'Log a Match');
@@ -716,10 +714,10 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
                       )}
                     </div>
                   ))}
-                  {games.length < 3 && (
+                  {games.length < 5 && (
                     <button onClick={() => setGames(g => [...g, { p1:'', p2:'' }])}
                       className="flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition-colors mt-1">
-                      <Plus size={12}/> Add Game 3
+                      <Plus size={12}/> Add Game {games.length + 1}
                     </button>
                   )}
                   {scoreError && (
