@@ -56,4 +56,25 @@ console.log('PASS half_century earned at 50 confirmed matches, century_club not 
 }
 console.log('PASS hot_streak requires 3 confirmed wins in a row, not 2');
 
+// 6. A 22-20 game win earns deuce_master; a plain 21-15 win does not.
+{
+  const deuce = [match({ games: [{ p1: 22, p2: 20 }] })];
+  assert.ok(computeEarnedBadgeIds(deuce, USER).includes('deuce_master'));
+  const plain = [match({ games: [{ p1: 21, p2: 15 }] })];
+  assert.ok(!computeEarnedBadgeIds(plain, USER).includes('deuce_master'));
+  const capped = [match({ games: [{ p1: 30, p2: 29 }] })];
+  assert.ok(computeEarnedBadgeIds(capped, USER).includes('deuce_master'));
+}
+console.log('PASS deuce_master requires a 2-point-margin game at 22+ (or 30-29), not a routine win');
+
+// 7. 5 confirmed matches on 5 distinct days within a week earns iron_man; spread
+// over 8 days does not.
+{
+  const tightDays = ['01', '02', '03', '05', '07'].map((d, i) => match({ id: `d${i}`, playedAt: `2026-03-${d}T00:00:00Z` }));
+  assert.ok(computeEarnedBadgeIds(tightDays, USER).includes('iron_man'));
+  const looseDays = ['01', '03', '05', '07', '09'].map((d, i) => match({ id: `l${i}`, playedAt: `2026-03-${d}T00:00:00Z` }));
+  assert.ok(!computeEarnedBadgeIds(looseDays, USER).includes('iron_man'));
+}
+console.log('PASS iron_man requires 5 distinct match-days within a 7-day span');
+
 console.log('ALL PASS achievements');

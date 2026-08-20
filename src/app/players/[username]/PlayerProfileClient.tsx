@@ -15,7 +15,7 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award } from 'lucide-react';
+import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award, Zap, CalendarCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { Match, MatchType } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -40,6 +40,8 @@ const BADGE_ICON: Record<string, React.ReactNode> = {
   half_century:  <Award size={18} className="text-fuchsia-400"/>,
   century_club:  <Star size={18} className="text-amber-400"/>,
   champion:      <Trophy size={18} className="text-amber-400"/>,
+  deuce_master:  <Zap size={18} className="text-yellow-400"/>,
+  iron_man:      <CalendarCheck size={18} className="text-teal-400"/>,
 };
 
 function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: boolean; onClose: () => void }) {

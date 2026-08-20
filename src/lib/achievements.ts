@@ -23,6 +23,8 @@ export const BADGES: Badge[] = [
   { id: 'half_century',  name: 'Half Century',  description: 'Play 50 confirmed matches.' },
   { id: 'century_club',  name: 'Century Club',  description: 'Play 100 confirmed matches.' },
   { id: 'champion',      name: 'Champion',      description: 'Win a tournament.' },
+  { id: 'deuce_master',  name: 'Deuce Master',  description: 'Win a game that went to deuce.' },
+  { id: 'iron_man',      name: 'Iron Man',      description: 'Play matches on 5 different days in one week.' },
 ];
 
 // A larger mmrChange gain on a win implies a much higher-rated opponent (the
@@ -83,6 +85,22 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tourn
   if (confirmed.length >= CENTURY) earned.add('century_club');
 
   if (tournaments.some(t => t.championUsername === user.username)) earned.add('champion');
+
+  // Deuce Master: a game decided at 22+ with a 2-point margin (or capped 30-29),
+  // i.e. it went past 20-20. Any confirmed match, not just wins — mirrors bagel's
+  // "the game itself is the feat" framing, no separate win-tracking needed.
+  if (confirmed.some(m => m.games.some(g => g.p1 >= 22 && (g.p1 - g.p2 === 2 || g.p1 === 30))))
+    earned.add('deuce_master');
+
+  // Iron Man: 5 distinct calendar days with a confirmed match inside any 7-day
+  // span. Reuses playedAt (already on every match) — no new activity tracking.
+  const days = [...new Set(confirmed.map(m => m.playedAt.slice(0, 10)))].sort();
+  for (let i = 0; i + 4 < days.length; i++) {
+    if (new Date(days[i + 4]).getTime() - new Date(days[i]).getTime() <= 6 * 24 * 60 * 60 * 1000) {
+      earned.add('iron_man');
+      break;
+    }
+  }
 
   return [...earned];
 }
