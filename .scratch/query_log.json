@@ -1,0 +1,6 @@
+{
+  "filter": {
+    "property": "Date",
+    "date": { "equals": "2026-08-20" }
+  }
+}

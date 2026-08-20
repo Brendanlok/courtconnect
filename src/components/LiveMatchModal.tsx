@@ -146,8 +146,11 @@ function SetupView({ me, onStart, onJoin }: {
     slots.filter(Boolean).map(p => p!.displayName.split(' ')[0]).join(' & ') || '—';
 
   // Doubles formats need your partner picked too, or the null slot silently
-  // becomes `me` in handleStart — pairing you with yourself.
-  const canStart = venue.trim() && teamBSlots.some(Boolean) && (ts < 2 || teamASlots[1] != null);
+  // becomes `me` in handleStart — pairing you with yourself. Same reasoning
+  // applies to team B: every(Boolean) requires both opponent slots filled in
+  // doubles (matches LogMatchModal's opp1 && opp2 check), while for singles
+  // it's equivalent to the old some(Boolean) since there's only one slot.
+  const canStart = venue.trim() && teamBSlots.every(Boolean) && (ts < 2 || teamASlots[1] != null);
 
   const handleStart = (recordMode: RecordMode) => {
     if (!canStart) return;
