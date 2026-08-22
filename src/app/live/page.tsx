@@ -94,6 +94,12 @@ export default function LivePage() {
   const [courtSaved,     setCourtSaved]     = useState(false);
   const [logOpen,        setLogOpen]        = useState(false);
 
+  // Recorded clip + detected shuttle hits — captured here so they can be
+  // carried into the Log to Profile prefill below (previously discarded:
+  // ClipRecorder's onUploaded only awarded credits and threw the URL away).
+  const [clipUrl,        setClipUrl]        = useState<string | undefined>();
+  const [shuttleHits,    setShuttleHits]    = useState<number[]>([]);
+
   // join flow — pre-fill from ?code= query param
   const [joinInput,  setJoinInput]  = useState(() => {
     if (typeof window === 'undefined') return '';
@@ -520,10 +526,12 @@ export default function LivePage() {
           </button>
         )}
         {isHost && !isDone && (
-          <ClipRecorder match={match} onUploaded={() => awardClipCredits(50)}/>
+          <ClipRecorder match={match}
+            onUploaded={url => { setClipUrl(url); awardClipCredits(50); }}
+            onShuttleHitsDetected={setShuttleHits}/>
         )}
         {isDone && (
-          <button onClick={() => { setPhase('idle'); setMatch(null); setHistory([]); setCourtPositions([]); setCourtSaved(false); }}
+          <button onClick={() => { setPhase('idle'); setMatch(null); setHistory([]); setCourtPositions([]); setCourtSaved(false); setClipUrl(undefined); setShuttleHits([]); }}
             className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
             New Match
           </button>
@@ -639,6 +647,7 @@ export default function LivePage() {
         venue: match.venue !== 'Venue TBD' ? match.venue : undefined,
         games: match.games.map(g => ({ p1: String(g.a), p2: String(g.b) })),
         opponentName: match.teamBName !== 'Opponent' ? match.teamBName : undefined,
+        clipUrl, shuttleHits: shuttleHits.length ? shuttleHits : undefined,
       }}/>}
     </div>
   );

@@ -474,6 +474,9 @@ export interface LogMatchPrefill {
   games?: { p1: string; p2: string }[];
   /** Best-effort opponent match against known players (singles only — doubles team names aren't split per-player). */
   opponentName?: string;
+  /** Clip + detected shuttle hits recorded during a /live scoring session — carried onto the logged Match so MatchDetailModal can play it back. */
+  clipUrl?: string;
+  shuttleHits?: number[];
 }
 
 export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill }: {
@@ -575,6 +578,8 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
       playedAt: new Date().toISOString(),
       location: loc || `${user.area}, ${user.state}`,
       ...(plannedMatchId ? { plannedMatchId } : {}),
+      ...(prefill?.clipUrl ? { clipUrl: prefill.clipUrl } : {}),
+      ...(prefill?.shuttleHits?.length ? { shuttleHits: prefill.shuttleHits } : {}),
     } as Match);
 
     // Placement/recalibration now advance on confirm, not here — see
