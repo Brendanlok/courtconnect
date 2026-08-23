@@ -44,7 +44,7 @@ export default function Chat() {
         if (!data) { setDeepLinkError("That player couldn't be found — their profile may be private or no longer exists."); setMobileView('chat'); return; }
         const participant = {
           uid: realUid, username: data.username ?? realUid, displayName: data.displayName ?? 'Player',
-          email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
+          email: '', mmr: data.mmr ?? 1000, tier: getTier(data.mmr ?? 1000),
           globalRank: 0, state: 'Kuala Lumpur' as const, area: '',
           stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
           photoURL: data.photoURL ?? null,

@@ -82,7 +82,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
       if (!data) return [uid, null] as const;
       const profile: UserProfile = {
         uid, username: data.username ?? uid, displayName: data.displayName ?? 'Player',
-        email: '', mmr: data.mmr ?? 1200, tier: getTier(data.mmr ?? 1200),
+        email: '', mmr: data.mmr ?? 1000, tier: getTier(data.mmr ?? 1000),
         globalRank: 0, state: 'Kuala Lumpur', area: '',
         stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
         photoURL: data.photoURL ?? null,

@@ -18,7 +18,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { icon: UserPlus,  step: '1', title: 'Sign up', desc: 'Free account, no card needed. You start at 1200 MMR, provisional.' },
+  { icon: UserPlus,  step: '1', title: 'Sign up', desc: 'Free account, no card needed. You start at 1000 MMR, provisional.' },
   { icon: Swords,    step: '2', title: 'Log a match', desc: 'Manually enter a score, or record live and let it verify itself.' },
   { icon: LineChart, step: '3', title: 'Get your rating', desc: 'Your opponent confirms, then MMR updates — 10 matches to a settled tier.' },
 ];

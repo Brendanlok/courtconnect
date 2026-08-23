@@ -59,7 +59,7 @@ function toLocalConversation(c: SharedConversation, myUid: string, lastRead: Rec
     uid: otherUid,
     username: p?.username ?? otherUid,
     displayName: p?.displayName ?? 'Player',
-    email: '', mmr: p?.mmr ?? 1200, tier: (p?.tier as Tier) ?? 'Beginner',
+    email: '', mmr: p?.mmr ?? 1000, tier: (p?.tier as Tier) ?? 'Beginner',
     globalRank: 0, state: 'Kuala Lumpur', area: '',
     stats: { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
     photoURL: p?.photoURL ?? null,

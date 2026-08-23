@@ -88,7 +88,7 @@ export function MMRInfoModal({ open, onClose }: Props) {
               <Star size={14}/> New Player Calibration
             </h3>
             <div className="bg-slate-800 rounded-xl p-4 space-y-3 text-sm">
-              <p className="text-slate-300">Every new player starts at <span className="text-white font-semibold">1200 MMR</span> in provisional <span className="text-amber-400 font-semibold">Placement</span> mode.</p>
+              <p className="text-slate-300">Every new player starts at <span className="text-white font-semibold">1000 MMR</span> in provisional <span className="text-amber-400 font-semibold">Placement</span> mode.</p>
               <div className="space-y-2 text-xs text-slate-400">
                 <p>• Your first <span className="text-white font-medium">10 matches</span> are calibration matches</p>
                 <p>• MMR swings are <span className="text-white font-medium">1.5× larger</span> (K = 48) so your rating settles quickly</p>

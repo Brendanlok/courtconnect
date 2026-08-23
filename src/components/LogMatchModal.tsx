@@ -83,7 +83,7 @@ function QRScanner({ onFound }: { onFound: (player: UserProfile) => void }) {
             username: fbUser.username,
             displayName: fbUser.displayName,
             email: fbUser.email ?? '',
-            mmr: fbUser.mmr ?? 1200,
+            mmr: fbUser.mmr ?? 1000,
             tier: fbUser.tier ?? 'Silver',
             globalRank: fbUser.globalRank ?? 9999,
             state: fbUser.state ?? 'Selangor',
