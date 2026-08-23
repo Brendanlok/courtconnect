@@ -26,9 +26,15 @@ alter table users add column if not exists last_active_at timestamptz;
 -- view, same as every other cross-user field (see 0003/0021). Re-declaring
 -- the full view since Postgres has no "add column to view" — this is
 -- 0021_referrals.sql's view plus the one new column, nothing else has
--- touched it since.
-drop view if exists public.users_public;
-create view public.users_public as
+-- changed about its own definition since.
+-- CREATE OR REPLACE, not DROP + CREATE (0021's pattern): coach_profiles_public
+-- (0025_coach_profiles.sql) is JOINed against users_public, so a DROP fails
+-- with "cannot drop view ... because other objects depend on it" — a real
+-- dependency 0021 didn't have yet. REPLACE works with no CASCADE needed
+-- because the new column (last_active_at) is only appended at the end —
+-- Postgres allows that on a view with dependents; it only rejects
+-- reordering/removing/retyping existing output columns.
+create or replace view public.users_public as
 select
   uid, username, is_dummy, display_name, mmr, tier, placement_matches_played,
   global_rank, state, area, wins, losses, total_matches, bio, available,
