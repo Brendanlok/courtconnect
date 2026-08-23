@@ -731,16 +731,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       const tier = getTier(mmr);
       const stats = { wins, losses, totalMatches };
-      // Reliability (reliability.ts) reads this to tell "established" from
-      // "stale" for OTHER players' profiles too, not just your own inactivity
-      // check — updated here (any confirmed match, ranked or casual) rather
-      // than at submit time, matching the "counters only move on Confirm" rule
-      // the placement/recalibration logic above already follows.
-      const lastActiveAt = new Date().toISOString();
-      persisted = { mmr, tier, stats, placementMatchesPlayed, recalibrationMatchesPlayed, lastRecalibrationAt, lastActiveAt };
-      return { ...u, ...persisted };
+      persisted = { mmr, tier, stats, placementMatchesPlayed, recalibrationMatchesPlayed, lastRecalibrationAt };
+      // lastActiveAt only goes in local state here, not the `persisted` patch
+      // above — it's a separate saveUserProfile call below (see there for why).
+      return { ...u, ...persisted, lastActiveAt: new Date().toISOString() };
     });
     if (persisted) saveUserProfile(uid, persisted).catch(() => {});
+    // Reliability (reliability.ts) reads last_active_at to tell "established"
+    // from "stale" for OTHER players' profiles, not just your own inactivity
+    // check. Deliberately a SEPARATE update from the mmr/stats/placement one
+    // above: last_active_at needs migration 0031 applied in Supabase first
+    // (see that file — not auto-applied), and PostgREST fails an UPDATE
+    // *entirely* if any one column in it doesn't exist yet. Bundling it into
+    // `persisted` would silently break real MMR/stats persistence for every
+    // user until Lok runs that migration — keeping it separate means only
+    // this one (non-critical) field fails to save until then, not the whole
+    // profile update.
+    saveUserProfile(uid, { lastActiveAt: new Date().toISOString() }).catch(() => {});
 
     toApply.forEach(m => markMatchMmrApplied(m.id, uid).catch(() => { mmrApplyingRef.current.delete(m.id); }));
   }, [realMatches]);
