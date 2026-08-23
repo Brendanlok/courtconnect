@@ -4,6 +4,7 @@ import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
 import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore, partnerRecord } from '@/lib/utils';
+import { opponentReliabilityMultiplier } from '@/lib/reliability';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
 import { lookupUserByUid, lookupUserByUsername } from '@/lib/supabaseService';
@@ -515,8 +516,13 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
   // MMR preview: for doubles average team MMR vs enemy team MMR
   const myTeamMMR   = isDoubles && teammate ? Math.round((user.mmr + teammate.mmr) / 2) : user.mmr;
   const oppTeamMMR  = isDoubles && opp1 && opp2 ? Math.round((opp1.mmr + opp2.mmr) / 2) : opp1?.mmr ?? 0;
+  // A still-calibrating opponent's own rating is noisy — discount the whole
+  // swing rather than pretend beating/losing to them proves as much as an
+  // established player's result would (see reliability.ts).
+  const opponents   = (isDoubles ? [opp1, opp2] : [opp1]).filter((p): p is UserProfile => !!p);
+  const oppRelMult  = opponentReliabilityMultiplier(opponents);
   const mmrPreview  = mode === 'ranked' && (isDoubles ? opp1 && opp2 && teammate : opp1)
-    ? previewMMRChange(myTeamMMR, oppTeamMMR, kFactor)
+    ? previewMMRChange(myTeamMMR, oppTeamMMR, kFactor, oppRelMult)
     : null;
 
   const parsedGames  = games
@@ -551,8 +557,9 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
     if (mode === 'ranked' && !mmrPreview) return;
     const iWon  = myGameWins > oppGameWins;
     // Recompute for real off the final scores (mmrPreview above was shown
-    // before scores existed, so it couldn't factor in margin of victory).
-    const mMult = marginMultiplier(parsedGames);
+    // before scores existed, so it couldn't factor in margin of victory) —
+    // oppRelMult doesn't depend on scores so mmrPreview already had it.
+    const mMult = marginMultiplier(parsedGames) * oppRelMult;
     const change = mode === 'ranked'
       ? (iWon
           ? calcMMRChange(myTeamMMR, oppTeamMMR, kFactor, mMult).gain

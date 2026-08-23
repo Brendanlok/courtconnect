@@ -229,10 +229,10 @@ export function marginMultiplier(games: { p1: number; p2: number }[]): number {
 // get charged a near-max penalty instead of ~0, and a favorite upset would
 // barely lose anything instead of taking the near-max hit. Deriving each
 // branch from its own actual-outcome call keeps both correct.
-export function previewMMRChange(myMMR: number, oppMMR: number, k = 32) {
+export function previewMMRChange(myMMR: number, oppMMR: number, k = 32, mMult = 1) {
   return {
-    gain: calcMMRChange(myMMR, oppMMR, k).gain,
-    loss: calcMMRChange(oppMMR, myMMR, k).loss,
+    gain: calcMMRChange(myMMR, oppMMR, k, mMult).gain,
+    loss: calcMMRChange(oppMMR, myMMR, k, mMult).loss,
   };
 }
 

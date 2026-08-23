@@ -22,6 +22,7 @@ export interface UserProfile {
   recalibrationMatchesPlayed?: number | null; // 0-4 = mid recalibration window; null/undefined = not recalibrating
   lastRecalibrationAt?: string; // ISO date of last completed recalibration — 3-month cooldown gate
   inactivityReminderSentAt?: string | null; // ISO date the "you're about to go inactive" nudge last fired — cleared on any new match, re-armed each dormancy cycle
+  lastActiveAt?: string | null; // ISO date a confirmed match last applied for this user — drives reliability.ts's stale/established split, distinct from the inactivityReminderSentAt/90-day reset cycle above
   referredBy?: string | null; // uid of the account whose invite link this user signed up through
   weeklyDigestSentAt?: string | null; // ISO date the last "your week in review" nudge fired — checked every 7 days
   globalRank: number;

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { VenueInput } from '@/components/VenueInput';
 import { savePausedMatch, loadPausedMatch, clearPausedMatch, type PausedMatchRef } from '@/lib/pausedMatch';
 import { calcMMRChange, marginMultiplier, partnerRecord } from '@/lib/utils';
+import { opponentReliabilityMultiplier } from '@/lib/reliability';
 import { antiCheatCheck, liveMatchIntegrityCheck, liveBonusEligible, LIVE_BONUS_MULTIPLIER } from '@/lib/antiCheat';
 
 type RecordMode = 'manual' | 'video';
@@ -1026,14 +1027,20 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const opp2 = m.teamB[1] ?? null;
     const isDoubles = teamSize(m.format) === 2;
 
-    const mmrOf = (uid?: string, fallback = user.mmr) => uid === user.uid ? user.mmr
-      : (PLAYERS.find(p => p.uid === uid) ?? allRealPlayers.find(p => p.uid === uid))?.mmr ?? fallback;
+    const profileOf = (uid?: string) => PLAYERS.find(p => p.uid === uid) ?? allRealPlayers.find(p => p.uid === uid);
+    const mmrOf = (uid?: string, fallback = user.mmr) => uid === user.uid ? user.mmr : profileOf(uid)?.mmr ?? fallback;
     const myTeamMMR = isDoubles && partner ? Math.round((user.mmr + mmrOf(partner.uid)) / 2) : user.mmr;
     const oppTeamMMR = isDoubles && opp && opp2 ? Math.round((mmrOf(opp.uid) + mmrOf(opp2.uid)) / 2) : mmrOf(opp?.uid);
     const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
     const recalActive   = placementDone && (user.recalibrationMatchesPlayed ?? 5) < 5;
     const kFactor = (!placementDone || recalActive) ? 48 : 32;
-    const mMult = marginMultiplier(gameScores);
+    // A still-calibrating opponent's own rating is noisy — discount the whole
+    // swing (see reliability.ts). profileOf can miss (opponent's a plain
+    // opponent name typed in, not a resolved player) — treat unresolved as
+    // not provisional rather than guessing.
+    const oppProfiles = [opp, ...(isDoubles && opp2 ? [opp2] : [])].filter((p): p is NonNullable<typeof p> => !!p)
+      .map(p => profileOf(p.uid)).filter((p): p is NonNullable<typeof p> => !!p);
+    const mMult = marginMultiplier(gameScores) * opponentReliabilityMultiplier(oppProfiles);
     const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, kFactor, mMult);
     const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
     const mmrChange = Math.round((iWon ? gain : loss) * bonus);

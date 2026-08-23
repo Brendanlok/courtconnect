@@ -14,6 +14,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
+import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award, Zap, CalendarCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -109,6 +110,11 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const { name: nextName, threshold } = nextTier(player.tier);
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
   const playerCalibrating = isCalibrating(player);
+  // Reliability (reliability.ts): 'stale' means their MMR is still shown but
+  // hasn't been tested in a while, unlike 'provisional' (playerCalibrating)
+  // which hides it outright. Skill Match implies real precision, so it's
+  // gated on reliability being fully 'established', not just non-calibrating.
+  const reliability = getReliability(player);
   const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
 
@@ -205,7 +211,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
           {/* Top row: avatar left, skill match right */}
           <div className="flex items-start justify-between">
             <Avatar name={player.displayName} size="lg" photoURL={player.photoURL} className="ring-4 ring-emerald-500/20"/>
-            {!isMe && !playerCalibrating && (
+            {!isMe && reliability === 'established' && (
               <div className="group relative">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help
                   ${sm>=80?'bg-emerald-500/10 border-emerald-500/25 text-emerald-400':sm>=60?'bg-amber-500/10 border-amber-500/25 text-amber-400':'bg-red-500/10 border-red-500/25 text-red-400'}`}>
@@ -215,6 +221,17 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                   <p className="font-semibold text-white mb-1">Skill Match</p>
                   How closely your MMR matches theirs. Based on a {Math.abs(ctxUser.mmr - player.mmr)} MMR gap.
                   <p className="mt-1 text-slate-400">{sm>=80?'Very even match':sm>=60?'Moderate gap — still competitive':'Large gap — may feel one-sided'}</p>
+                </div>
+              </div>
+            )}
+            {!isMe && reliability === 'stale' && (
+              <div className="group relative">
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold cursor-help bg-slate-800 border-slate-700 text-slate-400">
+                  💤 Rating stale
+                </div>
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-300 leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
+                  <p className="font-semibold text-white mb-1">Rating Stale</p>
+                  {player.displayName.split(' ')[0]} hasn&apos;t played a ranked match in a while — their MMR may not reflect their current skill, so no Skill Match is shown.
                 </div>
               </div>
             )}
@@ -229,6 +246,12 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               {player.isDummy && (
                 <span className="text-[10px] font-bold bg-slate-700 border border-slate-600 text-slate-400 px-2 py-0.5 rounded-full tracking-wide">
                   DEMO PROFILE
+                </span>
+              )}
+              {isMe && reliability === 'stale' && (
+                <span title="You haven't played a ranked match in a while — your MMR is still shown, but other players' Skill Match badge for you is hidden until you play again."
+                  className="text-[10px] font-bold bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-full tracking-wide cursor-help">
+                  💤 STALE
                 </span>
               )}
             </div>

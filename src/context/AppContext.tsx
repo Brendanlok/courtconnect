@@ -731,7 +731,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       const tier = getTier(mmr);
       const stats = { wins, losses, totalMatches };
-      persisted = { mmr, tier, stats, placementMatchesPlayed, recalibrationMatchesPlayed, lastRecalibrationAt };
+      // Reliability (reliability.ts) reads this to tell "established" from
+      // "stale" for OTHER players' profiles too, not just your own inactivity
+      // check — updated here (any confirmed match, ranked or casual) rather
+      // than at submit time, matching the "counters only move on Confirm" rule
+      // the placement/recalibration logic above already follows.
+      const lastActiveAt = new Date().toISOString();
+      persisted = { mmr, tier, stats, placementMatchesPlayed, recalibrationMatchesPlayed, lastRecalibrationAt, lastActiveAt };
       return { ...u, ...persisted };
     });
     if (persisted) saveUserProfile(uid, persisted).catch(() => {});
@@ -822,7 +828,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : {};
           const mmr = u.mmr + delta;
           return {
-            ...u, mmr, tier: getTier(mmr), ...placementPatch,
+            ...u, mmr, tier: getTier(mmr), ...placementPatch, lastActiveAt: new Date().toISOString(),
             stats: { wins: u.stats.wins + (iWon?1:0), losses: u.stats.losses + (iWon?0:1), totalMatches: u.stats.totalMatches + 1 },
           };
         });
