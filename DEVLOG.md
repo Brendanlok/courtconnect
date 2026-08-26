@@ -1,5 +1,53 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-26] — Signup reordered: profile info first, account creation last
+
+**Trigger:** Lok's call — signup asked for email/password immediately, then
+made the new player fill in username/name/location only after confirming
+their email. Asking for the account before showing any value is the classic
+conversion killer; asking for it *after* someone's already invested a minute
+answering questions about their own game reads as "claiming a profile
+that's basically built" instead of "filling out a form." Reordered accordingly.
+
+**What changed:** the Sign Up tab is now a 4-step quiz — Location → Weekly
+availability → Player name (username + display name) → Create account
+(email/password, or Google/Facebook). Email + password moved from step 1 to
+step 4. All fields reuse what already existed (`CountryRegionFields` from
+the old profile-completion form, the same day/slot availability grid from
+`OnboardingModal`, the same username-availability check) — no new fields,
+no new backend columns, no schema change.
+
+**The hard part:** email verification and Google/Facebook OAuth both
+navigate away and back (confirmation link click, OAuth redirect), which
+wipes plain React state — so the quiz answers can't just live in component
+state until account creation. They're parked in `localStorage`
+(`cc_pending_signup`, mirrors the existing `cc_referral` pattern in
+`utils.ts`) right before `signUp()`/`loginWithGoogle()`/`loginWithFacebook()`
+fires, and picked back up by `CompleteProfileView` once the account actually
+exists — which now runs silently (no form shown) when pending data is
+present, only falling back to the original manual username/details form if
+it's missing (cleared storage, a device switch mid-flow, or Google/Facebook
+signup from an old client). `completeProfile`/`createUserRow` gained an
+optional `availability` param threaded straight into the initial insert.
+
+Freshly-created accounts that went through the quiz mark `cc_onboarded`
+themselves (location + availability already collected), so the post-login
+`OnboardingModal` never re-asks — it still fires unchanged for the fallback
+path, so nothing regresses for Google users or anyone who lands without
+pending data.
+
+No self-reported skill-level field was added back — that was deliberately
+removed 2026-08-06 in favor of MMR from placement matches, and this change
+doesn't touch that reasoning; "skills and sport" info here means
+location/availability/identity, not a skill picker.
+
+`npx next build` clean. Added a `courtconnect` dev-server entry to both
+`launch.json`s (one pointed at a Desktop path that no longer exists) so the
+app can actually be previewed going forward — this session couldn't
+click-test live (scheduled-task session, no unattended dev-server/browser
+access), so this still needs an interactive-session or Lok's own check
+before calling the funnel itself verified, not just the build.
+
 ## [2026-08-18b] — Log to Profile now prefills from the live match
 
 **Trigger:** Flagged in today's code audit and confirmed with Lok — the

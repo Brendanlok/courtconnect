@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
 import { lookupUserByUsername, notifyUser } from '@/lib/supabaseService';
 import { seasonNumberForDate } from '@/lib/seasons';
-import { BASE_PATH, peekReferral, consumeReferral } from '@/lib/utils';
+import { BASE_PATH, peekReferral, consumeReferral, consumePendingSignup } from '@/lib/utils';
 import { ME, PLAYERS } from '@/lib/data';
 import { trackEvent } from '@/lib/analytics';
 
@@ -21,7 +21,7 @@ interface AuthCtx {
   resendVerificationEmail: () => Promise<string | null>;
   refreshVerificationStatus: () => Promise<void>;
   checkUsernameAvailable: (username: string) => Promise<boolean>;
-  completeProfile: (displayName: string, username: string, country: string, region: string) => Promise<string | null>;
+  completeProfile: (displayName: string, username: string, country: string, region: string, availability?: string) => Promise<string | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
 }
@@ -42,7 +42,7 @@ async function userRowExists(uid: string): Promise<boolean> {
   return exists;
 }
 
-async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; referredBy?: string }) {
+async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; referredBy?: string }) {
   await supabase.from('users').insert({
     uid: user.uid,
     email: user.email,
@@ -51,6 +51,7 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     photo_url: user.photoURL,
     mmr: 1000, // flat starting MMR for every account — no skill-level picker, see OnboardingModal
     tier: 'Silver', // getTier(1000)
+    ...(extra.availability ? { available: extra.availability } : {}),
     // Without this, AppContext's season-rollover effect falls back to `?? 1`
     // for a brand-new account, indistinguishable from "still finishing
     // season 1" — once season 2+ starts, every fresh signup would trigger a
@@ -187,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !existing;
   };
 
-  const completeProfile = async (displayName: string, username: string, country: string, region: string): Promise<string | null> => {
+  const completeProfile = async (displayName: string, username: string, country: string, region: string, availability?: string): Promise<string | null> => {
     if (!auth.currentUser) return 'Session expired. Please sign in again.';
     if (!displayName.trim()) return 'Name is required.';
     if (!country) return 'Country is required.';
@@ -199,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const referredBy = await resolveReferrer(auth.currentUser.uid);
       await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
-      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), referredBy });
+      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), availability, referredBy });
       // Only consumed once signup has actually gone through — resolveReferrer
       // above peeks rather than removes, so a failed createUserRow (username
       // race, transient error) leaves the code in place for the retry that
@@ -216,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: `${displayName.trim()} signed up on CourtConnect using your invite link.`,
         });
       }
+      consumePendingSignup();
       setNeedsProfileSetup(false);
       return null;
     } catch (e: unknown) {

@@ -34,6 +34,30 @@ export function consumeReferral(): string | null {
   } catch { return null; }
 }
 
+// Pending signup: AuthModal now collects location/availability/username
+// *before* email+password (see DEVLOG — signup reordered for conversion).
+// Same survive-the-redirect problem as REFERRAL_KEY above — email
+// verification and Google/Facebook OAuth both navigate away and back, which
+// would wipe plain React state — so the quiz answers are parked here and
+// picked up once the account actually exists (CompleteProfileView).
+export interface PendingSignup { username: string; displayName: string; country: string; region: string; availability: string; }
+const PENDING_SIGNUP_KEY = 'cc_pending_signup';
+export function savePendingSignup(data: PendingSignup) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+export function peekPendingSignup(): PendingSignup | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PENDING_SIGNUP_KEY);
+    return raw ? JSON.parse(raw) as PendingSignup : null;
+  } catch { return null; }
+}
+export function consumePendingSignup() {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem(PENDING_SIGNUP_KEY); } catch { /* ignore */ }
+}
+
 // /players/[username]/ only pre-renders the demo roster (static export) — a
 // real account's username 404s there, so real players route through
 // /profile/?uid=X instead (works for any signed-in account). The current
