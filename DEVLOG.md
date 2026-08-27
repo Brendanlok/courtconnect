@@ -1,5 +1,26 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-27] — Abandoned signup-quiz data expires (shared-browser leak fix)
+
+**Trigger:** Board-dry code audit of yesterday's 4-step signup quiz (2bebce1).
+The quiz parks its answers (username, full name, country, region, availability)
+in `localStorage.cc_pending_signup` right before `signUp()`/OAuth, then
+`CompleteProfileView` auto-applies them with no form shown once an account
+exists. It was only ever cleared on a *successful* `completeProfile()`. An
+abandoned quiz — closed the verify-email tab, cancelled the Google consent
+screen — left the blob sitting in that browser indefinitely. The next person
+to create an account there (a club tablet, a family PC, someone hitting
+"Continue with Google" from the Log In tab) had the stranger's
+username/name/location silently written onto *their* profile.
+
+**Fix:** `cc_pending_signup` now carries a `savedAt` stamp; `peekPendingSignup()`
+ignores and clears anything older than 1h (real email-confirm / OAuth
+round-trips finish in seconds to minutes). Existing-account paths — email
+login and Log In-tab Google/Facebook — now clear any leftover blob before
+authenticating. Added a case to `utils.selfcheck.ts`. Verified live at 375px:
+full quiz walks location → availability → username check (hits Supabase,
+returns "available") → account step; login tab unaffected; no console errors.
+
 ## [2026-08-26] — Signup reordered: profile info first, account creation last
 
 **Trigger:** Lok's call — signup asked for email/password immediately, then
