@@ -1,6 +1,16 @@
 // Offline proof of MMR math. Run with: npx tsx src/lib/utils.selfcheck.ts
 import assert from 'node:assert';
-import { calcMMRChange, previewMMRChange, marginMultiplier } from './utils';
+
+// localStorage/window shim so the pending-signup helpers run under Node.
+const store = new Map<string, string>();
+(globalThis as Record<string, unknown>).window = {};
+(globalThis as Record<string, unknown>).localStorage = {
+  getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+};
+
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -56,5 +66,20 @@ console.log('PASS previewMMRChange gives each side its own correct gain/loss bef
   assert.ok(dominant.gain > narrow.gain, 'a dominant win should gain more MMR than a narrow one at equal MMR');
 }
 console.log('PASS marginMultiplier scales MMR by how lopsided the score was, capped both ends');
+
+// 6. Pending signup survives a fresh round-trip but a stale blob is dropped,
+//    so the next account created on a shared browser can't inherit it.
+{
+  const quiz = { username: 'aaa', displayName: 'A', country: 'Malaysia', region: 'Selangor', availability: '' };
+  savePendingSignup(quiz);
+  assert.strictEqual(peekPendingSignup()?.username, 'aaa', 'fresh pending signup should be readable');
+
+  const raw = JSON.parse(store.get('cc_pending_signup')!);
+  raw.savedAt = Date.now() - 2 * 60 * 60 * 1000; // 2h ago
+  store.set('cc_pending_signup', JSON.stringify(raw));
+  assert.strictEqual(peekPendingSignup(), null, 'stale pending signup should be ignored');
+  assert.ok(!store.has('cc_pending_signup'), 'stale pending signup should be cleared on read');
+}
+console.log('PASS pending signup expires so a shared browser cannot leak a stranger\'s quiz');
 
 console.log('ALL PASS utils (MMR)');

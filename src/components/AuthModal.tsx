@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowLeft, ChevronRight, Globe, MapPin, Check, X as XIcon } from 'lucide-react';
-import { COUNTRIES, getCountryByName, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, savePendingSignup, peekPendingSignup, type PendingSignup } from '@/lib/utils';
+import { COUNTRIES, getCountryByName, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, savePendingSignup, peekPendingSignup, consumePendingSignup, type PendingSignup } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 
 type Tab = 'login' | 'signup';
@@ -275,6 +275,8 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); clear(); setLoading(true);
+    // Existing-account login — never inherit a leftover signup quiz.
+    consumePendingSignup();
     const err = await signIn(loginEmail, loginPw);
     setLoading(false);
     if (err) setError(err);
@@ -324,6 +326,7 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
   const handleGoogle = async () => {
     clear(); setLoading(true);
     if (tab === 'signup') savePendingQuizAnswers();
+    else consumePendingSignup();
     const err = await loginWithGoogle();
     setLoading(false);
     if (err) setError(err);
@@ -332,6 +335,7 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
   const handleFacebook = async () => {
     clear(); setLoading(true);
     if (tab === 'signup') savePendingQuizAnswers();
+    else consumePendingSignup();
     const err = await loginWithFacebook();
     setLoading(false);
     if (err) setError(err);

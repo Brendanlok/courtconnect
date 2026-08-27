@@ -42,15 +42,26 @@ export function consumeReferral(): string | null {
 // picked up once the account actually exists (CompleteProfileView).
 export interface PendingSignup { username: string; displayName: string; country: string; region: string; availability: string; }
 const PENDING_SIGNUP_KEY = 'cc_pending_signup';
+// The redirect this bridges (email-confirm click / OAuth) completes in seconds
+// to minutes. Anything older is an abandoned quiz — ignore it, so the next
+// person to create an account on a shared browser doesn't silently inherit a
+// stranger's username/name/location. 1h is far past any real round-trip.
+const PENDING_SIGNUP_TTL_MS = 60 * 60 * 1000;
 export function savePendingSignup(data: PendingSignup) {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+  try { localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); } catch { /* ignore */ }
 }
 export function peekPendingSignup(): PendingSignup | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(PENDING_SIGNUP_KEY);
-    return raw ? JSON.parse(raw) as PendingSignup : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingSignup & { savedAt?: number };
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > PENDING_SIGNUP_TTL_MS) {
+      consumePendingSignup();
+      return null;
+    }
+    return parsed;
   } catch { return null; }
 }
 export function consumePendingSignup() {
