@@ -1,5 +1,30 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-28] — "Plays when you do": shared weekly-availability signal
+
+**Trigger:** Board-dry auto-dev day, one-product-idea slot (Step 2c). The
+recurring weekly availability grid (7 days × 6 time slots) is collected in
+the signup quiz and editable in Settings, and was shown on a player's own
+profile — but nothing ever *used* it. Two players could both be "usually
+free Wednesday evenings" with no way to notice.
+
+**What changed:**
+- Players list rows (`RankRow`, used by both the ranked list and the
+  Following tab) now show a small sky-blue calendar badge with the number
+  of weekly slots you and that player both ticked. No badge when there's no
+  overlap or either side hasn't set their grid.
+- The Availability card on a player's profile highlights the shared cells in
+  blue (vs the normal emerald "they're free") and adds a one-line
+  "You're both usually free in N slots" summary above the grid.
+- New pure helper `sharedAvailabilitySlots(a, b)` in `utils.ts` (set
+  intersection of the two comma-joined slot strings), with a case added to
+  `utils.selfcheck.ts`. No schema change — `available` already lived on the
+  user row and was already loaded on both screens.
+
+Skipped a dedicated "free when I am" filter/sort toggle on the Players list —
+the filter row is already crowded at 380px and the badge carries the signal;
+easy to add later if Lok wants ranking by overlap.
+
 ## [2026-08-27] — Abandoned signup-quiz data expires (shared-browser leak fix)
 
 **Trigger:** Board-dry code audit of yesterday's 4-step signup quiz (2bebce1).

@@ -10,7 +10,7 @@ const store = new Map<string, string>();
   removeItem: (k: string) => void store.delete(k),
 };
 
-import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -81,5 +81,15 @@ console.log('PASS marginMultiplier scales MMR by how lopsided the score was, cap
   assert.ok(!store.has('cc_pending_signup'), 'stale pending signup should be cleared on read');
 }
 console.log('PASS pending signup expires so a shared browser cannot leak a stranger\'s quiz');
+
+// 7. sharedAvailabilitySlots counts only cells both sides ticked; 0 when
+//    either grid is empty/unset, and whitespace in the stored string is tolerated.
+{
+  assert.strictEqual(sharedAvailabilitySlots('mon_6_9pm,wed_6_9pm,sat_9am_12pm', 'wed_6_9pm, sat_9am_12pm ,sun_3_6pm'), 2);
+  assert.strictEqual(sharedAvailabilitySlots('mon_6_9pm', 'tue_6_9pm'), 0);
+  assert.strictEqual(sharedAvailabilitySlots('', 'mon_6_9pm'), 0);
+  assert.strictEqual(sharedAvailabilitySlots(undefined, undefined), 0);
+}
+console.log('PASS sharedAvailabilitySlots counts the weekly slots two players both marked free');
 
 console.log('ALL PASS utils (MMR)');

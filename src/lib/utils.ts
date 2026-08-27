@@ -316,6 +316,14 @@ export const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as const;
 export const SLOT_IDS   = ['6_9am','9am_12pm','12_3pm','3_6pm','6_9pm','9pm_12am'] as const;
 export const SLOT_LABELS = ['6–9am','9–12pm','12–3pm','3–6pm','6–9pm','9–12am'] as const;
 
+// How many `day_slot` cells two players both ticked on their weekly availability
+// grid (the comma-joined `available` string). 0 when either side hasn't set one.
+export function sharedAvailabilitySlots(a?: string | null, b?: string | null): number {
+  if (!a || !b) return 0;
+  const mine = new Set(a.split(',').map(s => s.trim()).filter(Boolean));
+  return b.split(',').map(s => s.trim()).filter(Boolean).filter(s => mine.has(s)).length;
+}
+
 // ─── Postcode lookup ──────────────────────────────────────────────────────────
 
 const PC_LOC: Record<string, { city: string; state: MalaysiaState }> = {

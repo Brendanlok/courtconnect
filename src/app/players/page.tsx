@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO, isCalibrating } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO, isCalibrating, sharedAvailabilitySlots } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -165,8 +165,8 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 // ─── Ranks view (embedded leaderboard) ───────────────────────────────────────
 
-function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
-  player: UserProfile; rank: number; isMe: boolean; isFollowing: boolean; sortKey: SortKey;
+function RankRow({ player: p, rank, isMe, isFollowing, sortKey, sharedSlots = 0 }: {
+  player: UserProfile; rank: number; isMe: boolean; isFollowing: boolean; sortKey: SortKey; sharedSlots?: number;
 }) {
   const wr = p.stats.totalMatches > 0 ? Math.round((p.stats.wins / p.stats.totalMatches) * 100) : 0;
   const rankColor = rank === 1 ? 'text-amber-400' : rank === 2 ? 'text-slate-300' : rank === 3 ? 'text-amber-600/80' : 'text-slate-500';
@@ -193,6 +193,12 @@ function RankRow({ player: p, rank, isMe, isFollowing, sortKey }: {
           {p.lookingForPartner && (
             <span title="Looking for Partner" className="flex items-center gap-0.5 text-[9px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1 py-0.5 rounded shrink-0">
               <Users size={8}/>Partner
+            </span>
+          )}
+          {!isMe && sharedSlots > 0 && (
+            <span title={`You're both usually free in ${sharedSlots} weekly time slot${sharedSlots !== 1 ? 's' : ''}`}
+              className="flex items-center gap-0.5 text-[9px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1 py-0.5 rounded shrink-0">
+              <Calendar size={8}/>{sharedSlots}
             </span>
           )}
         </div>
@@ -346,7 +352,7 @@ function PlayersList({ user, following, filters, realPlayers }: { user: UserProf
       <p className="text-xs text-slate-500">{ranked.length} player{ranked.length !== 1 ? 's' : ''}</p>
       <div className="space-y-2">
         {ranked.map((p, i) => (
-          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFollowing={following.includes(p.uid)} sortKey={sortKey}/>
+          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFollowing={following.includes(p.uid)} sortKey={sortKey} sharedSlots={sharedAvailabilitySlots(user.available, p.available)}/>
         ))}
       </div>
     </div>
@@ -406,7 +412,7 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, 
           <div className="space-y-2">
             {followedPlayers.map((p, i) => (
               <div key={p.uid} className="relative group">
-                <RankRow player={p} rank={i + 1} isMe={false} isFollowing={true} sortKey={filters.sortKey}/>
+                <RankRow player={p} rank={i + 1} isMe={false} isFollowing={true} sortKey={filters.sortKey} sharedSlots={sharedAvailabilitySlots(user.available, p.available)}/>
                 <button
                   onClick={e => { e.preventDefault(); unfollowPlayer(p.uid); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity px-2.5 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 border border-slate-700 hover:border-red-500/30 text-slate-400 rounded-xl text-[11px] font-medium z-10">

@@ -12,7 +12,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
@@ -194,6 +194,10 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   // players know when to challenge someone — same public/followers/private
   // gate as the rest of this section (canSeeFullProfile), no separate toggle.
   const availSlots = (player.available ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  // Cells the viewer also ticked — highlighted so you can see at a glance when
+  // your schedules line up without cross-referencing your own Settings grid.
+  const mySlots = isMe ? new Set<string>() : new Set((ctxUser.available ?? '').split(',').map(s => s.trim()).filter(Boolean));
+  const sharedAvail = isMe ? 0 : sharedAvailabilitySlots(ctxUser.available, player.available);
 
   // Event history privacy: same public/followers/private rule
   const eventHistoryVisibility = player.privacy?.eventHistory ?? 'public';
@@ -592,6 +596,11 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <Clock size={15} className="text-emerald-400"/> Availability
             </h2>
+            {sharedAvail > 0 && (
+              <p className="text-xs text-sky-400 -mt-2 mb-3">
+                You&apos;re both usually free in {sharedAvail} slot{sharedAvail !== 1 ? 's' : ''} <span className="text-slate-500">(highlighted)</span>
+              </p>
+            )}
             <div className="space-y-1">
               <div className="flex gap-0.5 ml-7">
                 {SLOT_LABELS.map(l => (
@@ -602,11 +611,15 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 <div key={day} className="flex items-center gap-0.5">
                   <span className="text-[10px] text-slate-500 w-6 shrink-0 font-medium">{DAY_LABELS[di]}</span>
                   {(SLOT_IDS as readonly string[]).map(slot => {
-                    const on = availSlots.includes(`${day}_${slot}`);
+                    const id = `${day}_${slot}`;
+                    const on = availSlots.includes(id);
+                    const shared = on && mySlots.has(id);
                     return (
                       <div key={slot}
                         className={`flex-1 h-7 rounded text-[9px] font-bold flex items-center justify-center border
-                          ${on ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400' : 'bg-slate-800/50 border-slate-700/40'}`}>
+                          ${shared ? 'bg-sky-500/30 border-sky-400/60 text-sky-300'
+                            : on ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400'
+                            : 'bg-slate-800/50 border-slate-700/40'}`}>
                         {on ? '✓' : ''}
                       </div>
                     );
