@@ -1,5 +1,19 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-28] — Availability-overlap badge respected private accounts
+
+**Trigger:** 5am board-dry audit of the "Plays when you do" feature shipped
+4 hours earlier. On a player's *profile*, the Availability grid is hidden
+entirely for a private account you don't follow (`canSeeFullProfile`). The
+new Players-list badge skipped that check — it showed "you're both free in
+N slots" for private accounts too, a small disclosure the profile itself
+withholds.
+
+**What changed:** the ranked Players list now computes the shared-slot count
+only when `!p.isPrivate || following.includes(p.uid)`, matching the profile
+gate. The Following tab was already correct (every row there is someone you
+follow).
+
 ## [2026-08-28] — "Plays when you do": shared weekly-availability signal
 
 **Trigger:** Board-dry auto-dev day, one-product-idea slot (Step 2c). The

@@ -352,7 +352,7 @@ function PlayersList({ user, following, filters, realPlayers }: { user: UserProf
       <p className="text-xs text-slate-500">{ranked.length} player{ranked.length !== 1 ? 's' : ''}</p>
       <div className="space-y-2">
         {ranked.map((p, i) => (
-          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFollowing={following.includes(p.uid)} sortKey={sortKey} sharedSlots={sharedAvailabilitySlots(user.available, p.available)}/>
+          <RankRow key={p.uid} player={p} rank={i + 1} isMe={p.uid === 'me'} isFollowing={following.includes(p.uid)} sortKey={sortKey} sharedSlots={(!p.isPrivate || following.includes(p.uid)) ? sharedAvailabilitySlots(user.available, p.available) : 0}/>
         ))}
       </div>
     </div>
