@@ -584,7 +584,7 @@ export async function sendChallengeDoc(c: StoredChallenge) {
     to_id: c.toUid, to_name: c.toName, to_username: c.toUsername,
     format: c.format, venue: c.venue, date: c.date, message: c.message, status: c.status, created_at: c.createdAt,
   });
-  notifyUser(c.toUid, { type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.` });
+  notifyUser(c.toUid, { type: 'challenge_received', title: 'Challenge Received', body: `${c.fromName} challenged you to a ${c.format} match.`, linkTo: `${BASE_PATH}/matches/` });
 }
 
 export async function updateChallengeStatus(id: string, status: StoredChallenge['status']) {
@@ -650,7 +650,7 @@ export async function unfollowUser(myUid: string, targetUid: string) {
 export async function respondToFollowRequest(myUid: string, myName: string, requesterUid: string, accept: boolean) {
   if (accept) {
     await supabase.from('friends').update({ status: 'accepted' }).eq('user_id', requesterUid).eq('friend_id', myUid);
-    notifyUser(requesterUid, { type: 'friend_accepted', title: 'Follow Request Accepted', body: `${myName} accepted your follow request.` });
+    notifyUser(requesterUid, { type: 'friend_accepted', title: 'Follow Request Accepted', body: `${myName} accepted your follow request.`, linkTo: `${BASE_PATH}/profile/?uid=${myUid}` });
   } else {
     await supabase.from('friends').delete().eq('user_id', requesterUid).eq('friend_id', myUid);
   }
@@ -842,7 +842,7 @@ export async function addClubMember(id: string, uid: string): Promise<boolean> {
   // pattern as notifyUser calls in sendSharedMessage/sendChallengeDoc, since
   // the joiner's own client (if it's even open) has no way to know an admin
   // just accepted/added them from their side.
-  if (!alreadyMember) notifyUser(uid, { type: 'club_accepted', title: 'Joined Club', body: row?.name ? `You joined ${row.name}!` : 'You joined a new club!' });
+  if (!alreadyMember) notifyUser(uid, { type: 'club_accepted', title: 'Joined Club', body: row?.name ? `You joined ${row.name}!` : 'You joined a new club!', linkTo: `${BASE_PATH}/clubs/view/?id=${id}` });
   return true;
 }
 export async function removeClubMember(id: string, uid: string) {
@@ -857,7 +857,7 @@ export async function addClubPending(id: string, uid: string) {
 // mutation either way, called from two different AppContext callbacks.
 export async function removeClubPending(id: string, uid: string, notifyDecline = false) {
   await mutateClubArray(id, 'pending_ids', [], [uid]);
-  if (notifyDecline) notifyUser(uid, { type: 'club_declined', title: 'Request Declined', body: 'Your request to join a club was declined.' });
+  if (notifyDecline) notifyUser(uid, { type: 'club_declined', title: 'Request Declined', body: 'Your request to join a club was declined.', linkTo: `${BASE_PATH}/players/?tab=clubs` });
 }
 export async function setClubModerator(id: string, uid: string, isModerator: boolean) {
   await mutateClubArray(id, 'moderator_ids', isModerator ? [uid] : [], isModerator ? [] : [uid]);
@@ -1000,7 +1000,7 @@ export async function addTournamentPending(id: string, uid: string) {
 // requester cancelling their own — same shape as removeClubPending above.
 export async function removeTournamentPending(id: string, uid: string, notifyDecline = false) {
   await mutateTournamentPending(id, [], [uid]);
-  if (notifyDecline) notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: 'Your request to join an event was declined.' });
+  if (notifyDecline) notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: 'Your request to join an event was declined.', linkTo: `${BASE_PATH}/tournaments/` });
 }
 
 // Register/approve both add to participants + increment current_players,
@@ -1034,11 +1034,11 @@ export async function approveTournamentRequest(id: string, uid: string): Promise
   });
   if (error || !ok) {
     await mutateTournamentPending(id, [], [uid]);
-    notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: tournamentName ? `${tournamentName} filled up before your request could be approved.` : 'That event filled up before your request could be approved.' });
+    notifyUser(uid, { type: 'tournament_declined', title: 'Request Declined', body: tournamentName ? `${tournamentName} filled up before your request could be approved.` : 'That event filled up before your request could be approved.', linkTo: `${BASE_PATH}/tournaments/` });
     return false;
   }
   await mutateTournamentPending(id, [], [uid]);
-  notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: tournamentName ? `Your request to join ${tournamentName} was accepted!` : 'Your request to join an event was accepted!' });
+  notifyUser(uid, { type: 'tournament_accepted', title: 'Request Approved', body: tournamentName ? `Your request to join ${tournamentName} was accepted!` : 'Your request to join an event was accepted!', linkTo: `${BASE_PATH}/tournaments/` });
   return true;
 }
 
