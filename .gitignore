@@ -58,3 +58,10 @@ ui-debug.log
 supabase/.temp/
 .scratch/
 _tmp_*
+
+# auto-dev scratch: Notion API response dumps
+_todo*.json
+_item*.json
+_dl*.json
+_dlrow*.json
+_*.json
