@@ -43,7 +43,7 @@ async function userRowExists(uid: string): Promise<boolean> {
 }
 
 async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; referredBy?: string }) {
-  await supabase.from('users').insert({
+  const { error } = await supabase.from('users').insert({
     uid: user.uid,
     email: user.email,
     display_name: extra.displayName,
@@ -69,6 +69,11 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     // simplify back to always-present, but there's no reason to rush it.
     ...(extra.referredBy ? { referred_by: extra.referredBy } : {}),
   });
+  // supabase-js doesn't reject on a DB error — without this a failed insert
+  // (username taken in the race between the pre-check and here, RLS, transient
+  // error) would fall through and completeProfile would report success with no
+  // users row, bouncing the new player back to setup with their quiz data gone.
+  if (error) throw new Error(error.message);
 }
 
 // Resolves a captured `?ref=<username>` (see utils.captureReferralFromUrl)
@@ -91,6 +96,9 @@ function friendlyError(message: string): string {
   if (m.includes('password') && m.includes('character'))                   return 'Password must be at least 6 characters.';
   if (m.includes('invalid login') || m.includes('invalid credentials'))    return 'Invalid email or password.';
   if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes')) return 'Too many attempts. Try again in a minute.';
+  if (m.includes('duplicate key') || m.includes('unique constraint')) {
+    return m.includes('username') ? 'That username was just taken — pick another.' : 'That account is already set up. Try refreshing the page.';
+  }
   return 'Something went wrong. Please try again.';
 }
 
