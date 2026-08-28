@@ -18,7 +18,12 @@ const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'S
 // stranger isn't wired up (AppContext has no "load this uid's matches" path).
 export function PlayerActionCard({ player }: { player: UserProfile }) {
   const { myEndorsements, endorsePlayer, following, followRequestsSent, followPlayer, unfollowPlayer } = useApp();
-  const [challengeOpen, setChallengeOpen] = useState(false);
+  // Open straight into the challenge dialog when arrived via a ?challenge=1
+  // deep link (the "Challenge" button in a real-player chat builds this) —
+  // same intent PlayerProfileClient already honours for demo players.
+  const [challengeOpen, setChallengeOpen] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('challenge') === '1'
+  );
   const given = myEndorsements[player.uid] ?? [];
   const isFollowing = following.includes(player.uid);
   const hasRequested = followRequestsSent.includes(player.uid);
