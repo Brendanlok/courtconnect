@@ -57,3 +57,4 @@ ui-debug.log
 .firebase/
 supabase/.temp/
 .scratch/
+_tmp_*
