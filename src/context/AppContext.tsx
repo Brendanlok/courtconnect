@@ -309,7 +309,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('cc_realLastRead');
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Record<string, string>;
+          // Prune orphan pending_<uid> keys left by older builds (deep-link shell convs).
+          const cleaned: Record<string, string> = Object.fromEntries(
+            Object.entries(parsed).filter(([k]) => !k.startsWith('pending_'))
+          );
+          if (Object.keys(cleaned).length !== Object.keys(parsed).length) {
+            try { localStorage.setItem('cc_realLastRead', JSON.stringify(cleaned)); } catch { /* ignore */ }
+          }
+          return cleaned;
+        }
       } catch { /* ignore */ }
     }
     return {};
@@ -1497,6 +1507,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user.displayName, user.username, user.tier, user.mmr, user.photoURL]);
 
   const markRealConvRead = useCallback((chatId: string) => {
+    // ponytail: shell conversations from ?realUid= deep links have a transient
+    // pending_<uid> id — marking them read leaves an orphan key in cc_realLastRead forever.
+    if (chatId.startsWith('pending_')) return;
     setRealLastRead(prev => {
       const next = { ...prev, [chatId]: new Date().toISOString() };
       try { localStorage.setItem('cc_realLastRead', JSON.stringify(next)); } catch { /* ignore */ }

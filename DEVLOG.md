@@ -1,5 +1,28 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-29] — Dead "Sign up free" button for signed-in visitors to /become-a-coach & /start-a-club
+
+**Trigger:** Board-dry auto-dev session, worked two P3 backlog bugs from the
+28.08 audit.
+
+**What changed:** Both public explainer pages had a single "Sign up free"
+button wired to `usePublicAuth()`, which is a no-op when the page renders
+inside the authed app (a logged-in user reaching it via direct link or
+bookmark). The CTA now checks auth state: signed-in visitors get a working
+link instead — "Go to CourtConnect" (become-a-coach) / "Go to Clubs"
+(start-a-club) — with copy pointing at where the actual opt-in lives.
+
+## [2026-08-29] — Orphan `pending_<uid>` keys pruned from chat read-state
+
+**Trigger:** Same session. Opening a `?realUid=` chat deep link before the
+conversation exists spun up a shell conv with a `pending_<uid>` id; the
+read-marking effect then wrote a `cc_realLastRead["pending_<uid>"]` key that
+never got cleaned once the real conversation landed.
+
+**What changed:** `markRealConvRead` now ignores `pending_` ids at the
+source, and `cc_realLastRead` is pruned of any existing `pending_` keys on
+load. Harmless clutter, now gone.
+
 ## [2026-08-28] — Availability-overlap badge respected private accounts
 
 **Trigger:** 5am board-dry audit of the "Plays when you do" feature shipped

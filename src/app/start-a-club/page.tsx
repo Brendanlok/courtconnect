@@ -5,6 +5,8 @@
 // sign-up CTA, describing features that already exist in the app.
 import { Trophy, Swords, Shield, UserPlus } from 'lucide-react';
 import { usePublicAuth } from '@/context/PublicAuthContext';
+import { useAuth } from '@/context/AuthContext';
+import { BASE_PATH } from '@/lib/utils';
 
 const FEATURES = [
   { icon: UserPlus, title: 'Members join with a request', desc: 'Anyone can request to join your club; you approve who gets in.' },
@@ -15,6 +17,7 @@ const FEATURES = [
 
 export default function StartAClub() {
   const openAuth = usePublicAuth();
+  const { authUser } = useAuth();
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-8">
       <div>
@@ -39,11 +42,23 @@ export default function StartAClub() {
       </div>
 
       <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 text-center">
-        <p className="text-sm font-semibold text-emerald-300">Free to create — sign up, then create a club from Clubs.</p>
-        <button onClick={() => openAuth('signup')}
-          className="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
-          Sign up free
-        </button>
+        {authUser ? (
+          <>
+            <p className="text-sm font-semibold text-emerald-300">You&apos;re signed in — create a club from the Clubs tab.</p>
+            <a href={`${BASE_PATH}/clubs/`}
+              className="inline-block mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+              Go to Clubs
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-emerald-300">Free to create — sign up, then create a club from Clubs.</p>
+            <button onClick={() => openAuth('signup')}
+              className="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+              Sign up free
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

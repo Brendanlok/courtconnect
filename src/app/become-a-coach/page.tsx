@@ -5,6 +5,8 @@
 // signed up, same pattern as start-a-club/page.tsx.
 import { GraduationCap, MessageCircle, Star, Wallet } from 'lucide-react';
 import { usePublicAuth } from '@/context/PublicAuthContext';
+import { useAuth } from '@/context/AuthContext';
+import { BASE_PATH } from '@/lib/utils';
 
 const POINTS = [
   { icon: Star,          title: 'Free to list', desc: 'No fees to create a coach listing — just your bio, rate, and specialties.' },
@@ -14,6 +16,7 @@ const POINTS = [
 
 export default function BecomeACoach() {
   const openAuth = usePublicAuth();
+  const { authUser } = useAuth();
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-8">
       <div>
@@ -37,11 +40,23 @@ export default function BecomeACoach() {
       </div>
 
       <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 text-center">
-        <p className="text-sm font-semibold text-emerald-300">Sign up, then turn on your coach listing from Settings.</p>
-        <button onClick={() => openAuth('signup')}
-          className="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
-          Sign up free
-        </button>
+        {authUser ? (
+          <>
+            <p className="text-sm font-semibold text-emerald-300">You&apos;re signed in — turn on your coach listing from Settings &rsaquo; Coaching.</p>
+            <a href={`${BASE_PATH}/`}
+              className="inline-block mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+              Go to CourtConnect
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-emerald-300">Sign up, then turn on your coach listing from Settings.</p>
+            <button onClick={() => openAuth('signup')}
+              className="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
+              Sign up free
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
