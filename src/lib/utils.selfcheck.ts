@@ -70,7 +70,7 @@ console.log('PASS marginMultiplier scales MMR by how lopsided the score was, cap
 // 6. Pending signup survives a fresh round-trip but a stale blob is dropped,
 //    so the next account created on a shared browser can't inherit it.
 {
-  const quiz = { username: 'aaa', displayName: 'A', country: 'Malaysia', region: 'Selangor', availability: '' };
+  const quiz = { username: 'aaa', displayName: 'A', country: 'Malaysia', region: 'Selangor', availability: '', homeVenue: '' };
   savePendingSignup(quiz);
   assert.strictEqual(peekPendingSignup()?.username, 'aaa', 'fresh pending signup should be readable');
 

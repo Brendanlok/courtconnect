@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowLeft, ChevronRight, Globe, MapPin, Check, X as XIcon } from 'lucide-react';
 import { COUNTRIES, getCountryByName, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, savePendingSignup, peekPendingSignup, consumePendingSignup, type PendingSignup } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
 
 type Tab = 'login' | 'signup';
 type View = 'main' | 'forgot';
@@ -131,7 +132,7 @@ function CompleteProfileView() {
   useEffect(() => {
     if (!pending) return;
     (async () => {
-      const err = await completeProfile(pending.displayName, pending.username, pending.country, pending.region, pending.availability);
+      const err = await completeProfile(pending.displayName, pending.username, pending.country, pending.region, pending.availability, pending.homeVenue);
       // Success unmounts this view (needsProfileSetup flips false) before we'd
       // ever get here — only a failure (race on username, etc.) falls through,
       // so drop into the normal manual form, prefilled with what we already know.
@@ -162,7 +163,7 @@ function CompleteProfileView() {
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(''); setLoading(true);
-    const err = await completeProfile(displayName, username, country, region, pending?.availability);
+    const err = await completeProfile(displayName, username, country, region, pending?.availability, pending?.homeVenue);
     setLoading(false);
     if (err) setError(err);
     else if (pending) markOnboarded();
@@ -257,6 +258,7 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
   const [signupStep, setSignupStep] = useState<SignupStep>('location');
   const [sCountry, setSCountry] = useState('Malaysia');
   const [sRegion,  setSRegion]  = useState('');
+  const [sHomeVenue, setSHomeVenue] = useState('');
   const [availability, setAvailability] = useState<string[]>([]);
   const [sUsername, setSUsername] = useState('');
   const [sUsernameStatus, setSUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
@@ -307,6 +309,7 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
   const savePendingQuizAnswers = () => savePendingSignup({
     username: sUsername, displayName: sDisplayName.trim(),
     country: sCountry, region: sRegion.trim(), availability: availability.join(','),
+    homeVenue: sHomeVenue.trim(),
   });
 
   const passwordsMatch = password.length > 0 && password === confirmPassword;
@@ -483,6 +486,11 @@ export function AuthModal({ initialTab = 'login', onBack }: { initialTab?: Tab; 
                     </div>
                     <div className="space-y-3">
                       <CountryRegionFields country={sCountry} setCountry={setSCountry} region={sRegion} setRegion={setSRegion}/>
+                      <div className="relative">
+                        <MapPin size={15} className="absolute left-3.5 top-[13px] text-slate-500 pointer-events-none z-10"/>
+                        <VenueInput value={sHomeVenue} onChange={setSHomeVenue}
+                          className={`${inp} pl-10`} placeholder="Home venue (optional)"/>
+                      </div>
                     </div>
                     <Button onClick={() => setSignupStep('availability')} disabled={!sRegion.trim()} className="w-full font-bold">
                       Continue <ChevronRight size={15}/>

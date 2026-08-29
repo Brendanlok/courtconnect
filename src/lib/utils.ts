@@ -40,7 +40,7 @@ export function consumeReferral(): string | null {
 // verification and Google/Facebook OAuth both navigate away and back, which
 // would wipe plain React state — so the quiz answers are parked here and
 // picked up once the account actually exists (CompleteProfileView).
-export interface PendingSignup { username: string; displayName: string; country: string; region: string; availability: string; }
+export interface PendingSignup { username: string; displayName: string; country: string; region: string; availability: string; homeVenue: string; }
 const PENDING_SIGNUP_KEY = 'cc_pending_signup';
 // The redirect this bridges (email-confirm click / OAuth) completes in seconds
 // to minutes. Anything older is an abandoned quiz — ignore it, so the next

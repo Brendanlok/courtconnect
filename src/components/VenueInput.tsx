@@ -37,7 +37,10 @@ interface Props {
 }
 
 export function VenueInput({ value, onChange, className, placeholder, required }: Props) {
-  const { venues, matches } = useApp();
+  // Defaults matter: the signup quiz renders this OUTSIDE AppProvider (see
+  // AuthGate), so useApp() returns {} there — without the fallbacks the
+  // .map/.filter below throw. Pre-auth it just degrades to the seed list.
+  const { venues = [], matches = [] } = useApp();
   const pool = useMemo(() => {
     const real = venues.map(v => v.name);
     const seen = new Set(real.map(s => s.toLowerCase()));

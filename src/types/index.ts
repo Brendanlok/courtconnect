@@ -42,6 +42,7 @@ export interface UserProfile {
   country?: string;                      // e.g. "Malaysia" (default)
   countryCode?: CountryCode;             // e.g. "MY"
   region?: string;                       // state/province for non-MY users
+  homeVenue?: string;                    // court the player usually plays at — free text, optional (0032_home_venue.sql)
   endorsements?: Record<string, number>; // skill → count
   photoURL?: string | null;
   isPrivate?: boolean;

@@ -270,6 +270,11 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 </>
               )}
             </p>
+            {player.homeVenue && (
+              <p className="text-slate-500 text-xs flex items-center gap-1.5 mt-0.5">
+                <MapPin size={11}/> Plays at {player.homeVenue.split(',')[0]}
+              </p>
+            )}
             {player.openToPlay && (
               <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>Open to play today

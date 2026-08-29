@@ -12,6 +12,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { AvatarCropModal } from '@/components/AvatarCropModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
 
 type PrivacyLevel = 'public' | 'friends' | 'private';
 type PrivacySettings = NonNullable<UserProfile['privacy']>;
@@ -65,6 +66,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [region,      setRegion]      = useState(user.region ?? user.state ?? '');
   const [cityText,    setCityText]    = useState(user.area ?? '');
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
+  const [homeVenue,   setHomeVenue]   = useState(user.homeVenue ?? '');
   const [availability,setAvailability]= useState<string[]>(
     (user.available ?? '').split(',').map(s => s.trim()).filter(Boolean)
   );
@@ -147,6 +149,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       area:   isMY ? (location?.city  ?? cityText) : cityText,
       state:  isMY ? (location?.state ?? region as MalaysiaState) : user.state,
       postcode: countryData.hasPostcode ? postcode : undefined,
+      homeVenue: homeVenue.trim() || undefined,
       available: availability.join(','),
       privacy,
       isPrivate,
@@ -393,6 +396,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </>
               )}
             </div>
+          </div>
+
+          {/* Home venue — the court you usually play at. Optional, free text
+              with the shared venue autocomplete. */}
+          <div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-1.5">Home venue</p>
+            <VenueInput value={homeVenue} onChange={setHomeVenue} className={inp}
+              placeholder="e.g. Sport Planet PJ (optional)"/>
           </div>
           </>)}
 

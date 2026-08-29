@@ -21,7 +21,7 @@ interface AuthCtx {
   resendVerificationEmail: () => Promise<string | null>;
   refreshVerificationStatus: () => Promise<void>;
   checkUsernameAvailable: (username: string) => Promise<boolean>;
-  completeProfile: (displayName: string, username: string, country: string, region: string, availability?: string) => Promise<string | null>;
+  completeProfile: (displayName: string, username: string, country: string, region: string, availability?: string, homeVenue?: string) => Promise<string | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
 }
@@ -42,7 +42,7 @@ async function userRowExists(uid: string): Promise<boolean> {
   return exists;
 }
 
-async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; referredBy?: string }) {
+async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; homeVenue?: string; referredBy?: string }) {
   const { error } = await supabase.from('users').insert({
     uid: user.uid,
     email: user.email,
@@ -52,6 +52,9 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     mmr: 1000, // flat starting MMR for every account — no skill-level picker, see OnboardingModal
     tier: 'Silver', // getTier(1000)
     ...(extra.availability ? { available: extra.availability } : {}),
+    // Omitted (not null) when unset — like `available` above, this keeps every
+    // signup working before 0032_home_venue.sql is applied.
+    ...(extra.homeVenue ? { home_venue: extra.homeVenue } : {}),
     // Without this, AppContext's season-rollover effect falls back to `?? 1`
     // for a brand-new account, indistinguishable from "still finishing
     // season 1" — once season 2+ starts, every fresh signup would trigger a
@@ -196,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !existing;
   };
 
-  const completeProfile = async (displayName: string, username: string, country: string, region: string, availability?: string): Promise<string | null> => {
+  const completeProfile = async (displayName: string, username: string, country: string, region: string, availability?: string, homeVenue?: string): Promise<string | null> => {
     if (!auth.currentUser) return 'Session expired. Please sign in again.';
     if (!displayName.trim()) return 'Name is required.';
     if (!country) return 'Country is required.';
@@ -208,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const referredBy = await resolveReferrer(auth.currentUser.uid);
       await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
-      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), availability, referredBy });
+      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), availability, homeVenue: homeVenue?.trim() || undefined, referredBy });
       // Only consumed once signup has actually gone through — resolveReferrer
       // above peeks rather than removes, so a failed createUserRow (username
       // race, transient error) leaves the code in place for the retry that

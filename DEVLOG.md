@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-29] — Home venue field added to signup
+
+**Trigger:** Lok greenlit the parked P3 idea ("let signup capture a home
+venue, not just country/region") in chat during the 6am plan run.
+
+**What changed:** The signup quiz's "Where do you play?" step now has an
+optional "Home venue" field below country/region, using the shared
+`VenueInput` autocomplete (seed venue list only, pre-auth — it now degrades
+gracefully when rendered outside `AppProvider` instead of crashing on
+`venues.map`). The value rides through `PendingSignup` → `createUserRow` /
+`completeProfile` into a new `users.home_venue` column, and is editable
+later in Settings › Location. Other players' profiles show "Plays at
+&lt;venue&gt;" under the location line when set.
+
+**Migration:** `0032_home_venue.sql` — NOT YET APPLIED. Adds
+`users.home_venue text` and re-declares `users_public` with the column
+appended. Column is omitted from the signup insert when empty, so signups
+keep working before Lok runs it (same guard as `available`).
+
 ## [2026-08-29] — Dead "Sign up free" button for signed-in visitors to /become-a-coach & /start-a-club
 
 **Trigger:** Board-dry auto-dev session, worked two P3 backlog bugs from the
