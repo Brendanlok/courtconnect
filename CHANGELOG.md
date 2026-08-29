@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-08-29] — Feature: home venue at signup
+
+### 🟢 Low
+- ✅ The signup "Where do you play?" step now has an optional **Home venue**
+  field (below country/region) — the court you usually play at, with the same
+  venue autocomplete used elsewhere in the app. Also editable in
+  Settings › Location. Shows as "Plays at <venue>" on other players' profiles.
+- 📋 Needs migration `0032_home_venue.sql` run in Supabase before the value
+  actually persists — the field works in the UI meanwhile and is safely ignored
+  on save until then.
+
+---
+
 ## [2026-08-08] — Feature: hidden MMR during calibration + inactivity reminders
 
 ### 🟠 High
