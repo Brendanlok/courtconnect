@@ -7,7 +7,7 @@
 // migration runner, see every other file in that folder) before its view
 // exists — every fetch* below fails closed (returns []) until then.
 import { supabase } from './supabase';
-import { isCalibrating } from './utils';
+import { isCalibrating, localDateISO } from './utils';
 import type { Tier } from '@/types';
 
 // Deliberately its own type, not Pick<UserProfile, ...> — UserProfile's
@@ -131,13 +131,16 @@ function mapTournamentRow(row: Record<string, unknown>): PublicTournament {
 }
 
 // Upcoming public tournaments for the Events page. tournaments_public
-// already excludes dummy/private rows at the view level (migration 0023),
-// so this only needs the status filter.
+// already excludes dummy/private rows at the view level (migration 0023).
+// The date gate drops events whose day has passed but were never moved off
+// "Upcoming" (a host who never generated a bracket) — otherwise they'd sort
+// to the very top of the visitor's list forever.
 export async function fetchPublicTournaments(limit = 50): Promise<PublicTournament[]> {
   const { data, error } = await supabase
     .from('tournaments_public')
     .select('id, name, type, status, venue, state, country, date, time, entry_fee, prize_pool, max_players, current_players, min_mmr, max_mmr, tags, description, organiser')
     .eq('status', 'Upcoming')
+    .gte('date', localDateISO())
     .order('date', { ascending: true })
     .limit(limit);
   if (error || !data) return [];
