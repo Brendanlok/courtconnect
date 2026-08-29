@@ -15,11 +15,15 @@ const STEPS = ['Welcome', 'Location', 'Availability', 'Done'] as const;
 export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
   const { user, updateUser } = useApp();
   const [step,        setStep]        = useState(0);
-  const [countryCode, setCountryCode] = useState<CountryCode>('MY');
-  const [postcode,    setPostcode]    = useState('');
-  const [region,      setRegion]      = useState('');
-  const [city,        setCity]        = useState('');
-  const [availability, setAvail]      = useState<string[]>([]);
+  // Prefill from the existing profile. logout() wipes cc_onboarded, so an
+  // existing player logging back in (or on a shared device) sees this modal
+  // again — without prefill, clicking straight through Finish overwrote their
+  // real country/region/availability with blank defaults.
+  const [countryCode, setCountryCode] = useState<CountryCode>(user.countryCode ?? 'MY');
+  const [postcode,    setPostcode]    = useState(user.postcode ?? '');
+  const [region,      setRegion]      = useState(user.region ?? '');
+  const [city,        setCity]        = useState(user.area ?? '');
+  const [availability, setAvail]      = useState<string[]>(user.available ? user.available.split(',').filter(Boolean) : []);
 
   const countryData = COUNTRIES.find(c => c.code === countryCode) ?? COUNTRIES[0];
   const location    = countryCode === 'MY' ? postcodeToLocation(postcode) : null;
