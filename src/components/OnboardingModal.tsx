@@ -21,7 +21,10 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
   // real country/region/availability with blank defaults.
   const [countryCode, setCountryCode] = useState<CountryCode>(user.countryCode ?? 'MY');
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
-  const [region,      setRegion]      = useState(user.region ?? '');
+  // `|| user.state`: a MY profile keeps its location in `state`, with `region`
+  // often an empty string — `?? ''` alone would blank the field and Finish
+  // would write the empty value over `state`, wiping the user's location.
+  const [region,      setRegion]      = useState(user.region || user.state || '');
   const [city,        setCity]        = useState(user.area ?? '');
   const [availability, setAvail]      = useState<string[]>(user.available ? user.available.split(',').filter(Boolean) : []);
 

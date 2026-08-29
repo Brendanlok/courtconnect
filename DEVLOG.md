@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-29] — Settings/Onboarding Location save could wipe a MY user's state
+
+**Trigger:** Hit live while verifying the home-venue round-trip on Lok's own
+account — saving the Settings › Location tab blanked his state ("Selangor" →
+empty). Restored it via the UI and traced the cause.
+
+**Root cause:** A Malaysian profile stores its location in `state`, with
+`region` frequently an empty string (not `undefined`). Both
+`SettingsModal` and `OnboardingModal` init their region field with
+`user.region ?? '…'` — `??` doesn't treat `''` as absent, so the field
+loaded blank, and Save/Finish then wrote that empty value straight over
+`state`/`region`. Any MY user who opened Location and hit Save lost their
+state.
+
+**Fix:** Both init sites now use `user.region || user.state || ''` so an
+empty `region` falls through to the real `state` value. One line each, at
+the source both downstream writes read from.
+
 ## [2026-08-29] — Home venue field added to signup
 
 **Trigger:** Lok greenlit the parked P3 idea ("let signup capture a home

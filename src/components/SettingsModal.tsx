@@ -63,7 +63,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [gender,      setGender]      = useState<'Male' | 'Female' | undefined>(user.gender);
   const [birthday,    setBirthday]    = useState(user.birthday ?? '');
   const [countryCode, setCountryCode] = useState<CountryCode>((user.countryCode ?? 'MY') as CountryCode);
-  const [region,      setRegion]      = useState(user.region ?? user.state ?? '');
+  // `||` not `??`: a MY profile stores its location in `state` and often has
+  // `region` as an empty string (not undefined), so `??` would leave this
+  // blank and Save would then write the empty value straight over `state`,
+  // wiping the user's location. Fall through '' to `user.state`.
+  const [region,      setRegion]      = useState(user.region || user.state || '');
   const [cityText,    setCityText]    = useState(user.area ?? '');
   const [postcode,    setPostcode]    = useState(user.postcode ?? '');
   const [homeVenue,   setHomeVenue]   = useState(user.homeVenue ?? '');
