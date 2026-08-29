@@ -112,6 +112,11 @@ export default function Tournaments() {
     .filter(t => regionFilter === 'All' || (t.state ?? '') === regionFilter)
     .filter(t => !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .filter(t => t.status === tab)
+    // Hide Upcoming events whose day has passed but the host never moved them
+    // off "Upcoming" (never generated a bracket) — they'd otherwise sit in the
+    // tab forever. Still shown to the host / registered players so they can
+    // Edit, Cancel, or Start the bracket. Mirrors the public Events date gate.
+    .filter(t => t.status !== 'Upcoming' || t.date >= localDateISO() || isMyEvent(t))
     .filter(t => visFilter === 'All' ? true : visFilter === 'Private' ? t.isPrivate : !t.isPrivate)
     .filter(t => typeFilter === 'All' || t.type === typeFilter)
     .filter(t => {
