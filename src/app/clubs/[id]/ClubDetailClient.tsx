@@ -634,7 +634,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               </div>
               <div className="px-4 py-3 border-t border-slate-800 flex gap-2">
                 <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                  onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && sendMessage()}
                   placeholder="Message the club…"
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-500 transition-colors"/>
                 <button onClick={sendMessage} disabled={!chatInput.trim()} aria-label="Send message"
