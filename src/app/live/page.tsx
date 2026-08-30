@@ -387,6 +387,10 @@ export default function LivePage() {
   const needed    = gamesNeeded(match.bestOf);
   const isHost    = phase === 'scoring';
   const isDone    = phase === 'complete';
+  // Was this account the one scoring? A spectator who watches a match to the
+  // finish also lands on phase 'complete' — but must not be offered "log this
+  // to your profile" for a match they didn't play.
+  const scoredByMe = match.hostUid === user.uid;
   const isPaused  = match.status === 'paused' && !isDone;
   const winnerName = match.winningSide === 'A' ? match.teamAName : match.winningSide === 'B' ? match.teamBName : '';
 
@@ -533,7 +537,7 @@ export default function LivePage() {
         {isDone && (
           <button onClick={() => { setPhase('idle'); setMatch(null); setHistory([]); setCourtPositions([]); setCourtSaved(false); setClipUrl(undefined); setShuttleHits([]); }}
             className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
-            New Match
+            {scoredByMe ? 'New Match' : 'Done'}
           </button>
         )}
         {isHost && !isDone && (
@@ -560,7 +564,7 @@ export default function LivePage() {
       {/* Log-to-profile prompt on match completion — this page only tracks the
           live scoreboard, it never saves to the player's match history/MMR on
           its own, so without this the result just evaporates once you leave. */}
-      {isDone && (
+      {isDone && scoredByMe && (
         <div className="bg-slate-900 border border-amber-500/25 rounded-2xl p-4 space-y-3">
           <div>
             <p className="text-sm font-semibold">Log this match to your profile?</p>
