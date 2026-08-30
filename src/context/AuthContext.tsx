@@ -43,7 +43,7 @@ async function userRowExists(uid: string): Promise<boolean> {
 }
 
 async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; homeVenue?: string; referredBy?: string }) {
-  const { error } = await supabase.from('users').insert({
+  const row: Record<string, unknown> = {
     uid: user.uid,
     email: user.email,
     display_name: extra.displayName,
@@ -71,7 +71,16 @@ async function createUserRow(user: CompatUser, extra: { username: string; displa
     // Lok runs 0021_referrals.sql. Once that's applied this is safe to
     // simplify back to always-present, but there's no reason to rush it.
     ...(extra.referredBy ? { referred_by: extra.referredBy } : {}),
-  });
+  };
+  let { error } = await supabase.from('users').insert(row);
+  // home_venue (migration 0032) not applied yet — an unknown column is
+  // rejected outright, which would break signup for anyone who entered a home
+  // venue in the quiz until Lok runs the migration. Retry once without it so
+  // signup keeps working in the gap; same fail-open shape as 0030's insert.
+  if (error && 'home_venue' in row && error.message?.includes('home_venue')) {
+    const { home_venue: _drop, ...withoutHomeVenue } = row;
+    ({ error } = await supabase.from('users').insert(withoutHomeVenue));
+  }
   // supabase-js doesn't reject on a DB error — without this a failed insert
   // (username taken in the race between the pre-check and here, RLS, transient
   // error) would fall through and completeProfile would report success with no

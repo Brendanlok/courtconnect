@@ -111,7 +111,16 @@ function profilePatchToRow(patch: Partial<UserProfile>): Record<string, unknown>
 
 export async function saveUserProfile(uid: string, patch: Partial<UserProfile>) {
   if (!uid || uid === 'me') return; // skip seed user
-  await supabase.from('users').update(profilePatchToRow(patch)).eq('uid', uid);
+  const row = profilePatchToRow(patch);
+  const { error } = await supabase.from('users').update(row).eq('uid', uid);
+  // home_venue (migration 0032) not applied yet — an unknown column rejects
+  // the whole UPDATE, so a Settings save that included a home venue would
+  // silently drop every other field in the same save (name, bio, location).
+  // Retry once without it; same fail-open shape as createUserRow / 0030.
+  if (error && 'home_venue' in row && error.message?.includes('home_venue')) {
+    const { home_venue: _drop, ...withoutHomeVenue } = row;
+    await supabase.from('users').update(withoutHomeVenue).eq('uid', uid);
+  }
 }
 
 export async function loadUserProfile(uid: string): Promise<Partial<UserProfile> | null> {
