@@ -525,14 +525,19 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                 return (
                   <Link key={r.id} href={rivalHref}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors">
-                    {i === 0 ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
-                        MOST PLAYED
-                      </span>
-                    ) : nemesis && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
-                        NEMESIS
-                      </span>
+                    {(i === 0 || nemesis) && (
+                      <div className="flex flex-col gap-1 shrink-0">
+                        {i === 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-center">
+                            MOST PLAYED
+                          </span>
+                        )}
+                        {nemesis && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 text-center">
+                            NEMESIS
+                          </span>
+                        )}
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{r.name}</p>
