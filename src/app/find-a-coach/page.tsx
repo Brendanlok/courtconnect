@@ -24,6 +24,7 @@ export default function FindACoach() {
   // need the full become-a-coach pitch (value props + sign-up CTA) instead
   // of a dead-end static line.
   const becomeCoachHref = `${BASE_PATH}/become-a-coach/`;
+  const iAmListed = !!myUid && !!coaches?.some(c => c.uid === myUid);
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
@@ -86,11 +87,11 @@ export default function FindACoach() {
         </div>
       )}
 
-      {coaches !== null && (myUid ? (
+      {coaches !== null && (myUid ? (!iAmListed && (
         <p className="text-xs text-slate-600 text-center">
           Are you a coach? List yourself free from Settings.
         </p>
-      ) : coaches.length > 0 && (
+      )) : coaches.length > 0 && (
         <p className="text-xs text-slate-600 text-center">
           Are you a coach?{' '}
           <a href={becomeCoachHref} className="text-emerald-400 hover:text-emerald-300 font-semibold">List yourself free</a>.
