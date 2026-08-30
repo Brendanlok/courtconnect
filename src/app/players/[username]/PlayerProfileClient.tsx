@@ -175,6 +175,26 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
     .values()]
     .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses));
 
+  // Singles rivals: confirmed singles matches grouped by opponent, most-played
+  // first. Own profile only — mirrors Doubles Partners for the singles game.
+  // Needs at least 2 meetings to count as a rivalry.
+  const rivalStats = isMe ? [...playerMatches
+    .filter(m => m.status === 'Confirmed' && (m.type === 'MS' || m.type === 'WS'))
+    .reduce((map, m) => {
+      const iAmP1 = m.player1Id === player.uid;
+      const oppId   = iAmP1 ? m.player2Id   : m.player1Id;
+      const oppName = iAmP1 ? m.player2Name : m.player1Name;
+      if (!oppId) return map;
+      const entry = map.get(oppId) ?? { id: oppId, name: oppName ?? 'Opponent', wins: 0, losses: 0 };
+      if (m.winnerId === player.uid) entry.wins++; else entry.losses++;
+      map.set(oppId, entry);
+      return map;
+    }, new Map<string, { id: string; name: string; wins: number; losses: number }>())
+    .values()]
+    .filter(r => r.wins + r.losses >= 2)
+    .sort((a, b) => (b.wins + b.losses) - (a.wins + a.losses))
+    : [];
+
   // Account privacy: private accounts require an accepted follow to see anything beyond the header
   const isFollowingPlayer  = following.includes(player.uid);
   const hasRequestedFollow = followRequestsSent.includes(player.uid);
@@ -482,6 +502,44 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                     </div>
                     <div className="h-1.5 w-16 bg-slate-700 rounded-full overflow-hidden shrink-0">
                       <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${wr}%` }} />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Rivals (singles) ── */}
+        {rivalStats.length > 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Swords size={15} className="text-emerald-400"/> Rivals
+            </h2>
+            <div className="space-y-2">
+              {rivalStats.slice(0, 4).map((r, i) => {
+                const played = r.wins + r.losses;
+                const wr = Math.round((r.wins / played) * 100);
+                const rivalHref = r.id === 'me' ? '/profile/' : `/profile/?uid=${r.id}`;
+                const nemesis = r.losses > r.wins;
+                return (
+                  <Link key={r.id} href={rivalHref}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                    {i === 0 ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                        MOST PLAYED
+                      </span>
+                    ) : nemesis && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
+                        NEMESIS
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{r.name}</p>
+                      <p className="text-xs text-slate-500">{r.wins}-{r.losses} &middot; {wr}% win rate &middot; {played} played</p>
+                    </div>
+                    <div className="h-1.5 w-16 bg-slate-700 rounded-full overflow-hidden shrink-0">
+                      <div className={`h-full rounded-full ${wr >= 50 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: `${wr}%` }} />
                     </div>
                   </Link>
                 );
