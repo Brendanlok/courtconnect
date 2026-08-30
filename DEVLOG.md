@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-31] — Weekly recap "Share" generates an image, not just text
+
+**Trigger:** Board fully dry (160 Done / 2 On Hold). Step 2c product idea for
+the day — the Home "This Week" card had a Share button that only fired
+`navigator.share({text})`, invisible on desktop and low-impact on mobile,
+while the match + season recaps already produce proper shareable image cards.
+
+**What changed:** New `src/lib/weeklyRecapImage.ts` — a canvas-drawn portrait
+card (1080×1350) reusing the exact palette/glow/fitText helpers from
+`matchRecapImage.ts` / `seasonRecapImage.ts`. Shows the player's name, the
+7-day date range, a 3-stat row (MMR delta / matches / wins) and the best win.
+`WeeklyRecapCard` in `page.tsx` now has sharing/error state and calls
+`generateWeeklyRecapBlob` → `shareOrDownloadRecap` (dynamic-imported so the
+canvas code isn't in the initial home bundle). Card only renders when the
+user has ≥1 confirmed match in the last 7 days, unchanged.
+
+**Verified:** `npx next build` clean; live check on the deployed site.
+
 ## [2026-08-29] — Settings/Onboarding Location save could wipe a MY user's state
 
 **Trigger:** Hit live while verifying the home-venue round-trip on Lok's own

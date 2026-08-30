@@ -3,7 +3,8 @@
 // reusing their palette and shareOrDownloadRecap for the share/download step.
 
 const W = 1080;
-const H = 1350;
+const H = 1080; // square — sits well in a chat thread, and this card has less
+                // content than the match/season recaps so 4:5 left a dead zone
 
 const COLOR = {
   bgTop: '#0f172a', bgBottom: '#020817',
@@ -58,23 +59,23 @@ export async function generateWeeklyRecapBlob(data: WeeklyRecapData): Promise<Bl
 
   ctx.fillStyle = COLOR.slate400;
   ctx.font = '700 32px sans-serif';
-  ctx.fillText('🏸 CourtConnect', W / 2, 100);
+  ctx.fillText('🏸 CourtConnect', W / 2, 110);
 
   ctx.fillStyle = COLOR.violet;
   ctx.font = '600 30px sans-serif';
-  ctx.fillText('MY BADMINTON WEEK', W / 2, 160);
+  ctx.fillText('MY BADMINTON WEEK', W / 2, 175);
 
   const nameSize = fitText(ctx, data.displayName, W - 160, 64);
   ctx.font = `800 ${nameSize}px sans-serif`;
   ctx.fillStyle = COLOR.white;
-  ctx.fillText(data.displayName, W / 2, 250);
+  ctx.fillText(data.displayName, W / 2, 275);
 
   ctx.font = '500 28px sans-serif';
   ctx.fillStyle = COLOR.slate500;
-  ctx.fillText(data.weekLabel, W / 2, 300);
+  ctx.fillText(data.weekLabel, W / 2, 325);
 
   // Stat card with 3 columns
-  const cardX = 90, cardY = 380, cardW = W - 180, cardH = 320, radius = 32;
+  const cardX = 90, cardY = 420, cardW = W - 180, cardH = 320, radius = 32;
   ctx.beginPath();
   ctx.roundRect(cardX, cardY, cardW, cardH, radius);
   ctx.fillStyle = COLOR.card;
@@ -111,19 +112,17 @@ export async function generateWeeklyRecapBlob(data: WeeklyRecapData): Promise<Bl
   });
 
   // Best win line
-  let y = cardY + cardH + 90;
   if (data.bestWinOpponent) {
     const line = `🏆 Best win: beat ${data.bestWinOpponent}` +
       (data.bestWinMmr ? ` (+${data.bestWinMmr})` : '');
     ctx.font = `600 ${fitText(ctx, line, W - 140, 34, 600, 22)}px sans-serif`;
     ctx.fillStyle = COLOR.slate400;
-    ctx.fillText(line, W / 2, y);
-    y += 70;
+    ctx.fillText(line, W / 2, cardY + cardH + 95);
   }
 
   ctx.font = '500 26px sans-serif';
   ctx.fillStyle = COLOR.slate500;
-  ctx.fillText('Track your matches at courtconnect', W / 2, H - 90);
+  ctx.fillText('Track every match at CourtConnect', W / 2, H - 95);
 
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'));
 }

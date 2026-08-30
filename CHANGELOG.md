@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-08-31] — Weekly recap shareable image
+
+### 🟢 Low
+- ✅ The **"This Week"** card on Home now has a real **Share** button — it
+  generates a portrait image card (your name, the week's date range, MMR /
+  matches / wins, and your best win) and opens the native share sheet, the
+  same way the match and season recaps already do. Falls back to a download
+  where the share sheet isn't available. Previously it only shared a line of
+  plain text (and only on browsers with the Web Share API).
+
+---
+
 ## [2026-08-29] — Feature: home venue at signup
 
 ### 🟢 Low
