@@ -210,6 +210,7 @@ export default function Home() {
         {/* ── Weekly Recap ──────────────────────────────────────────────────── */}
         {weeklyMatches.length > 0 && (
           <WeeklyRecapCard
+            displayName={user.displayName}
             mmrDelta={weeklyMmrDelta} matchesPlayed={weeklyMatches.length}
             winsCount={weeklyWins.length} bestWinOpponent={bestWinOpponent} bestWinMmr={bestWin?.mmrChange}
           />
@@ -447,17 +448,41 @@ export default function Home() {
 }
 
 // ─── Weekly Recap ─────────────────────────────────────────────────────────────
-// Screenshot-shareable end-of-week summary — uses the Web Share API where the
-// browser supports it (mobile Safari/Chrome) instead of building a custom
-// canvas-to-image export; falls back to just being a nice card to screenshot.
+// Screenshot-shareable end-of-week summary. Share button generates a portrait
+// image card (same canvas approach as the match/season recaps) and hands it to
+// the native share sheet, falling back to a plain download.
 
-function WeeklyRecapCard({ mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr }: {
+function WeeklyRecapCard({ displayName, mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr }: {
+  displayName: string;
   mmrDelta: number; matchesPlayed: number; winsCount: number;
   bestWinOpponent: string | null; bestWinMmr?: number;
 }) {
-  const shareText = `My badminton week on CourtConnect: ${matchesPlayed} match${matchesPlayed > 1 ? 'es' : ''} played, ${winsCount}W, ${mmrDelta >= 0 ? '+' : ''}${mmrDelta} MMR` +
-    (bestWinOpponent ? ` — best win vs ${bestWinOpponent}${bestWinMmr ? ` (+${bestWinMmr})` : ''}` : '') + ' 🏸';
-  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
+
+  const weekLabel = (() => {
+    const end = new Date();
+    const start = new Date(end.getTime() - 6 * 86400000);
+    const fmt = (d: Date) => d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+    return `${fmt(start)} – ${fmt(end)}`;
+  })();
+
+  const handleShare = async () => {
+    setSharing(true);
+    setShareError('');
+    try {
+      const { generateWeeklyRecapBlob } = await import('@/lib/weeklyRecapImage');
+      const { shareOrDownloadRecap } = await import('@/lib/matchRecapImage');
+      const blob = await generateWeeklyRecapBlob({
+        displayName, weekLabel, mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr,
+      });
+      await shareOrDownloadRecap(blob, `courtconnect-week-${Date.now()}.png`);
+    } catch {
+      setShareError('Could not generate the image. Please try again.');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950/20 border border-violet-500/25 rounded-2xl p-5">
@@ -465,13 +490,12 @@ function WeeklyRecapCard({ mmrDelta, matchesPlayed, winsCount, bestWinOpponent, 
         <h2 className="font-semibold text-sm flex items-center gap-2 text-violet-300">
           <Sparkles size={15}/> This Week
         </h2>
-        {canShare && (
-          <button onClick={() => navigator.share({ title: 'CourtConnect Weekly Recap', text: shareText }).catch(() => {})}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-300 transition-colors">
-            <Share2 size={12}/> Share
-          </button>
-        )}
+        <button onClick={handleShare} disabled={sharing}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-300 disabled:opacity-60 transition-colors">
+          <Share2 size={12}/> {sharing ? 'Generating…' : 'Share'}
+        </button>
       </div>
+      {shareError && <p className="text-[11px] text-red-400 mb-2">{shareError}</p>}
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
           <p className={`text-xl font-black ${mmrDelta > 0 ? 'text-emerald-400' : mmrDelta < 0 ? 'text-red-400' : 'text-slate-300'}`}>
