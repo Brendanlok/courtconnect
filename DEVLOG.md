@@ -16,7 +16,15 @@ card (1080×1350) reusing the exact palette/glow/fitText helpers from
 canvas code isn't in the initial home bundle). Card only renders when the
 user has ≥1 confirmed match in the last 7 days, unchanged.
 
-**Verified:** `npx next build` clean; live check on the deployed site.
+**Verified:** `npx next build` clean (twice); both GitHub Actions
+build+deploy runs green (a250e75, a96c202); the generator's exact drawing
+code run in a live browser produces a valid ~600 KB PNG with a correct,
+balanced layout (checked for a normal week and a long-name / no-best-win
+week). Not click-tested in-app: the card only renders when the signed-in
+user has a confirmed match in the last 7 days and no current account does;
+the dev server can't start in an unattended run. At end of session the
+GitHub Pages CDN was still serving the previous home bundle (edge-cache
+lag — origin deploy already succeeded).
 
 ## [2026-08-29] — Settings/Onboarding Location save could wipe a MY user's state
 
