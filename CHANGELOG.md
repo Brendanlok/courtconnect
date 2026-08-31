@@ -14,6 +14,9 @@
   same way the match and season recaps already do. Falls back to a download
   where the share sheet isn't available. Previously it only shared a line of
   plain text (and only on browsers with the Web Share API).
+- ✅ Fixed: event and tournament dates could show one day early for users in
+  timezones west of UTC (a bare calendar date was being read as UTC midnight).
+  No visible change for users in Malaysia / east of UTC.
 
 ---
 

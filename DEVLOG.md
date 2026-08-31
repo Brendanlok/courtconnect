@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-08-31] — Bare event dates now parse as local, not day-early UTC
+
+**Trigger:** The one item on an otherwise-dry board (P3, logged by the
+2026-08-31 board-dry audit). `formatDate()` and five inline
+`new Date(t.date).toLocaleDateString(...)` call sites parsed a bare
+`YYYY-MM-DD` as UTC midnight, so an event/tournament date rendered one day
+early for any user west of UTC. Latent for the Malaysia (UTC+8) user base,
+active the moment the app has a user in the Americas/Europe.
+
+**What changed:** New `parseDateOnly(iso)` in `utils.ts` — bare dates build a
+local `new Date(y, m-1, d)`, full datetime strings pass through unchanged.
+`formatDate` uses it; the inline renders on the Home, Matches, Tournaments and
+player-profile screens now call `formatDate` / `parseDateOnly` instead of
+`new Date(...)` directly. Self-check added to `utils.selfcheck.ts`.
+
+**Verified:** `npx next build` clean; `utils.selfcheck.ts` passes (8 checks).
+Shipped 6ddf38f. Purely a parsing change — display format is byte-identical
+for UTC+ users.
+
 ## [2026-08-31] — Weekly recap "Share" generates an image, not just text
 
 **Trigger:** Board fully dry (160 Done / 2 On Hold). Step 2c product idea for
