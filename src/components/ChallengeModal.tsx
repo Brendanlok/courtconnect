@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { X, Swords, MapPin, Calendar, MessageSquare } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { MATCH_TYPE_LABEL, localDateISO } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, localDateISO, formatDate } from '@/lib/utils';
 import type { UserProfile, MatchType, Challenge } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,38 @@ const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
 type ChallengeTarget = Pick<UserProfile, 'uid' | 'displayName' | 'username'>;
 
 export function ChallengeModal({ opponent, onClose }: { opponent: ChallengeTarget; onClose: () => void }) {
-  const { user, sendChallenge } = useApp();
+  const { user, matches, sendChallenge } = useApp();
+
+  // Head-to-head record vs this opponent, from the current user's confirmed
+  // matches. winnerId === user.uid counts as a win (mirrors the Rivals /
+  // Doubles Partners cards on the profile — same singles-style convention).
+  const h2h = (() => {
+    const met = matches
+      .filter(m => m.status === 'Confirmed')
+      .filter(m => {
+        const meP1 = m.player1Id === user.uid || m.player1PartnerId === user.uid;
+        const oppSide = meP1
+          ? [m.player2Id, m.player2PartnerId]
+          : [m.player1Id, m.player1PartnerId];
+        return oppSide.includes(opponent.uid);
+      })
+      .sort((a, b) => +new Date(b.playedAt) - +new Date(a.playedAt));
+    if (met.length === 0) return null;
+    let wins = 0, losses = 0;
+    for (const m of met) {
+      if (!m.winnerId) continue;
+      if (m.winnerId === user.uid) wins++; else losses++;
+    }
+    const last = met[0];
+    const meP1 = last.player1Id === user.uid || last.player1PartnerId === user.uid;
+    const score = (last.games ?? [])
+      .map(g => (meP1 ? `${g.p1}–${g.p2}` : `${g.p2}–${g.p1}`))
+      .join(', ');
+    const lastResult = last.winnerId
+      ? (last.winnerId === user.uid ? 'Won' : 'Lost')
+      : null;
+    return { count: met.length, wins, losses, score, lastResult, lastDate: last.playedAt };
+  })();
 
   const [format,  setFormat]  = useState<MatchType>('MS');
   const [venue,   setVenue]   = useState('');
@@ -84,6 +115,24 @@ export function ChallengeModal({ opponent, onClose }: { opponent: ChallengeTarge
           </h2>
           <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white transition-colors"><X size={18}/></button>
         </div>
+
+        {h2h && (
+          <div className="mx-5 mt-4 rounded-xl border border-slate-800 bg-slate-800/40 px-4 py-3">
+            <p className="text-[10px] font-semibold tracking-wide text-slate-500">HEAD-TO-HEAD</p>
+            <p className="mt-0.5 text-sm font-bold text-white">
+              {h2h.wins}<span className="text-slate-500">–</span>{h2h.losses}
+              <span className="ml-2 text-xs font-medium text-slate-400">
+                {h2h.count} {h2h.count === 1 ? 'match' : 'matches'}
+              </span>
+            </p>
+            {h2h.lastResult && (
+              <p className="mt-1 text-xs text-slate-400">
+                Last: <span className={h2h.lastResult === 'Won' ? 'text-emerald-400' : 'text-red-400'}>{h2h.lastResult}</span>
+                {h2h.score && ` ${h2h.score}`} · {formatDate(h2h.lastDate)}
+              </p>
+            )}
+          </div>
+        )}
 
         <form onSubmit={submit} className="p-5 space-y-4">
           {/* Format */}

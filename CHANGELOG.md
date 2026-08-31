@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-09-01] — Head-to-head in the Challenge dialog
+
+### 🟢 Low
+- ✅ When you challenge a player you've faced before, the challenge dialog now
+  shows your **head-to-head record** against them — win–loss, how many matches
+  you've played, and your last result with the game scores and date. Nothing
+  shows if you've never played them.
+
 ## [2026-08-31] — Weekly recap shareable image
 
 ### 🟢 Low

@@ -1,5 +1,20 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-01] — Challenge dialog shows head-to-head vs the opponent
+
+**Trigger:** Board fully dry (163 Done / 2 On Hold). Step 2c product idea for
+the day. Opening the Challenge dialog on a player gave zero context about who
+you were about to play — the Rivals card only lives on your own profile.
+
+**What changed:** `ChallengeModal` now computes your head-to-head record vs
+the target from `useApp().matches` (confirmed matches, either side, singles or
+doubles) and renders a compact HEAD-TO-HEAD banner above the form: W–L,
+match count, and your last result + game scores + date. Hidden entirely when
+you've never played them. Same `winnerId === user.uid` win convention as the
+existing Rivals / Doubles Partners cards.
+
+**Verified:** `npx next build` clean. Deployed 2026-09-01, checked live.
+
 ## [2026-08-31] — Bare event dates now parse as local, not day-early UTC
 
 **Trigger:** The one item on an otherwise-dry board (P3, logged by the
