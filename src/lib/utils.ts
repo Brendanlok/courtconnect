@@ -182,8 +182,15 @@ export function timeAgo(iso: string): string {
   return `${Math.floor(diff/86400000)}d ago`;
 }
 
+// A bare YYYY-MM-DD parses as UTC midnight, which renders a day early for any
+// user west of UTC. Parse those as a local calendar date instead.
+export function parseDateOnly(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso);
+}
+
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-MY', { day:'numeric', month:'short', year:'numeric' });
+  return parseDateOnly(iso).toLocaleDateString('en-MY', { day:'numeric', month:'short', year:'numeric' });
 }
 
 export function formatTime(iso: string): string {

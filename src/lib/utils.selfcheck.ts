@@ -10,7 +10,7 @@ const store = new Map<string, string>();
   removeItem: (k: string) => void store.delete(k),
 };
 
-import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -91,5 +91,19 @@ console.log('PASS pending signup expires so a shared browser cannot leak a stran
   assert.strictEqual(sharedAvailabilitySlots(undefined, undefined), 0);
 }
 console.log('PASS sharedAvailabilitySlots counts the weekly slots two players both marked free');
+
+// 8. parseDateOnly reads a bare YYYY-MM-DD as a LOCAL calendar date, not UTC
+//    midnight — so an event dated "2026-03-10" never renders as March 9 for a
+//    user west of UTC. Full datetime strings still parse as-is.
+{
+  const d = parseDateOnly('2026-03-10');
+  assert.strictEqual(d.getFullYear(), 2026);
+  assert.strictEqual(d.getMonth(), 2);
+  assert.strictEqual(d.getDate(), 10, `bare date should keep its calendar day locally, got ${d.getDate()}`);
+
+  const dt = parseDateOnly('2026-03-10T23:30:00Z');
+  assert.strictEqual(dt.getTime(), new Date('2026-03-10T23:30:00Z').getTime());
+}
+console.log('PASS parseDateOnly treats a bare date as local, not a day-early UTC instant');
 
 console.log('ALL PASS utils (MMR)');

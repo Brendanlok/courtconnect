@@ -14,7 +14,7 @@ import {
   Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone, Radio, Share2, Sparkles,
 } from 'lucide-react';
 import type { Match, Tournament, Challenge, Club } from '@/types';
-import { formatDate, formatTime, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { formatDate, formatTime, parseDateOnly, MATCH_TYPE_LABEL } from '@/lib/utils';
 
 export default function Home() {
   const { user, matches, updateUser, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
@@ -310,7 +310,7 @@ export default function Home() {
                   <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
                     <MapPin size={10}/>{t.venue.split(',')[0]}
                     <span>·</span>
-                    {new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+                    {parseDateOnly(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
                   </p>
                 </div>
                 <ChevronRight size={15} className="text-slate-600 group-hover:text-amber-400 transition-colors shrink-0"/>

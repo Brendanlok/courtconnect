@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
-import { BASE_PATH } from '@/lib/utils';
+import { BASE_PATH, parseDateOnly } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { LogMatchModal } from '@/components/LogMatchModal';
@@ -497,7 +497,7 @@ export default function MatchesPage() {
                   <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                     <MapPin size={10}/> {ch.venue}
                     <span className="mx-1">·</span>
-                    <Bell size={10}/> {new Date(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
+                    <Bell size={10}/> {parseDateOnly(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
                   </p>
                   {ch.message && <p className="text-xs text-slate-500 mt-1 italic">"{ch.message}"</p>}
                 </div>

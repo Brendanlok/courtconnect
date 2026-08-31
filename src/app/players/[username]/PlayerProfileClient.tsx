@@ -12,7 +12,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots, formatDate } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
@@ -716,7 +716,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm group-hover:text-amber-300 transition-colors truncate">{t.name}</p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {new Date(t.date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })} · {t.venue.split(',')[0]}
+                        {formatDate(t.date)} · {t.venue.split(',')[0]}
                       </p>
                     </div>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${

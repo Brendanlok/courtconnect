@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, MapPin, Users, Lock, Trophy, Plus, Globe, EyeOff,
          AlertTriangle, X, Filter, Info, Eye, Search, Check, Edit3, Trash2, RotateCcw } from 'lucide-react';
-import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName, downloadTournamentIcs, localDateISO } from '@/lib/utils';
+import { MATCH_TYPE_LABEL, MY_STATES, COUNTRIES, getCountryByName, downloadTournamentIcs, localDateISO, formatDate } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { lookupUserByUid } from '@/lib/supabaseService';
 import { undoBracketResult as computeUndoBracketResult } from '@/lib/bracketGen';
@@ -395,7 +395,7 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
           <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
             <span className="flex items-center gap-0.5"><MapPin size={9}/> {canSeeDetails ? `${t.venue.split(',')[0]}, ${t.state}` : t.state}</span>
             <span>·</span>
-            <span>{new Date(t.date).toLocaleDateString('en-MY', {day:'numeric',month:'short',year:'numeric'})}{t.time ? ` · ${t.time}` : ''}</span>
+            <span>{formatDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
             {canSeeDetails && <><span>·</span><span className="flex items-center gap-0.5"><Users size={9}/> {t.currentPlayers}/{t.maxPlayers}</span></>}
           </p>
         </div>
@@ -641,7 +641,7 @@ function RegisterWarningModal({ tournament: t, onClose, onConfirm }: {
           <div className="bg-slate-800 rounded-xl p-3">
             <p className="font-semibold text-sm">{t.name}</p>
             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-              <MapPin size={10}/>{t.venue.split(',')[0]} · {new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}
+              <MapPin size={10}/>{t.venue.split(',')[0]} · {formatDate(t.date)}
             </p>
             {t.entryFee > 0 && <p className="text-xs text-amber-400 mt-1 font-semibold">Entry fee: RM {t.entryFee}</p>}
           </div>
@@ -741,7 +741,7 @@ function UnregisterModal({ tournament: t, isPenalty, onClose, onConfirm }: {
         <div className="p-5 space-y-4">
           <div className="bg-slate-800 rounded-xl p-3">
             <p className="font-semibold text-sm">{t.name}</p>
-            <p className="text-xs text-slate-400 mt-0.5">{new Date(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{formatDate(t.date)}</p>
           </div>
 
           {isPenalty ? (
