@@ -163,9 +163,11 @@ export async function shareOrDownloadRecap(blob: Blob, filename: string): Promis
     try {
       await nav.share({ files: [file], title: 'CourtConnect Match Recap' });
       return 'shared';
-    } catch {
-      // user cancelled the share sheet — not an error, just stop here
-      return 'shared';
+    } catch (e) {
+      // AbortError = user cancelled the share sheet — respect that. Any other
+      // error (share API present but broken) falls through to the download so
+      // the user still gets their image instead of a silent no-op.
+      if (e instanceof Error && e.name === 'AbortError') return 'shared';
     }
   }
   const url = URL.createObjectURL(blob);
