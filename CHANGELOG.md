@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-01] — Disputed-match corrections must have a winner
+
+### 🟡 Medium
+- 🐛 When correcting a disputed match score, a tied result (e.g. one game each)
+  could be submitted. It was then credited to the opponent by default. The
+  correction form now blocks a tied score with "add a deciding game", matching
+  the rule the normal Log a Match screen already enforces.
+
+---
+
 ## [2026-09-01] — Head-to-head in the Challenge dialog
 
 ### 🟢 Low
