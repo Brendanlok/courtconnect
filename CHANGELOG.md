@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-09-02] — See your recent form at a glance on Home
+
+### 🟢 Low
+- ✨ The Home screen now shows a "FORM" strip in the header — your last five
+  match results as green (win) / red (loss) dots, most recent first. Before,
+  the only hint of recent form was a win-streak banner that only appeared
+  after two wins in a row; a mixed run showed nothing.
+
 ## [2026-09-01] — Push notifications show the CourtConnect icon again
 
 ### 🟢 Low

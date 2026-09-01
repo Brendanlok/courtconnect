@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-02] — Feature: recent-form dots on the Home header
+
+**Trigger:** Step 2c daily product idea (1am session), built same session.
+The Home header only surfaced momentum via a win-streak banner that appears
+at streak ≥ 2 — a player on a W-L-W-W-L run saw nothing. The profile page's
+Match Analytics already renders a "Recent Form" dot row, but it's buried
+below the fold on a screen users visit far less than Home.
+
+**What changed:** Added a compact "FORM" row under the streak banner in the
+Home header: the last 5 confirmed results as W/L dots, newest first, reusing
+the exact green/red dot treatment from the profile page. Only rendered when
+there's at least one confirmed match. Client-side only, own matches only, no
+schema change, no privacy surface. One file (`src/app/page.tsx`).
+
+**Verified:** `npx next build` clean. Deployed 2026-09-02 (commit 3823372).
+Live home chunk contains the feature; live site loads with zero console
+errors; FORM row renders correctly at 375px and desktop width (demo session
+shows a single "L" dot for the one confirmed match).
+
 ## [2026-09-01] — Fix: foreground push notification showed no app icon
 
 **Trigger:** Board-dry audit (5pm session). Board fully dry, code sweep.
