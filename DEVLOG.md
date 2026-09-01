@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-01] — Fix: tied-score corrections in the dispute flow
+
+**Trigger:** Board-dry audit (the one open To-Do — a claimed doubles/demo
+W/L bug — turned out to be a non-bug: `user.uid` is pinned to the `'me'`
+sentinel app-wide, so the modals already emit `'me'` and win/loss is
+recorded correctly). Second audit finding, real this time.
+
+**What changed:** `MatchDetailModal.submitCorrection` validated each game
+score but not that the corrected match had a winner. A 1-1 tie passed, and
+`resubmitWinner` then credited player2 by default. Added the same
+"games are tied — add a deciding game" guard `LogMatchModal` uses on the
+original entry. One file. Covers both local and real (Supabase) matches —
+both resubmit through this modal.
+
+**Verified:** `npx next build` clean. Deployed 2026-09-01 (0fb6826). The
+dispute-correction flow needs a signed-in account with a disputed match, so
+not click-tested (auto-dev has no account) — logic guard is a direct mirror
+of the tested `LogMatchModal` rule.
+
 ## [2026-09-01] — Fix: head-to-head banner never rendered (same-day bugfix)
 
 **Trigger:** Board-dry audit. The head-to-head banner shipped this morning was
