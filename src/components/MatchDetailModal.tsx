@@ -112,6 +112,15 @@ export function MatchDetailModal({ match: m, onClose, onConfirm, onDispute, onCa
       setCorrectionError('Each game needs a valid badminton score — win by 2, first to 21 (capped at 30).');
       return;
     }
+    // ...and it must have a clear winner, same as the original entry —
+    // otherwise resubmitWinner just credits player2 on a tie (LogMatchModal
+    // blocks this with "Games are tied"; the correction path didn't).
+    const p1w = parsed.filter(g => g.p1 > g.p2).length;
+    const p2w = parsed.filter(g => g.p2 > g.p1).length;
+    if (p1w === p2w) {
+      setCorrectionError('The games are tied — add a deciding game so there’s a clear winner.');
+      return;
+    }
     onResubmit?.(parsed);
     setCorrecting(false);
   };
