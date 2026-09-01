@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-01] — Fix: head-to-head banner never rendered (same-day bugfix)
+
+**Trigger:** Board-dry audit. The head-to-head banner shipped this morning was
+dead on arrival. It filtered `matches` with `m.player1Id === user.uid` and
+`oppSide.includes(opponent.uid)`, but `toLocalMatch` normalizes every match so
+the current user is `player1Id: 'me'` (the sentinel, never the real uid) and
+the opponent is always on the `player2` side. So `met` was always empty →
+`h2h` was always `null` → nothing rendered. "Verified live" this morning only
+checked the bundle contained the code and the page had no console errors, not
+that the banner showed.
+
+**What changed:** `ChallengeModal` h2h now uses the `me` convention: opponent
+match = `player2Id`/`player2PartnerId === opponent.uid`, win = `winnerId ===
+'me'`, score digits taken as-is (`games` p1 is always the user's side in a
+normalized match). One file.
+
+**Verified:** `npx next build` clean. Deployed 2026-09-01. Auth-gated flow
+(signed-in user challenging a real opponent they've played) still not
+click-tested — auto-dev has no real account.
+
 ## [2026-09-01] — Challenge dialog shows head-to-head vs the opponent
 
 **Trigger:** Board fully dry (163 Done / 2 On Hold). Step 2c product idea for

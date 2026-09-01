@@ -20,32 +20,26 @@ export function ChallengeModal({ opponent, onClose }: { opponent: ChallengeTarge
   const { user, matches, sendChallenge } = useApp();
 
   // Head-to-head record vs this opponent, from the current user's confirmed
-  // matches. winnerId === user.uid counts as a win (mirrors the Rivals /
-  // Doubles Partners cards on the profile — same singles-style convention).
+  // matches. In useApp().matches the current user is ALWAYS normalized to
+  // player1 and winnerId is 'me' on a win (see toLocalMatch) — the opponent
+  // sits on the player2 side. (Was checking m.player1Id === user.uid, which is
+  // never true against the 'me' sentinel, so the banner never rendered.)
   const h2h = (() => {
     const met = matches
       .filter(m => m.status === 'Confirmed')
-      .filter(m => {
-        const meP1 = m.player1Id === user.uid || m.player1PartnerId === user.uid;
-        const oppSide = meP1
-          ? [m.player2Id, m.player2PartnerId]
-          : [m.player1Id, m.player1PartnerId];
-        return oppSide.includes(opponent.uid);
-      })
+      .filter(m => m.player2Id === opponent.uid || m.player2PartnerId === opponent.uid)
       .sort((a, b) => +new Date(b.playedAt) - +new Date(a.playedAt));
     if (met.length === 0) return null;
     let wins = 0, losses = 0;
     for (const m of met) {
       if (!m.winnerId) continue;
-      if (m.winnerId === user.uid) wins++; else losses++;
+      if (m.winnerId === 'me') wins++; else losses++;
     }
     const last = met[0];
-    const meP1 = last.player1Id === user.uid || last.player1PartnerId === user.uid;
-    const score = (last.games ?? [])
-      .map(g => (meP1 ? `${g.p1}–${g.p2}` : `${g.p2}–${g.p1}`))
-      .join(', ');
+    // games' p1 is always the current user's side in normalized matches.
+    const score = (last.games ?? []).map(g => `${g.p1}–${g.p2}`).join(', ');
     const lastResult = last.winnerId
-      ? (last.winnerId === user.uid ? 'Won' : 'Lost')
+      ? (last.winnerId === 'me' ? 'Won' : 'Lost')
       : null;
     return { count: met.length, wins, losses, score, lastResult, lastDate: last.playedAt };
   })();

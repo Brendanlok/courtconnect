@@ -12,6 +12,9 @@
   shows your **head-to-head record** against them — win–loss, how many matches
   you've played, and your last result with the game scores and date. Nothing
   shows if you've never played them.
+- 🐛 Fix (same day): the head-to-head banner never actually appeared — it was
+  looking for the current user under their account id, but matches store the
+  user as `me`. Now it renders as intended.
 
 ## [2026-08-31] — Weekly recap shareable image
 
