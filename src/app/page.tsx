@@ -50,6 +50,11 @@ export default function Home() {
     else break;
   }
 
+  // Recent form: last 5 confirmed results, newest first — same dot treatment
+  // as the profile page's Match Analytics "Recent Form" row. `confirmed` is
+  // already sorted newest-first (AppContext sorts matches by playedAt desc).
+  const recentForm = confirmed.slice(0, 5).map(m => m.winnerId === user.uid);
+
   const oneWeekAgo = Date.now() - 7 * 86400000;
   const weeklyMmrDelta = confirmed
     .filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo)
@@ -133,6 +138,21 @@ export default function Home() {
                 <Flame size={14} className="text-orange-400 animate-pulse"/>
                 <span className="text-sm font-bold text-orange-300">{streak}-match win streak</span>
                 <span className="text-xs text-slate-400">— keep it going!</span>
+              </div>
+            )}
+
+            {/* Recent form — last 5 results, newest first */}
+            {recentForm.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Form</span>
+                <div className="flex gap-1">
+                  {recentForm.map((won, i) => (
+                    <div key={i} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold
+                      ${won ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
+                      {won ? 'W' : 'L'}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
