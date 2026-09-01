@@ -471,8 +471,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const opts: NotificationOptions = {
         body: full.body,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-96x96.png',
+        icon: `${BASE_PATH}/icons/icon-192x192.png`,
+        badge: `${BASE_PATH}/icons/icon-96x96.png`,
         tag: full.id,
         data: { linkTo: full.linkTo },
       };

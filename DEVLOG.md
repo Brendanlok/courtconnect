@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-01] — Fix: foreground push notification showed no app icon
+
+**Trigger:** Board-dry audit (5pm session). Board fully dry, code sweep.
+Found in `AppContext.tsx` `addNotification`: the browser Notification fired
+when the tab is backgrounded used bare `/icons/icon-192x192.png` and
+`/icons/icon-96x96.png` paths. The site is served under `/courtconnect/` on
+GitHub Pages, so those resolve to `brendanlok.github.io/icons/...` → 404,
+and the notification rendered with the browser's generic default icon
+instead of the CourtConnect badge. Every other icon reference in the app
+(`layout.tsx`, `sw.js`, `manifest.json`) already prefixes the base path.
+
+**What changed:** Prefixed both with `${BASE_PATH}` (already imported in the
+file). One-line-each fix, no behaviour change beyond the icon now loading.
+
+**Verified:** `npx next build` clean. Deployed 2026-09-01. Not click-tested
+(needs a real account + granted notification permission + backgrounded tab);
+the path is now identical in construction to the working `layout.tsx` refs.
+
 ## [2026-09-01] — Fix: non-MY players tagged with a random Malaysian state
 
 **Trigger:** Board-dry audit (1pm session). Board fully dry, so a code

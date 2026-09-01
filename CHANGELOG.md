@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-01] — Push notifications show the CourtConnect icon again
+
+### 🟢 Low
+- 🐛 When a notification popped up while the app was in the background, it
+  showed the browser's generic bell icon instead of the CourtConnect logo,
+  because the icon file couldn't be found at the address the code asked for.
+  Fixed the address; the app badge now shows on the notification.
+
+---
+
 ## [2026-09-01] — Non-Malaysian players show their real region
 
 ### 🟡 Medium
