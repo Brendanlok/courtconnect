@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Plus, Search, MapPin, Loader2, Navigation, Upload, ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS, ME } from '@/lib/data';
-import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore, partnerRecord } from '@/lib/utils';
+import { previewMMRChange, calcMMRChange, marginMultiplier, MATCH_TYPE_LABEL, isCalibrating, isValidGameScore, partnerRecord, regionOf } from '@/lib/utils';
 import { opponentReliabilityMultiplier } from '@/lib/reliability';
 import { antiCheatCheck } from '@/lib/antiCheat';
 import type { Match, MatchType, UserProfile } from '@/types';
@@ -583,7 +583,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
       winnerId: iWon ? user.uid : opp1.uid,
       games: parsedGames, mmrChange: change, mode,
       playedAt: new Date().toISOString(),
-      location: loc || `${user.area}, ${user.state}`,
+      location: loc || `${user.area}, ${regionOf(user)}`,
       ...(plannedMatchId ? { plannedMatchId } : {}),
       ...(prefill?.clipUrl ? { clipUrl: prefill.clipUrl } : {}),
       ...(prefill?.shuttleHits?.length ? { shuttleHits: prefill.shuttleHits } : {}),

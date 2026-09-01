@@ -5,7 +5,7 @@ import { PLAYERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName, isCalibrating } from '@/lib/utils';
+import { TIER_STYLE, COUNTRIES, approxDistanceKm, profileHref, getCountryByName, isCalibrating, regionOf } from '@/lib/utils';
 import { seasonNumberForDate, daysUntilSeasonEnd } from '@/lib/seasons';
 import { Search, MapPin, ArrowUpDown } from 'lucide-react';
 import Link from 'next/link';
@@ -192,7 +192,7 @@ export default function Leaderboard() {
                     {p.isDummy && <span className="text-[9px] font-bold bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded">DEMO</span>}
                     <p className={`font-bold text-amber-400 ${isFirst ? 'text-lg' : 'text-sm'}`}>{p.mmr.toLocaleString()}</p>
                     <div className="flex justify-center mt-1"><TierBadge tier={p.tier}/></div>
-                    <p className="text-xs text-slate-500 mt-1">📍 {p.area || p.state}</p>
+                    <p className="text-xs text-slate-500 mt-1">📍 {p.area || regionOf(p)}</p>
                   </Link>
                 );
               })}
@@ -233,7 +233,7 @@ export default function Leaderboard() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500">@{p.username} · 📍 {p.area ? `${p.area}, ` : ''}{p.state}</p>
+                        <p className="text-xs text-slate-500">@{p.username} · 📍 {p.area ? `${p.area}, ` : ''}{regionOf(p)}</p>
                       </div>
                     </div>
                     <TierBadge tier={p.tier}/>

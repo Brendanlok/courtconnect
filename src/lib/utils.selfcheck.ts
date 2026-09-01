@@ -10,7 +10,7 @@ const store = new Map<string, string>();
   removeItem: (k: string) => void store.delete(k),
 };
 
-import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly, regionOf } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -105,5 +105,15 @@ console.log('PASS sharedAvailabilitySlots counts the weekly slots two players bo
   assert.strictEqual(dt.getTime(), new Date('2026-03-10T23:30:00Z').getTime());
 }
 console.log('PASS parseDateOnly treats a bare date as local, not a day-early UTC instant');
+
+// 9. regionOf shows a MY player's .state but a non-MY player's .region, so a
+//    non-Malaysian never gets tagged with the junk Malaysia-default state.
+{
+  assert.strictEqual(regionOf({ state: 'Selangor' }), 'Selangor', 'no country defaults to Malaysia -> state');
+  assert.strictEqual(regionOf({ country: 'Malaysia', state: 'Penang', region: 'x' }), 'Penang');
+  assert.strictEqual(regionOf({ country: 'United States', state: 'Selangor', region: 'California' }), 'California');
+  assert.strictEqual(regionOf({ country: 'Other', state: 'Selangor', region: '' }), 'Selangor', 'falls back to state when region blank');
+}
+console.log('PASS regionOf resolves a non-MY player to their real region, not the MY default state');
 
 console.log('ALL PASS utils (MMR)');

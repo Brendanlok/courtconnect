@@ -6,7 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { MatchCard } from '@/components/MatchCard';
 import { MatchDetailModal } from '@/components/MatchDetailModal';
 import { LogMatchModal } from '@/components/LogMatchModal';
-import { tierProgress, nextTier, TIER_STYLE, BASE_PATH, isCalibrating } from '@/lib/utils';
+import { tierProgress, nextTier, TIER_STYLE, BASE_PATH, isCalibrating, regionOf } from '@/lib/utils';
 import { usePausedMatch } from '@/lib/pausedMatch';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -104,7 +104,7 @@ export default function Home() {
                   <TierBadge tier={user.tier} placementMatchesPlayed={user.placementMatchesPlayed} recalibrationMatchesPlayed={user.recalibrationMatchesPlayed}/>
                   <span className="text-xs text-slate-500">·</span>
                   <span className="text-xs text-slate-400 flex items-center gap-1">
-                    <MapPin size={11} className="text-emerald-400"/>{user.area}, {user.state}
+                    <MapPin size={11} className="text-emerald-400"/>{user.area}, {regionOf(user)}
                   </span>
                 </div>
               </div>

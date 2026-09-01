@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-09-01] — Non-Malaysian players show their real region
+
+### 🟡 Medium
+- 🐛 Players outside Malaysia were shown a placeholder Malaysian state
+  ("Selangor") wherever their location appeared — on the leaderboard, their
+  own home screen, their public profile, and their QR card — because their
+  real state/province is stored in a separate field. Every location display
+  now uses the correct field, so an American player shows "California", not
+  "Selangor". Malaysian players are unaffected.
+
+---
+
 ## [2026-09-01] — Disputed-match corrections must have a winner
 
 ### 🟡 Medium

@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { TIER_STYLE, BASE_PATH, isCalibrating } from '@/lib/utils';
+import { TIER_STYLE, BASE_PATH, isCalibrating, regionOf } from '@/lib/utils';
 import { X, Share2, Copy, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -91,7 +91,7 @@ function QRModalInner({ user, s, qrPayload, onClose }: {
         <span className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-bold border ${calibrating ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : `${s.bg} ${s.text} ${s.border}`}`}>
           {calibrating ? `⚡ Calibrating ${user.placementMatchesPlayed ?? 0}/10` : `${s.icon} ${user.tier} · ${user.mmr.toLocaleString()} MMR`}
         </span>
-        <p className="text-slate-500 text-xs mt-1">{calibrating ? 'Unranked' : `#${user.globalRank} National`} · {user.area}, {user.state}</p>
+        <p className="text-slate-500 text-xs mt-1">{calibrating ? 'Unranked' : `#${user.globalRank} National`} · {user.area}, {regionOf(user)}</p>
 
         <div className="flex gap-3 mt-6">
           <Button onClick={handleShare} className="flex-1">

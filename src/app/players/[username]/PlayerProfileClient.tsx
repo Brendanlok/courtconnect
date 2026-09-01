@@ -12,7 +12,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots, formatDate } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots, formatDate, regionOf } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
@@ -280,7 +280,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
               )}
             </div>
             <p className="text-slate-400 text-sm flex items-center gap-1.5 flex-wrap">
-              <MapPin size={12}/> {player.area}, {player.state}
+              <MapPin size={12}/> {player.area}, {regionOf(player)}
               <span className="text-slate-600">·</span>
               <span>{playerCalibrating ? 'Calibrating — unranked' : `#${player.globalRank} National`}</span>
               {player.gender && (

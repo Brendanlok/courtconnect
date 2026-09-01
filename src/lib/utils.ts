@@ -289,6 +289,14 @@ export function approxDistanceKm(a: { area: string; state: MalaysiaState }, b: {
   return 999;
 }
 
+// Non-MY profiles keep their real state/province in `.region`; `.state` is a
+// required-but-meaningless Malaysia default for them. Use this anywhere a
+// player's location is shown so non-MY users don't get tagged with a random
+// Malaysian state.
+export function regionOf(p: { country?: string; state?: string; region?: string }): string {
+  return (p.country ?? 'Malaysia') === 'Malaysia' ? (p.state ?? '') : (p.region || p.state || '');
+}
+
 export function skillMatch(a: number, b: number) {
   return Math.max(0, Math.round(100 - (Math.abs(a - b) / 600) * 100));
 }

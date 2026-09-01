@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-01] — Fix: non-MY players tagged with a random Malaysian state
+
+**Trigger:** Board-dry audit (1pm session). Board fully dry, so a code
+sweep. Found in `leaderboard/page.tsx`: non-Malaysian profiles keep their
+real state/province in `.region` — `.state` is a required-but-meaningless
+`MalaysiaState` default for them. The By-Region *filter* already handled
+this, but every place a player's location was *displayed* rendered `.state`
+raw: leaderboard rows + podium, the signed-in home screen, the public
+player profile header, the QR card, and the Log-a-Match fallback location
+string. A US player saw everyone (and themselves) labelled "Selangor".
+
+**What changed:** Added `regionOf(p)` in `utils.ts` — `Malaysia` (or no
+country) → `.state`, otherwise `.region || .state`. Swapped it in at all
+six display sites. Filtering code untouched (already correct).
+Malaysia-only pages (`/rankings`, `/rankings/[username]`) left as-is by
+design. Self-check case added to `utils.selfcheck.ts`.
+
+**Verified:** `npx tsx utils.selfcheck.ts` all pass; `npx next build`
+clean. Deployed 2026-09-01. Not click-tested against a real non-MY account
+(auto-dev has none) — helper is covered by the self-check and the change is
+a pure display swap.
+
 ## [2026-09-01] — Fix: tied-score corrections in the dispute flow
 
 **Trigger:** Board-dry audit (the one open To-Do — a claimed doubles/demo
