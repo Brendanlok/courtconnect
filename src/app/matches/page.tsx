@@ -841,8 +841,13 @@ function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Matc
   // the same gate on the equivalent card used elsewhere).
   const isUnresolved = m.status === 'Disputed' || m.status === 'Cancelled';
   const iWon = m.status === 'Confirmed' && m.winnerId === 'me';
-  const myScore  = m.games.map(g => g.p1).join('-');
-  const oppScore = m.games.map(g => g.p2).join('-');
+  // Per-game scores, same treatment as MatchCard — games are normalised so
+  // p1 is always "me". Joining all p1s then all p2s rendered "21-21 · 19-15"
+  // for a 2-game match instead of the readable "21-19, 21-15".
+  const scoreStr = m.games
+    .filter(g => g.p1 > 0 || g.p2 > 0)
+    .map(g => `${g.p1}-${g.p2}`)
+    .join(', ');
   const date = new Date(m.playedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
     <button onClick={onClick}
@@ -861,7 +866,7 @@ function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Matc
         <span className="text-xs text-slate-500 shrink-0">{date}</span>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">{myScore} · {oppScore}</p>
+        <p className="text-xs text-slate-400 font-mono">{scoreStr || '—'}</p>
         {isPending
           ? <span className="text-xs text-amber-400 font-medium">Tap to confirm or dispute</span>
           : isUnresolved
