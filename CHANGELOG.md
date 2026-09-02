@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-09-02] — Private accounts stay private when viewed via QR or link
+
+### 🟠 High
+- 🐛 Opening someone's profile from a scanned QR code or a shared link and
+  tapping Follow added you as an approved follower straight away, even for
+  private accounts that are supposed to approve each request. Private
+  accounts now correctly receive a follow request instead.
+- 🐛 The same screen showed every player's location as "Kuala Lumpur" and
+  their follower / following counts as 0, regardless of their real profile.
+  It now shows their actual details.
+
 ## [2026-09-02] — Demo profiles no longer look "stale"
 
 ### 🟢 Low
