@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-09-02] — Demo profiles no longer look "stale"
+
+### 🟢 Low
+- 🐛 Every demo player profile showed a "Rating stale" badge and hid the
+  Skill Match percentage, as if the player hadn't been active in a month.
+  Demo players are showcase data with a fixed rating — they now always read
+  as established, and the Skill Match badge shows normally.
+
 ## [2026-09-02] — See your recent form at a glance on Home
 
 ### 🟢 Low
