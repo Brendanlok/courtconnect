@@ -25,6 +25,10 @@ export function getReliability(p: {
   lastActiveAt?: string | null;
   joinedAt: string;
 }): Reliability {
+  // Seed/demo roster is static showcase data with an old joinedAt and no
+  // lastActiveAt — without this every demo profile reads as 'stale' and hides
+  // its Skill Match badge. Same spirit as isCalibrating's !isDummy guard.
+  if (p.isDummy) return 'established';
   if (isCalibrating(p)) return 'provisional';
   return daysSinceActive(p) >= STALE_AFTER_DAYS ? 'stale' : 'established';
 }

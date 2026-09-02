@@ -57,4 +57,11 @@ console.log('PASS one provisional player on a doubles team is enough to discount
 }
 console.log('PASS demo/seed opponents never trigger the provisional discount');
 
+// 8. Seed/demo players are always 'established' — old joinedAt, no lastActiveAt,
+//    but their rating is fixed showcase data, not a dormant real account.
+{
+  assert.strictEqual(getReliability({ isDummy: true, joinedAt: daysAgo(600) }), 'established');
+}
+console.log('PASS demo/seed players read as established, not stale');
+
 console.log('ALL PASS reliability');
