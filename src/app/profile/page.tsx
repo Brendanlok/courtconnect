@@ -28,13 +28,25 @@ export default function ProfilePage() {
     setOtherUid(uid);
     lookupUserByUid(uid).then(data => {
       if (!data) { setNotFoundOther(true); return; }
+      // Pass the looked-up profile through as-is — only fill the required
+      // fields lookupUserByUid can legitimately leave unset. Cherry-picking a
+      // subset here previously dropped isPrivate (so tapping Follow on a
+      // private account skipped the approval step), the real state/region, and
+      // the follower counts.
       setOther({
-        uid, username: data.username ?? uid, displayName: data.displayName ?? 'Player',
-        email: '', mmr: data.mmr ?? 1000, tier: getTier(data.mmr ?? 1000),
-        globalRank: 0, state: 'Kuala Lumpur', area: '',
-        stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+        ...data,
+        uid,
+        username: data.username ?? uid,
+        displayName: data.displayName ?? 'Player',
+        email: '',
+        mmr: data.mmr ?? 1000,
+        tier: data.tier ?? getTier(data.mmr ?? 1000),
+        globalRank: data.globalRank ?? 0,
+        state: data.state ?? 'Kuala Lumpur',
+        area: data.area ?? '',
+        stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 },
+        joinedAt: data.joinedAt ?? '',
         photoURL: data.photoURL ?? null,
-        placementMatchesPlayed: data.placementMatchesPlayed,
       });
     }).catch(() => setNotFoundOther(true));
   }, []);

@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-02] — Fix: viewing a private account via QR/link let you follow it with no approval
+
+**Trigger:** Board-dry code audit (1pm session). Board fully dry (171 Done,
+2 On Hold), code sweep.
+
+**What was wrong:** `/profile/?uid=X` (reached from a scanned QR code or a
+shared profile link) rebuilt the looked-up account into a fresh object,
+cherry-picking ~10 fields and dropping the rest. Two consequences:
+- `isPrivate` was dropped, so `PlayerActionCard`'s Follow button called
+  `followPlayer(uid, undefined)` — the falsy branch that adds you as an
+  **accepted** follower immediately, bypassing the private account's
+  request/approval step.
+- `state` was hardcoded to `'Kuala Lumpur'` for everyone, and follower /
+  following counts (already returned by `lookupUserByUid`) rendered as 0.
+
+**What changed:** `src/app/profile/page.tsx` now spreads the looked-up
+profile through as-is and only fills the required fields that can be unset
+(`email`, defaults for `mmr`/`tier`/`globalRank`/`state`/`area`/`stats`/
+`joinedAt`). `lookupUserByUid` already reads `is_private`, `region`,
+`followers_count` etc. from the `users_public` view — the page was just
+discarding them.
+
+**Verified:** `npx next build` clean. Deploy + live check below.
+
+**Logged for later (not fixed):** `src/app/chat/page.tsx` and
+`src/app/tournaments/page.tsx` have the same lossy `lookupUserByUid` rebuild
+with a hardcoded `'Kuala Lumpur'` state — lower impact (no Follow button on
+those surfaces), added to the To-Do board as P3.
+
 ## [2026-09-02] — Fix: demo profiles showed a false "Rating stale" badge
 
 **Trigger:** Board-dry code audit (1pm session). Board fully dry (170 Done,
