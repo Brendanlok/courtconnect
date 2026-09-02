@@ -1,5 +1,26 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-03] — Feature: "Career Highs" card on your own profile
+
+**Trigger:** Step 2c product idea for the day. Board fully dry (173 Done, 2 On
+Hold), no open blockers.
+
+**What's new:** The Match Analytics section on your own profile now has a
+"Career Highs" row with four lifetime bests, computed from your full confirmed
+match history (not just the recent window the rest of that card uses):
+- **Peak MMR** — the highest rating you've ever hit, walked forward from every
+  confirmed match's MMR change. If you're at your peak right now it says so.
+- **Longest win streak** — your best-ever consecutive-wins run.
+- **Biggest MMR win** — your largest single-match rating gain, with the
+  opponent's name.
+- **Most matches in a week** — busiest Mon–Sun week you've ever logged.
+
+Hidden while calibrating (same as the MMR number elsewhere) and own-profile
+only, since the underlying match list is the viewer's own.
+
+**Files:** `src/app/players/[username]/PlayerProfileClient.tsx` (compute +
+render inside the existing Match Analytics block).
+
 ## [2026-09-02] — Fix: viewing a private account via QR/link let you follow it with no approval
 
 **Trigger:** Board-dry code audit (1pm session). Board fully dry (171 Done,

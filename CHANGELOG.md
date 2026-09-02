@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-03] — Career Highs on your profile
+
+### 🟢 Low
+- ✨ Your profile's Match Analytics now shows a "Career Highs" row: your peak
+  MMR ever, longest win streak, biggest single-match MMR win (and who it was
+  against), and your busiest week. Built from your whole match history.
+
+---
+
 ## [2026-09-02] — Private accounts stay private when viewed via QR or link
 
 ### 🟠 High
