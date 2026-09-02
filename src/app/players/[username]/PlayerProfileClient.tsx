@@ -932,6 +932,34 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
           const avgScored   = gameCount > 0 ? (scored / gameCount).toFixed(1) : '—';
           const avgConceded = gameCount > 0 ? (conceded / gameCount).toFixed(1) : '—';
 
+          // Career highs — walked over the full confirmed history (oldest first).
+          // ponytail: matches with no mmrChange (old demo data) contribute 0 to
+          // the peak walk; fine, peak just tracks the real rated swings.
+          const chrono = [...confirmed].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+          let longestWinStreak = 0, winRun = 0;
+          for (const m of chrono) {
+            if (m.winnerId === player.uid) { winRun++; longestWinStreak = Math.max(longestWinStreak, winRun); }
+            else winRun = 0;
+          }
+          let peakMmr = ctxUser.mmr - chrono.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+          let mmrWalk = peakMmr;
+          for (const m of chrono) { mmrWalk += m.mmrChange ?? 0; peakMmr = Math.max(peakMmr, mmrWalk); }
+          const atPeak = ctxUser.mmr >= peakMmr;
+          const bestWin = chrono
+            .filter(m => m.winnerId === player.uid && (m.mmrChange ?? 0) > 0)
+            .sort((a, b) => (b.mmrChange ?? 0) - (a.mmrChange ?? 0))[0];
+          const bestWinOpp = bestWin ? (bestWin.player1Id === player.uid ? bestWin.player2Name : bestWin.player1Name) : null;
+          const weekCounts = new Map<string, number>();
+          for (const m of chrono) {
+            const d = new Date(m.playedAt);
+            const monday = new Date(d);
+            monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+            monday.setHours(0, 0, 0, 0);
+            const k = monday.toISOString().slice(0, 10);
+            weekCounts.set(k, (weekCounts.get(k) ?? 0) + 1);
+          }
+          const busiestWeek = Math.max(0, ...weekCounts.values());
+
           return (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
               <div className="flex items-center justify-between">
@@ -991,6 +1019,31 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                   <p className="text-[10px] text-slate-400 mt-0.5">Avg pts conceded/game</p>
                 </div>
               </div>
+
+              {/* Career highs */}
+              {!playerCalibrating && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-400">Career Highs</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-amber-400">{peakMmr.toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{atPeak ? 'Peak MMR · you’re there now 🔥' : 'Peak MMR'}</p>
+                    </div>
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-emerald-400">{longestWinStreak}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Longest win streak</p>
+                    </div>
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-emerald-400">{bestWin ? `+${bestWin.mmrChange}` : '—'}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 truncate">{bestWinOpp ? `Best win vs ${bestWinOpp}` : 'Biggest MMR win'}</p>
+                    </div>
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black">{busiestWeek}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Most matches in a week</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
