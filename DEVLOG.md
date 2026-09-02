@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-02] — Fix: demo profiles showed a false "Rating stale" badge
+
+**Trigger:** Board-dry code audit (1pm session). Board fully dry (170 Done,
+2 On Hold), code sweep.
+
+**What was wrong:** `getReliability()` in `src/lib/reliability.ts` takes
+`isDummy` in its param type but never branched on it. Seed roster players
+have a 2024/2025 `joinedAt` and no `lastActiveAt`, so `daysSinceActive()`
+always cleared `STALE_AFTER_DAYS` (30) and every `/players/[username]/`
+demo profile rendered "💤 Rating stale" in the header — hiding the
+"⚡ X% match" Skill Match badge on the roster that new visitors browse most.
+
+**What changed:** One guard at the top of `getReliability` — `isDummy` →
+`'established'`, mirroring `isCalibrating`'s existing `!isDummy` guard. Added
+a selfcheck case.
+
+**Verified:** `reliability.selfcheck.ts` + `npx next build` clean. Deployed
+2026-09-02 (commit 3b7690a). Live demo profile (zackaz) now shows the
+Skill Match badge, not the stale pill.
+
 ## [2026-09-02] — Feature: recent-form dots on the Home header
 
 **Trigger:** Step 2c daily product idea (1am session), built same session.
