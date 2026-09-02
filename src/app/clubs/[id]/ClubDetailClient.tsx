@@ -81,10 +81,11 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
       const data = await lookupUserByUid(uid).catch(() => null);
       if (!data) return [uid, null] as const;
       const profile: UserProfile = {
+        ...data,
         uid, username: data.username ?? uid, displayName: data.displayName ?? 'Player',
         email: '', mmr: data.mmr ?? 1000, tier: getTier(data.mmr ?? 1000),
-        globalRank: 0, state: 'Kuala Lumpur', area: '',
-        stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+        globalRank: data.globalRank ?? 0, state: data.state ?? 'Kuala Lumpur', area: data.area ?? '',
+        stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: data.joinedAt ?? '',
         photoURL: data.photoURL ?? null,
         placementMatchesPlayed: data.placementMatchesPlayed,
       };

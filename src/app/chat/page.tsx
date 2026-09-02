@@ -6,7 +6,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { timeAgo, BASE_PATH, profileHref, isCalibrating } from '@/lib/utils';
 import { Send, Zap, Search, ArrowLeft, MessageCircle } from 'lucide-react';
 import { ME, PLAYERS } from '@/lib/data';
-import type { Message, Conversation } from '@/types';
+import type { Message, Conversation, UserProfile } from '@/types';
 import Link from 'next/link';
 import { auth } from '@/lib/supabase';
 import { saveConversation, lookupUserByUid } from '@/lib/supabaseService';
@@ -42,11 +42,12 @@ export default function Chat() {
       if (existing) { setActiveId(existing.id); setMobileView('chat'); return; }
       lookupUserByUid(realUid).then(data => {
         if (!data) { setDeepLinkError("That player couldn't be found — their profile may be private or no longer exists."); setMobileView('chat'); return; }
-        const participant = {
+        const participant: UserProfile = {
+          ...data,
           uid: realUid, username: data.username ?? realUid, displayName: data.displayName ?? 'Player',
           email: '', mmr: data.mmr ?? 1000, tier: getTier(data.mmr ?? 1000),
-          globalRank: 0, state: 'Kuala Lumpur' as const, area: '',
-          stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: '',
+          globalRank: data.globalRank ?? 0, state: data.state ?? 'Kuala Lumpur', area: data.area ?? '',
+          stats: data.stats ?? { wins: 0, losses: 0, totalMatches: 0 }, joinedAt: data.joinedAt ?? '',
           photoURL: data.photoURL ?? null,
           placementMatchesPlayed: data.placementMatchesPlayed,
         };
