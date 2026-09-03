@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-04] — Upcoming-match reminder
+
+### 🟢 Low
+- ✨ You now get a notification when an accepted challenge is about to start —
+  fires within 3 hours of the scheduled time, once per match, with the opponent,
+  time and venue. Shows as an OS push too if the app is backgrounded.
+
+---
+
 ## [2026-09-03] — Career Highs peak MMR across seasons
 
 ### 🟢 Low

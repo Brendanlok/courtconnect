@@ -1,5 +1,34 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-04] — Feature: upcoming-match reminder notification
+
+**Trigger:** Step 2c product idea for the day (1am session). Board dry — only
+open item is the season-rollover multi-season fix, which is parked pending a
+product call.
+
+**What's new:** An accepted challenge already carries a scheduled start
+(`ChallengeModal` writes `${date}T${time}:00`), but nothing ever reminded you it
+was coming. A new client-triggered effect in `AppContext` — same "whichever
+client loads next" pattern as the inactivity and weekly-digest reminders —
+fires a one-off `match_reminder` notification when an accepted challenge's start
+time is within the next 3 hours. Body: `Your match vs <opponent> is at <time> ·
+<venue>`. Also surfaces as an OS push when the tab is backgrounded (existing
+`addNotification` path). Fired challenge ids are stored with their match time in
+`localStorage` (`cc_matchReminders`) and pruned once past, so it never
+double-fires and the list stays bounded.
+
+**Files:** `src/context/AppContext.tsx` (new effect), `src/types/index.ts`
+(`match_reminder` notification type), `src/components/NotificationPanel.tsx`
+(icon).
+
+**Verified:** `npx next build` clean, `npm test` selfchecks all pass. Live
+verification limited from an unattended session — needs an authed account with an
+accepted challenge scheduled inside the 3h window.
+
+**ponytail:** no server cron in this static-export app — a user who never opens
+the app in the 3h pre-match window misses the nudge. Upgrade path: scheduled
+Supabase Edge Function (send-push pipeline already exists).
+
 ## [2026-09-03] — Fix: Career Highs "Peak MMR" would undercount after a season soft-reset
 
 **Trigger:** Board-dry code audit (9am session), reviewing the Career Highs card

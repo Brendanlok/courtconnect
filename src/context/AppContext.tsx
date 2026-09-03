@@ -1660,6 +1660,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.weeklyDigestSentAt, user.joinedAt, allMatches, profileLoading]);
 
+  // Upcoming-match reminder: an accepted challenge carries a scheduled start
+  // (ChallengeModal writes `${date}T${time}:00`). Same client-triggered pattern
+  // as the inactivity/digest reminders above — whichever client loads inside the
+  // 3h pre-match window fires a one-off notification (also an OS push if the tab
+  // is backgrounded, via addNotification). Fired ids are stored with their match
+  // time in localStorage and pruned once past, so it never double-fires and the
+  // list stays bounded.
+  // ponytail: no server cron in this static-export app — a user who never opens
+  // the app in that 3h window just misses the nudge.
+  const MATCH_REMINDER_WINDOW_MS = 3 * 60 * 60 * 1000;
+  useEffect(() => {
+    if (profileLoading) return;
+    const now = Date.now();
+    let fired: Record<string, number>;
+    try { fired = JSON.parse(localStorage.getItem('cc_matchReminders') || '{}'); } catch { fired = {}; }
+    let changed = false;
+    for (const [id, t] of Object.entries(fired)) {
+      if (typeof t !== 'number' || t <= now) { delete fired[id]; changed = true; }
+    }
+
+    for (const c of challenges) {
+      if (c.status !== 'accepted' || fired[c.id]) continue;
+      const t = new Date(c.date).getTime();
+      if (Number.isNaN(t) || t <= now || t - now > MATCH_REMINDER_WINDOW_MS) continue;
+      const oppName = c.fromId === 'me' ? c.toName : c.fromName;
+      const when = new Date(c.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      addNotification({
+        type: 'match_reminder',
+        title: '⏰ Match coming up',
+        body: `Your match vs ${oppName} is at ${when}${c.venue ? ` · ${c.venue}` : ''}.`,
+        linkTo: `${BASE_PATH}/matches/`,
+      });
+      fired[c.id] = t;
+      changed = true;
+    }
+
+    if (changed) {
+      try { localStorage.setItem('cc_matchReminders', JSON.stringify(fired)); } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenges, profileLoading]);
+
   const combinedPlayerEndorsements = useMemo(() => {
     const meCounts: Record<string, number> = { ...(playerEndorsements.me ?? {}) };
     for (const [skill, cnt] of Object.entries(realEndorsementCounts)) {
