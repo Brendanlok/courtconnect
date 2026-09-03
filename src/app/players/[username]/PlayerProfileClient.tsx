@@ -941,9 +941,15 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
             if (m.winnerId === player.uid) { winRun++; longestWinStreak = Math.max(longestWinStreak, winRun); }
             else winRun = 0;
           }
-          let peakMmr = ctxUser.mmr - chrono.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
-          let mmrWalk = peakMmr;
-          for (const m of chrono) { mmrWalk += m.mmrChange ?? 0; peakMmr = Math.max(peakMmr, mmrWalk); }
+          // Soft season resets (seasons.ts softResetMmr) move MMR without any
+          // match mmrChange, so the running-sum walk is only valid back to the
+          // last rollover. Walk the current season, then fold in each past
+          // season's end MMR so a pre-reset peak still counts.
+          const seasonStart = pastSeasons.length ? new Date(pastSeasons[0].endedAt).getTime() : 0;
+          const seasonChrono = chrono.filter(m => new Date(m.playedAt).getTime() >= seasonStart);
+          let mmrWalk = ctxUser.mmr - seasonChrono.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+          let peakMmr = Math.max(mmrWalk, ...pastSeasons.map(s => s.mmrEnd));
+          for (const m of seasonChrono) { mmrWalk += m.mmrChange ?? 0; peakMmr = Math.max(peakMmr, mmrWalk); }
           const atPeak = ctxUser.mmr >= peakMmr;
           const bestWin = chrono
             .filter(m => m.winnerId === player.uid && (m.mmrChange ?? 0) > 0)
