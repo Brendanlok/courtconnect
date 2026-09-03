@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-03] — Career Highs peak MMR across seasons
+
+### 🟢 Low
+- 🐛 "Peak MMR" on your Career Highs card now stays correct after a ranked season
+  ends — the season soft-reset used to make it undercount (or drop a pre-reset
+  high entirely). Latent until the first season rollover on 2026-09-26.
+
+---
+
 ## [2026-09-03] — Live-scoring MMR bonus fix
 
 ### 🟡 Medium

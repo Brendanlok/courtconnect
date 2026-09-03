@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-03] — Fix: Career Highs "Peak MMR" would undercount after a season soft-reset
+
+**Trigger:** Board-dry code audit (9am session), reviewing the Career Highs card
+shipped earlier today.
+
+**What was wrong:** The peak-MMR walk reconstructed your starting MMR as
+`currentMMR − Σ(all match mmrChange)`, then replayed every confirmed match to
+find the high-water mark. Season rollover (`softResetMmr`) regresses MMR halfway
+toward 1000 *without* recording a match `mmrChange`, so from season 2 onward the
+walk's baseline is off by the total of every past reset and any pre-reset peak is
+silently lost. Latent right now — season 1 doesn't end until 2026-09-26, so no
+real account has rolled over yet — but it would have started quietly lying then.
+
+**What changed:** `src/app/players/[username]/PlayerProfileClient.tsx` — the walk
+now only replays matches since the last rollover (`pastSeasons[0].endedAt`) and
+seeds the peak with the best `mmrEnd` across all past seasons, so a pre-reset
+career high still shows.
+
+**Verified:** `npx next build` clean, `npm test` selfchecks all pass. Not
+exercisable live from an unattended session (needs an authed account with season
+history, which no account has yet).
+
 ## [2026-09-03] — Fix: live-verified MMR bonus deepened losses instead of only boosting wins
 
 **Trigger:** Board-dry code audit (5pm session). Board fully dry (174 Done, 2 On
