@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-03] — Live-scoring MMR bonus fix
+
+### 🟡 Medium
+- 🐛 The +10% "live-verified" MMR bonus no longer applies to losses — scoring a
+  match live and losing it used to dock more MMR than logging the same result by
+  hand. The bonus now boosts wins only, and the completion screen stops showing
+  the "+10% bonus" banner after a loss.
+
+---
+
 ## [2026-09-03] — Career Highs on your profile
 
 ### 🟢 Low

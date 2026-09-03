@@ -1,5 +1,26 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-03] — Fix: live-verified MMR bonus deepened losses instead of only boosting wins
+
+**Trigger:** Board-dry code audit (5pm session). Board fully dry (174 Done, 2 On
+Hold), code sweep.
+
+**What was wrong:** `LiveMatchModal` multiplied the *signed* `mmrChange` by the
+`LIVE_BONUS_MULTIPLIER` (1.1), so a match scored rally-by-rally in the live
+scorer and then lost cost **10% more MMR** than the identical result typed into
+Log a Match afterwards. The completion screen also showed the green
+"+10% MMR bonus on log" banner even when the host had just lost the match — so
+the player was told they were getting a bonus right before taking a bigger hit.
+
+**What changed:** `src/components/LiveMatchModal.tsx` — the bonus now multiplies
+the win gain only; a loss uses the plain `calcMMRChange` value. The completion
+banner is gated on `match.winningSide === 'A'` (host team won). Comments in
+`src/lib/antiCheat.ts` updated to state gains-only.
+
+**Verified:** `npx next build` clean, `npm test` selfchecks all pass. The live
+match → loss → log flow needs an authenticated account and a full played match,
+so it wasn't exercised live from this unattended session.
+
 ## [2026-09-03] — Feature: "Career Highs" card on your own profile
 
 **Trigger:** Step 2c product idea for the day. Board fully dry (173 Done, 2 On
