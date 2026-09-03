@@ -777,7 +777,7 @@ function CompletionView({ match, onLogMatch, onClose, blockReason, bonusEligible
         </div>
       )}
 
-      {!blockReason && bonusEligible && (
+      {!blockReason && bonusEligible && match.winningSide === 'A' && (
         <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-xl py-2">
           <Radio size={12}/> Live-verified — +{Math.round((LIVE_BONUS_MULTIPLIER - 1) * 100)}% MMR bonus on log
         </div>
@@ -1043,7 +1043,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
     const mMult = marginMultiplier(gameScores) * opponentReliabilityMultiplier(oppProfiles);
     const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, kFactor, mMult);
     const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
-    const mmrChange = Math.round((iWon ? gain : loss) * bonus);
+    // Live-verified bonus rewards a win only — it must never deepen a loss, or
+    // scoring an honest match live would cost you more MMR than typing the
+    // result in afterwards.
+    const mmrChange = Math.round(iWon ? gain * bonus : loss);
 
     const newMatch = {
       id: `m_${Date.now()}`,

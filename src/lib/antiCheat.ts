@@ -48,13 +48,14 @@ export function antiCheatCheck(matches: Match[], userId: string, oppUids: string
 }
 
 // ── Live-match-specific guardrails ──────────────────────────────────────────────
-// Live scoring earns an MMR bonus (it's harder to fake than typing in a final
-// score), so it needs its own floor against trivial farm matches and its own
+// Live scoring earns an MMR bonus on a WIN (it's harder to fake than typing in
+// a final score) — never applied to a loss, so it can't punish honest live
+// logging. It needs its own floor against trivial farm matches and its own
 // cap on how often the bonus itself can be claimed per day.
 
 const MIN_LIVE_DURATION_SEC = 90;   // a real rally-by-rally game can't finish faster than this
 const MIN_LIVE_POINTS = 11;         // at least a partial single game's worth of points
-export const LIVE_BONUS_MULTIPLIER = 1.1; // +10% MMR magnitude for live-verified matches
+export const LIVE_BONUS_MULTIPLIER = 1.1; // +10% MMR on a live-verified WIN (gains only, never losses)
 export const MAX_LIVE_BONUS_MATCHES_PER_DAY = 3;
 
 export function liveMatchIntegrityCheck(durationSec: number, totalPoints: number): string | null {
