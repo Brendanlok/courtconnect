@@ -68,4 +68,7 @@ _*.json
 
 todo*.json
 dl*.json
+dailylog*.json
 st.json
+notion_*.json
+/x
