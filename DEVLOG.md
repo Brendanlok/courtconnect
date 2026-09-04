@@ -1,5 +1,27 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-04] — Fix: season rollover now handles multi-season gaps
+
+**Trigger:** Only open To-Do item (P3, board otherwise dry). Was parked pending a
+product call on what to do for a season the player skipped entirely.
+
+**Product call (auto-dev):** backfill, don't collapse. A client that loads for
+the first time two+ seasons late now records one `season_history` row AND
+applies one soft reset for *every* season left behind, not just the stored one.
+Skipped seasons had no matches, so each closes at the carried-in (already
+soft-reset) MMR. This keeps Career Highs / history continuous rather than
+dropping a row and under-resetting by a step. Collapsing skipped seasons into
+one was the alternative — rejected because it loses history. Low risk: first
+real season boundary is ~2026-09-26 and there are no multi-season users yet.
+
+**Files:** `src/lib/seasons.ts` (new pure `rolloverSeasons` helper),
+`src/context/AppContext.tsx` (rollover effect uses it, backfills all rows),
+`src/lib/seasons.selfcheck.ts` (3 new cases).
+
+**Verified:** `npx next build` clean, `npm test` selfchecks all pass (incl. the
+3-season-gap case). Not live-verifiable — the path only fires at a real season
+boundary against a stored season_number that's behind.
+
 ## [2026-09-04] — Feature: upcoming-match reminder notification
 
 **Trigger:** Step 2c product idea for the day (1am session). Board dry — only
