@@ -45,7 +45,7 @@ export default function StartAClub() {
         {authUser ? (
           <>
             <p className="text-sm font-semibold text-emerald-300">You&apos;re signed in — create a club from the Clubs tab.</p>
-            <a href={`${BASE_PATH}/clubs/`}
+            <a href={`${BASE_PATH}/players/?tab=clubs`}
               className="inline-block mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-colors">
               Go to Clubs
             </a>
