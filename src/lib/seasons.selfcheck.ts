@@ -1,6 +1,6 @@
 // Offline proof of season date math. Run with: npx tsx src/lib/seasons.selfcheck.ts
 import assert from 'node:assert';
-import { seasonNumberForDate, seasonStartDate, seasonEndDate, softResetMmr, SEASON_EPOCH, SEASON_LENGTH_DAYS } from './seasons';
+import { seasonNumberForDate, seasonStartDate, seasonEndDate, softResetMmr, rolloverSeasons, SEASON_EPOCH, SEASON_LENGTH_DAYS } from './seasons';
 
 // 1. The epoch instant itself is season 1.
 {
@@ -47,5 +47,34 @@ console.log('PASS seasonStartDate/seasonEndDate bracket exactly the matching sea
   assert.strictEqual(softResetMmr(1000), 1000); // already at anchor, no change
 }
 console.log('PASS soft reset regresses halfway toward the 1000 anchor in both directions');
+
+// 7. Rollover of a single season: one closing row, one soft reset.
+{
+  const { closed, mmr } = rolloverSeasons(2000, 3, 4);
+  assert.deepStrictEqual(closed, [{ seasonNumber: 3, mmrEnd: 2000 }]);
+  assert.strictEqual(mmr, 1500);
+}
+console.log('PASS rollover of one season closes one row and soft-resets once');
+
+// 8. Rollover across skipped seasons: a row + a soft reset for EACH season left
+//    behind, skipped seasons closing at the carried-in value.
+{
+  const { closed, mmr } = rolloverSeasons(2000, 3, 6);
+  assert.deepStrictEqual(closed, [
+    { seasonNumber: 3, mmrEnd: 2000 },
+    { seasonNumber: 4, mmrEnd: 1500 },
+    { seasonNumber: 5, mmrEnd: 1250 },
+  ]);
+  assert.strictEqual(mmr, 1125); // softResetMmr applied 3x from 2000
+}
+console.log('PASS rollover across skipped seasons backfills a row + reset per season');
+
+// 9. No rollover when already current (defensive — the effect guards this too).
+{
+  const { closed, mmr } = rolloverSeasons(1400, 5, 5);
+  assert.deepStrictEqual(closed, []);
+  assert.strictEqual(mmr, 1400);
+}
+console.log('PASS rollover is a no-op when the stored season is already current');
 
 console.log('ALL PASS seasons');

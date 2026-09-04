@@ -30,7 +30,7 @@ import {
   saveSeasonHistoryEntry, loadSeasonHistory,
   subscribeOnlinePresence,
 } from '@/lib/supabaseService';
-import { seasonNumberForDate, softResetMmr } from '@/lib/seasons';
+import { seasonNumberForDate, rolloverSeasons } from '@/lib/seasons';
 
 // A uid is "real" (a genuine Supabase-authenticated account) if it isn't the
 // local demo user ('me') or one of the static seed players from lib/data.ts.
@@ -1573,17 +1573,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (currentSeason <= closingSeason) return;
     seasonRollingOverRef.current = true;
 
-    const mmrEnd = user.mmr;
-    const tierEnd = getTier(mmrEnd);
-    const entry: SeasonHistoryEntry = { seasonNumber: closingSeason, mmrEnd, tierEnd, endedAt: new Date().toISOString() };
-    const nextMmr = softResetMmr(mmrEnd);
+    const endedAt = new Date().toISOString();
+    const { closed, mmr: nextMmr } = rolloverSeasons(user.mmr, closingSeason, currentSeason);
+    const entries: SeasonHistoryEntry[] = closed.map(c => ({
+      seasonNumber: c.seasonNumber, mmrEnd: c.mmrEnd, tierEnd: getTier(c.mmrEnd), endedAt,
+    }));
     const nextTier = getTier(nextMmr);
 
-    saveSeasonHistoryEntry(uid, entry).catch(() => {});
+    entries.forEach(entry => saveSeasonHistoryEntry(uid, entry).catch(() => {}));
     saveUserProfile(uid, { mmr: nextMmr, tier: nextTier, seasonNumber: currentSeason }).catch(() => {});
     setUser(u => ({ ...u, mmr: nextMmr, tier: nextTier, seasonNumber: currentSeason }));
-    setPastSeasons(prev => [entry, ...prev.filter(p => p.seasonNumber !== entry.seasonNumber)]);
-    setSeasonRecap(entry);
+    setPastSeasons(prev => {
+      const rolled = new Set(entries.map(e => e.seasonNumber));
+      return [...entries, ...prev.filter(p => !rolled.has(p.seasonNumber))]
+        .sort((a, b) => b.seasonNumber - a.seasonNumber);
+    });
+    // Recap shows the season the player actually played (the first one closed),
+    // not a backfilled skipped season.
+    setSeasonRecap(entries[0]);
   }, [user.mmr, user.seasonNumber, profileLoading]);
   const dismissSeasonRecap = useCallback(() => setSeasonRecap(null), []);
 
