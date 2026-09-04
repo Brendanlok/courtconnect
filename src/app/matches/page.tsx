@@ -172,6 +172,7 @@ export default function MatchesPage() {
   const [planMode,    setPlanMode]    = useState<PlanMode>('plan');
   const [editId,      setEditId]      = useState<string | null>(null);
   const [cancelId,    setCancelId]    = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState('');
 
   const { ref: cancelPanelRef, dialogProps: cancelDialogProps } = useModalA11y(!!cancelId, () => setCancelId(null), 'Cancel this match?');
 
@@ -557,8 +558,26 @@ export default function MatchesPage() {
             />
           ) : (
             <>
-              {myMatches.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)}
-              {cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
+              {myMatches.length > 3 && (
+                <div className="relative">
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                  <input value={historyQuery} onChange={e => setHistoryQuery(e.target.value)}
+                    placeholder="Search by opponent…"
+                    className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500"/>
+                </div>
+              )}
+              {(() => {
+                const q = historyQuery.trim().toLowerCase();
+                const filtered = q
+                  ? myMatches.filter(m =>
+                      [m.player1Name, m.player2Name, m.player1PartnerName, m.player2PartnerName]
+                        .some(n => n && n.toLowerCase().includes(q)))
+                  : myMatches;
+                return filtered.length === 0
+                  ? <p className="text-xs text-slate-500 text-center py-6">No matches vs an opponent matching &ldquo;{historyQuery}&rdquo;.</p>
+                  : filtered.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>);
+              })()}
+              {!historyQuery && cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
             </>
           )}
         </div>
