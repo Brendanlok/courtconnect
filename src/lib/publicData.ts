@@ -174,6 +174,7 @@ export async function fetchCoaches(limit = 50): Promise<PublicCoach[]> {
   const { data, error } = await supabase
     .from('coach_profiles_public')
     .select('user_id, username, display_name, photo_url, state, bio, hourly_rate, currency, specialties, areas, years_experience')
+    .order('years_experience', { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error || !data) return [];
   return data.map(mapCoachRow);
