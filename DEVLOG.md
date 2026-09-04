@@ -1,5 +1,32 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-05] — Feature: search-by-opponent filter on Match History
+
+**Trigger:** Step 2c product idea (1am session). Board fully dry (all Done/On
+Hold). A board-dry code audit turned up no new safe-to-build bugs — the one
+real gap found (below) needs a schema/data-model call, not something to build
+unattended.
+
+**What's new:** The Matches page's History tab had no way to find a specific
+opponent once history grows — you scrolled the whole list. A search box now
+appears above the list once you have more than 3 matches, filtering by
+opponent/partner name substring (case-insensitive) across all four player
+slots on a match.
+
+**Files:** `src/app/matches/page.tsx` (history tab render).
+
+**Verified:** `npx next build` clean. Not live-verifiable from this unattended
+session (no dev server permission outside working hours) — plain client-side
+filter over existing data, low risk.
+
+**Also found, not built:** Career Highs "Peak MMR" still can't recover a
+mid-season high that's gone by the time a season rolls over — only the
+season's *closing* MMR (`mmrEnd`) survives in `season_history`, not its
+high-water mark. Root-cause fix needs a new persisted column + migration,
+computed at rollover time. Logged to the To-Do board as Backlog (P3) for a
+product/schema call rather than building blind. Low urgency — season 1 doesn't
+end until 2026-09-26, so no account has hit this path yet.
+
 ## [2026-09-04] — Fix: season rollover now handles multi-season gaps
 
 **Trigger:** Only open To-Do item (P3, board otherwise dry). Was parked pending a
