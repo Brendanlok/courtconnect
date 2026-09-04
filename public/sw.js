@@ -21,11 +21,14 @@ self.addEventListener('install', e => {
   );
 });
 
-// Activate: remove old caches
+// Activate: remove OUR old caches only.
+// Cache Storage is per-ORIGIN, not per-folder, and brendanlok.github.io also serves
+// /breakin/. Deleting every key that is not ours wiped that app's offline shell (and
+// its worker did the same to ours). Only ever touch 'courtconnect-*'.
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('courtconnect-') && k !== CACHE).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
