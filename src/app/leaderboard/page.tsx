@@ -266,7 +266,9 @@ export default function Leaderboard() {
               <Avatar name={user.displayName} size="sm" photoURL={user.photoURL}/>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-emerald-300">
-                  {tab === 'Nationwide' ? `National Rank #${meInList.tabRank}` : `${tab} Rank #${meInList.tabRank}`}
+                  {tab === 'Nationwide' ? `National Rank #${meInList.tabRank}`
+                   : tab === 'By State' ? `By ${regionLabel} Rank #${meInList.tabRank}`
+                   : `${tab} Rank #${meInList.tabRank}`}
                 </p>
                 <p className="text-xs text-slate-400">
                   {tab === 'By State' ? `Top ${meInList.tabRank} in ${selState}` :
