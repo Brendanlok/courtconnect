@@ -39,7 +39,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     joinClub, requestJoinClub, cancelClubRequest, leaveClub,
     acceptClubMember, declineClubMember,
     updateClub, disbandClub,
-    assignModerator, removeModerator,
+    assignModerator, removeModerator, removeMember,
     inviteToClub, sendClubMessage,
   } = useApp();
 
@@ -113,9 +113,11 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [settingsModal, setSettingsModal] = useState(false);
   const [disbandInput,  setDisbandInput] = useState('');
   const [leaveModal,    setLeaveModal]   = useState(false);
+  const [removeTarget,  setRemoveTarget] = useState<UserProfile | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { ref: leaveModalRef,   dialogProps: leaveModalProps }   = useModalA11y(leaveModal,   () => setLeaveModal(false),   `Leave ${club?.name ?? 'club'}`);
   const { ref: disbandModalRef, dialogProps: disbandModalProps } = useModalA11y(disbandModal, () => setDisbandModal(false), `Disband ${club?.name ?? 'club'}`);
+  const { ref: removeModalRef,  dialogProps: removeModalProps }  = useModalA11y(!!removeTarget, () => setRemoveTarget(null), `Remove ${removeTarget?.displayName ?? 'member'}`);
 
   // Club chat lives in its own `club_messages` table, not embedded on the
   // clubs row — scoped to this one club, not the full clubs listener.
@@ -280,6 +282,31 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               </Button>
               <Button variant="danger" onClick={() => { leaveClub(clubId); setLeaveModal(false); }} className="flex-1">
                 Leave Club
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removeTarget && (
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4" onClick={() => setRemoveTarget(null)}>
+          <div ref={removeModalRef} {...removeModalProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm p-6 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5"/>
+              <div>
+                <p className="font-semibold text-red-300">Remove {removeTarget.displayName}?</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  They'll lose access to club chat and member features.
+                  {club.isPrivate && " They'll need to send a new join request and get approved again to rejoin."}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setRemoveTarget(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => { removeMember(clubId, removeTarget.uid); setRemoveTarget(null); }} className="flex-1">
+                Remove
               </Button>
             </div>
           </div>
@@ -504,6 +531,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                           +Mod
                         </button>
                       )}
+                      <button onClick={() => setRemoveTarget(p)}
+                        className="text-[10px] px-2 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-400 transition-colors">
+                        Remove
+                      </button>
                     </div>
                   )}
                 </div>

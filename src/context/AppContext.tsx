@@ -209,6 +209,7 @@ interface AppCtx {
   disbandClub: (id: string) => Promise<string | null>;
   assignModerator: (clubId: string, uid: string) => void;
   removeModerator: (clubId: string, uid: string) => void;
+  removeMember: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
   inviteToClub: (clubId: string, targetUid: string) => void;
   sendClubMessage: (clubId: string, text: string) => void;
@@ -1242,6 +1243,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setClubModerator(clubId, toRealUid(uid, myRealUid), false).catch(() => {});
   }, [myRealUid]);
 
+  // Owner-only kick — reuses removeClubMember, the same function leaveClub
+  // already calls for a self-removal, just targeted at another member's uid.
+  const removeMember = useCallback((clubId: string, uid: string) => {
+    removeClubMember(clubId, toRealUid(uid, myRealUid)).catch(() => {});
+  }, [myRealUid]);
+
   // Mirrors acceptTournamentRequest/approveTournamentRequest: addClubMember
   // returns false on a silent server-side rejection (club filled up since
   // the admin saw the request) rather than throwing, so this has to check
@@ -1732,7 +1739,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       undoBracketResult, editTournament, cancelTournament,
       challenges, sendChallenge, acceptChallenge, declineChallenge, cancelChallenge, isRealChallengeId,
       clubs, myClubIds, clubLimit, joinClub, requestJoinClub, cancelClubRequest, leaveClub, createClub, updateClub,
-      acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, myClubPendingIds,
+      acceptClubMember, declineClubMember, disbandClub, assignModerator, removeModerator, removeMember, myClubPendingIds,
       inviteToClub, sendClubMessage,
       following, followRequestsSent, followPlayer, unfollowPlayer,
       incomingFollowRequests, respondToFollowRequest: respondToFollowRequestAction,
