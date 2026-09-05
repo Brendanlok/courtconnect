@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
-import { BASE_PATH, parseDateOnly } from '@/lib/utils';
+import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { LogMatchModal } from '@/components/LogMatchModal';
@@ -173,6 +174,8 @@ export default function MatchesPage() {
   const [editId,      setEditId]      = useState<string | null>(null);
   const [cancelId,    setCancelId]    = useState<string | null>(null);
   const [historyQuery, setHistoryQuery] = useState('');
+  const [historyResult, setHistoryResult] = useState<'All' | 'Wins' | 'Losses' | 'Pending'>('All');
+  const [historyFormat, setHistoryFormat] = useState<MatchType | 'All'>('All');
 
   const { ref: cancelPanelRef, dialogProps: cancelDialogProps } = useModalA11y(!!cancelId, () => setCancelId(null), 'Cancel this match?');
 
@@ -559,25 +562,47 @@ export default function MatchesPage() {
           ) : (
             <>
               {myMatches.length > 3 && (
-                <div className="relative">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
-                  <input value={historyQuery} onChange={e => setHistoryQuery(e.target.value)}
-                    placeholder="Search by opponent…"
-                    className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500"/>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <div className="relative flex-1 min-w-[140px]">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                    <input value={historyQuery} onChange={e => setHistoryQuery(e.target.value)}
+                      placeholder="Search by opponent…"
+                      className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500"/>
+                  </div>
+                  <FilterDropdown<'All' | 'Wins' | 'Losses' | 'Pending'>
+                    label="Result" value={historyResult}
+                    options={[
+                      { value: 'All', label: 'All Results' },
+                      { value: 'Wins', label: 'Wins' },
+                      { value: 'Losses', label: 'Losses' },
+                      { value: 'Pending', label: 'Pending' },
+                    ]}
+                    onChange={setHistoryResult}
+                  />
+                  <FilterDropdown<MatchType | 'All'>
+                    label="Format" value={historyFormat}
+                    options={[{ value: 'All' as const, label: 'All Formats' },
+                      ...(Object.keys(MATCH_TYPE_LABEL) as MatchType[]).map(t => ({ value: t, label: MATCH_TYPE_LABEL[t] }))]}
+                    onChange={setHistoryFormat}
+                  />
                 </div>
               )}
               {(() => {
                 const q = historyQuery.trim().toLowerCase();
-                const filtered = q
-                  ? myMatches.filter(m =>
-                      [m.player1Name, m.player2Name, m.player1PartnerName, m.player2PartnerName]
-                        .some(n => n && n.toLowerCase().includes(q)))
-                  : myMatches;
+                const filtered = myMatches.filter(m => {
+                  if (q && ![m.player1Name, m.player2Name, m.player1PartnerName, m.player2PartnerName]
+                    .some(n => n && n.toLowerCase().includes(q))) return false;
+                  if (historyFormat !== 'All' && m.type !== historyFormat) return false;
+                  if (historyResult === 'Wins'    && !(m.status === 'Confirmed' && m.winnerId === 'me')) return false;
+                  if (historyResult === 'Losses'  && !(m.status === 'Confirmed' && m.winnerId !== 'me')) return false;
+                  if (historyResult === 'Pending' && m.status !== 'Pending') return false;
+                  return true;
+                });
                 return filtered.length === 0
-                  ? <p className="text-xs text-slate-500 text-center py-6">No matches vs an opponent matching &ldquo;{historyQuery}&rdquo;.</p>
+                  ? <p className="text-xs text-slate-500 text-center py-6">No matches match these filters.</p>
                   : filtered.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>);
               })()}
-              {!historyQuery && cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
+              {historyQuery === '' && historyResult === 'All' && historyFormat === 'All' && cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
             </>
           )}
         </div>

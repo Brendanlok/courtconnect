@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-06] — Result & format filters on Match History
+
+### 🟢 Low
+- ✨ The Matches page History tab now has Result (Wins / Losses / Pending) and
+  Format (Singles / Doubles / …) filters next to the opponent search, matching
+  the filters already on your profile's Match History. Shows once you have more
+  than 3 logged matches.
+
+---
+
 ## [2026-09-04] — Upcoming-match reminder
 
 ### 🟢 Low

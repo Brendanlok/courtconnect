@@ -1,5 +1,25 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-06] — Feature: Result & Format filters on the Matches History tab
+
+**Trigger:** Step 2c product idea (1am session). Board fully dry — only open
+item (Career Highs mid-season peak) still needs a schema/data-model call from
+Lok, left at Backlog. Code audit turned up nothing new.
+
+**What's new:** The Matches page History tab only had an opponent search box.
+Your own profile's Match History has had Result + Format dropdowns for a while.
+Brought the same two filters (reusing `FilterDropdown`) to the Matches page so
+the primary place you review your history matches the profile. Result =
+All / Wins / Losses / Pending; Format = All + every `MATCH_TYPE_LABEL`. All
+three filters (search + result + format) compose; the cancelled-plan cards only
+show when no filter is active.
+
+**Files:** `src/app/matches/page.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass. Matches
+page is auth-gated so not click-tested from this unattended session — pure
+client-side filter over existing data, reusing a shipped component.
+
 ## [2026-09-05] — Feature: search-by-opponent filter on Match History
 
 **Trigger:** Step 2c product idea (1am session). Board fully dry (all Done/On
