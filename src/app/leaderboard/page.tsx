@@ -271,9 +271,9 @@ export default function Leaderboard() {
                    : `${tab} Rank #${meInList.tabRank}`}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {tab === 'By State' ? `Top ${meInList.tabRank} in ${selState}` :
-                   tab === 'Nearby'   ? `Top ${meInList.tabRank} within 10km` :
-                   tab === 'Following' ? `Top ${meInList.tabRank} among following` :
+                  {tab === 'By State' ? `#${meInList.tabRank} in ${selState}` :
+                   tab === 'Nearby'   ? `#${meInList.tabRank} within 10km` :
+                   tab === 'Following' ? `#${meInList.tabRank} among players you follow` :
                    meInList.tabRank <= 100 ? `You're ranked #${meInList.tabRank} nationally — in the top 100` :
                    sortKey !== 'mmr' ? `You're ranked #${meInList.tabRank} nationally by ${sortKey === 'winRate' ? 'win rate' : sortKey}` :
                    `You need ${(list[99]?.mmr ?? 2000) - user.mmr} more MMR to break into the top 100`}
