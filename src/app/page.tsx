@@ -53,7 +53,8 @@ export default function Home() {
   // Recent form: last 5 confirmed results, newest first — same dot treatment
   // as the profile page's Match Analytics "Recent Form" row. `confirmed` is
   // already sorted newest-first (AppContext sorts matches by playedAt desc).
-  const recentForm = confirmed.slice(0, 5).map(m => m.winnerId === user.uid);
+  // Each dot is tappable and opens that match's detail (modal already on page).
+  const recentForm = confirmed.slice(0, 5).map(m => ({ won: m.winnerId === user.uid, match: m }));
 
   const oneWeekAgo = Date.now() - 7 * 86400000;
   const weeklyMmrDelta = confirmed
@@ -146,11 +147,13 @@ export default function Home() {
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Form</span>
                 <div className="flex gap-1">
-                  {recentForm.map((won, i) => (
-                    <div key={i} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold
+                  {recentForm.map(({ won, match }, i) => (
+                    <button key={i} onClick={() => setSelectedMatch(match)}
+                      aria-label={`${won ? 'Win' : 'Loss'} vs ${match.player1Id === user.uid ? match.player2Name : match.player1Name} — view match`}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-transform hover:scale-110
                       ${won ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
                       {won ? 'W' : 'L'}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
