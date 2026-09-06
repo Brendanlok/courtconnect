@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-07] — Tappable recent-form dots on Home
+
+### 🟢 Low
+- ✨ The five W/L "Form" dots in the Home hero card are now tappable — tap one
+  to open that match's full detail (score, opponent, MMR change). Previously
+  they were display-only.
+
+---
+
 ## [2026-09-06] — Result & format filters on Match History
 
 ### 🟢 Low

@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-07] — Feature: tappable recent-form dots on Home
+
+**Trigger:** Step 2c product idea (auto-dev session). Board dry — the one open
+To-Do (Career Highs mid-season peak) still needs a schema/data-model call from
+Lok, left at Backlog. Checked the obvious "missing Log Match on Home" idea first
+and rejected it — the Topbar already has a global Log Match button on every
+authed page.
+
+**What's new:** The five W/L "Form" dots in the Home hero card were display-only.
+They're now `<button>`s that open the corresponding match's `MatchDetailModal`
+(already mounted on the page for the Recent Matches list). `recentForm` now
+carries the `Match` ref alongside the win boolean; each dot has an aria-label
+naming the result and opponent.
+
+**Files:** `src/app/page.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass. Live-verified
+on the deployed site after Actions deploy.
+
 ## [2026-09-06] — Feature: Result & Format filters on the Matches History tab
 
 **Trigger:** Step 2c product idea (1am session). Board fully dry — only open
