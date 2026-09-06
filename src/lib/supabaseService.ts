@@ -351,10 +351,18 @@ export async function getLiveMatchByCode(code: string): Promise<LiveMatch | null
 // Browse list for the Live page's idle screen — matches still worth
 // discovering (active + paused, same set getLiveMatchByCode now finds),
 // most recent first, capped so the list stays a quick glance not a feed.
+// A host who closes the tab without pressing "End Match" leaves the row
+// stuck at 'active' forever (no server, no heartbeat) — the age cutoff
+// keeps those abandoned ghosts out of the browse list without needing a
+// cleanup job. Joining by code still finds an older row (see getLiveMatchByCode).
+// ponytail: 12h window; add a real heartbeat column if pauses need to span days.
+const LIVE_BROWSE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 export function subscribeActiveLiveMatches(cb: (matches: LiveMatch[]) => void): () => void {
   const load = async () => {
     const { data } = await supabase.from('live_matches').select('*')
-      .in('status', ['active', 'paused']).order('created_at', { ascending: false }).limit(8);
+      .in('status', ['active', 'paused'])
+      .gte('created_at', new Date(Date.now() - LIVE_BROWSE_MAX_AGE_MS).toISOString())
+      .order('created_at', { ascending: false }).limit(8);
     cb((data ?? []).map(liveMatchRowToObj));
   };
   load();
