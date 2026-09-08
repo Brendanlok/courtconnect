@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-09] — MMR History chart range toggle on Home
+
+### 🟢 Low
+- ✨ The Home "MMR History" chart was locked to the last 30 days — players who
+  play less than monthly saw an empty chart. It now has 30d / 90d / All
+  buttons, so your full rating journey is one tap away. The empty-state text
+  and the starting-MMR back-calculation follow the selected window.
+
+---
+
 ## [2026-09-07] — Tappable recent-form dots on Home
 
 ### 🟢 Low

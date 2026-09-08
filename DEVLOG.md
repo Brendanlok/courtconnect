@@ -1,5 +1,26 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-09] — Feature: MMR History chart range toggle on Home
+
+**Trigger:** Step 2c product idea (auto-dev session). Board dry — 2 Backlog items
+both parked pending Lok (Supabase migration 0031, and a season_history schema
+call for mid-season peak MMR); neither touched. Code audit turned up nothing new
+safe to build unattended.
+
+**What's new:** The Home "MMR History" area chart was hardcoded to a 30-day
+window — an infrequent player (last match 40+ days ago) got a permanent "No
+confirmed matches in the last 30 days" empty state. Added a 30d / 90d / All
+segmented toggle in the card header (same treatment as the Activity feed's
+Mine/Community switch). The range drives the match filter, the
+starting-MMR back-walk, and the empty-state copy. XAxis switched from a fixed
+`interval={2}` to `preserveStartEnd` + `minTickGap` so longer series don't
+crowd the labels.
+
+**Files:** `src/app/page.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass.
+Live-verified on the deployed site after the Actions deploy.
+
 ## [2026-09-07] — Feature: tappable recent-form dots on Home
 
 **Trigger:** Step 2c product idea (auto-dev session). Board dry — the one open

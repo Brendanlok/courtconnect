@@ -20,6 +20,7 @@ export default function Home() {
   const { user, matches, updateUser, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [mmrRange, setMmrRange] = useState<30 | 90 | 0>(30); // 0 = all time
   const pausedMatch = usePausedMatch();
 
   const confirmed  = matches.filter(m => m.status === 'Confirmed');
@@ -61,12 +62,12 @@ export default function Home() {
     .filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo)
     .reduce((s, m) => s + (m.mmrChange ?? 0), 0);
 
-  // Real MMR history for the last 30 days, walked forward from each confirmed
+  // Real MMR history for the selected window, walked forward from each confirmed
   // match's mmrChange — starting point is today's MMR minus every delta in
-  // the window, not a hardcoded seed series.
-  const thirtyDaysAgo = Date.now() - 30 * 86400000;
+  // the window, not a hardcoded seed series. mmrRange 0 = all time.
+  const rangeCutoff = mmrRange === 0 ? 0 : Date.now() - mmrRange * 86400000;
   const recentConfirmed = [...confirmed]
-    .filter(m => new Date(m.playedAt).getTime() >= thirtyDaysAgo)
+    .filter(m => new Date(m.playedAt).getTime() >= rangeCutoff)
     .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
   let mmrRunning = user.mmr - recentConfirmed.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
   const mmrHistory = recentConfirmed.map(m => {
@@ -395,12 +396,22 @@ export default function Home() {
               <h2 className="font-semibold text-sm flex items-center gap-2">
                 <TrendingUp size={15} className="text-emerald-400"/> MMR History
               </h2>
-              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-medium">30 days</span>
+              <div className="flex gap-0.5 bg-slate-800 rounded-md p-0.5">
+                {([[30, '30d'], [90, '90d'], [0, 'All']] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => setMmrRange(v)}
+                    className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors
+                      ${mmrRange === v ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             {mmrHistory.length === 0 ? (
               <div className="h-[148px] flex flex-col items-center justify-center gap-2 text-center">
                 <TrendingUp size={24} className="text-slate-700"/>
-                <p className="text-xs text-slate-500">No confirmed matches in the last 30 days</p>
+                <p className="text-xs text-slate-500">
+                  {mmrRange === 0 ? 'No confirmed matches yet' : `No confirmed matches in the last ${mmrRange} days`}
+                </p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={148}>
@@ -411,7 +422,7 @@ export default function Home() {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval={2}/>
+                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24}/>
                   <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
                   <Tooltip
                     contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
