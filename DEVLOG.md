@@ -1,5 +1,23 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-10] — Feature: Home "Recent Matches" links to full history
+
+**Trigger:** Step 2c product idea (1am auto-dev session). Board dry — 2 Backlog
+items both parked pending Lok (Supabase migration 0031; season_history schema
+call for mid-season peak MMR), neither touched.
+
+**What's new:** The Home "Recent Matches" card shows only the latest 5 with no
+path to the rest. When the player has more than 5 matches, the card header now
+shows a "View all →" link to the Matches page. Added a `#history` hash so it
+lands directly on the History tab (which was only reachable by tapping through
+the default Planned tab). The link falls back to the old "Tap for details"
+hint when there are 5 or fewer matches.
+
+**Files:** `src/app/page.tsx`, `src/app/matches/page.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass.
+Live-verified on the deployed site after the Actions deploy.
+
 ## [2026-09-09] — Feature: MMR History chart range toggle on Home
 
 **Trigger:** Step 2c product idea (auto-dev session). Board dry — 2 Backlog items

@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-10] — Home "Recent Matches" links to full history
+
+### 🟢 Low
+- ✨ The Home "Recent Matches" card only showed your latest 5 with no way
+  through to the rest. It now has a "View all →" link (when you have more than
+  5 matches) that opens the Matches page straight on the History tab.
+
+---
+
 ## [2026-09-09] — MMR History chart range toggle on Home
 
 ### 🟢 Low
