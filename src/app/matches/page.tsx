@@ -215,6 +215,12 @@ export default function MatchesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Deep-link to the History tab: Home's "Recent Matches" card links here with
+  // #history so the full match list opens directly instead of the Planned tab.
+  useEffect(() => {
+    if (window.location.hash === '#history') setTab('history');
+  }, []);
+
   // A real signed-in user's own planned matches are saved to Supabase
   // (savePlannedMatch above) but were never loaded back — every reload reset
   // to just the seed demo plans. Merge by id, same idiom AppContext uses for

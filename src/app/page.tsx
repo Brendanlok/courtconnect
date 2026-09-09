@@ -438,7 +438,14 @@ export default function Home() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-sm">Recent Matches</h2>
-              <p className="text-[11px] text-slate-500">Tap for details</p>
+              {matches.length > 5 ? (
+                <a href={`${BASE_PATH}/matches/#history`}
+                  className="text-[11px] text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
+                  View all →
+                </a>
+              ) : (
+                <p className="text-[11px] text-slate-500">Tap for details</p>
+              )}
             </div>
             {matches.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center py-6 gap-3">
