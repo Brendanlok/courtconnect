@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-10] — Achievement notification jumps to the badge section
+
+### 🟢 Low
+- 🐛 Tapping an "Achievement unlocked" notification opened your profile but
+  left you at the top of the page — it never scrolled down to the Achievements
+  section it was pointing at. It now jumps straight to your badges.
+
+---
+
 ## [2026-09-10] — Home "Recent Matches" links to full history
 
 ### 🟢 Low
