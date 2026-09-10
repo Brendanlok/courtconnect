@@ -10,7 +10,7 @@ const store = new Map<string, string>();
   removeItem: (k: string) => void store.delete(k),
 };
 
-import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly, regionOf } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly, regionOf, timeAgo } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -115,5 +115,19 @@ console.log('PASS parseDateOnly treats a bare date as local, not a day-early UTC
   assert.strictEqual(regionOf({ country: 'Other', state: 'Selangor', region: '' }), 'Selangor', 'falls back to state when region blank');
 }
 console.log('PASS regionOf resolves a non-MY player to their real region, not the MY default state');
+
+// 10. timeAgo rolls past the day mark up to weeks/months/years instead of
+//     emitting a huge day count for an old match or notification.
+{
+  const ago = (ms: number) => timeAgo(new Date(Date.now() - ms).toISOString());
+  const DAY = 86400000;
+  assert.strictEqual(ago(30000), 'just now');
+  assert.strictEqual(ago(5 * DAY), '5d ago');
+  assert.strictEqual(ago(10 * DAY), '1w ago');
+  assert.strictEqual(ago(60 * DAY), '2mo ago');
+  assert.strictEqual(ago(400 * DAY), '1y ago');
+  assert.strictEqual(timeAgo(new Date(Date.now() + 10 * DAY).toISOString()), 'in 1w');
+}
+console.log('PASS timeAgo rolls up to w/mo/y past the day mark');
 
 console.log('ALL PASS utils (MMR)');

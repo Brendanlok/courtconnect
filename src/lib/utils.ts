@@ -168,18 +168,22 @@ export function localDateISO(offsetDays = 0): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Relative time, both directions. Past the day mark it rolls up to w/mo/y so
+// an old match or notification reads "7mo ago", not "214d ago".
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 0) {
-    const f = -diff;
-    if (f < 3600000)  return `in ${Math.floor(f/60000)}m`;
-    if (f < 86400000) return `in ${Math.floor(f/3600000)}h`;
-    return `in ${Math.floor(f/86400000)}d`;
-  }
-  if (diff < 60000)    return 'just now';
-  if (diff < 3600000)  return `${Math.floor(diff/60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
-  return `${Math.floor(diff/86400000)}d ago`;
+  const abs = Math.abs(diff);
+  const MIN = 60000, HR = 3600000, DAY = 86400000, WK = 7 * DAY, MO = 30 * DAY, YR = 365 * DAY;
+  const mag =
+    abs < HR  ? `${Math.max(1, Math.floor(abs / MIN))}m` :
+    abs < DAY ? `${Math.floor(abs / HR)}h` :
+    abs < WK  ? `${Math.floor(abs / DAY)}d` :
+    abs < MO  ? `${Math.floor(abs / WK)}w` :
+    abs < YR  ? `${Math.floor(abs / MO)}mo` :
+                `${Math.floor(abs / YR)}y`;
+  if (diff < 0) return `in ${mag}`;
+  if (diff < MIN) return 'just now';
+  return `${mag} ago`;
 }
 
 // A bare YYYY-MM-DD parses as UTC midnight, which renders a day early for any
