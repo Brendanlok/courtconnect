@@ -17,7 +17,7 @@ import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { MapPin, QrCode, MessageCircle, Swords, ThumbsUp, Settings, Search, Users, UserPlus, UserCheck, Trophy, Lock, Clock, Flame, TrendingUp, CircleSlash, Star, X, Medal, Award, Zap, CalendarCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Match, MatchType } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { auth } from '@/lib/supabase';
@@ -91,6 +91,16 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const [matchFormat,    setMatchFormat]    = useState<MatchType | 'All'>('All');
   const [matchResult,    setMatchResult]    = useState<ResultFilter>('All');
   const [selectedBadge,  setSelectedBadge]  = useState<Badge | null>(null);
+
+  // Deep-link support: badge_earned notifications link here with #achievements.
+  // The browser's native hash-scroll fires before this client view hydrates the
+  // target section, so re-run it once on mount.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView(), 100);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!staticPlayer && !forceIsMe) return notFound();
 
