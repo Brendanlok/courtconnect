@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-09-10] — "Rating stale" badge no longer fires on active players
+
+### 🟠 High
+- 🐛 From ~19 Sep, every real player's profile was about to start showing a
+  "💤 Rating stale" badge (and hiding their Skill Match for other viewers)
+  30 days after signup — even if they played a match that morning. The
+  staleness check now also counts your most recent confirmed match as
+  activity, so only genuinely dormant players get the badge.
+
+---
+
 ## [2026-09-10] — Achievement notification jumps to the badge section
 
 ### 🟢 Low

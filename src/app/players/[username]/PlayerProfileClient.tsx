@@ -124,9 +124,15 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   // hasn't been tested in a while, unlike 'provisional' (playerCalibrating)
   // which hides it outright. Skill Match implies real precision, so it's
   // gated on reliability being fully 'established', not just non-calibrating.
-  const reliability = getReliability(player);
-  const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
   const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+  // Most recent confirmed match doubles as the "last active" signal while
+  // migration 0031's last_active_at column isn't applied yet — otherwise a
+  // real account reads as 'stale' 30 days after signup even if it played today.
+  const lastMatchAt = playerMatches
+    .filter(m => m.status === 'Confirmed')
+    .reduce<string | null>((latest, m) => (!latest || new Date(m.playedAt) > new Date(latest) ? m.playedAt : latest), null);
+  const reliability = getReliability({ ...player, lastMatchAt });
+  const sm  = isMe ? 100 : skillMatch(ctxUser.mmr, player.mmr);
 
   // Real MMR history for the last 30 days (own profile only), walked forward
   // from each confirmed match's mmrChange — same approach as the Home page

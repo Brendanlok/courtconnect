@@ -14,8 +14,18 @@ export type Reliability = 'provisional' | 'established' | 'stale';
 // deliberately a different, smaller number so the two don't collide.
 export const STALE_AFTER_DAYS = 30;
 
-export function daysSinceActive(p: { lastActiveAt?: string | null; joinedAt: string }): number {
-  const lastActive = new Date(p.lastActiveAt || p.joinedAt);
+// `lastMatchAt` is the same activity signal `last_active_at` (migration 0031)
+// is meant to hold — the date of a player's most recent confirmed match —
+// computed client-side from match history that's already loaded. Pre-migration
+// `last_active_at` never persists, so without this fallback every real account
+// reads as 'stale' 30 days after signup even if they played yesterday. The
+// most recent of the two wins; if neither is present it still falls back to
+// joinedAt (so a genuinely dormant account is correctly stale).
+export function daysSinceActive(p: { lastActiveAt?: string | null; lastMatchAt?: string | null; joinedAt: string }): number {
+  const candidates = [p.lastActiveAt, p.lastMatchAt].filter(Boolean) as string[];
+  const lastActive = candidates.length
+    ? new Date(Math.max(...candidates.map(d => new Date(d).getTime())))
+    : new Date(p.joinedAt);
   return (Date.now() - lastActive.getTime()) / 86_400_000;
 }
 
@@ -23,6 +33,7 @@ export function getReliability(p: {
   isDummy?: boolean;
   placementMatchesPlayed?: number | null;
   lastActiveAt?: string | null;
+  lastMatchAt?: string | null;
   joinedAt: string;
 }): Reliability {
   // Seed/demo roster is static showcase data with an old joinedAt and no

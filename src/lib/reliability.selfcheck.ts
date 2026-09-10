@@ -35,6 +35,22 @@ console.log('PASS a dormant fully-placed player is stale, distinct from provisio
 }
 console.log('PASS missing lastActiveAt falls back to joinedAt');
 
+// 4b. No lastActiveAt (migration 0031 not applied), but a recent confirmed
+//     match -> established. lastMatchAt is the real activity signal; without
+//     this every real account would read stale 30 days after signup.
+{
+  const p = getReliability({ placementMatchesPlayed: 10, lastMatchAt: daysAgo(2), joinedAt: daysAgo(300) });
+  assert.strictEqual(p, 'established');
+}
+console.log('PASS a recent confirmed match keeps a player established when lastActiveAt never persisted');
+
+// 4c. Old lastActiveAt but a newer match -> the more recent signal wins.
+{
+  const p = getReliability({ placementMatchesPlayed: 10, lastActiveAt: daysAgo(STALE_AFTER_DAYS + 10), lastMatchAt: daysAgo(3), joinedAt: daysAgo(300) });
+  assert.strictEqual(p, 'established');
+}
+console.log('PASS the most recent of lastActiveAt / lastMatchAt decides staleness');
+
 // 5. A provisional opponent (singles) discounts the whole match's MMR swing.
 {
   assert.strictEqual(opponentReliabilityMultiplier([{ placementMatchesPlayed: 4 }]), 0.6);

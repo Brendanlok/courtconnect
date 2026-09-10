@@ -1,5 +1,39 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-10] — Fix: "Rating stale" badge about to hit every active real player
+
+**Trigger:** 1pm auto-dev session. Board dry (2 Backlog items both parked
+pending Lok). This was the P2 To-Do "Reliability stale badge will hit every
+established real player ~19 Sep unless migration 0031 is applied" — flagged
+every session since ~5 Sep as Lok-only. Picked up a narrower, non-schema fix
+that doesn't need the migration or a fail-open sign-off.
+
+**Problem:** `last_active_at` (migration 0031) is never persisted because the
+column doesn't exist yet, so `getReliability()` fell back to `joinedAt` for
+every real account. STALE_AFTER_DAYS is 30 and real signups opened ~19 Aug —
+so from ~19 Sep onward every established real player's own profile would show
+"💤 STALE" and their Skill Match badge would be hidden for other viewers,
+regardless of how recently they actually played.
+
+**Fix:** `daysSinceActive()` / `getReliability()` now also accept
+`lastMatchAt` — the date of the player's most recent confirmed match, which is
+exactly the signal `last_active_at` is meant to carry, computed client-side
+from match history that's already loaded. The most recent of `lastActiveAt` /
+`lastMatchAt` wins; with neither present it still falls back to `joinedAt`, so
+a genuinely dormant account is still correctly flagged stale (selfcheck case 4
+unchanged). `PlayerProfileClient` passes the derived `lastMatchAt`.
+
+**Still needs Lok:** migration 0031 itself is still unapplied. This fix covers
+the live surface (your own profile). Persisting `last_active_at` properly, and
+any future cross-account reliability surface that isn't backed by loaded match
+history, still wants the migration run in the Supabase SQL editor.
+
+**Files:** `src/lib/reliability.ts`, `src/lib/reliability.selfcheck.ts`,
+`src/app/players/[username]/PlayerProfileClient.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass
+(2 new reliability cases). Live-verified after the Actions deploy.
+
 ## [2026-09-10] — Feature: Home "Recent Matches" links to full history
 
 **Trigger:** Step 2c product idea (1am auto-dev session). Board dry — 2 Backlog
