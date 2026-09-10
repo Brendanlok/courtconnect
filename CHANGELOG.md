@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-09-11] — Match History filter bar shows a W–L tally
+
+### 🟢 Low
+- ✨ Searching or filtering the Matches → History tab now shows a one-line
+  summary of the results — e.g. "5 matches · 3W–2L · 1 pending". Search an
+  opponent's name and it doubles as a head-to-head record. Only appears when
+  a search or filter is active.
+
+---
+
 ## [2026-09-10] — Relative timestamps roll up past the day mark
 
 ### 🟢 Low

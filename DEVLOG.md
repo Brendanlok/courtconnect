@@ -1,5 +1,24 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-11] — Match History filter bar W–L tally (Step 2c idea)
+
+**Trigger:** auto-dev session, board dry (only open To-Do is the Career Highs
+mid-season peak MMR item, still parked on Lok's season_history schema call).
+Daily product idea for 2026-09-11.
+
+**Change:** The Matches → History tab already had opponent search + Result +
+Format filters but no readout of what the filtered set contained. Added a
+one-line tally above the filtered list ("5 matches · 3W–2L · 1 pending"),
+shown only when a search or filter is active. When you search an opponent's
+name it reads as a head-to-head record. One file (`src/app/matches/page.tsx`),
+computed from the already-filtered array — no new state or data.
+
+**Verify:** `npx next build` clean, `npm test` all self-checks pass. Shipped
+a6f38db, GitHub Actions deploy. Auth-gated page, no login for a click test —
+pure client-side derived render over existing data.
+
+---
+
 ## [2026-09-10] — Fix: "Rating stale" badge about to hit every active real player
 
 **Trigger:** 1pm auto-dev session. Board dry (2 Backlog items both parked
