@@ -604,9 +604,22 @@ export default function MatchesPage() {
                   if (historyResult === 'Pending' && m.status !== 'Pending') return false;
                   return true;
                 });
-                return filtered.length === 0
-                  ? <p className="text-xs text-slate-500 text-center py-6">No matches match these filters.</p>
-                  : filtered.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>);
+                if (filtered.length === 0)
+                  return <p className="text-xs text-slate-500 text-center py-6">No matches match these filters.</p>;
+                const isFiltered = q !== '' || historyResult !== 'All' || historyFormat !== 'All';
+                const wins    = filtered.filter(m => m.status === 'Confirmed' && m.winnerId === 'me').length;
+                const losses  = filtered.filter(m => m.status === 'Confirmed' && m.winnerId && m.winnerId !== 'me').length;
+                const pending = filtered.filter(m => m.status === 'Pending').length;
+                return <>
+                  {isFiltered && (wins + losses > 0 || pending > 0) && (
+                    <p className="text-[11px] text-slate-400 px-1">
+                      {filtered.length} {filtered.length === 1 ? 'match' : 'matches'}
+                      {wins + losses > 0 && <> · <span className="text-emerald-400 font-semibold">{wins}W</span>–<span className="text-red-400 font-semibold">{losses}L</span></>}
+                      {pending > 0 && <> · {pending} pending</>}
+                    </p>
+                  )}
+                  {filtered.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)}
+                </>;
               })()}
               {historyQuery === '' && historyResult === 'All' && historyFormat === 'All' && cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
             </>
