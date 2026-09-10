@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-10] — Relative timestamps roll up past the day mark
+
+### 🟢 Low
+- ✨ Match cards, notifications and message previews showed a raw day count
+  for anything older than a day ("214d ago"). They now roll up to weeks,
+  months and years ("7mo ago", "1y ago"); future times do the same ("in 1w").
+
+---
+
 ## [2026-09-10] — "Rating stale" badge no longer fires on active players
 
 ### 🟠 High
