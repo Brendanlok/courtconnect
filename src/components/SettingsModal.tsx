@@ -532,14 +532,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-500 shrink-0">RM</span>
                   <input type="number" min="0" value={coach.hourlyRate ?? ''}
-                    onChange={e => setCoach(c => ({ ...c, hourlyRate: e.target.value ? Number(e.target.value) : undefined }))}
+                    onChange={e => setCoach(c => ({ ...c, hourlyRate: e.target.value ? Math.max(0, Number(e.target.value)) : undefined }))}
                     placeholder="Leave blank to discuss per player" className={inp}/>
                 </div>
               </div>
               <div className="w-28">
                 <label className="text-[11px] text-slate-500 font-semibold block mb-1">Years coaching</label>
                 <input type="number" min="0" value={coach.yearsExperience ?? ''}
-                  onChange={e => setCoach(c => ({ ...c, yearsExperience: e.target.value ? Number(e.target.value) : undefined }))}
+                  onChange={e => setCoach(c => ({ ...c, yearsExperience: e.target.value ? Math.max(0, Number(e.target.value)) : undefined }))}
                   className={inp}/>
               </div>
             </div>
