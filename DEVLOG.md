@@ -1,5 +1,47 @@
 # CourtConnect — Daily Dev Log
 
+## [2026-09-11] — Fix: club minMMR bypass + wrong sorts in club Analytics/Top Players
+
+**Trigger:** 5am auto-dev session. Board dry (only open To-Do — Career Highs
+mid-season peak MMR — parked pending Lok's schema call). Ran a board-dry code
+audit over the tournaments and club-detail pages (largest files not yet
+covered by a recent audit) and found three confirmed bugs.
+
+**Bug 1 — private clubs never enforced their MMR requirement.** The Join/
+Request block in `ClubDetailClient.tsx` checked `club.isPrivate` before
+`club.minMMR`, so a private club's minMMR gate was never reached — the button
+always read "Request to Join" regardless of the viewer's MMR, never the
+"Requires X+ MMR" message a public club with the same minMMR correctly shows.
+Worse, `requestJoinClub` (AppContext) had no MMR guard at all, unlike
+`joinClub` which already checks `club.minMMR && user.mmr < club.minMMR` — so
+a below-MMR user's request could go through and be silently approved. Fixed
+by reordering the UI check (minMMR before isPrivate) and adding the same
+guard `joinClub` already has to `requestJoinClub`.
+
+**Bug 2 — "Most Active Members" (club Analytics tab) sorted by win rate, not
+games played.** It reused the `ladder` array (correctly sorted by win rate
+for the Ladder tab's standings) and sliced the top 5, despite being labeled
+"By confirmed singles matches played." A member with 1 win from 1 match could
+outrank a member with 4 wins from 10 matches. Fixed with its own sort by
+`played` descending, scoped to that one render (Ladder tab is untouched).
+
+**Bug 3 — "Top Players" (club Overview tab) was raw join order, not MMR
+order.** `members` has no `.sort()` anywhere in the file — it's built
+straight from `club.memberIds` (owner first, then join order). The "★ Top
+Players" card sliced the first 5 of that unsorted list. Fixed with its own
+sort by `mmr` descending, scoped to that render (the Members tab list, which
+wants join order, is untouched).
+
+**Files:** `src/app/clubs/[id]/ClubDetailClient.tsx`, `src/context/AppContext.tsx`.
+
+**Verified:** `npx next build` clean, `npm test` all self-checks pass.
+Commit b766337, deployed via GitHub Actions, live-verified after deploy (page
+loads clean, no console errors on reload — confirms the new build is served,
+not a stale cache). Could not click-test the club-membership/MMR flow itself
+past login — no demo/guest login exists in this app, same standing
+limitation as every prior auto-dev session (see entries below). Traced
+against `joinClub`'s existing, already-working minMMR guard instead.
+
 ## [2026-09-11] — Match History filter bar W–L tally (Step 2c idea)
 
 **Trigger:** auto-dev session, board dry (only open To-Do is the Career Highs
