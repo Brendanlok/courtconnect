@@ -1,6 +1,6 @@
--- NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor.
--- Until then, subscribeVenues degrades to an empty list (see supabaseService.ts),
--- same graceful-no-op pattern as 0007_availability.sql before it was applied.
+-- APPLIED (confirmed 2026-09-12 via a live REST query — the header here was
+-- never updated when Lok ran it, so it sat marked "not yet applied" for
+-- weeks after the venues table was already live).
 
 create table venues (
   id uuid primary key default gen_random_uuid(),

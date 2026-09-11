@@ -18,7 +18,7 @@ import { MMRInfoModal } from '@/components/MMRInfoModal';
 import { Button } from '@/components/ui/Button';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { auth } from '@/lib/supabase';
-import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry, createVenue } from '@/lib/supabaseService';
+import { subscribeAvailability, createAvailabilityEntry, deleteAvailabilityEntry, createVenue, deleteVenue } from '@/lib/supabaseService';
 import type { UserProfile, MalaysiaState, Tier, MatchType, Club, AvailabilityEntry, AvailabilityTimeLabel, Venue } from '@/types';
 import { VenueInput } from '@/components/VenueInput';
 
@@ -890,12 +890,28 @@ function VenuesTab({ user, venues }: { user: UserProfile; venues: Venue[] }) {
   const [state,    setState]    = useState<MalaysiaState>((user.state as MalaysiaState) || 'Selangor');
   const [posting,  setPosting]  = useState(false);
   const [error,    setError]    = useState('');
+  // Removals don't reach us back through the subscription (same missing
+  // realtime-publication gap as availability — see supabaseService.ts), so
+  // hide a just-deleted venue locally rather than waiting for a broadcast
+  // that never comes.
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const grouped = venues.reduce<Record<string, Venue[]>>((acc, v) => {
+  const visible = venues.filter(v => !removedIds.has(v.id));
+  const grouped = visible.reduce<Record<string, Venue[]>>((acc, v) => {
     (acc[v.state] ??= []).push(v);
     return acc;
   }, {});
   const states = Object.keys(grouped).sort();
+
+  const remove = async (id: string) => {
+    setRemovedIds(prev => new Set(prev).add(id));
+    try {
+      await deleteVenue(id);
+    } catch {
+      setRemovedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+      setError('Could not remove — try again.');
+    }
+  };
 
   const post = async () => {
     const uid = auth.currentUser?.uid;
@@ -964,6 +980,10 @@ function VenuesTab({ user, venues }: { user: UserProfile; venues: Venue[] }) {
               <div key={v.id} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
                 <MapPin size={14} className="text-slate-500 shrink-0"/>
                 <p className="text-sm text-slate-200 flex-1 min-w-0 truncate">{v.name}</p>
+                {v.addedBy === auth.currentUser?.uid && (
+                  <button onClick={() => remove(v.id)} aria-label="Remove"
+                    className="text-slate-500 hover:text-red-400 transition-colors shrink-0"><X size={14}/></button>
+                )}
               </div>
             ))}
           </div>

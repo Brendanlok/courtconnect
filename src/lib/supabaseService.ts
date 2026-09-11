@@ -1316,3 +1316,9 @@ export async function createVenue(v: Omit<Venue, 'id' | 'createdAt'>): Promise<v
   const { error } = await supabase.from('venues').insert({ name: v.name, state: v.state, added_by: v.addedBy });
   if (error) throw error;
 }
+
+// Restricted server-side to the venue's own adder (0017_venues_delete_policy.sql).
+export async function deleteVenue(id: string): Promise<void> {
+  const { error } = await supabase.from('venues').delete().eq('id', id);
+  if (error) throw error;
+}
