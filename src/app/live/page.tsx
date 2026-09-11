@@ -135,6 +135,26 @@ export default function LivePage() {
     return subscribeActiveLiveMatches(setLiveNow);
   }, [phase]);
 
+  // Best-effort auto-pause if the host backgrounds/closes the tab mid-match —
+  // same pattern as LiveMatchModal's persistAutoPause. Without this, a match
+  // left via `/live` (not the Track & Record modal) never leaves Supabase's
+  // 'active' status, so it shows as "● LIVE" to every other user forever with
+  // no way to update again. Self-heals on the next addPoint(), which always
+  // recomputes status: 'active' from local state.
+  useEffect(() => {
+    if (phase !== 'scoring' || !match || match.status !== 'active') return;
+    const persistAutoPause = () => {
+      updateLiveMatch(match.id, { status: 'paused' } as Partial<LiveMatch>).catch(() => {});
+    };
+    const handler = () => { if (document.visibilityState === 'hidden') persistAutoPause(); };
+    document.addEventListener('visibilitychange', handler);
+    window.addEventListener('pagehide', persistAutoPause);
+    return () => {
+      document.removeEventListener('visibilitychange', handler);
+      window.removeEventListener('pagehide', persistAutoPause);
+    };
+  }, [phase, match]);
+
   // ── scoring logic ──────────────────────────────────────────────────────────
 
   const mutateMatch = useCallback((next: LiveMatch) => {
