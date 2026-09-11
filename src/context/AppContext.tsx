@@ -1169,9 +1169,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const requestJoinClub = useCallback((id: string) => {
     if (myClubIds.length + myClubPendingIds.length >= clubLimit || !myRealUid) return;
+    // Mirrors joinClub's minMMR guard — private clubs skipped this check
+    // entirely (UI never even showed the requirement), so a below-MMR user
+    // could request and be silently approved. See DEVLOG 2026-09-11.
+    const club = clubs.find(c => c.id === id);
+    if (club?.minMMR && user.mmr < club.minMMR) return;
     addClubPending(id, myRealUid).catch(() => {});
     addNotification({ type: 'club_request', title: 'Request Sent', body: 'Your request to join the club has been sent.' });
-  }, [myClubIds, myClubPendingIds, clubLimit, myRealUid]);
+  }, [clubs, myClubIds, myClubPendingIds, clubLimit, myRealUid, user.mmr]);
 
   const cancelClubRequest = useCallback((id: string) => {
     if (!myRealUid) return;

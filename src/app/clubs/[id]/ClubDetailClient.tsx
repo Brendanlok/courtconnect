@@ -395,6 +395,10 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
               </p>
             ) : isFull ? (
               <p className="text-xs text-slate-500 text-center">Club is full.</p>
+            ) : club.minMMR && user.mmr < club.minMMR ? (
+              <p className="text-xs text-slate-500 text-center">
+                Requires {club.minMMR.toLocaleString()}+ MMR to join (you have {user.mmr.toLocaleString()}).
+              </p>
             ) : club.isPrivate ? (
               hasRequested || isPending ? (
                 <button onClick={() => cancelClubRequest(clubId)}
@@ -407,10 +411,6 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                   Request to Join
                 </button>
               )
-            ) : club.minMMR && user.mmr < club.minMMR ? (
-              <p className="text-xs text-slate-500 text-center">
-                Requires {club.minMMR.toLocaleString()}+ MMR to join (you have {user.mmr.toLocaleString()}).
-              </p>
             ) : (
               <button onClick={() => joinClub(clubId)}
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-semibold transition-colors">
@@ -469,7 +469,8 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1.5"><Star size={12}/> Top Players</p>
             <div className="space-y-2">
-              {members.slice(0, 5).map((p, i) => (
+              {/* members is join order (Members tab); "Top" means by MMR. */}
+              {[...members].sort((a, b) => b.mmr - a.mmr).slice(0, 5).map((p, i) => (
                 <Link key={p.uid} href={profileHref(p)}
                   className="flex items-center gap-3 hover:bg-slate-800/50 rounded-xl px-2 py-1.5 transition-colors">
                   <span className="text-xs text-slate-600 w-4 shrink-0">#{i + 1}</span>
@@ -845,7 +846,9 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                 {ladder.flatMap(entry => {
                   const p = resolveProfile(entry.uid);
                   return p ? [{ entry, p }] : [];
-                }).slice(0, 5).map(({ entry, p }, i) => (
+                // ladder is sorted by win rate (for the Ladder tab standings) —
+                // "Most Active" needs its own sort by games played.
+                }).sort((a, b) => b.entry.played - a.entry.played).slice(0, 5).map(({ entry, p }, i) => (
                   <Link key={entry.uid} href={profileHref(p)}
                     className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">
                     <span className="text-xs text-slate-600 w-5 shrink-0">#{i + 1}</span>
