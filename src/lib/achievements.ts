@@ -52,14 +52,17 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tourn
   const confirmed = [...matches]
     .filter(m => m.status === 'Confirmed')
     .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
-  const wins = confirmed.filter(m => m.winnerId === user.uid);
+  // winnerId is normalized to 'me' (see toLocalMatch) — never the real uid,
+  // so comparing against user.uid here always misses for every real account
+  // (only the local demo profile, which happens to use uid 'me', worked).
+  const wins = confirmed.filter(m => m.winnerId === 'me');
   const earned = new Set<string>();
 
   if (wins.length > 0) earned.add('first_win');
 
   let curStreak = 0, maxStreak = 0;
   for (const m of confirmed) {
-    if (m.winnerId === user.uid) { curStreak++; maxStreak = Math.max(maxStreak, curStreak); }
+    if (m.winnerId === 'me') { curStreak++; maxStreak = Math.max(maxStreak, curStreak); }
     else curStreak = 0;
   }
   if (maxStreak >= HOT_STREAK) earned.add('hot_streak');
@@ -71,7 +74,7 @@ export function computeEarnedBadgeIds(matches: Match[], user: UserProfile, tourn
   // opponent-MMR field (would need a new Match column + write-path change).
   // Doesn't cover a later re-placement after 90+ days inactive — upgrade to a
   // stored per-match opponent-MMR/kFactor if that edge case matters.
-  const postCalibrationWins = confirmed.slice(CALIBRATION_GAMES).filter(m => m.winnerId === user.uid);
+  const postCalibrationWins = confirmed.slice(CALIBRATION_GAMES).filter(m => m.winnerId === 'me');
   if (postCalibrationWins.some(m => (m.mmrChange ?? 0) >= GIANT_SLAYER_MMR_GAIN)) earned.add('giant_slayer');
 
   if (wins.some(m => (m.liveStats?.biggestComebackPoints ?? 0) >= COMEBACK_THRESHOLD)) earned.add('comeback_king');

@@ -3,7 +3,11 @@ import assert from 'node:assert';
 import { computeEarnedBadgeIds } from './achievements';
 import type { Match, UserProfile } from '@/types';
 
-const USER = { uid: 'me' } as UserProfile;
+// uid deliberately NOT 'me' — a real account's uid is its actual Supabase
+// UUID, never the literal 'me'. winnerId is always 'me'/opponent-id (see
+// toLocalMatch), so a test fixture using uid: 'me' would hide a regression
+// back to comparing winnerId against user.uid instead of the 'me' sentinel.
+const USER = { uid: 'real-user-uuid-123' } as UserProfile;
 
 function match(overrides: Partial<Match>): Match {
   return {
