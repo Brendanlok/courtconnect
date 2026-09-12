@@ -8,6 +8,7 @@ import type { UserProfile } from '@/types';
 import { supabase, auth } from '@/lib/supabase';
 import { deleteAccountData, loadMyCoachProfile, saveCoachProfile, deleteCoachProfile, type MyCoachProfile } from '@/lib/supabaseService';
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
+import { NOTIF_CATEGORIES, useMutedCategories, type NotifCategory } from '@/lib/notificationPrefs';
 import { Avatar } from '@/components/ui/Avatar';
 import { AvatarCropModal } from '@/components/AvatarCropModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -574,6 +575,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           {/* Push notifications + username */}
           {tab === 'account' && (<>
           <NotificationPermissionRow/>
+          <NotificationCategoriesRow/>
 
           <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-500">Username</span>
@@ -726,6 +728,38 @@ function NotificationPermissionRow() {
       {perm === 'granted' && !canRealPush && (
         <span className="text-[10px] text-emerald-400 font-bold shrink-0">✓ On</span>
       )}
+    </div>
+  );
+}
+
+// Per-category mute — controls the in-app NotificationPanel/foreground
+// banner only (see notificationPrefs.ts); doesn't affect background push,
+// which the toggle above already covers with an all-or-nothing switch.
+function NotificationCategoriesRow() {
+  const [muted, setMuted] = useMutedCategories();
+  const toggle = (key: NotifCategory) =>
+    setMuted(muted.includes(key) ? muted.filter(k => k !== key) : [...muted, key]);
+
+  return (
+    <div className="px-3 py-2.5 bg-slate-800/50 border border-slate-800 rounded-xl space-y-2.5">
+      <p className="text-xs font-semibold text-slate-300">Notify me about</p>
+      {NOTIF_CATEGORIES.map(({ key, label, description }) => {
+        const on = !muted.includes(key);
+        return (
+          <div key={key} className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] text-slate-300">{label}</p>
+              <p className="text-[10px] text-slate-500">{description}</p>
+            </div>
+            <button type="button" onClick={() => toggle(key)}
+              className={`shrink-0 w-9 h-5 rounded-full border transition-colors relative ${
+                on ? 'bg-emerald-500/30 border-emerald-500/50' : 'bg-slate-800 border-slate-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform ${
+                on ? 'translate-x-[14px] bg-emerald-400' : 'translate-x-0 bg-slate-500'}`}/>
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

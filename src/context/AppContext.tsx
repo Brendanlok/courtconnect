@@ -31,6 +31,7 @@ import {
   subscribeOnlinePresence,
 } from '@/lib/supabaseService';
 import { seasonNumberForDate, rolloverSeasons } from '@/lib/seasons';
+import { isNotificationMuted } from '@/lib/notificationPrefs';
 
 // A uid is "real" (a genuine Supabase-authenticated account) if it isn't the
 // local demo user ('me') or one of the static seed players from lib/data.ts.
@@ -459,6 +460,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Declared here (ahead of the real-time subscription effect below) because
   // that effect calls it directly when a real cross-account event comes in.
   const addNotification = useCallback((n: Notification | Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
+    if (isNotificationMuted(n.type)) return;
     const full: Notification = {
       id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       read: false,
@@ -607,7 +609,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subscribeMyNotifications(uid, rows => {
           setNotifications(prev => {
             const local = prev.filter(n => n.id.startsWith('n_'));
-            const remote = rows.map(r => ({ id: r.id, type: r.type, title: r.title, body: r.body, read: r.read, createdAt: r.createdAt, linkTo: r.linkTo } as Notification));
+            const remote = rows.filter(r => !isNotificationMuted(r.type))
+              .map(r => ({ id: r.id, type: r.type, title: r.title, body: r.body, read: r.read, createdAt: r.createdAt, linkTo: r.linkTo } as Notification));
             return [...remote, ...local].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           });
         }),
