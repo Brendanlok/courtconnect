@@ -628,7 +628,7 @@ export default function MatchesPage() {
       )}
 
       <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
-        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, user.uid); setSelectedMatch(null); } : undefined}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, 'me'); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
         onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
         onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}

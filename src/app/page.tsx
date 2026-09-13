@@ -45,9 +45,13 @@ export default function Home() {
     && user.stats.totalMatches >= 10
     && (!user.lastRecalibrationAt || new Date(user.lastRecalibrationAt) <= threeMonthsAgo);
 
+  // `matches` (and everything derived from it below) comes from useApp(),
+  // where the signed-in user's own side is always normalized to the 'me'
+  // sentinel (see toLocalMatch) — comparing against user.uid here always
+  // misses for every real account, same bug class as achievements.ts.
   let streak = 0;
   for (const m of confirmed) {
-    if (m.winnerId === user.uid) streak++;
+    if (m.winnerId === 'me') streak++;
     else break;
   }
 
@@ -55,7 +59,7 @@ export default function Home() {
   // as the profile page's Match Analytics "Recent Form" row. `confirmed` is
   // already sorted newest-first (AppContext sorts matches by playedAt desc).
   // Each dot is tappable and opens that match's detail (modal already on page).
-  const recentForm = confirmed.slice(0, 5).map(m => ({ won: m.winnerId === user.uid, match: m }));
+  const recentForm = confirmed.slice(0, 5).map(m => ({ won: m.winnerId === 'me', match: m }));
 
   const oneWeekAgo = Date.now() - 7 * 86400000;
   const weeklyMmrDelta = confirmed
@@ -83,11 +87,11 @@ export default function Home() {
   // Weekly recap: same 7-day window as weeklyMmrDelta above, plus a couple more
   // shareable numbers computed from data already loaded for the rest of the page.
   const weeklyMatches = confirmed.filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo);
-  const weeklyWins = weeklyMatches.filter(m => m.winnerId === user.uid);
+  const weeklyWins = weeklyMatches.filter(m => m.winnerId === 'me');
   const bestWin = weeklyWins.length > 0
     ? [...weeklyWins].sort((a, b) => (b.mmrChange ?? 0) - (a.mmrChange ?? 0))[0]
     : null;
-  const bestWinOpponent = bestWin ? (bestWin.player1Id === user.uid ? bestWin.player2Name : bestWin.player1Name) : null;
+  const bestWinOpponent = bestWin ? (bestWin.player1Id === 'me' ? bestWin.player2Name : bestWin.player1Name) : null;
 
   return (
     <>
@@ -150,7 +154,7 @@ export default function Home() {
                 <div className="flex gap-1">
                   {recentForm.map(({ won, match }, i) => (
                     <button key={i} onClick={() => setSelectedMatch(match)}
-                      aria-label={`${won ? 'Win' : 'Loss'} vs ${match.player1Id === user.uid ? match.player2Name : match.player1Name} — view match`}
+                      aria-label={`${won ? 'Win' : 'Loss'} vs ${match.player1Id === 'me' ? match.player2Name : match.player1Name} — view match`}
                       className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-transform hover:scale-110
                       ${won ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
                       {won ? 'W' : 'L'}
@@ -272,9 +276,9 @@ export default function Home() {
               </p>
             </div>
             {pending.map(m => {
-              const isWin   = m.winnerId === user.uid;
-              const oppName = m.player1Id === user.uid ? m.player2Name : m.player1Name;
-              const oppUser = m.player1Id === user.uid ? m.player2Username : m.player1Username;
+              const isWin   = m.winnerId === 'me';
+              const oppName = m.player1Id === 'me' ? m.player2Name : m.player1Name;
+              const oppUser = m.player1Id === 'me' ? m.player2Username : m.player1Username;
               // Old local/demo matches never set pendingConfirmations — always
               // self-confirmable, as before. A real match only lets the
               // outstanding party act: if pendingConfirmations lists someone
@@ -295,7 +299,7 @@ export default function Home() {
                   </div>
                   {isMyTurn ? (
                     <div className="flex gap-2 shrink-0">
-                      <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, user.uid); }}
+                      <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, 'me'); }}
                         className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
                         <CheckCircle size={12}/> Confirm
                       </button>
@@ -317,7 +321,8 @@ export default function Home() {
         )}
 
         {/* ── Challenges ─────────────────────────────────────────────────────── */}
-        <ChallengesSection challenges={challenges} userId={user.uid} onAccept={acceptChallenge} onDecline={declineChallenge} onCancel={cancelChallenge}/>
+        {/* challenges (like matches) are normalized to the 'me' sentinel for the signed-in user — see toLocalChallenge */}
+        <ChallengesSection challenges={challenges} userId="me" onAccept={acceptChallenge} onDecline={declineChallenge} onCancel={cancelChallenge}/>
 
         {/* ── Upcoming events you're registered for ────────────────────────── */}
         {upcomingEvents.length > 0 && (
@@ -463,7 +468,7 @@ export default function Home() {
             ) : (
               <div className="space-y-1 flex-1">
                 {matches.slice(0, 5).map(m => (
-                  <MatchCard key={m.id} match={m} userId={user.uid} onClick={() => setSelectedMatch(m)}/>
+                  <MatchCard key={m.id} match={m} userId="me" onClick={() => setSelectedMatch(m)}/>
                 ))}
               </div>
             )}
@@ -471,14 +476,14 @@ export default function Home() {
         </div>
 
         {/* ── Activity Feed ─────────────────────────────────────────────────── */}
-        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} clubs={clubs} userId={user.uid} communityFeed={COMMUNITY_FEED}/>
+        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} clubs={clubs} userId="me" communityFeed={COMMUNITY_FEED}/>
 
       </div>
 
       <MatchDetailModal
         match={selectedMatch}
         onClose={() => setSelectedMatch(null)}
-        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, user.uid); setSelectedMatch(null); } : undefined}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, 'me'); setSelectedMatch(null); } : undefined}
         onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
         onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
         onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}

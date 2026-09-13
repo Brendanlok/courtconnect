@@ -245,7 +245,10 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {active.messages.map(m => {
-          const isMe = m.senderId === user.uid;
+          // conversations from useApp() normalize the signed-in user's own
+          // messages to the 'me' sentinel (see toLocalConversation) — never
+          // user.uid, same bug class as achievements.ts.
+          const isMe = m.senderId === 'me';
           return (
             <div key={m.id} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
               {!isMe && <Avatar name={active.participant.displayName} size="sm" photoURL={active.participant.photoURL} className="mb-0.5 shrink-0"/>}

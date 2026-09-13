@@ -141,7 +141,7 @@ export default function PlayersPage() {
           acceptClubMember={acceptClubMember} declineClubMember={declineClubMember}
           updateClub={updateClub} disbandClub={disbandClub}
           assignModerator={assignModerator} removeModerator={removeModerator}
-          userId={user.uid} userMMR={user.mmr}
+          userMMR={user.mmr}
         />
       )}
       {tab === 'This Week' && <AvailabilityTab user={user}/>}
@@ -456,12 +456,11 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, 
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userId, userMMR, clubSearch, clubMyOnly, clubStateFilter }: {
+function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userMMR, clubSearch, clubMyOnly, clubStateFilter }: {
   clubs: Club[];
   myClubIds: string[];
   clubLimit: number;
   myClubPendingIds: string[];
-  userId: string;
   userMMR: number;
   joinClub: (id: string) => void;
   requestJoinClub: (id: string) => void;
@@ -489,7 +488,10 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
 
   const atCap = myClubIds.length >= clubLimit;
 
-  const isMyClub = (c: Club) => c.memberIds.includes(userId);
+  // clubs from useApp() normalize the signed-in user's own membership to the
+  // 'me' sentinel (see toLocalClub) — myClubIds is already computed correctly
+  // off that, so reuse it here rather than re-deriving from a real uid.
+  const isMyClub = (c: Club) => myClubIds.includes(c.id);
 
   const filtered = clubs
     .filter(c => {
@@ -587,7 +589,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
       <div className="space-y-3">
         {filtered.map(club => {
           const isMine    = myClubIds.includes(club.id);
-          const isOwner   = club.adminId === userId;
+          const isOwner   = club.adminId === 'me';
           const isPending = myClubPendingIds.includes(club.id);
           const isExpanded= expandedId === club.id;
           const full      = club.memberIds.length >= club.maxMembers;

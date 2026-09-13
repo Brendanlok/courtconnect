@@ -2,6 +2,10 @@ import type { Match } from '@/types';
 
 // ── Shared MMR-farming guardrails — applies equally to Log Match and Live Match ──
 
+// `matches` is always the normalized array from useApp(), where the signed-in
+// user's own side is the 'me' sentinel, never their real uid (see toLocalMatch
+// in AppContext) — callers must pass userId='me', not user.uid, or every rule
+// below silently never matches (same bug class fixed in achievements.ts).
 export function antiCheatCheck(matches: Match[], userId: string, oppUids: string[]): string | null {
   const now = Date.now();
   const day  = 24 * 3600 * 1000;
@@ -71,6 +75,7 @@ export function liveMatchIntegrityCheck(durationSec: number, totalPoints: number
 // Live matches beyond the daily bonus cap still log normally (full MMR change),
 // they just stop earning the +10% live-verified bonus — logging itself is
 // never blocked purely for hitting this cap.
+// Same 'me'-not-user.uid requirement as antiCheatCheck above.
 export function liveBonusEligible(matches: Match[], userId: string): boolean {
   const day = 24 * 3600 * 1000;
   const now = Date.now();

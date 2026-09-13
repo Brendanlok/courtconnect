@@ -95,7 +95,7 @@ function PlayerPicker({ label, selected, onSelect, onClear, excludeUids }: {
             {results.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-4">No players found</p>
             ) : results.map(p => {
-              const synergy = isPartnerPicker ? partnerRecord(matches, user.uid, p.uid) : null;
+              const synergy = isPartnerPicker ? partnerRecord(matches, 'me', p.uid) : null;
               return (
                 <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username }); setOpen(false); setQ(''); }}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
@@ -1013,10 +1013,10 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
   const opponentUidsForLog = liveMatch ? liveMatch.teamB.filter(Boolean).map(p => p!.uid).filter(uid => uid !== 'me') : [];
   const totalPointsForLog = liveMatch ? liveMatch.games.reduce((s, g) => s + g.a + g.b, 0) : 0;
   const logBlockReason = liveMatch
-    ? antiCheatCheck(matches, user.uid, opponentUidsForLog)
+    ? antiCheatCheck(matches, 'me', opponentUidsForLog)
       ?? (liveMatch.liveStats ? liveMatchIntegrityCheck(liveMatch.liveStats.durationSec, totalPointsForLog) : null)
     : null;
-  const logBonusEligible = liveBonusEligible(matches, user.uid);
+  const logBonusEligible = liveBonusEligible(matches, 'me');
 
   const handleLogMatch = (m: LiveMatch) => {
     if (!m.winningSide || logBlockReason) return;
@@ -1042,7 +1042,7 @@ export function LiveMatchModal({ open, onClose, plannedMatch = null, onMatchLogg
       .map(p => profileOf(p.uid)).filter((p): p is NonNullable<typeof p> => !!p);
     const mMult = marginMultiplier(gameScores) * opponentReliabilityMultiplier(oppProfiles);
     const { gain, loss } = calcMMRChange(iWon ? myTeamMMR : oppTeamMMR, iWon ? oppTeamMMR : myTeamMMR, kFactor, mMult);
-    const bonus = liveBonusEligible(matches, user.uid) ? LIVE_BONUS_MULTIPLIER : 1;
+    const bonus = liveBonusEligible(matches, 'me') ? LIVE_BONUS_MULTIPLIER : 1;
     // Live-verified bonus rewards a win only — it must never deepen a loss, or
     // scoring an honest match live would cost you more MMR than typing the
     // result in afterwards.

@@ -444,7 +444,7 @@ function PlayerSearch({
               <p className="text-xs text-slate-500 px-4 py-3 text-center">No players found</p>
             ) : filtered.map(p => {
               const ineligible = formatDisabledForGender(format, p.gender);
-              const synergy = isTeammatePicker && !ineligible ? partnerRecord(matches, user.uid, p.uid) : null;
+              const synergy = isTeammatePicker && !ineligible ? partnerRecord(matches, 'me', p.uid) : null;
               return (
                 <button key={p.uid} onMouseDown={() => select(p)} disabled={ineligible}
                   className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors
@@ -540,7 +540,7 @@ export function LogMatchModal({ open, onClose, plannedMatchId, onLogged, prefill
   // Anti-cheat only guards against MMR farming — irrelevant for a casual
   // match that never touches MMR, and would otherwise block logging
   // legitimate practice sessions with a regular partner.
-  const cheatBlock  = mode === 'ranked' && opp1 ? antiCheatCheck(matches, user.uid, [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
+  const cheatBlock  = mode === 'ranked' && opp1 ? antiCheatCheck(matches, 'me', [opp1.uid, ...(opp2 ? [opp2.uid] : [])]) : null;
   const canSubmit   = (isDoubles ? !!(opp1 && opp2 && teammate) : !!opp1) && hasScores && !scoreError && !cheatBlock;
 
   const setScore = (i: number, side: 'p1' | 'p2', v: string) =>

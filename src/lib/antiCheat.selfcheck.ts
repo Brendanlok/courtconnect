@@ -1,7 +1,7 @@
 // Offline proof the anti-cheat opponent-counting logic is correct.
 // Run with: npx tsx src/lib/antiCheat.selfcheck.ts
 import assert from 'node:assert';
-import { antiCheatCheck } from './antiCheat';
+import { antiCheatCheck, liveBonusEligible } from './antiCheat';
 import type { Match } from '@/types';
 
 const DAY = 24 * 3600 * 1000;
@@ -46,5 +46,25 @@ console.log('PASS 3+ matches against the same real opponent in 7 days is still b
   assert.strictEqual(antiCheatCheck(vsOppPair, 'me', ['myPartner']), null, 'my own partner should never count, even across many matches');
 }
 console.log('PASS opposing-side partner still counts, my own partner never does');
+
+// 4. Rule 3 (daily +150 MMR cap) had zero coverage before today — this is the
+// exact bug class fixed across page.tsx/LogMatchModal/LiveMatchModal, where
+// call sites passed the real user.uid instead of the 'me' sentinel that
+// matches (from useApp()) actually use for the signed-in user's own side.
+{
+  const bigWins: Match[] = Array.from({ length: 2 }, () =>
+    match({ player1Id: 'me', player2Id: 'opp', winnerId: 'me', mmrChange: 80, playedAt: new Date().toISOString() }));
+  assert.ok(antiCheatCheck(bigWins, 'me', ['someoneElse']), '2 wins worth 160 MMR today should hit the 150 daily cap');
+  assert.strictEqual(antiCheatCheck(bigWins, 'me-typo' as string, ['someoneElse']), null,
+    'sanity check: passing the wrong sentinel silently defeats the cap (this is exactly the bug that shipped)');
+}
+console.log('PASS daily +150 MMR cap triggers on real wins, and only when userId matches the matches array convention');
+
+// 5. liveBonusEligible has the same 'me'-vs-userId requirement.
+{
+  const liveWins: Match[] = Array.from({ length: 3 }, () => match({ recordedLive: true, playedAt: new Date().toISOString() }));
+  assert.strictEqual(liveBonusEligible(liveWins, 'me'), false, '3 live-bonused matches today should exhaust the daily bonus cap');
+}
+console.log('PASS liveBonusEligible daily cap triggers when userId matches the matches array convention');
 
 console.log('\nAll checks passed.');

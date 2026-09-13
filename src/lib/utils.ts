@@ -308,7 +308,8 @@ export function skillMatch(a: number, b: number) {
 // Doubles synergy: confirmed record for `myUid` when teamed with `partnerUid`
 // specifically (not partner's overall record). Used to show a "won 4/5 with
 // Zack" badge when picking a teammate, same data source as the profile-page
-// Doubles Partners section.
+// Doubles Partners section. `matches` from useApp() normalizes the signed-in
+// user's own side to 'me' (see toLocalMatch) — pass myUid='me', not user.uid.
 export function partnerRecord(matches: Match[], myUid: string, partnerUid: string): { wins: number; losses: number } | null {
   let wins = 0, losses = 0;
   for (const m of matches) {
