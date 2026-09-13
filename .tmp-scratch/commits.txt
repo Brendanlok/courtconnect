@@ -1,0 +1,2 @@
+- de21fe4 auto-dev: fix real users never earning First Win/Hot Streak/Comeback King/Giant Slayer badges
+- bfc3e57 auto-dev: fix real users own-side data always mismatching against user.uid
