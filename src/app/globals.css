@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+:root {
+  --background: #020817;
+  --foreground: #f1f5f9;
+
+  /* Motion — prefixed to avoid colliding with Tailwind v4's own --ease-* theme tokens */
+  --motion-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* ── Light mode overrides ────────────────────────────────────────────────────── */
+html.light {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+
+  /* Remap slate so all bg-slate-* / border-slate-* / text-slate-* invert */
+  --color-slate-950: #f8fafc;
+  --color-slate-900: #f1f5f9;
+  --color-slate-800: #e2e8f0;
+  --color-slate-700: #cbd5e1;
+  --color-slate-600: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-400: #475569;
+  --color-slate-300: #334155;
+  --color-slate-200: #1e293b;
+  --color-slate-100: #0f172a;
+  --color-slate-50:  #020817;
+
+  /* Keep accent colours vivid on light bg */
+  --color-emerald-400: #059669;
+  --color-emerald-300: #047857;
+  --color-amber-400:   #d97706;
+  --color-amber-300:   #b45309;
+  --color-violet-400:  #7c3aed;
+  --color-violet-300:  #6d28d9;
+  --color-red-400:     #dc2626;
+  --color-orange-400:  #ea580c;
+}
+
+html.light {
+  background: var(--background);
+}
+
+html.light body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Visible keyboard focus ring on any interactive element */
+:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Recharts tooltip */
+.recharts-tooltip-wrapper { outline: none; }
+
+/* Scroll-wheel score picker — scrollbar hidden, snap handled inline */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── Motion ───────────────────────────────────────────────────────────────────
+   Key-interaction animations: button press feedback, modal/popover entrances.
+   Everything here is enter-only (elements fully unmount on close) and skips
+   keyboard-repeated actions by design — see prefers-reduced-motion below. */
+
+/* Buttons feel pressed, not just clicked. Component-level active states
+   (Tailwind `active:` utilities) win over this via specificity, so this is
+   purely the default for buttons that don't already define their own. */
+button:not(:disabled) {
+  transition: transform 120ms var(--motion-ease-out);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Modal panels — every modal in the app carries role="dialog" via useModalA11y,
+   so this single rule animates all of them without per-file wiring.
+   Opacity-only (no transform): a couple of modals (Live Match's video-record
+   view) nest position:fixed full-screen children, and animating `transform`
+   on the ancestor — even scaling to 1 — makes browsers treat it as a
+   permanent new containing block, trapping those fixed children inside the
+   small modal box instead of the viewport. Fade avoids that footgun entirely. */
+[role="dialog"] {
+  animation: modal-panel-in 200ms ease both;
+}
+.modal-backdrop {
+  animation: modal-backdrop-in 200ms ease both;
+}
+@keyframes modal-panel-in {
+  from { opacity: 0; }
+}
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+}
+/* Bottom sheets (no role="dialog") slide up rather than scale */
+.sheet-panel {
+  animation: sheet-panel-in 220ms var(--motion-ease-in-out) both;
+}
+@keyframes sheet-panel-in {
+  from { transform: translateY(100%); }
+}
+
+/* Popovers (dropdowns, menus) — scale in from where they're anchored, not center. */
+.popover-anim {
+  animation: popover-in 160ms var(--motion-ease-out) both;
+}
+.popover-anim.origin-top-left  { transform-origin: top left; }
+.popover-anim.origin-top-right { transform-origin: top right; }
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.95); }
+}
+
+/* Toasts — slide down from the top, above the Topbar. */
+.toast-anim {
+  animation: toast-in 200ms var(--motion-ease-out) both;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active { transform: none; }
+  [role="dialog"], .modal-backdrop, .popover-anim, .sheet-panel, .toast-anim {
+    animation-duration: 1ms;
+    animation-name: none;
+  }
+}
+
+/* Public FAQ accordion (<details>/<summary>) — list-none on <summary> only
+   removes the default disclosure triangle in Firefox/Chrome; Safari still
+   needs the ::-webkit-details-marker override to hide it. */
+summary::-webkit-details-marker { display: none; }

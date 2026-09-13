@@ -1,0 +1,844 @@
+'use client';
+import { useState } from 'react';
+import { useApp } from '@/context/AppContext';
+import { COMMUNITY_FEED } from '@/lib/data';
+import { TierBadge } from '@/components/ui/TierBadge';
+import { MatchCard } from '@/components/MatchCard';
+import { MatchDetailModal } from '@/components/MatchDetailModal';
+import { LogMatchModal } from '@/components/LogMatchModal';
+import { tierProgress, nextTier, TIER_STYLE, BASE_PATH, isCalibrating, regionOf } from '@/lib/utils';
+import { usePausedMatch } from '@/lib/pausedMatch';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  TrendingUp, Flame, CheckCircle, XCircle, Clock, Activity, Swords,
+  Users, Trophy, Target, ChevronRight, MapPin, Star, Megaphone, Radio, Share2, Sparkles,
+} from 'lucide-react';
+import type { Match, Tournament, Challenge, Club } from '@/types';
+import { formatDate, formatTime, parseDateOnly, MATCH_TYPE_LABEL } from '@/lib/utils';
+
+export default function Home() {
+  const { user, matches, updateUser, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, registrations, tournaments, challenges, acceptChallenge, declineChallenge, cancelChallenge, clubs } = useApp();
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [mmrRange, setMmrRange] = useState<30 | 90 | 0>(30); // 0 = all time
+  const pausedMatch = usePausedMatch();
+
+  const confirmed  = matches.filter(m => m.status === 'Confirmed');
+  const pending    = matches.filter(m => m.status === 'Pending');
+  const winRate    = Math.round((user.stats.wins / Math.max(user.stats.totalMatches, 1)) * 100);
+  const { name: nextName, threshold } = nextTier(user.tier);
+  const dm         = user.disciplineMMR ?? {};
+  const dmEntries  = Object.entries(dm).filter(([,v]) => v != null) as [string, number][];
+  const avgMMR     = dmEntries.length > 0
+    ? Math.round(dmEntries.reduce((s, [,v]) => s + v, 0) / dmEntries.length)
+    : user.mmr;
+  const progress   = tierProgress(avgMMR, user.tier);
+  const calibrating = isCalibrating(user);
+
+  // Recalibration: unlocked once placement (first 10 matches) is done and at
+  // least 10 total matches are logged, gated to once every 3 months.
+  const placementDone = (user.placementMatchesPlayed ?? 0) >= 10;
+  const recalActive   = user.recalibrationMatchesPlayed != null && user.recalibrationMatchesPlayed < 5;
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const recalEligible = placementDone && !recalActive
+    && user.stats.totalMatches >= 10
+    && (!user.lastRecalibrationAt || new Date(user.lastRecalibrationAt) <= threeMonthsAgo);
+
+  // `matches` (and everything derived from it below) comes from useApp(),
+  // where the signed-in user's own side is always normalized to the 'me'
+  // sentinel (see toLocalMatch) — comparing against user.uid here always
+  // misses for every real account, same bug class as achievements.ts.
+  let streak = 0;
+  for (const m of confirmed) {
+    if (m.winnerId === 'me') streak++;
+    else break;
+  }
+
+  // Recent form: last 5 confirmed results, newest first — same dot treatment
+  // as the profile page's Match Analytics "Recent Form" row. `confirmed` is
+  // already sorted newest-first (AppContext sorts matches by playedAt desc).
+  // Each dot is tappable and opens that match's detail (modal already on page).
+  const recentForm = confirmed.slice(0, 5).map(m => ({ won: m.winnerId === 'me', match: m }));
+
+  const oneWeekAgo = Date.now() - 7 * 86400000;
+  const weeklyMmrDelta = confirmed
+    .filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo)
+    .reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+
+  // Real MMR history for the selected window, walked forward from each confirmed
+  // match's mmrChange — starting point is today's MMR minus every delta in
+  // the window, not a hardcoded seed series. mmrRange 0 = all time.
+  const rangeCutoff = mmrRange === 0 ? 0 : Date.now() - mmrRange * 86400000;
+  const recentConfirmed = [...confirmed]
+    .filter(m => new Date(m.playedAt).getTime() >= rangeCutoff)
+    .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+  let mmrRunning = user.mmr - recentConfirmed.reduce((s, m) => s + (m.mmrChange ?? 0), 0);
+  const mmrHistory = recentConfirmed.map(m => {
+    mmrRunning += m.mmrChange ?? 0;
+    const d = new Date(m.playedAt);
+    return { date: `${d.toLocaleDateString('en-US', { month: 'short' })} ${d.getDate()}`, mmr: mmrRunning };
+  });
+
+  const upcomingEvents = tournaments.filter(t =>
+    t.status === 'Upcoming' && registrations[t.id]
+  );
+
+  // Weekly recap: same 7-day window as weeklyMmrDelta above, plus a couple more
+  // shareable numbers computed from data already loaded for the rest of the page.
+  const weeklyMatches = confirmed.filter(m => new Date(m.playedAt).getTime() >= oneWeekAgo);
+  const weeklyWins = weeklyMatches.filter(m => m.winnerId === 'me');
+  const bestWin = weeklyWins.length > 0
+    ? [...weeklyWins].sort((a, b) => (b.mmrChange ?? 0) - (a.mmrChange ?? 0))[0]
+    : null;
+  const bestWinOpponent = bestWin ? (bestWin.player1Id === 'me' ? bestWin.player2Name : bestWin.player1Name) : null;
+
+  return (
+    <>
+      <div className="space-y-5">
+
+        {/* ── Hero Player Card ───────────────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
+          {/* Background glow */}
+          <div className="absolute -top-10 -right-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"/>
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-amber-500/8 rounded-full blur-3xl pointer-events-none"/>
+
+          <div className="relative p-5">
+            {/* Top row: greeting + streak */}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Welcome back</p>
+                <h1 className="text-2xl font-bold leading-tight">
+                  {user.displayName.split(' ')[0]} <span className="wave inline-block">👋</span>
+                </h1>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <TierBadge tier={user.tier} placementMatchesPlayed={user.placementMatchesPlayed} recalibrationMatchesPlayed={user.recalibrationMatchesPlayed}/>
+                  <span className="text-xs text-slate-500">·</span>
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <MapPin size={11} className="text-emerald-400"/>{user.area}, {regionOf(user)}
+                  </span>
+                </div>
+              </div>
+
+              {/* MMR glowing badge — hidden while calibrating, see TierBadge */}
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">MMR</p>
+                {calibrating ? (
+                  <p className="text-lg font-black text-amber-400/70 leading-none">🔒 Hidden</p>
+                ) : (
+                  <>
+                    <p className="text-3xl font-black text-amber-400 leading-none">{avgMMR.toLocaleString()}</p>
+                    {weeklyMmrDelta !== 0 && (
+                      <p className={`text-[11px] font-semibold mt-0.5 ${weeklyMmrDelta > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {weeklyMmrDelta > 0 ? '▲' : '▼'} {weeklyMmrDelta > 0 ? '+' : ''}{weeklyMmrDelta} this week
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Streak banner */}
+            {streak >= 2 && (
+              <div className="mt-3 flex items-center gap-2 bg-orange-500/10 border border-orange-500/25 rounded-xl px-3 py-2">
+                <Flame size={14} className="text-orange-400 animate-pulse"/>
+                <span className="text-sm font-bold text-orange-300">{streak}-match win streak</span>
+                <span className="text-xs text-slate-400">— keep it going!</span>
+              </div>
+            )}
+
+            {/* Recent form — last 5 results, newest first */}
+            {recentForm.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Form</span>
+                <div className="flex gap-1">
+                  {recentForm.map(({ won, match }, i) => (
+                    <button key={i} onClick={() => setSelectedMatch(match)}
+                      aria-label={`${won ? 'Win' : 'Loss'} vs ${match.player1Id === 'me' ? match.player2Name : match.player1Name} — view match`}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-transform hover:scale-110
+                      ${won ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/25'}`}>
+                      {won ? 'W' : 'L'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tier progress — hidden while calibrating, nothing to show yet */}
+            {!calibrating && nextName && (
+              <div className="mt-3">
+                <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                  <span className="font-medium">{user.tier}</span>
+                  <span>{threshold ? `${threshold - avgMMR} MMR to ${nextName}` : nextName}</span>
+                </div>
+                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${TIER_STYLE[user.tier].bg.replace('/20','')}`}
+                    style={{ width:`${progress}%` }}/>
+                </div>
+              </div>
+            )}
+
+            {/* Recalibration offer */}
+            {recalEligible && (
+              <button
+                onClick={() => updateUser({ recalibrationMatchesPlayed: 0 })}
+                className="mt-3 w-full flex items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 rounded-xl px-3 py-2.5 text-left transition-colors">
+                <div>
+                  <p className="text-xs font-bold text-amber-300">⚡ Recalibrate your MMR</p>
+                  <p className="text-[11px] text-slate-400">Your next 5 ranked matches count for bigger swings, resetting your rating to match your current level.</p>
+                </div>
+                <ChevronRight size={16} className="text-amber-400 shrink-0"/>
+              </button>
+            )}
+
+            {/* Status toggles — inline */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  const next = !user.openToPlay;
+                  updateUser({ openToPlay: next, ...(!next ? { lookingForPartner: false } : {}) });
+                }}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all
+                  ${user.openToPlay
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+                    : 'bg-slate-800/60 border-slate-700 text-slate-500 hover:border-slate-600'}`}>
+                <div className={`relative shrink-0 w-8 h-4 rounded-full transition-colors ${user.openToPlay ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                  <span className={`absolute top-[2px] left-[2px] w-3 h-3 bg-white rounded-full shadow transition-transform ${user.openToPlay ? 'translate-x-4' : ''}`}/>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold leading-tight truncate">Open to Play</p>
+                  {user.openToPlay && <p className="text-[10px] text-emerald-400/70 leading-tight">Visible nearby</p>}
+                </div>
+              </button>
+
+              <button
+                disabled={!user.openToPlay}
+                onClick={() => {
+                  const next = !user.lookingForPartner;
+                  updateUser({ lookingForPartner: next, ...(next ? { openToPlay: true } : {}) });
+                }}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all
+                  ${!user.openToPlay ? 'opacity-40 pointer-events-none bg-slate-800/40 border-slate-800' :
+                    user.lookingForPartner
+                      ? 'bg-violet-500/10 border-violet-500/40 text-violet-300'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-500 hover:border-slate-600'}`}>
+                <div className={`relative shrink-0 w-8 h-4 rounded-full transition-colors ${user.lookingForPartner ? 'bg-violet-500' : 'bg-slate-600'}`}>
+                  <span className={`absolute top-[2px] left-[2px] w-3 h-3 bg-white rounded-full shadow transition-transform ${user.lookingForPartner ? 'translate-x-4' : ''}`}/>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold leading-tight truncate">Open to Partner</p>
+                  {user.lookingForPartner && <p className="text-[10px] text-violet-400/70 leading-tight">Seeking doubles</p>}
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Weekly Recap ──────────────────────────────────────────────────── */}
+        {weeklyMatches.length > 0 && (
+          <WeeklyRecapCard
+            displayName={user.displayName}
+            mmrDelta={weeklyMmrDelta} matchesPlayed={weeklyMatches.length}
+            winsCount={weeklyWins.length} bestWinOpponent={bestWinOpponent} bestWinMmr={bestWin?.mmrChange}
+          />
+        )}
+
+        {/* ── Paused live match banner ─────────────────────────────────────── */}
+        {pausedMatch?.match && (
+          <button
+            onClick={() => window.location.href = `${BASE_PATH}/matches/`}
+            className="w-full flex items-center gap-3 bg-rose-500/8 border border-rose-500/30 hover:border-rose-500/50 rounded-2xl px-4 py-3 text-left transition-all group">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center shrink-0">
+              <Radio size={16} className="text-rose-400"/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-rose-300">Live match paused</p>
+              <p className="text-xs text-slate-400 truncate mt-0.5">
+                {pausedMatch.match.teamAName} vs {pausedMatch.match.teamBName}
+                {' · '}Game {pausedMatch.match.currentGame + 1}
+                {' · '}{pausedMatch.match.gameWins.a}-{pausedMatch.match.gameWins.b}
+              </p>
+            </div>
+            <span className="flex items-center gap-1 px-3 py-1.5 bg-rose-600 group-hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
+              Resume
+            </span>
+          </button>
+        )}
+
+        {/* ── Pending verification banner ────────────────────────────────────── */}
+        {pending.length > 0 && (
+          <div className="bg-amber-500/8 border border-amber-500/30 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-amber-400 shrink-0"/>
+              <p className="text-sm font-semibold text-amber-300">
+                {pending.length} match{pending.length > 1 ? 'es' : ''} awaiting verification
+              </p>
+            </div>
+            {pending.map(m => {
+              const isWin   = m.winnerId === 'me';
+              const oppName = m.player1Id === 'me' ? m.player2Name : m.player1Name;
+              const oppUser = m.player1Id === 'me' ? m.player2Username : m.player1Username;
+              // Old local/demo matches never set pendingConfirmations — always
+              // self-confirmable, as before. A real match only lets the
+              // outstanding party act: if pendingConfirmations lists someone
+              // else (the opponent I'm waiting on), it's not my turn.
+              const isMyTurn = !m.pendingConfirmations || m.pendingConfirmations.includes('me');
+              return (
+                <div key={m.id} className="bg-slate-900/70 rounded-xl p-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">vs. {oppName} <span className="text-slate-500 font-normal text-xs">@{oppUser}</span></p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Reported as <span className={isWin ? 'text-emerald-400' : 'text-red-400'}>{isWin ? 'Win' : 'Loss'}</span>
+                      {m.mmrChange !== undefined && (
+                        <span className={`ml-1 font-semibold ${isWin ? 'text-emerald-400' : 'text-red-400'}`}>
+                          ({isWin ? '+' : ''}{m.mmrChange} MMR)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {isMyTurn ? (
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); confirmMatch(m.id, 'me'); }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                        <CheckCircle size={12}/> Confirm
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); disputeMatch(m.id); }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 text-xs font-semibold rounded-lg transition-colors">
+                        <XCircle size={12}/> Dispute
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); cancelPendingMatch(m.id); }}
+                      className="shrink-0 text-[11px] text-slate-500 hover:text-red-400 transition-colors">
+                      Waiting on {oppName} — withdraw
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Challenges ─────────────────────────────────────────────────────── */}
+        {/* challenges (like matches) are normalized to the 'me' sentinel for the signed-in user — see toLocalChallenge */}
+        <ChallengesSection challenges={challenges} userId="me" onAccept={acceptChallenge} onDecline={declineChallenge} onCancel={cancelChallenge}/>
+
+        {/* ── Upcoming events you're registered for ────────────────────────── */}
+        {upcomingEvents.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold px-0.5">Your Upcoming Events</p>
+            {upcomingEvents.map(t => (
+              <button key={t.id} onClick={() => window.location.href = `${BASE_PATH}/tournaments/`}
+                className="w-full flex items-center gap-3 bg-slate-900 border border-amber-500/25 hover:border-amber-500/50 rounded-2xl px-4 py-3 text-left transition-all group">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <Trophy size={16} className="text-amber-400"/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{t.name}</p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                    <MapPin size={10}/>{t.venue.split(',')[0]}
+                    <span>·</span>
+                    {parseDateOnly(t.date).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+                  </p>
+                </div>
+                <ChevronRight size={15} className="text-slate-600 group-hover:text-amber-400 transition-colors shrink-0"/>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Stat row ──────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3">
+          {/* Rank */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Nat. Rank</p>
+              <Target size={13} className="text-slate-600"/>
+            </div>
+            <p className="text-2xl font-black">{calibrating ? 'Unranked' : `#${user.globalRank}`}</p>
+            <p className="text-[11px] text-slate-600">National</p>
+          </div>
+
+          {/* Win Rate */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Win Rate</p>
+              <TrendingUp size={13} className="text-slate-600"/>
+            </div>
+            <p className="text-2xl font-black text-emerald-400">{winRate}%</p>
+            <p className="text-[11px] text-slate-500">{user.stats.wins}W {user.stats.losses}L</p>
+          </div>
+
+          {/* Matches */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Matches</p>
+              <Star size={13} className="text-slate-600"/>
+            </div>
+            <p className="text-2xl font-black">{user.stats.totalMatches}</p>
+            <p className="text-[11px] text-slate-500">total played</p>
+          </div>
+        </div>
+
+        {/* ── Discipline MMR chips ─────────────────────────────────────────── */}
+        {dmEntries.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {dmEntries.map(([type, val]) => (
+              <div key={type} className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 flex-1 min-w-[80px]">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">{type}</span>
+                <span className="text-sm font-bold text-amber-400 ml-auto">{val.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Chart + Recent matches ────────────────────────────────────────── */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* MMR Chart */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm flex items-center gap-2">
+                <TrendingUp size={15} className="text-emerald-400"/> MMR History
+              </h2>
+              <div className="flex gap-0.5 bg-slate-800 rounded-md p-0.5">
+                {([[30, '30d'], [90, '90d'], [0, 'All']] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => setMmrRange(v)}
+                    className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors
+                      ${mmrRange === v ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {mmrHistory.length === 0 ? (
+              <div className="h-[148px] flex flex-col items-center justify-center gap-2 text-center">
+                <TrendingUp size={24} className="text-slate-700"/>
+                <p className="text-xs text-slate-500">
+                  {mmrRange === 0 ? 'No confirmed matches yet' : `No confirmed matches in the last ${mmrRange} days`}
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={148}>
+                <AreaChart data={mmrHistory} margin={{ top:4, right:4, left:-24, bottom:0 }}>
+                  <defs>
+                    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24}/>
+                  <YAxis tick={{ fontSize:10, fill:'#64748b' }} tickLine={false} axisLine={false} domain={['auto','auto']}/>
+                  <Tooltip
+                    contentStyle={{ background:'#0f172a', border:'1px solid #334155', borderRadius:8, fontSize:12 }}
+                    labelStyle={{ color:'#94a3b8' }} itemStyle={{ color:'#10b981' }}
+                  />
+                  <Area type="monotone" dataKey="mmr" stroke="#10b981" strokeWidth={2.5} fill="url(#g)" dot={false}/>
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Recent Matches */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-sm">Recent Matches</h2>
+              {matches.length > 5 ? (
+                <a href={`${BASE_PATH}/matches/#history`}
+                  className="text-[11px] text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
+                  View all →
+                </a>
+              ) : (
+                <p className="text-[11px] text-slate-500">Tap for details</p>
+              )}
+            </div>
+            {matches.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-6 gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center">
+                  <span className="text-2xl">🏸</span>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-400">No matches yet</p>
+                  <p className="text-xs text-slate-600 mt-0.5">Log your first match to start tracking</p>
+                </div>
+                <button onClick={() => setLogOpen(true)} className="text-xs text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
+                  + Log a Match
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1 flex-1">
+                {matches.slice(0, 5).map(m => (
+                  <MatchCard key={m.id} match={m} userId="me" onClick={() => setSelectedMatch(m)}/>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Activity Feed ─────────────────────────────────────────────────── */}
+        <ActivityFeed matches={matches} registrations={registrations} tournaments={tournaments} clubs={clubs} userId="me" communityFeed={COMMUNITY_FEED}/>
+
+      </div>
+
+      <MatchDetailModal
+        match={selectedMatch}
+        onClose={() => setSelectedMatch(null)}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, 'me'); setSelectedMatch(null); } : undefined}
+        onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+        onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}
+      />
+      {logOpen && <LogMatchModal open={true} onClose={() => setLogOpen(false)}/>}
+    </>
+  );
+}
+
+// ─── Weekly Recap ─────────────────────────────────────────────────────────────
+// Screenshot-shareable end-of-week summary. Share button generates a portrait
+// image card (same canvas approach as the match/season recaps) and hands it to
+// the native share sheet, falling back to a plain download.
+
+function WeeklyRecapCard({ displayName, mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr }: {
+  displayName: string;
+  mmrDelta: number; matchesPlayed: number; winsCount: number;
+  bestWinOpponent: string | null; bestWinMmr?: number;
+}) {
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState('');
+
+  const weekLabel = (() => {
+    const end = new Date();
+    const start = new Date(end.getTime() - 6 * 86400000);
+    const fmt = (d: Date) => d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+    return `${fmt(start)} – ${fmt(end)}`;
+  })();
+
+  const handleShare = async () => {
+    setSharing(true);
+    setShareError('');
+    try {
+      const { generateWeeklyRecapBlob } = await import('@/lib/weeklyRecapImage');
+      const { shareOrDownloadRecap } = await import('@/lib/matchRecapImage');
+      const blob = await generateWeeklyRecapBlob({
+        displayName, weekLabel, mmrDelta, matchesPlayed, winsCount, bestWinOpponent, bestWinMmr,
+      });
+      await shareOrDownloadRecap(blob, `courtconnect-week-${Date.now()}.png`);
+    } catch {
+      setShareError('Could not generate the image. Please try again.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950/20 border border-violet-500/25 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-sm flex items-center gap-2 text-violet-300">
+          <Sparkles size={15}/> This Week
+        </h2>
+        <button onClick={handleShare} disabled={sharing}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-300 disabled:opacity-60 transition-colors">
+          <Share2 size={12}/> {sharing ? 'Generating…' : 'Share'}
+        </button>
+      </div>
+      {shareError && <p className="text-[11px] text-red-400 mb-2">{shareError}</p>}
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <p className={`text-xl font-black ${mmrDelta > 0 ? 'text-emerald-400' : mmrDelta < 0 ? 'text-red-400' : 'text-slate-300'}`}>
+            {mmrDelta > 0 ? '+' : ''}{mmrDelta}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">MMR</p>
+        </div>
+        <div className="border-x border-slate-700/60">
+          <p className="text-xl font-black">{matchesPlayed}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Matches</p>
+        </div>
+        <div>
+          <p className="text-xl font-black text-emerald-400">{winsCount}</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Wins</p>
+        </div>
+      </div>
+      {bestWinOpponent && (
+        <p className="text-xs text-slate-400 text-center mt-3">
+          🏆 Best win: beat <span className="font-semibold text-slate-200">{bestWinOpponent}</span>
+          {bestWinMmr ? <span className="text-emerald-400 font-semibold"> (+{bestWinMmr})</span> : null}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Challenges Section ───────────────────────────────────────────────────────
+
+function ChallengesSection({ challenges, userId, onAccept, onDecline, onCancel }: {
+  challenges: Challenge[];
+  userId: string;
+  onAccept: (id: string) => void;
+  onDecline: (id: string) => void;
+  onCancel: (id: string) => void;
+}) {
+  const incoming = challenges.filter(c => c.toId === userId && c.status === 'pending');
+  const outgoing = challenges.filter(c => c.fromId === userId && c.status === 'pending');
+  const recent   = challenges.filter(c => (c.toId === userId || c.fromId === userId) && c.status !== 'pending');
+
+  if (!incoming.length && !outgoing.length && !recent.length) return null;
+
+  return (
+    <div className="bg-slate-900 border border-amber-500/25 rounded-2xl p-4 space-y-3">
+      <h2 className="font-semibold flex items-center gap-2 text-amber-400 text-sm">
+        <Swords size={15}/> Challenges
+        {incoming.length > 0 && (
+          <span className="text-[10px] bg-amber-500 text-black font-bold px-1.5 py-0.5 rounded-full">{incoming.length}</span>
+        )}
+      </h2>
+
+      {incoming.map(c => (
+        <div key={c.id} className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 space-y-2">
+          <div>
+            <p className="text-sm font-semibold">
+              ⚔️ <span className="text-amber-400">{c.fromName}</span> challenged you
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {MATCH_TYPE_LABEL[c.format]} · {formatDate(c.date)} at {formatTime(c.date)}
+            </p>
+            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.venue}</p>
+            {c.message && <p className="text-xs text-slate-400 italic mt-1">"{c.message}"</p>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onAccept(c.id)}
+              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+              <CheckCircle size={12}/> Accept
+            </button>
+            <button onClick={() => onDecline(c.id)}
+              className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+              <XCircle size={12}/> Decline
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {outgoing.map(c => (
+        <div key={c.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+          <Clock size={14} className="text-amber-400 shrink-0"/>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-slate-300 truncate">Challenge sent to <span className="font-semibold">{c.toName}</span></p>
+            <p className="text-xs text-slate-500">{MATCH_TYPE_LABEL[c.format]} · {formatDate(c.date)}</p>
+          </div>
+          <button onClick={() => onCancel(c.id)}
+            className="text-[10px] text-slate-400 hover:text-red-400 bg-slate-800 hover:bg-red-500/10 border border-slate-700 hover:border-red-500/30 px-2 py-1 rounded-full shrink-0 transition-colors">
+            Cancel
+          </button>
+        </div>
+      ))}
+
+      {recent.map(c => {
+        const isIncoming = c.toId === userId;
+        const label = c.status === 'accepted' ? '✓ Accepted' : c.status === 'cancelled' ? '✗ Cancelled' : '✗ Declined';
+        return (
+          <div key={c.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg shrink-0 ${c.status === 'accepted' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+              {label}
+            </span>
+            <p className="text-sm text-slate-400 truncate flex-1">
+              {isIncoming ? c.fromName : c.toName} · {MATCH_TYPE_LABEL[c.format]}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+type FeedItem =
+  | { kind: 'match'; match: Match; ts: number }
+  | { kind: 'tournament'; name: string; ts: number };
+
+type CommunityItem = { p1: string; p2: string; score: string; type: string; venue: string; ts: string };
+
+type DynamicFeedItem =
+  | { kind: 'announcement'; clubName: string; clubId: string; text: string; ts: string }
+  | { kind: 'tournament_reg'; name: string; player: string; ts: string }
+  | { kind: 'match_result'; p1: string; p2: string; score: string; type: string; venue: string; ts: string };
+
+function buildCommunityFeed(clubs: Club[], tournaments: Tournament[], fallback: CommunityItem[]): DynamicFeedItem[] {
+  const items: DynamicFeedItem[] = [];
+
+  // Club announcements
+  clubs.forEach(c => {
+    if (c.announcement) {
+      items.push({ kind: 'announcement', clubName: c.name, clubId: c.id, text: c.announcement, ts: `${c.foundedYear}-01-01T00:00:00Z` });
+    }
+  });
+
+  // Recent tournament registrations (simulate from participants lists)
+  tournaments.forEach(t => {
+    (t.participants ?? []).slice(0, 3).forEach((p, i) => {
+      const fakeTs = new Date(new Date(t.date).getTime() - (i + 1) * 86400000 * 3).toISOString();
+      items.push({ kind: 'tournament_reg', name: t.name, player: p.displayName, ts: fakeTs });
+    });
+  });
+
+  // Static match results as fallback community matches
+  fallback.forEach(f => items.push({ kind: 'match_result', p1: f.p1, p2: f.p2, score: f.score, type: f.type, venue: f.venue, ts: f.ts }));
+
+  return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 12);
+}
+
+function ActivityFeed({ matches, registrations, tournaments, clubs, userId, communityFeed }: {
+  matches: Match[];
+  registrations: Record<string, { registeredAt: string }>;
+  tournaments: Tournament[];
+  clubs: Club[];
+  userId: string;
+  communityFeed: CommunityItem[];
+}) {
+  const [tab, setTab] = useState<'mine' | 'community'>('mine');
+
+  const myItems: FeedItem[] = [
+    ...matches
+      .filter(m => m.status === 'Confirmed')
+      .map(m => ({ kind: 'match' as const, match: m, ts: new Date(m.playedAt).getTime() })),
+    ...Object.entries(registrations).map(([id, r]) => {
+      const t = tournaments.find(x => x.id === id);
+      return { kind: 'tournament' as const, name: t?.name ?? 'an event', ts: new Date(r.registeredAt).getTime() };
+    }),
+  ].sort((a, b) => b.ts - a.ts).slice(0, 8);
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
+          <Activity size={14} className="text-emerald-400"/> Activity
+        </h2>
+        <div className="flex gap-1 bg-slate-800 rounded-lg p-0.5">
+          {(['mine', 'community'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors
+                ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              {t === 'mine' ? 'Mine' : '🌐 Community'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'mine' ? (
+        myItems.length === 0 ? (
+          <div className="text-center py-8 space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto">
+              <Activity size={20} className="text-slate-600"/>
+            </div>
+            <p className="text-slate-500 text-sm font-medium">No activity yet</p>
+            <p className="text-slate-600 text-xs">Log matches and join events to build your feed</p>
+            <button onClick={() => window.location.href=`${BASE_PATH}/tournaments/`}
+              className="text-xs text-emerald-400 font-semibold hover:text-emerald-300 transition-colors mt-1 inline-block">
+              Browse events →
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {myItems.map((item, i) => {
+              if (item.kind === 'match') {
+                const m = item.match;
+                const iWon = m.winnerId === userId;
+                const opp  = m.player1Id === userId ? m.player2Name : m.player1Name;
+                return (
+                  <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0
+                      ${iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {iWon ? 'W' : 'L'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-300 truncate">
+                        {iWon ? 'Beat' : 'Lost to'} <span className="font-semibold text-white">{opp}</span>
+                      </p>
+                      <p className="text-xs text-slate-500">{new Date(m.playedAt).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                    </div>
+                    {m.mmrChange !== undefined && (
+                      <span className={`text-xs font-bold shrink-0 px-2 py-0.5 rounded-lg
+                        ${iWon ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {iWon ? '+' : ''}{m.mmrChange}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+                  <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400 text-base">🏆</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-300 truncate">Registered for <span className="font-semibold text-white">{item.name}</span></p>
+                    <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <DynamicCommunityFeed clubs={clubs} tournaments={tournaments} fallback={communityFeed}/>
+      )}
+    </div>
+  );
+}
+
+function DynamicCommunityFeed({ clubs, tournaments, fallback }: { clubs: Club[]; tournaments: Tournament[]; fallback: CommunityItem[] }) {
+  const items = buildCommunityFeed(clubs, tournaments, fallback);
+
+  if (!items.length) return (
+    <div className="text-center py-6 text-slate-500 text-sm">No community activity yet.</div>
+  );
+
+  return (
+    <div className="space-y-1">
+      {items.map((item, i) => {
+        if (item.kind === 'announcement') return (
+          <div key={i} className="flex items-start gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-violet-500/15">
+              <Megaphone size={13} className="text-violet-400"/>
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-violet-400 truncate">{item.clubName}</p>
+              <p className="text-sm text-slate-300 line-clamp-2">{item.text}</p>
+            </div>
+            <span className="text-[10px] text-slate-600 shrink-0 mt-0.5">
+              {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+            </span>
+          </div>
+        );
+
+        if (item.kind === 'tournament_reg') return (
+          <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 text-base">🏆</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-300 truncate">
+                <span className="font-semibold text-white">{item.player}</span> registered for {item.name}
+              </p>
+              <p className="text-xs text-slate-500">{new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}</p>
+            </div>
+          </div>
+        );
+
+        return (
+          <div key={i} className="flex items-center gap-3 py-2.5 border-b border-slate-800/60 last:border-0">
+            <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-slate-800 text-[10px] font-bold text-slate-400">
+              {item.type}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-300 truncate">
+                <span className="font-semibold text-white">{item.p1}</span>
+                <span className="text-slate-500 mx-1.5 text-xs">def.</span>
+                <span className="font-semibold text-white">{item.p2}</span>
+              </p>
+              <p className="text-xs text-slate-500 truncate">{item.score} · {item.venue}</p>
+            </div>
+            <span className="text-[10px] text-slate-600 shrink-0">
+              {new Date(item.ts).toLocaleDateString('en-MY',{day:'numeric',month:'short'})}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

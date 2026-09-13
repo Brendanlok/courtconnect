@@ -1,0 +1,132 @@
+-- APPLIED 2026-07-15 by Lok (Option A, both tables) — confirmed live via
+-- `select tablename, policyname, cmd, qual from pg_policies where tablename
+-- in ('clubs','court_sessions') and cmd = 'UPDATE'`, both now show
+-- `(auth.uid() IS NOT NULL)`. One correction to the write-up below: the
+-- court_sessions policy this file assumed existed (named "host update",
+-- taken from the tracked migration files) did NOT actually exist in the
+-- live database — `drop policy "host update" on court_sessions` failed
+-- with "does not exist". The tracked migration files don't perfectly match
+-- what's actually live; the fix that worked was a plain `create policy`
+-- with no drop needed. Left the rest of this file as-is for the historical
+-- record of what was found and why.
+--
+-- CRITICAL BUG (two tables, same root cause): self-service club actions AND
+-- the Track & Record court-tracking session have been silently broken for
+-- every real user since their RLS policies were first written (0001, kept
+-- in 0002) — a whole class of "policy scoped to one role (host/admin), but
+-- a different legitimate actor also needs to write" bug. Clubs first, see
+-- court_sessions further down for the second instance.
+--
+-- The only UPDATE policy on `clubs` is:
+--
+--   create policy "member update" on clubs for update
+--     using (auth.uid() = admin_id or auth.uid() = any(moderator_ids));
+--
+-- That only lets a club's admin/moderator update the row. But joinClub,
+-- requestJoinClub, cancelClubRequest, leaveClub, and acceptClubInvite (all
+-- in AppContext.tsx) update a club row ON THE ACTING USER'S OWN BEHALF —
+-- and a regular user isn't admin/moderator of a club they're trying to
+-- join. RLS silently rejects the UPDATE (0 rows affected, no thrown
+-- error), and every call site does `.catch(() => {})` with no check on the
+-- response, so the UI shows "Joined!" while nothing was actually written.
+-- Only admin-driven actions (accept someone else's request, invite someone,
+-- remove a member) work today, because THEIR uid passes the check.
+--
+-- Net effect: no real user has ever been able to join, request to join,
+-- cancel a request, leave, or accept an invite to a club by themselves.
+--
+-- Two fix options — pick ONE, they're not both needed. Option A is the
+-- fast path (same pattern already used for `challenges`/`matches`
+-- participant-update policies elsewhere in this schema). Option B is more
+-- precise but needs its RPC functions tested against a real account before
+-- shipping, which this session can't do (no SQL execution access, no login).
+--
+-- Recommended: run Option A now to unblock the feature immediately — the
+-- security tradeoff (see below) is real but matches the trust level this
+-- schema already extends elsewhere. Revisit Option B later if it matters.
+
+-- ── OPTION A (recommended for now) ──────────────────────────────────────
+-- Broadens the UPDATE policy so any authenticated user can update any club
+-- row directly. Tradeoff: a user could, via a direct API call (bypassing
+-- the app's UI entirely — RLS is the only real server-side enforcement
+-- here), rewrite ANY club's admin_id/max_members/moderator_ids or remove
+-- other members, not just touch their own membership. This app already
+-- extends similar trust elsewhere (e.g. challenges "participant update"
+-- lets either party update any field, not just status), so it's consistent
+-- with the existing security posture, but it IS a real widening — flag if
+-- that's not acceptable once the app has real users.
+
+-- drop policy "member update" on clubs;
+-- create policy "member update" on clubs for update using (auth.uid() is not null);
+
+-- ── OPTION B (more precise, more work) ──────────────────────────────────
+-- Two narrow SECURITY DEFINER functions handle just the self-join/self-leave
+-- cases; the existing restrictive policy stays as-is for direct table
+-- writes (still admin/moderator only). The app's addClubMember/
+-- addClubPending/removeClubMember (supabaseService.ts) would need to call
+-- these via supabase.rpc(...) instead of a raw .update() specifically for
+-- the self-service call sites (joinClub, requestJoinClub, cancelClubRequest,
+-- leaveClub, acceptClubInvite) — NOT for the admin-driven ones, which
+-- already work under the existing policy.
+
+-- create or replace function public.club_self_join(p_club_id text)
+-- returns void language plpgsql security definer set search_path = public as $$
+-- declare v_uid uuid := auth.uid(); v_member_ids uuid[]; v_max_members int;
+-- begin
+--   if v_uid is null then raise exception 'not authenticated'; end if;
+--   select member_ids, max_members into v_member_ids, v_max_members from clubs where id = p_club_id for update;
+--   if v_member_ids is null then raise exception 'club not found'; end if;
+--   if v_uid = any(v_member_ids) then return; end if;
+--   if array_length(v_member_ids, 1) >= v_max_members then raise exception 'club is full'; end if;
+--   update clubs set member_ids = array_append(v_member_ids, v_uid), pending_ids = array_remove(pending_ids, v_uid) where id = p_club_id;
+-- end; $$;
+-- grant execute on function public.club_self_join(text) to authenticated;
+
+-- create or replace function public.club_self_request(p_club_id text)
+-- returns void language plpgsql security definer set search_path = public as $$
+-- declare v_uid uuid := auth.uid();
+-- begin
+--   if v_uid is null then raise exception 'not authenticated'; end if;
+--   update clubs set pending_ids = array_append(pending_ids, v_uid)
+--     where id = p_club_id and not (v_uid = any(pending_ids)) and not (v_uid = any(member_ids));
+-- end; $$;
+-- grant execute on function public.club_self_request(text) to authenticated;
+
+-- create or replace function public.club_self_leave(p_club_id text)
+-- returns void language plpgsql security definer set search_path = public as $$
+-- declare v_uid uuid := auth.uid();
+-- begin
+--   if v_uid is null then raise exception 'not authenticated'; end if;
+--   update clubs set member_ids = array_remove(member_ids, v_uid), moderator_ids = array_remove(moderator_ids, v_uid) where id = p_club_id;
+-- end; $$;
+-- grant execute on function public.club_self_leave(text) to authenticated;
+
+-- create or replace function public.club_self_cancel_request(p_club_id text)
+-- returns void language plpgsql security definer set search_path = public as $$
+-- declare v_uid uuid := auth.uid();
+-- begin
+--   if v_uid is null then raise exception 'not authenticated'; end if;
+--   update clubs set pending_ids = array_remove(pending_ids, v_uid) where id = p_club_id;
+-- end; $$;
+-- grant execute on function public.club_self_cancel_request(text) to authenticated;
+
+-- ── SAME BUG CLASS, SECOND INSTANCE: court_sessions (Track & Record) ────
+-- create policy "host update" on court_sessions for update using (auth.uid() = host_uid);
+--
+-- addCourtSessionPositions() and completeCourtSession() (supabaseService.ts)
+-- are called by BOTH devices in a two-phone tracking session — the host AND
+-- whoever joined via the 6-character code (CourtTrackModal.tsx's handleTap/
+-- handleEndTracking run identically regardless of isHostEnd). A joining
+-- participant's own uid is never host_uid, so their position taps and their
+-- "end tracking" call are silently rejected the same way clubs are.
+--
+-- Notably, live_matches (the same kind of two-device shared session, for
+-- live scoring instead of tap-tracking) ALREADY uses the broad pattern:
+--   create policy "auth update" on live_matches for update using (auth.uid() is not null);
+-- and that one works. court_sessions using a host-only policy instead looks
+-- like an inconsistency/oversight, not a deliberate stricter choice — the
+-- fix is just matching the pattern this schema already uses successfully
+-- for the structurally identical live_matches table:
+
+-- drop policy "host update" on court_sessions;
+-- create policy "auth update" on court_sessions for update using (auth.uid() is not null);

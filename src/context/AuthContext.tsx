@@ -1,0 +1,276 @@
+'use client';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase, auth, onAuthStateChanged, toCompatUser, type CompatUser } from '@/lib/supabase';
+import { lookupUserByUsername, notifyUser } from '@/lib/supabaseService';
+import { seasonNumberForDate } from '@/lib/seasons';
+import { BASE_PATH, peekReferral, consumeReferral, consumePendingSignup } from '@/lib/utils';
+import { ME, PLAYERS } from '@/lib/data';
+import { trackEvent } from '@/lib/analytics';
+
+interface AuthCtx {
+  authUser: CompatUser | null;
+  isLoading: boolean;
+  // authUser exists but hasn't confirmed their email yet (password accounts only — Google is pre-verified)
+  needsEmailVerification: boolean;
+  // authUser is verified/Google but has no `users` row yet — needs username + details
+  needsProfileSetup: boolean;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signUp: (email: string, password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
+  loginWithFacebook: () => Promise<string | null>;
+  resendVerificationEmail: () => Promise<string | null>;
+  refreshVerificationStatus: () => Promise<void>;
+  checkUsernameAvailable: (username: string) => Promise<boolean>;
+  completeProfile: (displayName: string, username: string, country: string, region: string, availability?: string, homeVenue?: string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
+}
+
+const Ctx = createContext<AuthCtx>({} as AuthCtx);
+
+// A profile row is never deleted once created, so "exists" only ever needs
+// confirming once per device — caching it turns a network round-trip that
+// gated every single app boot into a same-tick localStorage read for anyone
+// who's already completed signup (the overwhelming majority of loads).
+const PROFILE_EXISTS_KEY = 'cc_profile_exists';
+
+async function userRowExists(uid: string): Promise<boolean> {
+  try { if (localStorage.getItem(PROFILE_EXISTS_KEY) === uid) return true; } catch { /* ignore */ }
+  const { data } = await supabase.from('users').select('uid').eq('uid', uid).maybeSingle();
+  const exists = !!data;
+  if (exists) { try { localStorage.setItem(PROFILE_EXISTS_KEY, uid); } catch { /* ignore */ } }
+  return exists;
+}
+
+async function createUserRow(user: CompatUser, extra: { username: string; displayName: string; country: string; region: string; availability?: string; homeVenue?: string; referredBy?: string }) {
+  const row: Record<string, unknown> = {
+    uid: user.uid,
+    email: user.email,
+    display_name: extra.displayName,
+    username: extra.username,
+    photo_url: user.photoURL,
+    mmr: 1000, // flat starting MMR for every account — no skill-level picker, see OnboardingModal
+    tier: 'Silver', // getTier(1000)
+    ...(extra.availability ? { available: extra.availability } : {}),
+    // Omitted (not null) when unset — like `available` above, this keeps every
+    // signup working before 0032_home_venue.sql is applied.
+    ...(extra.homeVenue ? { home_venue: extra.homeVenue } : {}),
+    // Without this, AppContext's season-rollover effect falls back to `?? 1`
+    // for a brand-new account, indistinguishable from "still finishing
+    // season 1" — once season 2+ starts, every fresh signup would trigger a
+    // bogus rollover for a season they never played (fake season_history
+    // row + a Season Recap popup right after signing up).
+    season_number: seasonNumberForDate(new Date()),
+    country: extra.country,
+    region: extra.region,
+    wins: 0, losses: 0, total_matches: 0,
+    open_to_play: false,
+    // Omitted entirely (not even `null`) when there's no referral — this is
+    // every signup's insert, so unlike a patch-only column this key being
+    // present at all would break EVERY signup, not just referred ones, until
+    // Lok runs 0021_referrals.sql. Once that's applied this is safe to
+    // simplify back to always-present, but there's no reason to rush it.
+    ...(extra.referredBy ? { referred_by: extra.referredBy } : {}),
+  };
+  let { error } = await supabase.from('users').insert(row);
+  // home_venue (migration 0032) not applied yet — an unknown column is
+  // rejected outright, which would break signup for anyone who entered a home
+  // venue in the quiz until Lok runs the migration. Retry once without it so
+  // signup keeps working in the gap; same fail-open shape as 0030's insert.
+  if (error && 'home_venue' in row && error.message?.includes('home_venue')) {
+    const { home_venue: _drop, ...withoutHomeVenue } = row;
+    ({ error } = await supabase.from('users').insert(withoutHomeVenue));
+  }
+  // supabase-js doesn't reject on a DB error — without this a failed insert
+  // (username taken in the race between the pre-check and here, RLS, transient
+  // error) would fall through and completeProfile would report success with no
+  // users row, bouncing the new player back to setup with their quiz data gone.
+  if (error) throw new Error(error.message);
+}
+
+// Resolves a captured `?ref=<username>` (see utils.captureReferralFromUrl)
+// to the referrer's uid at the moment of signup, not capture time — the
+// referrer's username is the only stable identifier available pre-signup.
+// Silently drops anything that doesn't resolve (typo'd/deleted account,
+// self-referral) rather than blocking signup over it.
+async function resolveReferrer(myUid: string): Promise<string | undefined> {
+  const refUsername = peekReferral();
+  if (!refUsername) return undefined;
+  const ref = await lookupUserByUsername(refUsername).catch(() => null);
+  if (!ref?.uid || ref.uid === myUid) return undefined;
+  return ref.uid;
+}
+
+function friendlyError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('already registered') || m.includes('already exists'))     return 'Email already registered.';
+  if (m.includes('invalid email') || m.includes('unable to validate'))      return 'Enter a valid email address.';
+  if (m.includes('password') && m.includes('character'))                   return 'Password must be at least 6 characters.';
+  if (m.includes('invalid login') || m.includes('invalid credentials'))    return 'Invalid email or password.';
+  if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes')) return 'Too many attempts. Try again in a minute.';
+  if (m.includes('duplicate key') || m.includes('unique constraint')) {
+    return m.includes('username') ? 'That username was just taken — pick another.' : 'That account is already set up. Try refreshing the page.';
+  }
+  return 'Something went wrong. Please try again.';
+}
+
+// Supabase's compat CompatUser.providerData covers the one thing this app
+// needs: was this account created via Google (pre-verified email)?
+const isGoogleUser = (u: CompatUser) => u.providerData.some(p => p.providerId === 'google.com');
+
+const verificationRedirectUrl = () =>
+  typeof window !== 'undefined' ? `${window.location.origin}${BASE_PATH}/` : 'https://brendanlok.github.io/courtconnect/';
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [authUser,               setAuthUser]               = useState<CompatUser | null>(null);
+  const [isLoading,               setIsLoading]              = useState(true);
+  const [needsEmailVerification,  setNeedsEmailVerification] = useState(false);
+  const [needsProfileSetup,       setNeedsProfileSetup]      = useState(false);
+
+  const evaluateUser = async (user: CompatUser | null) => {
+    if (!user) {
+      setNeedsEmailVerification(false);
+      setNeedsProfileSetup(false);
+      return;
+    }
+    const verified = isGoogleUser(user) || !!user.emailConfirmedAt;
+    setNeedsEmailVerification(!verified);
+    if (!verified) { setNeedsProfileSetup(false); return; }
+    const exists = await userRowExists(user.uid);
+    setNeedsProfileSetup(!exists);
+  };
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async user => {
+      setAuthUser(user);
+      await evaluateUser(user);
+      setIsLoading(false);
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const signIn = async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error ? friendlyError(error.message) : null;
+  };
+
+  const signUp = async (email: string, password: string): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { emailRedirectTo: verificationRedirectUrl() },
+    });
+    if (error) return friendlyError(error.message);
+    trackEvent('sign_up', { method: 'email' });
+    // When email confirmation is required, Supabase returns no active session
+    // for the new (unconfirmed) user, so the auth-state listener below never
+    // fires and the signup form silently looked like nothing happened. Set
+    // the "check your email" state directly from this response instead of
+    // waiting on a listener that may never come.
+    if (data.user && !data.session) {
+      setAuthUser(toCompatUser(data.user));
+      setNeedsEmailVerification(true);
+      setNeedsProfileSetup(false);
+    }
+    return null;
+  };
+
+  const loginWithGoogle = async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
+  };
+
+  const loginWithFacebook = async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
+  };
+
+  const resendVerificationEmail = async (): Promise<string | null> => {
+    if (!authUser?.email) return 'You need to be signed in.';
+    const { error } = await supabase.auth.resend({ type: 'signup', email: authUser.email, options: { emailRedirectTo: verificationRedirectUrl() } });
+    return error ? friendlyError(error.message) : null;
+  };
+
+  const refreshVerificationStatus = async () => {
+    const { data } = await supabase.auth.refreshSession();
+    if (!auth.currentUser) return;
+    await evaluateUser({ ...auth.currentUser, emailConfirmedAt: data.session?.user?.email_confirmed_at ?? null });
+  };
+
+  const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+    const clean = username.toLowerCase();
+    // A real account colliding with a seed/demo username breaks its own QR
+    // code (QRModal's isDemoUsername check would then also match a real
+    // account, pointing it at the static demo profile page instead of
+    // /profile/?uid=) — reject up front, same as a real taken username.
+    if ([ME, ...PLAYERS].some(p => p.username === clean)) return false;
+    const existing = await lookupUserByUsername(clean);
+    return !existing;
+  };
+
+  const completeProfile = async (displayName: string, username: string, country: string, region: string, availability?: string, homeVenue?: string): Promise<string | null> => {
+    if (!auth.currentUser) return 'Session expired. Please sign in again.';
+    if (!displayName.trim()) return 'Name is required.';
+    if (!country) return 'Country is required.';
+    if (!region.trim()) return 'State / region is required.';
+    const cleanUsername = username.toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) return 'Username: 3–20 chars, letters/numbers/underscores only.';
+    const available = await checkUsernameAvailable(cleanUsername);
+    if (!available) return 'That username is already taken.';
+    try {
+      const referredBy = await resolveReferrer(auth.currentUser.uid);
+      await supabase.auth.updateUser({ data: { display_name: displayName.trim() } });
+      await createUserRow(auth.currentUser, { username: cleanUsername, displayName: displayName.trim(), country, region: region.trim(), availability, homeVenue: homeVenue?.trim() || undefined, referredBy });
+      // Only consumed once signup has actually gone through — resolveReferrer
+      // above peeks rather than removes, so a failed createUserRow (username
+      // race, transient error) leaves the code in place for the retry that
+      // follows instead of silently losing the referrer's credit.
+      if (referredBy) consumeReferral();
+      // Closes the referral loop — without this the referrer only finds out
+      // by reopening the Invite Friends modal and noticing the count moved.
+      // notifyUser already swallows its own errors, so a failed notify can't
+      // undo/block the signup that already succeeded above.
+      if (referredBy) {
+        notifyUser(referredBy, {
+          type: 'referral_joined',
+          title: '🎉 Someone joined via your invite',
+          body: `${displayName.trim()} signed up on CourtConnect using your invite link.`,
+        });
+      }
+      consumePendingSignup();
+      setNeedsProfileSetup(false);
+      return null;
+    } catch (e: unknown) {
+      return friendlyError(e instanceof Error ? e.message : '');
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<string | null> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: verificationRedirectUrl() });
+    return error ? friendlyError(error.message) : null;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    // Local-only state (matches, following, court heatmap, clip credits, etc.)
+    // is keyed by un-namespaced cc_* keys, not by account — without this, the
+    // next person to sign in on this device inherits the previous account's
+    // leftover local data until each feature happens to overwrite it. Keep
+    // cc_theme: it's a device display preference, not account state.
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('cc_') && k !== 'cc_theme')
+      .forEach(k => localStorage.removeItem(k));
+  };
+
+  return (
+    <Ctx.Provider value={{
+      authUser, isLoading, needsEmailVerification, needsProfileSetup,
+      signIn, signUp, loginWithGoogle, loginWithFacebook, resendVerificationEmail, refreshVerificationStatus,
+      checkUsernameAvailable, completeProfile, logout, resetPassword,
+    }}>
+      {children}
+    </Ctx.Provider>
+  );
+}
+
+export const useAuth = () => useContext(Ctx);

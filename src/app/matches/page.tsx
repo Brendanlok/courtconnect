@@ -1,0 +1,1303 @@
+'use client';
+import { useState, useEffect, useRef } from 'react';
+import { useApp } from '@/context/AppContext';
+import { PLAYERS } from '@/lib/data';
+import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { Avatar } from '@/components/ui/Avatar';
+import { TierBadge } from '@/components/ui/TierBadge';
+import { LogMatchModal } from '@/components/LogMatchModal';
+import { LiveMatchModal } from '@/components/LiveMatchModal';
+import { CourtTrackModal } from '@/components/CourtTrackModal';
+import { MatchDetailModal } from '@/components/MatchDetailModal';
+import { ChallengeModal } from '@/components/ChallengeModal';
+import {
+  CalendarDays, Plus, MapPin, Clock, Check, X, UserPlus,
+  Swords, Trophy, Search, Edit3, Trash2, Bell, User, AlertTriangle, Radio, Eye, MapPinned,
+} from 'lucide-react';
+import { auth, onAuthStateChanged } from '@/lib/supabase';
+import { savePlannedMatch, loadPlannedMatches, notifyUser } from '@/lib/supabaseService';
+import { loadPausedMatch } from '@/lib/pausedMatch';
+import type { UserProfile, MatchType, Match, Challenge } from '@/types';
+import { useModalA11y } from '@/hooks/useModalA11y';
+import { Button } from '@/components/ui/Button';
+import { VenueInput } from '@/components/VenueInput';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type PlannedStatus = 'pending' | 'confirmed' | 'cancelled';
+type PlanMode = 'plan' | 'live'; // 'live' = Record Live flow
+
+interface SlotPlayer {
+  uid: string;
+  displayName: string;
+  username: string;
+  gender?: 'Male' | 'Female';
+  country?: string;
+}
+
+// Extra lifecycle state layered on top of `status` once live scoring starts
+type LiveState = 'live' | 'confirming' | 'completed';
+
+interface PlannedMatch {
+  id: string;
+  format: MatchType;
+  date: string;
+  time: string;
+  venue: string;
+  notes?: string;
+  // team A = organiser's team, team B = opponents
+  teamA: (SlotPlayer | null)[];
+  teamB: (SlotPlayer | null)[];
+  // accepted / declined per uid
+  accepted: string[];
+  declined: string[];
+  status: PlannedStatus;
+  liveRecord?: boolean; // created via Record Live — live scoring enabled once all confirmed
+  liveState?: LiveState; // set once the match has actually been played
+  sourceChallengeId?: string; // set when this plan was auto-created from an accepted challenge
+}
+
+// Friendly status vocabulary shown to the user
+function displayStatus(m: PlannedMatch): { label: string; className: string } {
+  if (m.status === 'cancelled')
+    return { label: 'Cancelled', className: 'bg-red-500/15 text-red-400 border-red-500/25' };
+  if (m.liveState === 'completed')
+    return { label: 'Completed', className: 'bg-slate-700 text-slate-300 border-slate-600' };
+  if (m.liveState === 'confirming')
+    return { label: 'Confirming Result', className: 'bg-blue-500/15 text-blue-400 border-blue-500/25' };
+  if (m.liveState === 'live')
+    return { label: 'Live Now', className: 'bg-rose-500/15 text-rose-400 border-rose-500/25 animate-pulse' };
+  if (m.status === 'confirmed')
+    return { label: 'Ready to Play', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' };
+  return { label: 'Awaiting RSVPs', className: 'bg-amber-500/15 text-amber-400 border-amber-500/25' };
+}
+
+const FORMAT_LABELS: Record<MatchType, string> = {
+  MS: "Men's Singles",
+  WS: "Women's Singles",
+  MD: "Men's Doubles",
+  WD: "Women's Doubles",
+  MX: "Mixed Doubles",
+};
+
+const FORMATS: MatchType[] = ['MS', 'WS', 'MD', 'WD', 'MX'];
+
+// addNotification (used throughout this file) is local-state only — it never
+// reaches the actual invited player's own account, only whoever is looking
+// at this browser tab right now. Real opponents found via player search
+// carry a genuine Supabase uid; demo roster picks (PLAYERS) and 'me' don't
+// and would just fail notifyUser's FK constraint (harmlessly, but no need to
+// try) — same isRealUid idea AppContext already uses, inlined here since
+// this file doesn't have access to that module's local player list.
+const isRealPlayerUid = (uid: string) => uid !== 'me' && !PLAYERS.some(p => p.uid === uid);
+
+function slotsForFormat(format: MatchType): { teamSize: number } {
+  return { teamSize: format === 'MS' || format === 'WS' ? 1 : 2 };
+}
+
+// A plan is confirmed once every slot is filled and every non-organiser player has accepted
+function derivePlanStatus(teamA: (SlotPlayer | null)[], teamB: (SlotPlayer | null)[], accepted: string[]): PlannedStatus {
+  const slots = [...teamA, ...teamB];
+  const allFilled   = slots.every(s => s !== null);
+  const allAccepted = slots.every(s => s === null || s.uid === 'me' || accepted.includes(s.uid));
+  return allFilled && allAccepted ? 'confirmed' : 'pending';
+}
+
+// For MX, slot genders depend on user's gender
+function getMXSlotGender(userGender: 'Male' | 'Female' | undefined, team: 'A' | 'B', slotIdx: number): 'Male' | 'Female' | null {
+  if (!userGender) return null;
+  // Team A slot 0 = user (already filled), slot 1 = opposite gender
+  if (team === 'A') return slotIdx === 1 ? (userGender === 'Male' ? 'Female' : 'Male') : null;
+  // Team B: slot 0 = Male, slot 1 = Female (or one of each)
+  return slotIdx === 0 ? 'Male' : 'Female';
+}
+
+function getSlotGender(format: MatchType, team: 'A' | 'B', slotIdx: number, userGender?: 'Male' | 'Female'): 'Male' | 'Female' | null {
+  if (format === 'MD') return 'Male';
+  if (format === 'WD') return 'Female';
+  if (format === 'MX') return getMXSlotGender(userGender, team, slotIdx);
+  return null; // MS / WS — no gender constraint enforced
+}
+
+const SEED_PLANNED: PlannedMatch[] = [
+  {
+    id: 'pm1',
+    format: 'MD',
+    date: '2026-07-08',
+    time: '19:00',
+    venue: 'Setia Alam Sports Complex',
+    notes: 'Bring shuttlecocks',
+    teamA: [null, null],
+    teamB: [
+      { uid: 'p3', displayName: 'Faiz Hamdan', username: 'faizhamdan', gender: 'Male' },
+      null,
+    ],
+    accepted: ['p3'],
+    declined: [],
+    status: 'pending',
+  },
+  {
+    id: 'pm2',
+    format: 'MS',
+    date: '2026-07-12',
+    time: '08:00',
+    venue: 'Bukit Jalil National Aquatic Centre',
+    teamA: [null],
+    teamB: [
+      { uid: 'p1', displayName: 'Zack Azhar', username: 'zackaz', gender: 'Male' },
+    ],
+    accepted: ['p1'],
+    declined: [],
+    status: 'confirmed',
+  },
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function MatchesPage() {
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, isRealChallengeId } = useApp();
+  const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
+  const [watchCode, setWatchCode] = useState('');
+  const [watchErr,  setWatchErr]  = useState('');
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [rematchTarget, setRematchTarget] = useState<{ uid: string; displayName: string; username: string } | null>(null);
+  const [logOpen,     setLogOpen]     = useState(false);
+  const [logPlannedId, setLogPlannedId] = useState<string | null>(null); // planned match being logged, if any
+  const [liveOpen,    setLiveOpen]    = useState(false);
+  const [liveMatchId, setLiveMatchId] = useState<string | null>(null); // planned match to start live scoring
+  const [trackOpen,     setTrackOpen]     = useState(false); // court-tracking session, hosted from a planned match
+  const [trackMatchId,  setTrackMatchId]  = useState<string | null>(null);
+  const [trackJoinOpen, setTrackJoinOpen] = useState(false); // court-tracking session, joined via code (2nd device)
+  const [planOpen,    setPlanOpen]    = useState(false);
+  const [planMode,    setPlanMode]    = useState<PlanMode>('plan');
+  const [editId,      setEditId]      = useState<string | null>(null);
+  const [cancelId,    setCancelId]    = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyResult, setHistoryResult] = useState<'All' | 'Wins' | 'Losses' | 'Pending'>('All');
+  const [historyFormat, setHistoryFormat] = useState<MatchType | 'All'>('All');
+
+  const { ref: cancelPanelRef, dialogProps: cancelDialogProps } = useModalA11y(!!cancelId, () => setCancelId(null), 'Cancel this match?');
+
+  const myMatches = matches.filter(m =>
+    m.player1Id === 'me' || m.player2Id === 'me' ||
+    m.player1PartnerId === 'me' || m.player2PartnerId === 'me'
+  );
+
+  const me: SlotPlayer = {
+    uid: 'me',
+    displayName: user.displayName,
+    username: user.username,
+    gender: user.gender,
+    country: user.country ?? 'Malaysia',
+  };
+
+  const [planned, setPlanned] = useState<PlannedMatch[]>(() =>
+    SEED_PLANNED.map(m => ({
+      ...m,
+      teamA: m.teamA.map((s, i) => i === 0 ? me : s),
+    }))
+  );
+  // See the load effect below for why this exists. State, not a ref — the
+  // challenge-conversion effect that reads it needs to actually re-run once
+  // this flips, and a ref write alone doesn't trigger that.
+  const [plannedLoaded, setPlannedLoaded] = useState(false);
+
+  // liveState only lives in this page's memory — a paused live match, however,
+  // is remembered in localStorage (see LiveMatchModal). Reconcile the two on
+  // mount so switching tabs and coming back doesn't make a paused match look
+  // like it never started.
+  useEffect(() => {
+    const ref = loadPausedMatch();
+    if (!ref?.plannedMatchId) return;
+    setPlanned(prev => prev.map(m =>
+      m.id === ref.plannedMatchId && !m.liveState ? { ...m, liveState: 'live' } : m));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Deep-link to the History tab: Home's "Recent Matches" card links here with
+  // #history so the full match list opens directly instead of the Planned tab.
+  useEffect(() => {
+    if (window.location.hash === '#history') setTab('history');
+  }, []);
+
+  // A real signed-in user's own planned matches are saved to Supabase
+  // (savePlannedMatch above) but were never loaded back — every reload reset
+  // to just the seed demo plans. Merge by id, same idiom AppContext uses for
+  // real conversations, so a plan already open in this tab isn't clobbered.
+  //
+  // plannedLoadedRef gates the challenge-conversion effect further down: it
+  // was creating a genuine duplicate on every reload of an already-converted
+  // challenge (caught live) — that effect's "already converted?" check reads
+  // plannedRef, but on a fresh mount plannedRef starts from just the seed
+  // data, and this load hasn't resolved yet, so it looked unconverted and
+  // saved a second planned_matches row. Block it until this load has had one
+  // full round-trip (success, empty, or failure — any outcome unblocks it).
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, authUser => {
+      if (!authUser) { setPlannedLoaded(true); return; }
+      loadPlannedMatches(authUser.uid).then(rows => {
+        const loaded = rows as PlannedMatch[];
+        if (!loaded.length) return;
+        setPlanned(prev => {
+          const merged = [...prev];
+          loaded.forEach(pm => {
+            const idx = merged.findIndex(m => m.id === pm.id);
+            if (idx >= 0) merged[idx] = pm; else merged.unshift(pm);
+          });
+          return merged;
+        });
+      }).catch(() => {}).finally(() => setPlannedLoaded(true));
+    });
+    return unsub;
+  }, []);
+
+  // Cancelled and completed plans move to History — a completed one is already
+  // represented there by its real logged Match, a cancelled one shows as its own row.
+  const visiblePlanned   = planned.filter(m => m.status !== 'cancelled' && m.liveState !== 'completed');
+  const cancelledPlanned = planned.filter(m => m.status === 'cancelled');
+
+  // Planned matches whose date has passed with no result ever started — easy to
+  // lose track of once a few upcoming matches push them down the list.
+  const overdueToLog = visiblePlanned.filter(m => !m.liveState && new Date(m.date + 'T' + m.time) < new Date());
+
+  const openPlan = (id?: string, mode: PlanMode = 'plan') => { setEditId(id ?? null); setPlanMode(mode); setPlanOpen(true); };
+
+  const handleSavePlan = (pm: PlannedMatch) => {
+    const base = planMode === 'live' ? { ...pm, liveRecord: true } : pm;
+    const pmFinal = base.status === 'cancelled' ? base : { ...base, status: derivePlanStatus(base.teamA, base.teamB, base.accepted) };
+    setPlanned(prev => editId
+      ? prev.map(p => p.id === editId ? pmFinal : p)
+      : [pmFinal, ...prev]);
+    setPlanOpen(false);
+    // Persist to Supabase
+    const uid = auth.currentUser?.uid;
+    if (uid) savePlannedMatch(uid, pmFinal).catch(() => {});
+    // Notify all invited players
+    const invited = [...pmFinal.teamA, ...pmFinal.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me');
+    invited.forEach(p => {
+      const title = editId ? 'Match Updated' : pmFinal.liveRecord ? 'Live Match Invite' : 'Match Invite';
+      const body = editId
+        ? `${user.displayName} updated a planned match you're in (${pmFinal.venue}, ${pmFinal.date}).`
+        : `${user.displayName} invited you to a ${FORMAT_LABELS[pmFinal.format]} at ${pmFinal.venue} on ${pmFinal.date}.${pmFinal.liveRecord ? ' (Live recorded match — please confirm to enable live scoring.)' : ''}`;
+      addNotification({ type: 'match_invite', title, body });
+      // addNotification above only updates this tab's own local state — it
+      // never reaches p's actual account. This does.
+      if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_invite', title, body, linkTo: `${BASE_PATH}/matches/` });
+    });
+  };
+
+  // Builds a planned match from an accepted challenge, from whichever side
+  // 'me' is on (Challenge normalizes fromId/toId so exactly one of them is
+  // 'me' — see toLocalChallenge in AppContext).
+  const buildPlanFromChallenge = (ch: Challenge): PlannedMatch => {
+    const isDoubles = ['MD', 'WD', 'MX'].includes(ch.format);
+    const opponent: SlotPlayer = ch.fromId === 'me'
+      ? { uid: ch.toId, displayName: ch.toName, username: ch.toUsername }
+      : { uid: ch.fromId, displayName: ch.fromName, username: ch.fromUsername };
+    const [datePart, timeRaw] = ch.date.split('T');
+    const timePart = timeRaw ? timeRaw.slice(0, 5) : '09:00';
+    const teamA = isDoubles ? [me, null] : [me];
+    const teamB = isDoubles ? [opponent, null] : [opponent];
+    // Accepting the challenge is the acceptance — both sides go straight to accepted.
+    const accepted = ['me', opponent.uid];
+    return {
+      id: crypto.randomUUID(),
+      format: ch.format,
+      date: datePart,
+      time: timePart,
+      venue: ch.venue,
+      notes: ch.message,
+      teamA, teamB,
+      accepted,
+      declined: [],
+      status: derivePlanStatus(teamA, teamB, accepted),
+      sourceChallengeId: ch.id,
+    };
+  };
+
+  // Convert an accepted challenge into a planned match (demo "Simulate accept" only —
+  // real challenges are converted by the effect below, once per side, when their
+  // status flips to accepted).
+  const handleAcceptChallenge = (challengeId: string) => {
+    const ch = challenges.find(c => c.id === challengeId);
+    if (!ch) return;
+    acceptChallenge(challengeId);
+    setPlanned(prev => [buildPlanFromChallenge(ch), ...prev]);
+  };
+
+  // Mirrors `planned` for the effect below without needing it as a dependency
+  // (avoids the effect re-firing every time it itself appends a plan).
+  const plannedRef = useRef(planned);
+  plannedRef.current = planned;
+
+  // A real challenge accept previously only flipped the challenge's status —
+  // it never created the actual match either side could show up to (see
+  // Notion To-Do "Accepting a real challenge never creates a playable
+  // match"). Each side's own client independently creates + persists its own
+  // planned-match row here the first time it sees the challenge as accepted
+  // (planned_matches is host_uid-scoped with RLS auth.uid()=host_uid, so
+  // neither side can write the other's row — this is the only way both end
+  // up with one).
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    // Wait for the Supabase load above to finish at least once — otherwise
+    // plannedRef only reflects the seed data and this creates a duplicate
+    // (caught live: reloading the page after a challenge was already
+    // converted saved a second planned_matches row for the same challenge).
+    // plannedLoaded is a dependency specifically so this effect re-runs the
+    // instant loading finishes, even if `challenges` doesn't change again.
+    if (!plannedLoaded) return;
+    const newly = challenges.filter(ch =>
+      ch.status === 'accepted' && isRealChallengeId(ch.id) &&
+      !plannedRef.current.some(p => p.sourceChallengeId === ch.id));
+    if (!newly.length) return;
+    const newPlans = newly.map(buildPlanFromChallenge);
+    setPlanned(prev => [...newPlans, ...prev]);
+    newPlans.forEach(pm => savePlannedMatch(uid, pm).catch(() => {}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenges, isRealChallengeId, plannedLoaded]);
+
+  // Demo: simulate an invited (non-organiser) player accepting their slot in a plan
+  const handleSimulateAccept = (planId: string, uid: string) => {
+    setPlanned(prev => prev.map(m => {
+      if (m.id !== planId || m.status === 'cancelled') return m;
+      const accepted = m.accepted.includes(uid) ? m.accepted : [...m.accepted, uid];
+      return { ...m, accepted, status: derivePlanStatus(m.teamA, m.teamB, accepted) };
+    }));
+  };
+
+  const handleCancelMatch = (id: string) => {
+    const match = planned.find(m => m.id === id);
+    setPlanned(prev => prev.map(m => m.id === id ? { ...m, status: 'cancelled' as const } : m));
+    setCancelId(null);
+    const uid = auth.currentUser?.uid;
+    if (uid && match) savePlannedMatch(uid, { ...match, status: 'cancelled' }).catch(() => {});
+    // Notify all parties
+    const all = match ? [...match.teamA, ...match.teamB].filter((s): s is SlotPlayer => s !== null && s.uid !== 'me') : [];
+    all.forEach(p => {
+      const body = `${user.displayName} cancelled the planned match at ${match?.venue ?? 'the venue'}.`;
+      addNotification({ type: 'match_pending', title: 'Match Cancelled', body });
+      if (isRealPlayerUid(p.uid)) notifyUser(p.uid, { type: 'match_pending', title: 'Match Cancelled', body, linkTo: `${BASE_PATH}/matches/` });
+    });
+  };
+
+  // A confirmed match becomes "Live Now" the moment recording/scoring actually starts
+  const handleOpenLiveRecord = (id: string) => {
+    setPlanned(prev => prev.map(m => m.id === id ? { ...m, liveState: 'live' } : m));
+    setLiveMatchId(id);
+    setLiveOpen(true);
+  };
+
+  // Once the host taps Log Result, the planned match moves to "Confirming Result"
+  // until every opponent has confirmed the score (handled via confirmMatch in AppContext)
+  const handleMatchLogged = (plannedMatchId: string) => {
+    setPlanned(prev => prev.map(m => m.id === plannedMatchId ? { ...m, liveState: 'confirming' } : m));
+  };
+
+  // Once the logged Match flips to Confirmed (all opponents confirmed), mark the
+  // linked planned match as fully Completed.
+  useEffect(() => {
+    const confirmedIds = new Set(
+      matches.filter(m => m.status === 'Confirmed' && m.plannedMatchId).map(m => m.plannedMatchId!)
+    );
+    if (confirmedIds.size === 0) return;
+    setPlanned(prev => prev.map(m =>
+      m.liveState === 'confirming' && confirmedIds.has(m.id) ? { ...m, liveState: 'completed' } : m
+    ));
+  }, [matches]);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Matches</h1>
+          <p className="text-slate-400 text-sm mt-0.5">Track, plan, and log your games</p>
+        </div>
+        <button onClick={() => openPlan()}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shrink-0">
+          <Plus size={13}/> Plan Match
+        </button>
+      </div>
+
+      {/* Overdue: planned matches that came and went with no result logged.
+          Clicking opens the log flow for the oldest one — same modal each
+          card's own "Log" action uses, so results feed the same place. */}
+      {overdueToLog.length > 0 && (
+        <button
+          onClick={() => {
+            const oldest = [...overdueToLog].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+            setLogPlannedId(oldest.id);
+            setLogOpen(true);
+          }}
+          className="w-full bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 rounded-2xl p-3 flex items-center gap-2.5 text-left transition-colors">
+          <Clock size={15} className="text-amber-400 shrink-0"/>
+          <p className="text-xs text-amber-300 flex-1">
+            {overdueToLog.length === 1 ? 'You have 1 match to log' : `You have ${overdueToLog.length} matches to log`} — did they happen? Tap to log.
+          </p>
+        </button>
+      )}
+
+      {/* Watch a live match */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+        <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-3">
+          <Eye size={13} className="text-blue-400"/> Watch a Live Match
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={watchCode}
+            onChange={e => { setWatchCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setWatchErr(''); }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && watchCode.length === 6) {
+                window.location.href = `${BASE_PATH}/live/?code=${watchCode}`;
+              }
+            }}
+            maxLength={6}
+            placeholder="Enter 6-digit code"
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono tracking-widest uppercase outline-none focus:border-blue-500 transition-colors"
+          />
+          <button
+            onClick={() => {
+              if (watchCode.length !== 6) { setWatchErr('Enter the full 6-character code.'); return; }
+              window.location.href = `${BASE_PATH}/live/?code=${watchCode}`;
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition-colors shrink-0"
+          >
+            Join
+          </button>
+        </div>
+        {watchErr && <p className="text-xs text-red-400 mt-1.5">{watchErr}</p>}
+        <p className="text-[11px] text-slate-600 mt-2">Get the code from whoever is scoring the match.</p>
+        <button onClick={() => setTrackJoinOpen(true)}
+          className="w-full mt-3 pt-3 border-t border-slate-800 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 hover:text-emerald-400 transition-colors">
+          <MapPinned size={11}/> Join a court-tracking session (other device)
+        </button>
+      </div>
+
+      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit">
+        <button onClick={() => setTab('planned')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
+            ${tab === 'planned' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+          <CalendarDays size={13}/> Planned
+          {planned.filter(m => m.status === 'pending').length > 0 && (
+            <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {planned.filter(m => m.status === 'pending').length}
+            </span>
+          )}
+        </button>
+        <button onClick={() => setTab('history')}
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
+            ${tab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+          <Swords size={13}/> History
+        </button>
+      </div>
+
+      {tab === 'planned' && (
+        <div className="space-y-3">
+          {/* Pending challenges sent by me — awaiting opponent response */}
+          {challenges.filter(c => c.fromId === 'me' && c.status === 'pending').map(ch => (
+            <div key={ch.id} className="bg-slate-900 border border-amber-500/25 rounded-2xl p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+                    <Swords size={11}/> Challenge Sent · Awaiting Response
+                  </p>
+                  <p className="font-bold text-sm">{FORMAT_LABELS[ch.format]} vs {ch.toName}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                    <MapPin size={10}/> {ch.venue}
+                    <span className="mx-1">·</span>
+                    <Bell size={10}/> {parseDateOnly(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
+                  </p>
+                  {ch.message && <p className="text-xs text-slate-500 mt-1 italic">"{ch.message}"</p>}
+                </div>
+                <button onClick={() => declineChallenge(ch.id)}
+                  className="text-[11px] text-slate-500 hover:text-red-400 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0">
+                  Cancel
+                </button>
+              </div>
+              {/* Demo-only: simulate opponent accepting. A real challenge has
+                  a real recipient who has to respond from their own account -
+                  showing this for real challenges would let the sender
+                  fabricate the other person's acceptance themselves. */}
+              {!isRealChallengeId(ch.id) && (
+                <button onClick={() => handleAcceptChallenge(ch.id)}
+                  className="w-full py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold transition-colors">
+                  ✓ Simulate: {ch.toName} accepts
+                </button>
+              )}
+            </div>
+          ))}
+
+          {visiblePlanned.length === 0 && challenges.filter(c => c.fromId === 'me' && c.status === 'pending').length === 0 ? (
+            <EmptyState
+              icon={<CalendarDays size={32} className="text-slate-700"/>}
+              title="No planned matches"
+              desc="Tap Plan Match to schedule a game with friends."
+              action={<button onClick={() => openPlan()} className="text-xs text-emerald-400 font-semibold">+ Plan your first match</button>}
+            />
+          ) : (
+            visiblePlanned.map(m => (
+              <PlannedCard key={m.id} match={m} me={me}
+                onEdit={() => openPlan(m.id)}
+                onLog={() => { setLogPlannedId(m.id); setLogOpen(true); }}
+                onCancel={() => setCancelId(m.id)}
+                onLiveRecord={() => handleOpenLiveRecord(m.id)}
+                onTrack={() => { setTrackMatchId(m.id); setTrackOpen(true); }}
+                onSimulateAccept={uid => handleSimulateAccept(m.id, uid)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <div className="space-y-3">
+          {myMatches.length === 0 && cancelledPlanned.length === 0 ? (
+            <EmptyState
+              icon={<Swords size={32} className="text-slate-700"/>}
+              title="No matches logged yet"
+              desc="Log a match after playing to track your progress."
+              action={
+                <button onClick={() => setLogOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-medium transition-colors">
+                  <Plus size={12}/> Log a match
+                </button>
+              }
+            />
+          ) : (
+            <>
+              {myMatches.length > 3 && (
+                <div className="flex gap-2 flex-wrap items-center">
+                  <div className="relative flex-1 min-w-[140px]">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                    <input value={historyQuery} onChange={e => setHistoryQuery(e.target.value)}
+                      placeholder="Search by opponent…"
+                      className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500"/>
+                  </div>
+                  <FilterDropdown<'All' | 'Wins' | 'Losses' | 'Pending'>
+                    label="Result" value={historyResult}
+                    options={[
+                      { value: 'All', label: 'All Results' },
+                      { value: 'Wins', label: 'Wins' },
+                      { value: 'Losses', label: 'Losses' },
+                      { value: 'Pending', label: 'Pending' },
+                    ]}
+                    onChange={setHistoryResult}
+                  />
+                  <FilterDropdown<MatchType | 'All'>
+                    label="Format" value={historyFormat}
+                    options={[{ value: 'All' as const, label: 'All Formats' },
+                      ...(Object.keys(MATCH_TYPE_LABEL) as MatchType[]).map(t => ({ value: t, label: MATCH_TYPE_LABEL[t] }))]}
+                    onChange={setHistoryFormat}
+                  />
+                </div>
+              )}
+              {(() => {
+                const q = historyQuery.trim().toLowerCase();
+                const filtered = myMatches.filter(m => {
+                  if (q && ![m.player1Name, m.player2Name, m.player1PartnerName, m.player2PartnerName]
+                    .some(n => n && n.toLowerCase().includes(q))) return false;
+                  if (historyFormat !== 'All' && m.type !== historyFormat) return false;
+                  if (historyResult === 'Wins'    && !(m.status === 'Confirmed' && m.winnerId === 'me')) return false;
+                  if (historyResult === 'Losses'  && !(m.status === 'Confirmed' && m.winnerId !== 'me')) return false;
+                  if (historyResult === 'Pending' && m.status !== 'Pending') return false;
+                  return true;
+                });
+                if (filtered.length === 0)
+                  return <p className="text-xs text-slate-500 text-center py-6">No matches match these filters.</p>;
+                const isFiltered = q !== '' || historyResult !== 'All' || historyFormat !== 'All';
+                const wins    = filtered.filter(m => m.status === 'Confirmed' && m.winnerId === 'me').length;
+                const losses  = filtered.filter(m => m.status === 'Confirmed' && m.winnerId && m.winnerId !== 'me').length;
+                const pending = filtered.filter(m => m.status === 'Pending').length;
+                return <>
+                  {isFiltered && (wins + losses > 0 || pending > 0) && (
+                    <p className="text-[11px] text-slate-400 px-1">
+                      {filtered.length} {filtered.length === 1 ? 'match' : 'matches'}
+                      {wins + losses > 0 && <> · <span className="text-emerald-400 font-semibold">{wins}W</span>–<span className="text-red-400 font-semibold">{losses}L</span></>}
+                      {pending > 0 && <> · {pending} pending</>}
+                    </p>
+                  )}
+                  {filtered.map(m => <MatchHistoryCard key={m.id} match={m} onClick={() => setSelectedMatch(m)}/>)}
+                </>;
+              })()}
+              {historyQuery === '' && historyResult === 'All' && historyFormat === 'All' && cancelledPlanned.map(m => <CancelledPlanCard key={m.id} match={m}/>)}
+            </>
+          )}
+        </div>
+      )}
+
+      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
+        onConfirm={selectedMatch?.status === 'Pending' ? () => { confirmMatch(selectedMatch.id, 'me'); setSelectedMatch(null); } : undefined}
+        onDispute={selectedMatch?.status === 'Pending'  ? () => { disputeMatch(selectedMatch.id);  setSelectedMatch(null); } : undefined}
+        onCancel={selectedMatch?.status === 'Pending'   ? () => { cancelPendingMatch(selectedMatch.id); setSelectedMatch(null); } : undefined}
+        onResubmit={selectedMatch?.status === 'Disputed' ? games => { resubmitMatch(selectedMatch.id, games); setSelectedMatch(null); } : undefined}
+        onNudge={selectedMatch?.status === 'Pending' && isRealPlayerUid(selectedMatch.player2Id) ? () => {
+          notifyUser(selectedMatch.player2Id, {
+            type: 'match_pending', title: 'Reminder: match awaiting your confirmation',
+            body: `${user.displayName} is waiting on you to confirm a match result.`, linkTo: `${BASE_PATH}/matches/`,
+          });
+        } : undefined}
+        onRematch={selectedMatch && isRealPlayerUid(
+          selectedMatch.player1Id === 'me' ? selectedMatch.player2Id : selectedMatch.player1Id
+        ) ? () => {
+          const m = selectedMatch;
+          const oppId       = m.player1Id === 'me' ? m.player2Id : m.player1Id;
+          const oppName     = m.player1Id === 'me' ? m.player2Name : m.player1Name;
+          const oppUsername = m.player1Id === 'me' ? m.player2Username : m.player1Username;
+          setRematchTarget({ uid: oppId, displayName: oppName, username: oppUsername });
+          setSelectedMatch(null);
+        } : undefined}
+      />
+      {rematchTarget && <ChallengeModal opponent={rematchTarget} onClose={() => setRematchTarget(null)}/>}
+
+      {logOpen  && <LogMatchModal  open={true} onClose={() => { setLogOpen(false); setLogPlannedId(null); }}
+        plannedMatchId={logPlannedId ?? undefined} onLogged={handleMatchLogged}/>}
+      {liveOpen && (
+        <LiveMatchModal
+          open={true}
+          onClose={() => { setLiveOpen(false); setLiveMatchId(null); }}
+          onMatchLogged={handleMatchLogged}
+          onMatchCancelled={handleCancelMatch}
+          plannedMatch={liveMatchId ? planned.find(m => m.id === liveMatchId) ?? null : null}
+        />
+      )}
+      {trackOpen && (
+        <CourtTrackModal
+          open={true}
+          onClose={() => { setTrackOpen(false); setTrackMatchId(null); }}
+          onSessionEnded={handleMatchLogged}
+          plannedMatch={trackMatchId ? planned.find(m => m.id === trackMatchId) ?? null : null}
+        />
+      )}
+      {trackJoinOpen && (
+        <CourtTrackModal open={true} onClose={() => setTrackJoinOpen(false)}/>
+      )}
+
+      {planOpen && (
+        <PlanMatchModal
+          existing={planned.find(p => p.id === editId) ?? null}
+          me={me}
+          onSave={handleSavePlan}
+          onClose={() => setPlanOpen(false)}
+          hostName={user.displayName}
+        />
+      )}
+
+      {/* Cancel match confirmation */}
+      {cancelId && (
+        <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCancelId(null)}>
+          <div ref={cancelPanelRef} {...cancelDialogProps} className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 outline-none" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} className="text-red-400"/>
+              </div>
+              <div>
+                <p className="font-bold text-sm">Cancel this match?</p>
+                <p className="text-xs text-slate-400 mt-0.5">All invited players will be notified.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setCancelId(null)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-medium transition-colors">
+                Keep Match
+              </button>
+              <button onClick={() => handleCancelMatch(cancelId)}
+                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors">
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function EmptyState({ icon, title, desc, action }: { icon: React.ReactNode; title: string; desc: string; action?: React.ReactNode }) {
+  return (
+    <div className="text-center py-14 space-y-3">
+      <div className="flex justify-center">{icon}</div>
+      <p className="text-sm font-semibold text-slate-400">{title}</p>
+      <p className="text-xs text-slate-600">{desc}</p>
+      {action && <div className="flex justify-center pt-1">{action}</div>}
+    </div>
+  );
+}
+
+function GenderDot({ gender }: { gender?: 'Male' | 'Female' | null }) {
+  if (!gender) return null;
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${gender === 'Male' ? 'bg-sky-500/15 text-sky-400' : 'bg-pink-500/15 text-pink-400'}`}>
+      {gender === 'Male' ? '♂' : '♀'}
+    </span>
+  );
+}
+
+// ─── Planned match card ───────────────────────────────────────────────────────
+
+function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTrack, onSimulateAccept }: {
+  match: PlannedMatch; me: SlotPlayer;
+  onEdit: () => void; onLog: () => void; onCancel: () => void; onLiveRecord: () => void; onTrack: () => void;
+  onSimulateAccept: (uid: string) => void;
+}) {
+  const { addNotification } = useApp();
+  const [removeTarget, setRemoveTarget] = useState<SlotPlayer | null>(null);
+  const dateObj = new Date(m.date + 'T' + m.time);
+  const isPast  = dateObj < new Date();
+  const dateStr = dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
+  const borderClass = m.status === 'confirmed' ? 'border-emerald-500/25' : m.status === 'cancelled' ? 'border-red-500/20 opacity-60' : 'border-slate-800';
+  const status = displayStatus(m);
+
+  return (
+    <div className={`bg-slate-900 border rounded-2xl overflow-hidden ${borderClass}`}>
+      <div className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold">{FORMAT_LABELS[m.format]}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${status.className}`}>{status.label}</span>
+              {isPast && m.status !== 'cancelled' && <span className="text-[10px] text-slate-500 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-full">Past</span>}
+            </div>
+            <p className="text-xs text-slate-400 flex items-center gap-1"><CalendarDays size={10}/> {dateStr} · {m.time}</p>
+            <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin size={10}/> {m.venue}</p>
+            {m.notes && <p className="text-[11px] text-slate-500 italic">{m.notes}</p>}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {m.status !== 'cancelled' && <button onClick={onEdit} aria-label="Edit match" className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><Edit3 size={13}/></button>}
+            {m.status !== 'cancelled' && <button onClick={onCancel} title="Cancel match" aria-label="Cancel match" className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"><Trash2 size={13}/></button>}
+          </div>
+        </div>
+
+        {/* Slots grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <TeamSlots label={m.teamA.some(s => s?.uid === 'me') ? 'Team A (You)' : 'Team A'} slots={m.teamA} accepted={m.accepted} declined={m.declined} meUid="me"
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}
+            onSimulateAccept={m.status !== 'cancelled' ? onSimulateAccept : undefined}/>
+          <TeamSlots label="Team B" slots={m.teamB} accepted={m.accepted} declined={m.declined} meUid="me"
+            onRemovePlayer={m.status !== 'cancelled' ? p => setRemoveTarget(p) : undefined}
+            onSimulateAccept={m.status !== 'cancelled' ? onSimulateAccept : undefined}/>
+        </div>
+
+        {/* Remove player confirmation */}
+        {removeTarget && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={13} className="text-red-400 shrink-0"/>
+              <p className="text-xs font-semibold text-red-300">Remove {removeTarget.displayName} from this match?</p>
+            </div>
+            <p className="text-[11px] text-slate-400">They will be notified that they've been removed.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setRemoveTarget(null)}
+                className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors">Keep</button>
+              <button onClick={() => {
+                const body = `You have been removed from the planned ${FORMAT_LABELS[m.format]} at ${m.venue}.`;
+                addNotification({ type: 'match_invite', title: 'Removed from Match', body });
+                // The copy above ("They will be notified") was only ever true
+                // for whoever's looking at this tab — this is what actually
+                // reaches removeTarget's own account.
+                if (isRealPlayerUid(removeTarget.uid)) notifyUser(removeTarget.uid, { type: 'match_invite', title: 'Removed from Match', body });
+                setRemoveTarget(null);
+              }}
+                className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors">Remove</button>
+            </div>
+          </div>
+        )}
+
+        {/* Actions — only on confirmed matches that haven't been played yet */}
+        {m.status === 'confirmed' && !m.liveState && (
+          <div className="flex gap-2 pt-0.5 flex-wrap">
+            <button onClick={onLog}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-xl text-xs font-bold transition-colors">
+              <Trophy size={11}/> Log Match
+            </button>
+            <button onClick={onLiveRecord}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
+              <Radio size={11}/><span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"/>Record Live
+            </button>
+            <button onClick={onTrack}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-colors">
+              <MapPinned size={11}/>Track &amp; Record
+            </button>
+          </div>
+        )}
+        {m.liveState === 'live' && (
+          <div className="flex gap-2 pt-0.5 flex-wrap">
+            <button onClick={onLiveRecord}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors">
+              <Radio size={11}/> Continue Recording
+            </button>
+            <button onClick={onCancel}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors">
+              <X size={11}/> Cancel Match
+            </button>
+          </div>
+        )}
+        {m.liveState === 'confirming' && (
+          <p className="text-[11px] text-blue-400 flex items-center gap-1.5 pt-0.5">
+            <Clock size={11}/> Waiting on the other player{m.teamB.filter(Boolean).length > 1 ? 's' : ''} to confirm the score.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TeamSlots({ label, slots, accepted, declined, meUid, onRemovePlayer, onSimulateAccept }: {
+  label: string; slots: (SlotPlayer | null)[]; accepted: string[]; declined: string[]; meUid: string;
+  onRemovePlayer?: (player: SlotPlayer) => void;
+  onSimulateAccept?: (uid: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{label}</p>
+      {slots.map((s, i) => {
+        if (!s) {
+          return (
+            <div key={i} className="flex items-center gap-1.5 border border-dashed border-slate-700 rounded-xl px-2.5 py-2 min-h-[44px]">
+              <User size={11} className="text-slate-600"/><span className="text-[11px] text-slate-600">Invite pending</span>
+            </div>
+          );
+        }
+        const isMe = s.uid === meUid;
+        const isAcc = accepted.includes(s.uid);
+        const isDec = declined.includes(s.uid);
+        return (
+          <div key={i} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-2 min-h-[44px] ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
+            <Avatar name={s.displayName} className="!w-5 !h-5 !text-[9px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold truncate">{s.displayName}</p>
+              <p className="text-[10px] text-slate-500">@{s.username}</p>
+            </div>
+            {isMe   && <span className="text-[9px] text-emerald-400 font-bold shrink-0">You</span>}
+            {!isMe && isAcc  && <Check size={10} className="text-emerald-400 shrink-0"/>}
+            {!isMe && isDec  && <X size={10} className="text-red-400 shrink-0"/>}
+            {!isMe && !isAcc && !isDec && (
+              onSimulateAccept ? (
+                <button onClick={() => onSimulateAccept(s.uid)} title={`Simulate: ${s.displayName} accepts`}
+                  className="flex items-center gap-0.5 text-[9px] text-amber-400 hover:text-emerald-400 font-semibold shrink-0 transition-colors">
+                  <Clock size={10}/> Accept?
+                </button>
+              ) : <Clock size={10} className="text-amber-400 shrink-0"/>
+            )}
+            {!isMe && onRemovePlayer && (
+              <button onClick={() => onRemovePlayer(s)} className="ml-1 text-slate-600 hover:text-red-400 shrink-0 transition-colors">
+                <X size={10}/>
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Match history card ───────────────────────────────────────────────────────
+
+function MatchHistoryCard({ match: m, onClick }: { match: import('@/types').Match; onClick: () => void }) {
+  const isPending = m.status === 'Pending';
+  // Cancelled/Disputed matches were never confirmed - showing a win badge or
+  // MMR credit for one would be flat-out wrong, not just stale (this card
+  // used to skip this check entirely; see MatchCard.tsx's isUnresolved for
+  // the same gate on the equivalent card used elsewhere).
+  const isUnresolved = m.status === 'Disputed' || m.status === 'Cancelled';
+  const iWon = m.status === 'Confirmed' && m.winnerId === 'me';
+  // Per-game scores, same treatment as MatchCard — games are normalised so
+  // p1 is always "me". Joining all p1s then all p2s rendered "21-21 · 19-15"
+  // for a 2-game match instead of the readable "21-19, 21-15".
+  const scoreStr = m.games
+    .filter(g => g.p1 > 0 || g.p2 > 0)
+    .map(g => `${g.p1}-${g.p2}`)
+    .join(', ');
+  const date = new Date(m.playedAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+  return (
+    <button onClick={onClick}
+      className={`w-full text-left bg-slate-900 border rounded-2xl p-4 space-y-2 hover:border-slate-700 transition-colors ${isPending || isUnresolved ? 'border-amber-500/25' : iWon ? 'border-emerald-500/20' : 'border-slate-800'}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${isPending || isUnresolved ? 'bg-amber-500/15 text-amber-400' : iWon ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {isPending ? '?' : isUnresolved ? '!' : iWon ? 'W' : 'L'}
+          </span>
+          <div>
+            <span className="text-sm font-semibold">vs {m.player2Name}</span>
+            <span className="text-[11px] text-slate-500 ml-1">@{m.player2Username}</span>
+          </div>
+          <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{m.type}</span>
+        </div>
+        <span className="text-xs text-slate-500 shrink-0">{date}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-400 font-mono">{scoreStr || '—'}</p>
+        {isPending
+          ? <span className="text-xs text-amber-400 font-medium">Tap to confirm or dispute</span>
+          : isUnresolved
+          ? <span className="text-xs text-amber-400 font-medium">{m.status}</span>
+          : m.mmrChange !== undefined && (
+            <span className={`text-xs font-bold ${m.mmrChange >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {m.mmrChange >= 0 ? '+' : ''}{m.mmrChange} MMR
+            </span>
+          )}
+      </div>
+      {m.venue && <p className="text-[11px] text-slate-500 flex items-center gap-1"><MapPin size={9}/>{m.venue}</p>}
+    </button>
+  );
+}
+
+function CancelledPlanCard({ match: m }: { match: PlannedMatch }) {
+  const dateStr = new Date(m.date + 'T' + m.time).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+  const opponent = m.teamB.find(Boolean);
+  const allPlayers = [...m.teamA, ...m.teamB].filter((s): s is SlotPlayer => s !== null);
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-1.5 opacity-70">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-red-500/15 text-red-400">Cancelled</span>
+          <span className="text-sm font-semibold">{FORMAT_LABELS[m.format]}{opponent ? ` vs ${opponent.displayName}` : ''}</span>
+        </div>
+        <span className="text-xs text-slate-500 shrink-0">{dateStr} · {m.time}</span>
+      </div>
+      {m.venue && <p className="text-[11px] text-slate-500 flex items-center gap-1"><MapPin size={9}/>{m.venue}</p>}
+      {allPlayers.length > 0 && (
+        <p className="text-[11px] text-slate-500">Players: {allPlayers.map(p => p.displayName).join(', ')}</p>
+      )}
+      {m.notes && <p className="text-[11px] text-slate-500 italic">{m.notes}</p>}
+    </div>
+  );
+}
+
+// ─── Plan match modal ─────────────────────────────────────────────────────────
+
+type SlotKey = { team: 'A' | 'B'; idx: number };
+
+function PlayerSearchDropdown({ gender, exclude, onSelect, onClose, selfPlayer, userCountry }: {
+  gender: 'Male' | 'Female' | null;
+  exclude: string[];
+  onSelect: (p: SlotPlayer) => void;
+  onClose: () => void;
+  selfPlayer?: SlotPlayer; // show at top as "(Self)"
+  userCountry?: string;
+}) {
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const { allRealPlayers } = useApp();
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [onClose]);
+
+  const showSelf = selfPlayer && !exclude.includes(selfPlayer.uid) && (!gender || selfPlayer.gender === gender) &&
+    (!q || selfPlayer.displayName.toLowerCase().includes(q.toLowerCase()) || selfPlayer.username.toLowerCase().includes(q.toLowerCase()));
+  // Real signed-up opponents alongside the seed/demo roster — same fix as
+  // LogMatchModal's PlayerSearch and LiveMatchModal's PlayerPicker.
+  const candidates = [...PLAYERS, ...allRealPlayers]
+    .filter(p => !exclude.includes(p.uid))
+    .filter(p => p.uid !== selfPlayer?.uid) // selfPlayer shown separately
+    .filter(p => !gender || p.gender === gender)
+    .filter(p => !userCountry || (p.country ?? 'Malaysia') === userCountry)
+    .filter(p => !q || p.displayName.toLowerCase().includes(q.toLowerCase()) || p.username.toLowerCase().includes(q.toLowerCase()))
+    .slice(0, showSelf ? 5 : 6);
+
+  return (
+    <div ref={ref} className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden">
+      <div className="p-2 border-b border-slate-700">
+        <div className="relative">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)}
+            placeholder={gender ? `Search ${gender} player…` : 'Search player…'}
+            className="w-full pl-7 pr-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs outline-none focus:border-emerald-500"/>
+        </div>
+      </div>
+      <div className="max-h-48 overflow-y-auto">
+        {showSelf && selfPlayer && (
+          <button onClick={() => { onSelect(selfPlayer); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-emerald-500/10 border-b border-slate-700/50 transition-colors text-left">
+            <Avatar name={selfPlayer.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold truncate">{selfPlayer.displayName}</p>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-bold shrink-0">Self</span>
+              </div>
+              <p className="text-[10px] text-slate-500">@{selfPlayer.username}</p>
+            </div>
+            {selfPlayer.gender && <GenderDot gender={selfPlayer.gender}/>}
+          </button>
+        )}
+        {candidates.length === 0 && !showSelf ? (
+          <p className="text-xs text-slate-500 text-center py-4">{gender ? `No ${gender.toLowerCase()} players found` : 'No players found'}</p>
+        ) : candidates.map(p => (
+          <button key={p.uid} onClick={() => { onSelect({ uid: p.uid, displayName: p.displayName, username: p.username, gender: p.gender }); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700 transition-colors text-left">
+            <Avatar name={p.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate">{p.displayName}</p>
+              <p className="text-[10px] text-slate-500">@{p.username}</p>
+            </div>
+            {p.gender && <GenderDot gender={p.gender}/>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlotPicker({ slot, label, genderRequired, exclude, selfPlayer, isSelfSlot, onSet, onClear }: {
+  slot: SlotPlayer | null;
+  label: string;
+  genderRequired: 'Male' | 'Female' | null;
+  exclude: string[];
+  selfPlayer: SlotPlayer;   // current user, shown at top of picker
+  isSelfSlot?: boolean;     // visual hint that this is the default-self slot
+  onSet: (p: SlotPlayer) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const isFilledBySelf = slot?.uid === selfPlayer.uid;
+
+  return (
+    <div className="relative">
+      {slot ? (
+        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 min-h-[44px] border
+          ${isFilledBySelf ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-slate-800 border-slate-700'}`}>
+          <Avatar name={slot.displayName} className="!w-6 !h-6 !text-[10px] shrink-0"/>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold truncate">{slot.displayName}</p>
+              {isFilledBySelf && <span className="text-[9px] text-emerald-400 font-bold shrink-0">You</span>}
+            </div>
+            <p className="text-[10px] text-slate-500">@{slot.username}</p>
+          </div>
+          {slot.gender && <GenderDot gender={slot.gender}/>}
+          <button onClick={onClear} aria-label={`Remove ${slot.displayName}`} className="text-slate-500 hover:text-red-400 shrink-0"><X size={12}/></button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center gap-2 border border-dashed border-slate-600 hover:border-slate-500 rounded-xl px-3 py-2 min-h-[44px] transition-colors text-left">
+          <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+            <UserPlus size={10} className="text-slate-500"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-slate-400">{label}</p>
+            {genderRequired && <p className="text-[10px] text-slate-600">{genderRequired} only</p>}
+          </div>
+          {genderRequired && <GenderDot gender={genderRequired}/>}
+        </button>
+      )}
+      {open && (
+        <PlayerSearchDropdown
+          gender={genderRequired}
+          exclude={exclude}
+          selfPlayer={selfPlayer}
+          userCountry={selfPlayer.country}
+          onSelect={onSet}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PlanMatchModal({ existing, me, onSave, onClose, hostName: _ }: {
+  existing: PlannedMatch | null;
+  me: SlotPlayer;
+  onSave: (pm: PlannedMatch) => void;
+  onClose: () => void;
+  hostName?: string;
+}) {
+  const [format, setFormat] = useState<MatchType>(existing?.format ?? 'MS');
+  const [date,   setDate]   = useState(existing?.date ?? '');
+  const [time,   setTime]   = useState(existing?.time ?? '');
+  const [venue,  setVenue]  = useState(existing?.venue ?? '');
+  const [notes,  setNotes]  = useState(existing?.notes ?? '');
+
+  const { teamSize } = slotsForFormat(format);
+
+  // Team A slot 0 always defaults to the host (you) — every format's gender
+  // constraints and slot labels ("Team A (You)") assume this. The user can
+  // still swap it out via the slot picker if they're planning on someone
+  // else's behalf.
+  const initTeamA = (): (SlotPlayer | null)[] => {
+    if (existing?.format === format) return existing.teamA;
+    return teamSize === 1 ? [me] : [me, null];
+  };
+  const initTeamB = (): (SlotPlayer | null)[] => {
+    if (existing?.format === format) return existing.teamB;
+    return teamSize === 1 ? [null] : [null, null];
+  };
+
+  const [teamA, setTeamA] = useState<(SlotPlayer | null)[]>(initTeamA);
+  const [teamB, setTeamB] = useState<(SlotPlayer | null)[]>(initTeamB);
+
+  const { ref: panelRef, dialogProps } = useModalA11y(true, onClose, existing ? 'Edit Match' : 'Plan a Match');
+
+  // Derive available formats based on currently-selected players' genders
+  const allSelected = [...teamA, ...teamB].filter((s): s is SlotPlayer => s !== null);
+  const hasMale   = allSelected.some(s => s.gender === 'Male');
+  const hasFemale = allSelected.some(s => s.gender === 'Female');
+  const allMale   = allSelected.length > 0 && allSelected.every(s => s.gender === 'Male');
+  const allFemale = allSelected.length > 0 && allSelected.every(s => s.gender === 'Female');
+  const formatDisabled = (f: MatchType): boolean => {
+    if (f === 'MS' || f === 'MD') return hasFemale;
+    if (f === 'WS' || f === 'WD') return hasMale;
+    if (f === 'MX') return allMale || allFemale;
+    return false;
+  };
+
+  // Reset slots when format changes
+  const changeFormat = (f: MatchType) => {
+    if (formatDisabled(f)) return;
+    setFormat(f);
+    const { teamSize: ts } = slotsForFormat(f);
+    const keptA0 = teamA[0] ?? me; // preserve whoever is in A0, defaulting back to the host
+    setTeamA(ts === 1 ? [keptA0] : [keptA0, null]);
+    setTeamB(ts === 1 ? [null] : [null, null]);
+  };
+
+  const allFilledUids = (): string[] =>
+    [...teamA, ...teamB].filter((s): s is SlotPlayer => s !== null).map(s => s.uid);
+
+  const setSlot = (team: 'A' | 'B', idx: number, p: SlotPlayer) => {
+    if (team === 'A') setTeamA(prev => { const n = [...prev]; n[idx] = p; return n; });
+    else              setTeamB(prev => { const n = [...prev]; n[idx] = p; return n; });
+  };
+  const clearSlot = (team: 'A' | 'B', idx: number) => {
+    if (team === 'A') setTeamA(prev => { const n = [...prev]; n[idx] = null; return n; });
+    else              setTeamB(prev => { const n = [...prev]; n[idx] = null; return n; });
+  };
+
+  const save = () => {
+    if (!date || !time || !venue) return;
+    const pm: PlannedMatch = {
+      id: existing?.id ?? crypto.randomUUID(),
+      format, date, time, venue, notes: notes.trim() || undefined,
+      teamA, teamB,
+      accepted: existing?.accepted ?? [],
+      declined: existing?.declined ?? [],
+      status: existing?.status ?? 'pending',
+    };
+    onSave(pm);
+  };
+
+  const slotLabel = (team: 'A' | 'B', idx: number) => {
+    if (teamSize === 1) return team === 'A' ? 'Player A' : 'Player B';
+    return team === 'A' ? `Team A player ${idx + 1}` : `Team B player ${idx + 1}`;
+  };
+
+  return (
+    <div className="modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-end justify-center sm:items-center p-4" onClick={onClose}>
+      <div ref={panelRef} {...dialogProps} className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] flex flex-col outline-none" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+          <p className="font-bold text-sm">{existing ? 'Edit Match' : 'Plan a Match'}</p>
+          <button onClick={onClose} aria-label="Close" className="text-slate-500 hover:text-white"><X size={16}/></button>
+        </div>
+
+        <div className="overflow-y-auto p-4 space-y-4 flex-1">
+          {/* Format */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-400 font-semibold">Format</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {FORMATS.map(f => {
+                const disabled = formatDisabled(f);
+                return (
+                  <button key={f} onClick={() => changeFormat(f)} disabled={disabled}
+                    title={disabled ? 'Incompatible with selected players' : undefined}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+                      format === f ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                      : disabled ? 'bg-slate-900 border-slate-800 text-slate-700 cursor-not-allowed line-through'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}>
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-500">{FORMAT_LABELS[format]}</p>
+          </div>
+
+          {/* Player slots */}
+          <div className="space-y-3">
+            <label className="text-xs text-slate-400 font-semibold">Players</label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Team A */}
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Team A</p>
+                {teamA.map((slot, idx) => (
+                  <SlotPicker
+                    key={idx}
+                    slot={slot}
+                    label={slotLabel('A', idx)}
+                    genderRequired={getSlotGender(format, 'A', idx, me.gender)}
+                    exclude={allFilledUids()}
+                    selfPlayer={me}
+                    isSelfSlot={idx === 0}
+                    onSet={p => setSlot('A', idx, p)}
+                    onClear={() => clearSlot('A', idx)}
+                  />
+                ))}
+              </div>
+              {/* Team B */}
+              <div className="space-y-2">
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Team B</p>
+                {teamB.map((slot, idx) => (
+                  <SlotPicker
+                    key={idx}
+                    slot={slot}
+                    label={slotLabel('B', idx)}
+                    genderRequired={getSlotGender(format, 'B', idx, me.gender)}
+                    exclude={allFilledUids()}
+                    selfPlayer={me}
+                    onSet={p => setSlot('B', idx, p)}
+                    onClear={() => clearSlot('B', idx)}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-500 flex items-center gap-1">
+              <Bell size={10}/> Invited players must accept before the match is confirmed.
+            </p>
+          </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold">Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400 font-semibold">Time</label>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+            </div>
+          </div>
+
+          {/* Venue */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-400 font-semibold">Venue</label>
+            <VenueInput value={venue} onChange={setVenue}
+              placeholder="e.g. Setia Alam Sports Complex"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-slate-400 font-semibold">Notes (optional)</label>
+            <input value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. bring extra shuttles"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:border-emerald-500 transition-colors"/>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-slate-800 flex gap-2 shrink-0">
+          <Button variant="secondary" onClick={onClose} className="flex-1 py-2 font-medium">Cancel</Button>
+          <Button onClick={save} disabled={!date || !time || !venue} className="flex-1 py-2 font-bold">
+            {existing ? 'Save Changes' : 'Send Invites'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
