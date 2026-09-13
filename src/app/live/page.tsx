@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
+import { auth } from '@/lib/supabase';
 import { createLiveMatch, updateLiveMatch, getLiveMatchByCode, subscribeLiveMatch, subscribeActiveLiveMatches } from '@/lib/supabaseService';
 import { MATCH_TYPE_LABEL } from '@/lib/utils';
 import { Zap, Copy, Check, RotateCcw, Trophy, Plus, Minus, Eye, Play, Users, MapPin, X } from 'lucide-react';
@@ -76,6 +77,15 @@ type Phase = 'idle' | 'setup' | 'scoring' | 'complete' | 'watching';
 
 export default function LivePage() {
   const { user, awardClipCredits, saveCourtPositions } = useApp();
+  // user.uid is ALWAYS the local 'me' sentinel (app-wide convention, see
+  // AppContext) — literally the same string for every signed-in account.
+  // Live matches are the one thing here that must tell different real
+  // accounts apart across devices (host vs. joiner/spectator), so hostUid
+  // needs the actual Supabase uid, same pattern as LiveMatchModal's `me`.
+  // Without this, every match's hostUid was written as "me" and every
+  // hostUid===user.uid check was trivially true for anyone who joined or
+  // watched — spectators got full host scoring control on someone else's match.
+  const myUid = auth.currentUser?.uid ?? 'me';
 
   // phase machine
   const [phase,      setPhase]      = useState<Phase>('idle');
@@ -225,12 +235,12 @@ export default function LivePage() {
   // ── start match ────────────────────────────────────────────────────────────
 
   const startMatch = useCallback(async () => {
-    const m = blankMatch(user.uid, user.displayName, user.username, format, venue || 'Venue TBD', bestOf, teamAName || user.displayName, teamBName || 'Opponent');
+    const m = blankMatch(myUid, user.displayName, user.username, format, venue || 'Venue TBD', bestOf, teamAName || user.displayName, teamBName || 'Opponent');
     setMatch(m);
     setHistory([]);
     setPhase('scoring');
     try { await createLiveMatch(m); } catch { /* offline — local state is source of truth */ }
-  }, [user, format, venue, bestOf, teamAName, teamBName]);
+  }, [myUid, user, format, venue, bestOf, teamAName, teamBName]);
 
   // ── join by code ───────────────────────────────────────────────────────────
 
@@ -243,18 +253,18 @@ export default function LivePage() {
       const found = await getLiveMatchByCode(code);
       if (!found) { setJoinErr('No match with that code.'); return; }
       setMatch(found);
-      setPhase(found.hostUid === user.uid ? 'scoring' : 'watching');
+      setPhase(found.hostUid === myUid ? 'scoring' : 'watching');
     } catch {
       setJoinErr('Could not connect. Check your internet connection.');
     } finally {
       setJoinLoading(false);
     }
-  }, [joinInput, user.uid]);
+  }, [joinInput, myUid]);
 
   const watchLiveMatch = useCallback((m: LiveMatch) => {
     setMatch(m);
-    setPhase(m.hostUid === user.uid ? 'scoring' : 'watching');
-  }, [user.uid]);
+    setPhase(m.hostUid === myUid ? 'scoring' : 'watching');
+  }, [myUid]);
 
   const copyCode = useCallback(async () => {
     if (!match) return;
@@ -410,7 +420,7 @@ export default function LivePage() {
   // Was this account the one scoring? A spectator who watches a match to the
   // finish also lands on phase 'complete' — but must not be offered "log this
   // to your profile" for a match they didn't play.
-  const scoredByMe = match.hostUid === user.uid;
+  const scoredByMe = match.hostUid === myUid;
   const isPaused  = match.status === 'paused' && !isDone;
   const winnerName = match.winningSide === 'A' ? match.teamAName : match.winningSide === 'B' ? match.teamBName : '';
 
