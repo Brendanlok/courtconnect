@@ -1,0 +1,7 @@
+has_more: False count: 4
+P2 | On Hold | Feature | On-device/server pose tracking for real court heatmap | notes:Update 2026-07-19 (auto-dev session): Fixed a real gap unrelated to the pending camera test � saveCourtPositions only wrote the aggregate heatmap (cc_ | id:39be13c4-1857-811c-ab58-da52a06da91d
+P3 | Backlog | Bug | Doubles partner id never persisted to Supabase for real matches | notes:Found while fixing the user.uid-vs-me-sentinel bug family this session (commit bfc3e57).
+LogMatchModal/LiveMatchModal set player1PartnerId/player2Part | id:3dae13c4-1857-81cb-a4d0-f608d7b26b6b
+P3 | Backlog | Bug | Career Highs peak MMR still loses a mid-season high that's gone by rollover time | notes:• Found in 1am board-dry code audit (2026-09-05), reviewing the 2026-09-03 peak-MMR fix.
+• Current fix (PlayerProfileClient.tsx ~944) seeds peak f | id:3d1e13c4-1857-81a7-9999-fd766ecc2921
+P3 | On Hold |  | Auto-detect shuttle hits during Track & Record | notes:Update 2026-08-23 (auto-dev, 1am session): Found and fixed a real bug (not the live-camera/court blocker) while auditing the /live standalone scoring  | id:39ee13c4-1857-819e-a6f9-feb18f42f7cd
