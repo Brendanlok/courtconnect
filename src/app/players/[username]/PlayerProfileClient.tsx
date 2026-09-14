@@ -21,6 +21,25 @@ import { useEffect, useState } from 'react';
 import type { Match, MatchType } from '@/types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { auth } from '@/lib/supabase';
+import { fetchMatchesFor, type StoredMatch } from '@/lib/supabaseService';
+
+// Raw mapping, no 'me' substitution — StoredMatch already carries real uids
+// on both sides, which is exactly what this page's playerMatches consumers
+// (filtered/compared against player.uid, not 'me') expect. Partner fields
+// aren't set: matches rows don't persist them yet for real matches (separate
+// tracked bug — doubles partner id never persisted to Supabase).
+function storedMatchToMatch(sm: StoredMatch): Match {
+  return {
+    id: sm.id, type: sm.type as MatchType,
+    player1Id: sm.player1Id, player1Name: sm.player1Name, player1Username: sm.player1Username,
+    player2Id: sm.player2Id, player2Name: sm.player2Name, player2Username: sm.player2Username,
+    winnerId: sm.winnerId, games: sm.games, status: sm.status,
+    mmrChange: sm.mmrChange, mode: sm.mode, playedAt: sm.playedAt, location: sm.location,
+    pendingConfirmations: sm.pendingConfirmations, disputedBy: sm.disputedBy,
+    recordedLive: sm.recordedLive, liveStats: sm.liveStats, pointLog: sm.pointLog,
+    clipUrl: sm.clipUrl, shuttleHits: sm.shuttleHits,
+  };
+}
 
 const RESULT_FILTERS = ['All', 'Wins', 'Losses', 'Pending'] as const;
 type ResultFilter = typeof RESULT_FILTERS[number];
@@ -116,6 +135,20 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const isMe   = forceIsMe || (staticPlayer!.uid === 'me' && !auth.currentUser);
   const player = isMe ? ctxUser : staticPlayer!;
 
+  // allMatches only ever holds the signed-in viewer's own matches (see
+  // toLocalMatch in AppContext) — useless for anyone else's profile beyond
+  // head-to-head. For a real other player, fetch their own full match
+  // history directly instead (fetchMatchesFor — public-read RLS, any uid).
+  const [otherMatches, setOtherMatches] = useState<Match[]>([]);
+  useEffect(() => {
+    if (isMe || player.isDummy) { setOtherMatches([]); return; }
+    let cancelled = false;
+    fetchMatchesFor(player.uid).then(rows => {
+      if (!cancelled) setOtherMatches(rows.map(storedMatchToMatch));
+    });
+    return () => { cancelled = true; };
+  }, [isMe, player.isDummy, player.uid]);
+
   const progress = tierProgress(player.mmr, player.tier);
   const { name: nextName, threshold } = nextTier(player.tier);
   const wr  = Math.round((player.stats.wins / Math.max(player.stats.totalMatches, 1)) * 100);
@@ -124,7 +157,9 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   // hasn't been tested in a while, unlike 'provisional' (playerCalibrating)
   // which hides it outright. Skill Match implies real precision, so it's
   // gated on reliability being fully 'established', not just non-calibrating.
-  const playerMatches = allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid);
+  const playerMatches = isMe || player.isDummy
+    ? allMatches.filter(m => m.player1Id === player.uid || m.player2Id === player.uid)
+    : otherMatches;
   // Most recent confirmed match doubles as the "last active" signal while
   // migration 0031's last_active_at column isn't applied yet — otherwise a
   // real account reads as 'stale' 30 days after signup even if it played today.
@@ -898,13 +933,13 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
         {/* ── Stage 2: Match Analytics ──────────────────────────────── */}
         {(() => {
           if (!canSeeMatchHistory) return null;
-          // playerMatches is built from allMatches, which only ever holds
-          // the signed-in viewer's own matches (player1Id is always the
-          // local 'me' sentinel — see toLocalMatch in AppContext). For
-          // anyone else's profile that silently degrades to "matches
-          // between me and them" — real data, but not their overall record,
-          // and shown here with no caveat. Own-profile only until there's a
-          // real per-player match fetch to back this section for others.
+          // Own-profile only: this section's peak-MMR/season-rollover walk
+          // reads ctxUser.mmr (the signed-in viewer) throughout, not
+          // player.mmr — correct for isMe (they're the same account) but
+          // wrong for anyone else. playerMatches itself is fine for other
+          // real players now (see fetchMatchesFor/otherMatches above); it's
+          // this section's viewer-mmr assumption that still needs untangling
+          // before it can show for someone else's profile.
           if (!isMe) return null;
           const confirmed = playerMatches.filter(m => m.status === 'Confirmed');
           if (confirmed.length === 0) return null;

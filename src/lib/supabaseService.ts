@@ -1117,6 +1117,19 @@ function matchRowToStored(row: Record<string, unknown>): StoredMatch {
   };
 }
 
+// One-shot fetch of a single player's full match history, for their public
+// profile page — unlike subscribeMyRealMatches below (the signed-in viewer's
+// own matches only), this is keyed to an arbitrary uid. `matches` has
+// public-read RLS (see subscribeMatchesAmong below), so this is safe to call
+// for any real player. No realtime subscription: a profile view doesn't need
+// live updates the way the viewer's own match list does.
+export async function fetchMatchesFor(uid: string): Promise<StoredMatch[]> {
+  const { data } = await supabase.from('matches').select('*')
+    .or(`player1_id.eq.${uid},player2_id.eq.${uid}`)
+    .order('played_at', { ascending: false });
+  return (data ?? []).map(matchRowToStored);
+}
+
 // ponytail: Realtime can't filter "player1_id = me OR player2_id = me" — same
 // unfiltered-subscribe-then-refetch tradeoff as conversations.
 export function subscribeMyRealMatches(myUid: string, cb: (docs: StoredMatch[]) => void): () => void {
