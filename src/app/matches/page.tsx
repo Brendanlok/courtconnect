@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
-import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL } from '@/lib/utils';
+import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL, downloadIcs } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -820,6 +820,16 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
             <button onClick={onTrack}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-colors">
               <MapPinned size={11}/>Track &amp; Record
+            </button>
+            <button onClick={() => {
+              const opp = m.teamB.find(Boolean);
+              downloadIcs({
+                id: m.id, date: m.date, time: m.time, location: m.venue,
+                summary: `${FORMAT_LABELS[m.format]} vs ${opp?.displayName ?? 'opponent'}`,
+              });
+            }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-colors">
+              <CalendarDays size={11}/>Add to Calendar
             </button>
           </div>
         )}

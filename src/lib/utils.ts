@@ -201,13 +201,13 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
 }
 
-// Builds a minimal .ics file for a tournament and triggers a browser download —
-// so a registered player can drop the event straight into their phone calendar.
+// Builds a minimal .ics file and triggers a browser download — so a
+// registered player can drop the event straight into their phone calendar.
 // Floating local time (no Z/TZID): correct for the device that downloads it,
 // which is what matters for a same-country in-person event.
-export function downloadTournamentIcs(t: { id: string; name: string; date: string; time?: string; venue: string; state: string }): void {
-  const [y, m, d] = t.date.split('-').map(Number);
-  const [hh, mm] = (t.time || '09:00').split(':').map(Number);
+export function downloadIcs(e: { id: string; summary: string; date: string; time?: string; location: string }): void {
+  const [y, m, d] = e.date.split('-').map(Number);
+  const [hh, mm] = (e.time || '09:00').split(':').map(Number);
   const start = new Date(y, m - 1, d, hh, mm);
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // assume 2hr block
   // Local (not UTC) clock digits — toISOString() would shift the displayed
@@ -217,19 +217,23 @@ export function downloadTournamentIcs(t: { id: string; name: string; date: strin
   const escape = (s: string) => s.replace(/([,;])/g, '\\$1');
   const ics = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CourtConnect//EN', 'BEGIN:VEVENT',
-    `UID:${t.id}@courtconnect`,
+    `UID:${e.id}@courtconnect`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
-    `SUMMARY:${escape(t.name)}`,
-    `LOCATION:${escape(`${t.venue}, ${t.state}`)}`,
+    `SUMMARY:${escape(e.summary)}`,
+    `LOCATION:${escape(e.location)}`,
     'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n');
   const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
   const a = document.createElement('a');
-  a.href = url; a.download = `${t.name.replace(/[^a-z0-9]+/gi, '-')}.ics`;
+  a.href = url; a.download = `${e.summary.replace(/[^a-z0-9]+/gi, '-')}.ics`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadTournamentIcs(t: { id: string; name: string; date: string; time?: string; venue: string; state: string }): void {
+  downloadIcs({ id: t.id, summary: t.name, date: t.date, time: t.time, location: `${t.venue}, ${t.state}` });
 }
 
 // winnerMMR/loserMMR must be the ACTUAL match outcome's sides — gain is the
