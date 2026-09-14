@@ -1254,11 +1254,16 @@ export async function cancelSharedMatch(id: string) {
   await supabase.from('matches').update({ status: 'Cancelled', pending_confirmations: [] }).eq('id', id);
 }
 
+// Race fix 2026-09-15: both match participants' clients call this at
+// roughly the same time when a match confirms. A plain select-then-update
+// here let concurrent calls clobber each other's mmrAppliedBy entry (see
+// migration 0033) — now does the read-check-write atomically server-side
+// via `SELECT ... FOR UPDATE` so concurrent calls serialize instead of
+// racing. Needs migration 0033 applied; until then this rejects instead of
+// silently reverting to the racy client-side behavior.
 export async function markMatchMmrApplied(id: string, uid: string) {
-  const { data } = await supabase.from('matches').select('live_stats').eq('id', id).maybeSingle();
-  const extra = (data?.live_stats as ExtraMeta | null) ?? { reporterUid: uid, mmrAppliedBy: [] };
-  if (!extra.mmrAppliedBy.includes(uid)) extra.mmrAppliedBy = [...extra.mmrAppliedBy, uid];
-  await supabase.from('matches').update({ live_stats: extra }).eq('id', id);
+  const { error } = await supabase.rpc('mark_match_mmr_applied', { p_match_id: id, p_uid: uid });
+  if (error) throw error;
 }
 
 // ── Availability ("who's playing this week") ───────────────────────────────
