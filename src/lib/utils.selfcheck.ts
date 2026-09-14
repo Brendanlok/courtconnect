@@ -10,7 +10,7 @@ const store = new Map<string, string>();
   removeItem: (k: string) => void store.delete(k),
 };
 
-import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly, regionOf, timeAgo } from './utils';
+import { calcMMRChange, previewMMRChange, marginMultiplier, savePendingSignup, peekPendingSignup, sharedAvailabilitySlots, parseDateOnly, regionOf, timeAgo, relativeDayLabel } from './utils';
 
 // 1. calcMMRChange is zero-sum for the actual outcome it's given: the
 //    winner's gain and loser's loss are always equal magnitude.
@@ -129,5 +129,17 @@ console.log('PASS regionOf resolves a non-MY player to their real region, not th
   assert.strictEqual(timeAgo(new Date(Date.now() + 10 * DAY).toISOString()), 'in 1w');
 }
 console.log('PASS timeAgo rolls up to w/mo/y past the day mark');
+
+// 11. relativeDayLabel only fires for today/tomorrow, and compares by
+//     calendar day (midnight boundary), not a raw 24h/48h duration.
+{
+  const now = new Date();
+  const at = (dayOffset: number, hour: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, hour);
+  assert.strictEqual(relativeDayLabel(at(0, 23)), 'Today');
+  assert.strictEqual(relativeDayLabel(at(1, 0)), 'Tomorrow', 'just past midnight into tomorrow is still Tomorrow, not a 24h check');
+  assert.strictEqual(relativeDayLabel(at(2, 0)), null);
+  assert.strictEqual(relativeDayLabel(at(-1, 23)), null, 'yesterday is not Today even within 24h');
+}
+console.log('PASS relativeDayLabel is Today/Tomorrow by calendar day, null otherwise');
 
 console.log('ALL PASS utils (MMR)');

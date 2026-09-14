@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PLAYERS } from '@/lib/data';
-import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL, downloadIcs } from '@/lib/utils';
+import { BASE_PATH, parseDateOnly, MATCH_TYPE_LABEL, downloadIcs, relativeDayLabel } from '@/lib/utils';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { Avatar } from '@/components/ui/Avatar';
 import { TierBadge } from '@/components/ui/TierBadge';
@@ -507,7 +507,7 @@ export default function MatchesPage() {
                   <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                     <MapPin size={10}/> {ch.venue}
                     <span className="mx-1">·</span>
-                    <Bell size={10}/> {parseDateOnly(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
+                    <Bell size={10}/> {relativeDayLabel(parseDateOnly(ch.date)) ?? parseDateOnly(ch.date).toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short' })}
                   </p>
                   {ch.message && <p className="text-xs text-slate-500 mt-1 italic">"{ch.message}"</p>}
                 </div>
@@ -747,7 +747,7 @@ function PlannedCard({ match: m, me, onEdit, onLog, onCancel, onLiveRecord, onTr
   const [removeTarget, setRemoveTarget] = useState<SlotPlayer | null>(null);
   const dateObj = new Date(m.date + 'T' + m.time);
   const isPast  = dateObj < new Date();
-  const dateStr = dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
+  const dateStr = relativeDayLabel(dateObj) ?? dateObj.toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short' });
   const borderClass = m.status === 'confirmed' ? 'border-emerald-500/25' : m.status === 'cancelled' ? 'border-red-500/20 opacity-60' : 'border-slate-800';
   const status = displayStatus(m);
 

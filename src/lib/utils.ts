@@ -197,6 +197,18 @@ export function formatDate(iso: string): string {
   return parseDateOnly(iso).toLocaleDateString('en-MY', { day:'numeric', month:'short', year:'numeric' });
 }
 
+// "Today"/"Tomorrow" for an upcoming planned match or challenge date, so a
+// player doesn't have to work out the weekday themselves for the two dates
+// that matter most. null for anything further out — caller falls back to
+// the full weekday/date string.
+export function relativeDayLabel(date: Date): string | null {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(date) - startOfDay(new Date())) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  return null;
+}
+
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
 }
