@@ -156,7 +156,7 @@ const SEED_PLANNED: PlannedMatch[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
-  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, isRealChallengeId } = useApp();
+  const { user, matches, addNotification, challenges, acceptChallenge, declineChallenge, cancelChallenge, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, isRealChallengeId } = useApp();
   const [tab,      setTab]      = useState<'history' | 'planned'>('planned');
   const [watchCode, setWatchCode] = useState('');
   const [watchErr,  setWatchErr]  = useState('');
@@ -511,7 +511,7 @@ export default function MatchesPage() {
                   </p>
                   {ch.message && <p className="text-xs text-slate-500 mt-1 italic">"{ch.message}"</p>}
                 </div>
-                <button onClick={() => declineChallenge(ch.id)}
+                <button onClick={() => cancelChallenge(ch.id)}
                   className="text-[11px] text-slate-500 hover:text-red-400 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0">
                   Cancel
                 </button>
