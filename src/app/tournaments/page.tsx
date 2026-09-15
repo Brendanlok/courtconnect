@@ -1205,7 +1205,10 @@ function BracketView({ bracket, participants, onReportResult, onUndoResult }: {
   const byRound     = rounds.map(r => bracket.filter(b => b.round === r));
   const r1Count     = byRound[0]?.length ?? 1;
   const totalH      = r1Count * CARD_H + (r1Count - 1) * BASE_GAP;
-  const ROUND_LABELS = ['QF', 'SF', 'Final', 'R4', 'R5'];
+  // Labels are named by distance from the final (Final, then SF, then QF, ...),
+  // not by raw round number — a bracket's round count depends on participant
+  // count, so round 1 is only "QF" when there happen to be 3+ rounds total.
+  const REVERSE_ROUND_LABELS = ['Final', 'SF', 'QF', 'R4', 'R5'];
 
   return (
     <div className="overflow-x-auto pb-2">
@@ -1214,7 +1217,7 @@ function BracketView({ bracket, participants, onReportResult, onUndoResult }: {
           <div key={ri} className="flex items-center">
             <div style={{ width: CARD_W }} className="text-center">
               <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                {ROUND_LABELS[rounds[ri] - 1] ?? `R${rounds[ri]}`}
+                {REVERSE_ROUND_LABELS[byRound.length - 1 - ri] ?? `R${rounds[ri]}`}
               </span>
             </div>
             {ri < byRound.length - 1 && <div style={{ width: CONN_W }}/>}
