@@ -12,14 +12,17 @@ import { fetchCoaches, type PublicCoach } from '@/lib/publicData';
 import { Avatar } from '@/components/ui/Avatar';
 import { BASE_PATH } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
+import { auth } from '@/lib/supabase';
 
 export default function FindACoach() {
   const [coaches, setCoaches] = useState<PublicCoach[] | null>(null);
   useEffect(() => { fetchCoaches().then(setCoaches); }, []);
   // useApp() outside AppProvider (logged-out visitor) returns {} — user is
   // undefined then, so myUid is just undefined and no card matches it.
+  // user.uid is always the local 'me' sentinel for real accounts too — the
+  // coach directory is keyed by real Supabase uids, so compare against that.
   const { user } = useApp();
-  const myUid = user?.uid;
+  const myUid = user ? auth.currentUser?.uid : undefined;
   // Signed-in visitors already have Settings for this; logged-out visitors
   // need the full become-a-coach pitch (value props + sign-up CTA) instead
   // of a dead-end static line.
