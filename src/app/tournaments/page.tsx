@@ -547,12 +547,16 @@ function TournamentRow({ tournament: t, myMMR, myDisplayName, isRegistered, isPe
               )}
 
               {/* Host action: kick off the bracket once ready — Upcoming only,
-                  needs at least 2 signed-up players, one-time (no bracket yet). */}
+                  needs at least 2 signed-up players, one-time (no bracket yet).
+                  Gated on participants.length (not currentPlayers) because
+                  that's what startTournamentBracket's guard actually checks —
+                  currentPlayers can run ahead of the participant roster, which
+                  used to leave the button enabled but the click a silent no-op. */}
               {isMyTourney && t.status === 'Upcoming' && !t.bracket && (
                 <button onClick={e => { e.stopPropagation(); onStartBracket(); }}
-                  disabled={t.currentPlayers < 2}
+                  disabled={(t.participants ?? []).length < 2}
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-black transition-colors">
-                  <Trophy size={14}/> {t.currentPlayers < 2 ? 'Need 2+ players to start' : 'Start Tournament & Generate Bracket'}
+                  <Trophy size={14}/> {(t.participants ?? []).length < 2 ? 'Need 2+ players to start' : 'Start Tournament & Generate Bracket'}
                 </button>
               )}
 
