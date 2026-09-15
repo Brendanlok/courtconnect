@@ -108,7 +108,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
   const [disbanding,    setDisbanding]   = useState(false);
   const [inviteQuery,   setInviteQuery]  = useState('');
   const [realInviteName, setRealInviteName] = useState('');
-  const [realInviteStatus, setRealInviteStatus] = useState<'idle' | 'loading' | 'not-found' | 'already-member' | 'sent'>('idle');
+  const [realInviteStatus, setRealInviteStatus] = useState<'idle' | 'loading' | 'not-found' | 'already-member' | 'sent' | 'failed'>('idle');
   const [disbandModal,  setDisbandModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
   const [disbandInput,  setDisbandInput] = useState('');
@@ -229,9 +229,13 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
       setRealInviteStatus('already-member');
       return;
     }
-    inviteToClub(clubId, data.uid);
-    setRealInviteStatus('sent');
-    setRealInviteName('');
+    const added = await inviteToClub(clubId, data.uid);
+    if (added) {
+      setRealInviteStatus('sent');
+      setRealInviteName('');
+    } else {
+      setRealInviteStatus('failed');
+    }
   };
 
   const saveAnnouncement = async () => {
@@ -769,6 +773,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
                 {realInviteStatus === 'not-found' && <p className="text-xs text-red-400 mt-1.5">No account found with that username.</p>}
                 {realInviteStatus === 'already-member' && <p className="text-xs text-amber-400 mt-1.5">Already a member or has a pending request.</p>}
                 {realInviteStatus === 'sent' && <p className="text-xs text-emerald-400 mt-1.5">Added to the club.</p>}
+                {realInviteStatus === 'failed' && <p className="text-xs text-red-400 mt-1.5">Club is full, or that player is already in the maximum number of clubs.</p>}
               </div>
             </div>
           </div>

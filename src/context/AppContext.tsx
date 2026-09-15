@@ -212,7 +212,7 @@ interface AppCtx {
   removeModerator: (clubId: string, uid: string) => void;
   removeMember: (clubId: string, uid: string) => void;
   myClubPendingIds: string[];            // clubs I've requested to join
-  inviteToClub: (clubId: string, targetUid: string) => void;
+  inviteToClub: (clubId: string, targetUid: string) => Promise<boolean>;
   sendClubMessage: (clubId: string, text: string) => void;
   // Follow
   following: string[];
@@ -1278,13 +1278,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeClubPending(clubId, toRealUid(uid, myRealUid), true).catch(() => {});
   }, [myRealUid]);
 
-  const inviteToClub = useCallback((clubId: string, targetUid: string) => {
+  const inviteToClub = useCallback(async (clubId: string, targetUid: string): Promise<boolean> => {
     // Admin inviting another player — adds them immediately, matching the
     // existing (consent-free) demo behavior; now persisted for real. The
     // invited player is notified via the subscribeClubs diff below (their
     // own memberIds change), not here.
-    addClubMember(clubId, targetUid).catch(() => {});
-    addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
+    // Mirrors acceptClubMember: addClubMember returns false on a silent
+    // server-side rejection (club full, or target at their tier's club cap)
+    // rather than throwing — this used to fire-and-forget and always show
+    // "Invite Sent" even when the target was never actually added.
+    const added = await addClubMember(clubId, targetUid).catch(() => false);
+    if (added) {
+      addNotification({ type: 'club_accepted', title: 'Invite Sent', body: 'Player has been added to the club.' });
+    } else {
+      addNotification({ type: 'club_declined', title: 'Could Not Invite', body: 'This club is full, or that player is already in the maximum number of clubs.' });
+    }
+    return added;
   }, []);
 
   const sendClubMessage = useCallback((clubId: string, text: string) => {
