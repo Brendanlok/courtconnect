@@ -1,4 +1,6 @@
--- NOT YET APPLIED — Lok needs to run this in the Supabase SQL editor.
+-- APPLIED (confirmed 2026-09-15 via a live REST probe on friends.status — the
+-- header was never updated when Lok ran it, same stale-header pattern 0008
+-- had for weeks).
 --
 -- The `friends` table has existed since 0001_init.sql with an "owner only"
 -- RLS policy (auth.uid() = user_id, covering select/insert/update/delete on

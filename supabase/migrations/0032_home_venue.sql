@@ -1,5 +1,5 @@
--- NOT YET APPLIED — Lok runs this in the Supabase SQL editor (no automated
--- migration runner in this project; see every other migration in this folder).
+-- APPLIED (confirmed 2026-09-15 via a live REST probe on users.home_venue —
+-- header never updated when Lok ran it, same stale pattern as 0008).
 --
 -- Home venue: the signup quiz's "Where do you play?" step now optionally
 -- captures the court a player usually plays at (free text, via the same

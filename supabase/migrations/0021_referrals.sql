@@ -1,5 +1,6 @@
--- NOT YET APPLIED — Lok runs this in the Supabase SQL editor (no automated
--- migration runner in this project; see every other migration in this folder).
+-- APPLIED (confirmed 2026-09-15 via a live REST probe — users.referred_by and
+-- users_public.referred_by both return real data. Header never updated when
+-- Lok ran it, same stale pattern as 0008).
 --
 -- Referral / invite tracking: who invited each new signup. Referral *count*
 -- ("N friends joined via your invite") is computed on demand with a count

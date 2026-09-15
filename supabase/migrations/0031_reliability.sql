@@ -1,5 +1,6 @@
--- NOT YET APPLIED — Lok runs this in the Supabase SQL editor (no automated
--- migration runner in this project; see every other migration in this folder).
+-- APPLIED (confirmed 2026-09-15 via a live REST probe — users.last_active_at
+-- and users_public.last_active_at both return real data. Header never
+-- updated when Lok ran it, same stale pattern as 0008).
 --
 -- Rating reliability (see src/lib/reliability.ts): a DUPR-style confidence
 -- signal layered on top of the existing calibration/recalibration fields,
