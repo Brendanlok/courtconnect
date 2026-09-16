@@ -412,6 +412,8 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
   const currentElapsedSec = () => accumulatedBeforeMountRef.current + (Date.now() - mountedAtRef.current) / 1000;
   const lastPointAtRef = useRef(Date.now());
   const gameStartRef = useRef(Date.now());
+  const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (completeTimeoutRef.current) clearTimeout(completeTimeoutRef.current); }, []);
   const [pointGapsSec, setPointGapsSec] = useState<number[]>([]);
   const [gameDurationsSec, setGameDurationsSec] = useState<number[]>([]);
   const [elapsedDisplaySec, setElapsedDisplaySec] = useState(currentElapsedSec());
@@ -536,7 +538,9 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
       updateLiveMatch(prev.id, updatePatch).catch(() => {});
       // In video mode, stay on screen so the recording isn't cut off — the Log Result
       // button inside the camera view lets the user finish saving the clip first.
-      if (status === 'completed' && recordMode !== 'video') setTimeout(() => onComplete(next), 800);
+      if (status === 'completed' && recordMode !== 'video') {
+        completeTimeoutRef.current = setTimeout(() => { completeTimeoutRef.current = null; onComplete(next); }, 800);
+      }
       return next;
     });
   }, [isHost, currentGame, match, onComplete, recordMode, pointLog, pointGapsSec, gameDurationsSec]);
@@ -554,6 +558,7 @@ function ScorerView({ initialMatch, initialPointLog, isHost, recordMode, planned
 
   const undoLast = () => {
     if (!isHost || history.length === 0) return;
+    if (completeTimeoutRef.current) { clearTimeout(completeTimeoutRef.current); completeTimeoutRef.current = null; }
     const prev = history[history.length - 1];
     setHistory(h => h.slice(0, -1));
     setPointLog(prev.pointLog);
