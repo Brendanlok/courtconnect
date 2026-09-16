@@ -500,6 +500,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const prevConversationsRef      = useRef<SharedConversation[]>([]);
   const prevClubsRef              = useRef<Club[]>([]);
   const prevTournamentsRef        = useRef<Tournament[]>([]);
+  // Ids the current client just cancelled its own pending request for — lets
+  // the diff-watchers below tell "I cancelled" apart from "admin/host declined"
+  // when both look identical as a pendingIds/pendingRequesterIds removal.
+  const selfCancelledClubIdsRef       = useRef<Set<string>>(new Set());
+  const selfCancelledTournamentIdsRef = useRef<Set<string>>(new Set());
   const prevMatchesRef             = useRef<StoredMatch[]>([]);
   // "have we run the diff at least once" per subscription — without this,
   // the very first callback after sign-in (prevXRef still at its initial [])
@@ -553,11 +558,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const oldPending = old.pendingRequesterIds ?? [];
             const newPending = t.pendingRequesterIds ?? [];
             if (oldPending.includes(uid) && !newPending.includes(uid)) {
+              const selfCancelled = selfCancelledTournamentIdsRef.current.delete(t.id);
               // No uid on the participants list to check directly (see approveTournamentRequest) —
               // currentPlayers only moves via register/approve/unregister, so "did it go up"
               // is a good-enough accept/decline signal at this scale.
               if (t.currentPlayers > old.currentPlayers) addNotification({ type: 'tournament_accepted', title: 'Request Approved', body: `Your request to join ${t.name} was accepted!` });
-              else addNotification({ type: 'tournament_declined', title: 'Request Declined', body: `Your request to join ${t.name} was declined.` });
+              else if (!selfCancelled) addNotification({ type: 'tournament_declined', title: 'Request Declined', body: `Your request to join ${t.name} was declined.` });
             }
           });
           prevTournamentsRef.current = docs;
@@ -671,8 +677,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // longer embedded on the club doc (see sendClubMessageDoc).
 
             if (old.pendingIds.includes(uid) && !c.pendingIds.includes(uid)) {
+              const selfCancelled = selfCancelledClubIdsRef.current.delete(c.id);
               if (c.memberIds.includes(uid)) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `Your request to join ${c.name} was accepted!` });
-              else addNotification({ type: 'club_declined', title: 'Request Declined', body: `Your request to join ${c.name} was declined.` });
+              else if (!selfCancelled) addNotification({ type: 'club_declined', title: 'Request Declined', body: `Your request to join ${c.name} was declined.` });
             } else if (!old.memberIds.includes(uid) && c.memberIds.includes(uid)) {
               // Direct admin invite (inviteToClub) skips the pending step
               // entirely — this is the only place that path gets notified.
@@ -981,7 +988,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [myRealUid]);
   const cancelRequest = useCallback((id: string) => {
     if (!myRealUid) return;
-    removeTournamentPending(id, myRealUid).catch(() => {});
+    selfCancelledTournamentIdsRef.current.add(id);
+    removeTournamentPending(id, myRealUid).catch(() => { selfCancelledTournamentIdsRef.current.delete(id); });
   }, [myRealUid]);
   // Mirrors acceptClubMember: approveTournamentRequest returns false on a
   // silent server-side rejection (event filled up since the host saw the
@@ -1205,7 +1213,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cancelClubRequest = useCallback((id: string) => {
     if (!myRealUid) return;
-    removeClubPending(id, myRealUid).catch(() => {});
+    selfCancelledClubIdsRef.current.add(id);
+    removeClubPending(id, myRealUid).catch(() => { selfCancelledClubIdsRef.current.delete(id); });
   }, [myRealUid]);
 
   const leaveClub = useCallback((id: string) => {
