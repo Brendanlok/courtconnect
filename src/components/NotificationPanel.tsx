@@ -19,6 +19,7 @@ export const NOTIF_ICON: Record<Notification['type'], React.ReactNode> = {
   match_pending:      <MessageCircle size={14} className="text-slate-400"/>,
   match_invite:       <Calendar size={14} className="text-amber-400"/>,
   match_confirmed:    <CheckCircle size={14} className="text-emerald-400"/>,
+  match_disputed:     <X size={14} className="text-red-400"/>,
   new_message:        <MessageCircle size={14} className="text-emerald-400"/>,
   friend_request:     <UserPlus size={14} className="text-violet-400"/>,
   friend_accepted:    <UserCheck size={14} className="text-emerald-400"/>,

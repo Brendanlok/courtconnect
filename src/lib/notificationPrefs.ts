@@ -22,7 +22,7 @@ export const NOTIF_CATEGORIES: { key: NotifCategory; label: string; description:
 const CATEGORY_OF: Record<NotificationType, NotifCategory> = {
   challenge_received: 'matches', challenge_accepted: 'matches', challenge_declined: 'matches',
   partner_request: 'matches', match_pending: 'matches', match_invite: 'matches',
-  match_confirmed: 'matches', match_reminder: 'matches',
+  match_confirmed: 'matches', match_disputed: 'matches', match_reminder: 'matches',
   club_request: 'clubsTournaments', club_join_request: 'clubsTournaments', club_accepted: 'clubsTournaments',
   club_declined: 'clubsTournaments', club_message: 'clubsTournaments',
   tournament_request: 'clubsTournaments', tournament_join_request: 'clubsTournaments',

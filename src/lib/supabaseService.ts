@@ -608,6 +608,14 @@ export async function sendChallengeDoc(c: StoredChallenge) {
 
 export async function updateChallengeStatus(id: string, status: StoredChallenge['status']) {
   await supabase.from('challenges').update({ status }).eq('id', id);
+  if (status !== 'accepted' && status !== 'declined') return;
+  const { data } = await supabase.from('challenges').select('from_id, to_name').eq('id', id).maybeSingle();
+  const fromId = data?.from_id as string | undefined;
+  const toName = data?.to_name as string | undefined;
+  if (!fromId) return;
+  notifyUser(fromId, status === 'accepted'
+    ? { type: 'challenge_accepted', title: 'Challenge Accepted', body: `${toName ?? 'Your opponent'} accepted your challenge!`, linkTo: `${BASE_PATH}/matches/` }
+    : { type: 'challenge_declined', title: 'Challenge Declined', body: `${toName ?? 'Your opponent'} declined your challenge.`, linkTo: `${BASE_PATH}/matches/` });
 }
 
 // ── Real endorsements between real accounts ───────────────────────────────────
@@ -1203,7 +1211,7 @@ export async function sendMatchDoc(m: StoredMatch) {
 }
 
 export async function confirmSharedMatch(id: string, confirmingUid: string) {
-  const { data } = await supabase.from('matches').select('pending_confirmations').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('matches').select('pending_confirmations, live_stats').eq('id', id).maybeSingle();
   const remaining = ((data?.pending_confirmations as string[] | undefined) ?? []).filter(u => u !== confirmingUid);
   // Only finalize once every other confirmer has signed off too - matches
   // the local-match multi-party path in AppContext.confirmMatch, which stays
@@ -1216,6 +1224,10 @@ export async function confirmSharedMatch(id: string, confirmingUid: string) {
   const patch: { pending_confirmations: string[]; status?: string } = { pending_confirmations: remaining };
   if (remaining.length === 0) patch.status = 'Confirmed';
   await supabase.from('matches').update(patch).eq('id', id);
+  const reporterUid = (data?.live_stats as ExtraMeta | null)?.reporterUid;
+  if (remaining.length === 0 && reporterUid) {
+    notifyUser(reporterUid, { type: 'match_confirmed', title: 'Match Confirmed', body: 'Your opponent confirmed the match result.', linkTo: `${BASE_PATH}/matches/` });
+  }
 }
 
 async function patchExtra(id: string, patch: Partial<ExtraMeta>) {
@@ -1227,6 +1239,11 @@ async function patchExtra(id: string, patch: Partial<ExtraMeta>) {
 export async function disputeSharedMatch(id: string, disputingUid: string) {
   await patchExtra(id, { disputedBy: disputingUid });
   await supabase.from('matches').update({ status: 'Disputed' }).eq('id', id);
+  const { data } = await supabase.from('matches').select('player1_id, player1_name, player2_id, player2_name').eq('id', id).maybeSingle();
+  const iAmP1 = data?.player1_id === disputingUid;
+  const otherUid = iAmP1 ? data?.player2_id : data?.player1_id;
+  const myName = iAmP1 ? data?.player1_name : data?.player2_name;
+  if (otherUid) notifyUser(otherUid, { type: 'match_disputed', title: 'Match Disputed', body: `${myName ?? 'Your opponent'} disputed the match result.`, linkTo: `${BASE_PATH}/matches/` });
 }
 
 // Re-submit model: disputing an existing result doesn't require an admin —
@@ -1238,16 +1255,18 @@ export async function disputeSharedMatch(id: string, disputingUid: string) {
 // need an extra fetch; revisit if a winner-flip on a lopsided original MMR
 // gap turns out to matter in practice.
 export async function resubmitSharedMatch(id: string, resubmittingUid: string, games: { p1: number; p2: number }[], winnerId: string, reporterMmrChange: number) {
-  const { data } = await supabase.from('matches').select('player1_id, player2_id').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('matches').select('player1_id, player1_name, player2_id, player2_name').eq('id', id).maybeSingle();
   const player1Id = data?.player1_id as string | undefined;
   const player2Id = data?.player2_id as string | undefined;
   if (!player1Id || !player2Id) return;
   const recipient = resubmitRecipient(resubmittingUid, player1Id, player2Id);
+  const resubmitterName = resubmittingUid === player1Id ? data?.player1_name : data?.player2_name;
   await patchExtra(id, { disputedBy: undefined });
   await supabase.from('matches').update({
     games, winner_id: winnerId, mmr_change: reporterMmrChange,
     status: 'Pending', pending_confirmations: [recipient],
   }).eq('id', id);
+  notifyUser(recipient, { type: 'match_pending', title: 'Match Result Corrected', body: `${resubmitterName ?? 'Your opponent'} submitted a corrected match result — confirm or dispute it.`, linkTo: `${BASE_PATH}/matches/` });
 }
 
 export async function cancelSharedMatch(id: string) {
