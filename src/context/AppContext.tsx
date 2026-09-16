@@ -21,7 +21,7 @@ import {
   sendClubMessageDoc, subscribeClubMessages, sendSystemClubMessage,
   subscribeTournaments, ensureSeedTournamentsExist, createTournamentDoc, updateTournamentDoc, unregisterTournamentParticipant,
   addTournamentPending, removeTournamentPending, approveTournamentRequest, registerForTournament,
-  lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote,
+  lookupUserByUsername, notifyUser, subscribeMyNotifications, markNotificationReadRemote, type StoredNotifRow,
   deleteNotificationRemote, deleteAllNotificationsRemote,
   subscribeMyRealMatches, sendMatchDoc, confirmSharedMatch, disputeSharedMatch, resubmitSharedMatch, cancelSharedMatch,
   markMatchMmrApplied, type StoredMatch,
@@ -609,7 +609,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subscribeMyNotifications(uid, rows => {
           setNotifications(prev => {
             const local = prev.filter(n => n.id.startsWith('n_'));
-            const remote = rows.filter(r => !isNotificationMuted(r.type))
+            // These DB rows (written by notifyUser, e.g. from addClubMember/
+            // approveTournamentRequest) exist so events reach the bell + push
+            // even if this client was fully closed when they happened. But
+            // for an already-open, already-subscribed client, the matching
+            // diff-watcher above (subscribeClubs/subscribeTournaments/etc)
+            // independently detects the exact same state change and fires
+            // its own local notification within moments — merging the DB row
+            // too then stacks two entries for one event. Drop a fresh row
+            // (<15s old) if something of the same type already landed in
+            // that window; older rows are real history from a session where
+            // no watcher was running to catch them, so those still surface.
+            const isFreshDuplicate = (r: StoredNotifRow) => {
+              const age = Date.now() - new Date(r.createdAt).getTime();
+              if (age > 15000) return false;
+              return prev.some(n => n.id !== r.id && n.type === r.type
+                && Math.abs(new Date(n.createdAt).getTime() - new Date(r.createdAt).getTime()) < 15000);
+            };
+            const remote = rows.filter(r => !isNotificationMuted(r.type) && !isFreshDuplicate(r))
               .map(r => ({ id: r.id, type: r.type, title: r.title, body: r.body, read: r.read, createdAt: r.createdAt, linkTo: r.linkTo } as Notification));
             return [...remote, ...local].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           });
@@ -1166,8 +1183,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // not optimistically, so a rejected join (club filled up, tier cap hit)
     // doesn't tell you "Joined!" when you weren't actually added.
     const joined = await addClubMember(id, myRealUid).catch(() => false);
-    if (joined) addNotification({ type: 'club_accepted', title: 'Joined Club', body: `You joined a new club!` });
-    else addNotification({ type: 'club_declined', title: 'Could not join', body: club?.name ? `${club.name} is full or unavailable right now.` : 'This club is full or unavailable right now.' });
+    // No success-path addNotification here on purpose: the subscribeClubs
+    // diff-watcher below sees this same client's uid land in memberIds and
+    // fires its own "Added to Club" the instant the realtime update lands —
+    // an optimistic one here just stacked a second (often a third, counting
+    // notifyUser's DB row) notification for the same join. Failure still
+    // needs its own message since nothing changes for the watcher to catch.
+    if (!joined) addNotification({ type: 'club_declined', title: 'Could not join', body: club?.name ? `${club.name} is full or unavailable right now.` : 'This club is full or unavailable right now.' });
   }, [clubs, myClubIds, clubLimit, myRealUid, user.mmr]);
 
   const requestJoinClub = useCallback((id: string) => {
