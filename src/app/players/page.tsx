@@ -4,7 +4,7 @@ import { PLAYERS } from '@/lib/data';
 import { useApp } from '@/context/AppContext';
 import { TierBadge } from '@/components/ui/TierBadge';
 import { Avatar } from '@/components/ui/Avatar';
-import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO, isCalibrating, sharedAvailabilitySlots } from '@/lib/utils';
+import { TIER_STYLE, MY_STATES, COUNTRIES, getCountryByName, maxClubsForTier, BASE_PATH, profileHref, clubHref, localDateISO, isCalibrating, sharedAvailabilitySlots, liveClubAvgMMR } from '@/lib/utils';
 import {
   Search, MapPin, Filter, Users, Shield, Trophy, UserPlus, LogOut as Leave,
   Plus, Copy, Check, CheckCheck, Lock, Globe, Megaphone, Settings, Clock,
@@ -70,6 +70,9 @@ export default function PlayersPage() {
   const [clubMyOnly,      setClubMyOnly]      = useState(false);
   const [clubStateFilter, setClubStateFilter] = useState('All');
   const clubStates = ['All', ...Array.from(new Set(clubs.map(c => c.state))).sort()];
+
+  const resolveClubMemberProfile = (uid: string): UserProfile | undefined =>
+    uid === 'me' ? user : PLAYERS.find(p => p.uid === uid) ?? allRealPlayers.find(p => p.uid === uid);
 
   return (
     <div className="space-y-5">
@@ -142,6 +145,7 @@ export default function PlayersPage() {
           updateClub={updateClub} disbandClub={disbandClub}
           assignModerator={assignModerator} removeModerator={removeModerator}
           userMMR={user.mmr}
+          resolveClubMemberProfile={resolveClubMemberProfile}
         />
       )}
       {tab === 'This Week' && <AvailabilityTab user={user}/>}
@@ -456,7 +460,7 @@ function FollowingTab({ following, followPlayer, unfollowPlayer, user, filters, 
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userMMR, clubSearch, clubMyOnly, clubStateFilter }: {
+function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, requestJoinClub, cancelClubRequest, leaveClub, acceptClubMember, declineClubMember, updateClub, disbandClub, assignModerator, removeModerator, userMMR, clubSearch, clubMyOnly, clubStateFilter, resolveClubMemberProfile }: {
   clubs: Club[];
   myClubIds: string[];
   clubLimit: number;
@@ -475,6 +479,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
   clubSearch: string;
   clubMyOnly: boolean;
   clubStateFilter: string;
+  resolveClubMemberProfile: (uid: string) => UserProfile | undefined;
 }) {
   const [createOpen,     setCreateOpen]     = useState(false);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
@@ -677,7 +682,7 @@ function ClubsTab({ clubs, myClubIds, clubLimit, myClubPendingIds, joinClub, req
                       {club.memberIds.length}/{club.maxMembers}
                       {full && <span className="text-red-400 font-semibold ml-1">Full</span>}
                     </span>
-                    <span className="flex items-center gap-1"><Trophy size={11}/> {club.avgMMR.toLocaleString()} MMR avg</span>
+                    <span className="flex items-center gap-1"><Trophy size={11}/> {liveClubAvgMMR(club, resolveClubMemberProfile).toLocaleString()} MMR avg</span>
                     {club.minMMR && <span className="flex items-center gap-1 text-amber-400/80">Min {club.minMMR.toLocaleString()}</span>}
                   </div>
                   <div className="flex items-center gap-1.5">

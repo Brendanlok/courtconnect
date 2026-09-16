@@ -1,4 +1,4 @@
-import type { Tier, MalaysiaState, CountryCode, Match } from '@/types';
+import type { Tier, MalaysiaState, CountryCode, Match, Club, UserProfile } from '@/types';
 
 // Matches next.config.ts's basePath — needed when building absolute links
 // (QR codes, share links, email redirect URLs) since window.location.origin
@@ -88,6 +88,16 @@ export function profileHref(p: { uid: string; username: string; isDummy?: boolea
 // there — route it through /clubs/view/?id=X instead.
 export function clubHref(c: { id: string; isDummy?: boolean }): string {
   return c.isDummy ? `/clubs/${c.id}/` : `/clubs/view/?id=${c.id}`;
+}
+
+// club.avgMMR is set once at creation and never recalculated — compute it live
+// from actual resolved members instead of trusting the stale field. Falls back
+// to the stored value only while member profiles are still loading/unresolved.
+export function liveClubAvgMMR(club: Club, resolveProfile: (uid: string) => UserProfile | undefined): number {
+  const members = club.memberIds.map(resolveProfile).filter((p): p is UserProfile => !!p);
+  return members.length > 0
+    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
+    : club.avgMMR;
 }
 
 export function getTier(mmr: number): Tier {

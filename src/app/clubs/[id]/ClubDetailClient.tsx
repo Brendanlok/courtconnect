@@ -8,7 +8,7 @@ import { TierBadge } from '@/components/ui/TierBadge';
 import { Button } from '@/components/ui/Button';
 import { ClubSettingsModal } from '@/components/ClubSettingsModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
-import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref, isCalibrating } from '@/lib/utils';
+import { timeAgo, maxClubsForTier, getTier, profileHref, clubHref, isCalibrating, liveClubAvgMMR } from '@/lib/utils';
 import { lookupUserByUid, lookupUserByUsername, subscribeClubMessages, migrateLegacyClubMessages, subscribeMatchesAmong, subscribeMatchesForClubMembers, type StoredMatch } from '@/lib/supabaseService';
 import { computeLadder } from '@/lib/clubLadder';
 import { computeClubRivalries } from '@/lib/clubRivalry';
@@ -199,13 +199,7 @@ export function ClubDetailClient({ clubId }: { clubId: string }) {
     .map(resolveProfile)
     .filter((p): p is UserProfile => !!p);
 
-  // club.avgMMR is set once at creation and never recalculated — compute it
-  // live from actual resolved members instead of trusting the stale field.
-  // Falls back to the stored value only while member profiles are still
-  // loading (members.length can lag club.memberIds.length briefly).
-  const liveAvgMMR = members.length > 0
-    ? Math.round(members.reduce((s, m) => s + m.mmr, 0) / members.length)
-    : club.avgMMR;
+  const liveAvgMMR = liveClubAvgMMR(club, resolveProfile);
 
   const thisClubRealMemberIds = club.memberIds.map(toRealUid).filter((id): id is string => !!id);
   const otherClubsRealIds = clubs.filter(c => c.id !== clubId).map(c => ({

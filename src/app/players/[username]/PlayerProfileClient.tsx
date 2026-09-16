@@ -12,7 +12,7 @@ import { InviteModal } from '@/components/InviteModal';
 import { ChallengeModal } from '@/components/ChallengeModal';
 import { SettingsModal } from '@/components/SettingsModal';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots, formatDate, regionOf } from '@/lib/utils';
+import { tierProgress, nextTier, skillMatch, MATCH_TYPE_LABEL, BASE_PATH, clubHref, TIER_STYLE, DAY_IDS, DAY_LABELS, SLOT_IDS, SLOT_LABELS, isCalibrating, sharedAvailabilitySlots, formatDate, regionOf, liveClubAvgMMR } from '@/lib/utils';
 import { BADGES, MATCH_COUNT_MILESTONE, type Badge } from '@/lib/achievements';
 import { getReliability } from '@/lib/reliability';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
@@ -92,7 +92,7 @@ function BadgeDetailModal({ badge, earned, onClose }: { badge: Badge; earned: bo
 }
 
 export function PlayerProfileClient({ username, forceIsMe = false }: { username: string; forceIsMe?: boolean }) {
-  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, earnedBadgeIds, pastSeasons } = useApp();
+  const { user: ctxUser, matches: allMatches, confirmMatch, disputeMatch, resubmitMatch, cancelPendingMatch, myEndorsements, playerEndorsements, endorsePlayer, clubs, following, followRequestsSent, followPlayer, unfollowPlayer, tournaments, earnedBadgeIds, pastSeasons, allRealPlayers } = useApp();
   const matchesConfirmedCount = allMatches.filter(m => m.status === 'Confirmed').length;
 
   const ENDORSE_SKILLS = ['Powerful Smash', 'Sharp Net Play', 'Great Footwork', 'Strong Defense', 'Smart Placement', 'Good Sportsmanship'];
@@ -260,6 +260,8 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
   const clubMembershipVisibility = player.privacy?.clubMembership ?? 'public';
   const canSeeClubMembership = canSeeFullProfile && (isMe || clubMembershipVisibility === 'public' || (clubMembershipVisibility === 'friends' && isFollowingPlayer));
   const playerClubs = canSeeClubMembership ? clubs.filter(c => c.memberIds.includes(player.uid)) : [];
+  const resolveClubMemberProfile = (uid: string) =>
+    uid === 'me' ? ctxUser : PLAYERS.find(p => p.uid === uid) ?? allRealPlayers.find(p => p.uid === uid);
 
   // Weekly availability: collected in onboarding/Settings, shown here so other
   // players know when to challenge someone — same public/followers/private
@@ -694,7 +696,7 @@ export function PlayerProfileClient({ username, forceIsMe = false }: { username:
                         <span className="font-bold text-white">{club.memberIds.length}</span> members
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        Avg MMR <span className="font-bold text-amber-400">{club.avgMMR.toLocaleString()}</span>
+                        Avg MMR <span className="font-bold text-amber-400">{liveClubAvgMMR(club, resolveClubMemberProfile).toLocaleString()}</span>
                       </span>
                       {club.tags.slice(0, 2).map(t => (
                         <span key={t} className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-md">{t}</span>
