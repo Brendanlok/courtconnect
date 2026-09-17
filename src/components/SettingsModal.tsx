@@ -143,9 +143,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setAvailability(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const postcodeInvalid = countryData.hasPostcode && postcode && postcodeValid === false;
+  const nameInvalid = !displayName.trim();
 
   const save = () => {
-    if (postcodeInvalid) return; // blocked — invalid postcode
+    if (postcodeInvalid || nameInvalid) return; // blocked — invalid postcode or empty name
     updateUser({
       displayName, bio, gender, birthday: birthday || undefined,
       country: countryData.name,
@@ -269,7 +270,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           {/* Name */}
           <label className="block">
             <span className="text-[11px] text-slate-500 font-semibold">Display Name</span>
-            <input value={displayName} onChange={e => setDisplayName(e.target.value)} className={`mt-1 ${inp}`}/>
+            <input value={displayName} onChange={e => setDisplayName(e.target.value)}
+              className={`mt-1 ${inp} ${nameInvalid ? 'border-red-500 focus:border-red-500' : ''}`}/>
+            {nameInvalid && <p className="text-xs text-red-400 mt-1">Display name can&apos;t be empty</p>}
           </label>
 
           {/* Bio */}
@@ -643,7 +646,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <div className="px-5 pb-5 flex gap-3 border-t border-slate-800 pt-4">
-          <Button onClick={save} disabled={!!postcodeInvalid} icon={<Save size={14}/>} className="flex-1">
+          <Button onClick={save} disabled={!!postcodeInvalid || nameInvalid} icon={<Save size={14}/>} className="flex-1">
             Save
           </Button>
           <Button variant="secondary" onClick={onClose} className="flex-1">
