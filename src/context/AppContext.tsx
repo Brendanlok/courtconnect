@@ -1619,14 +1619,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // app, so this effect IS the cron: whichever client of this user happens to
   // load next after a season boundary has passed performs the rollover for
   // their own account (RLS only allows writing your own season_history row).
-  const seasonRollingOverRef = useRef(false);
+  // Keyed by uid (not a plain boolean) so switching to a different account
+  // within the same tab — no reload — doesn't inherit the previous
+  // account's "already rolled over" flag and skip its own pending rollover.
+  const seasonRolledOverForUidRef = useRef<string | null>(null);
   useEffect(() => {
     const uid = auth.currentUser?.uid;
-    if (!uid || profileLoading || seasonRollingOverRef.current) return;
+    if (!uid || profileLoading || seasonRolledOverForUidRef.current === uid) return;
     const closingSeason = user.seasonNumber ?? 1;
     const currentSeason = seasonNumberForDate(new Date());
     if (currentSeason <= closingSeason) return;
-    seasonRollingOverRef.current = true;
+    seasonRolledOverForUidRef.current = uid;
 
     const endedAt = new Date().toISOString();
     const { closed, mmr: nextMmr } = rolloverSeasons(user.mmr, closingSeason, currentSeason);
