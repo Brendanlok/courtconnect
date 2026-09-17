@@ -6,6 +6,7 @@ import { seasonNumberForDate } from '@/lib/seasons';
 import { BASE_PATH, peekReferral, consumeReferral, consumePendingSignup } from '@/lib/utils';
 import { ME, PLAYERS } from '@/lib/data';
 import { trackEvent } from '@/lib/analytics';
+import { unsubscribeFromPush } from '@/lib/push';
 
 interface AuthCtx {
   authUser: CompatUser | null;
@@ -251,6 +252,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // The device's push subscription is tied to this account's uid in
+    // push_subscriptions until unsubscribed — without this, the browser
+    // keeps delivering this account's push notifications after they've
+    // signed out, same "next person inherits leftover state" problem as the
+    // localStorage wipe below, just for OS-level push instead of local data.
+    await unsubscribeFromPush();
     await supabase.auth.signOut();
     // Local-only state (matches, following, court heatmap, clip credits, etc.)
     // is keyed by un-namespaced cc_* keys, not by account — without this, the
