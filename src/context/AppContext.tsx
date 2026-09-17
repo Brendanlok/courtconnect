@@ -1284,9 +1284,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Owner-only kick — reuses removeClubMember, the same function leaveClub
   // already calls for a self-removal, just targeted at another member's uid.
+  // Notify the removed member — without this they just silently lose access
+  // and have no idea why the club vanished from their list.
   const removeMember = useCallback((clubId: string, uid: string) => {
-    removeClubMember(clubId, toRealUid(uid, myRealUid)).catch(() => {});
-  }, [myRealUid]);
+    const realUid = toRealUid(uid, myRealUid);
+    const clubName = clubs.find(c => c.id === clubId)?.name ?? 'a club';
+    removeClubMember(clubId, realUid).catch(() => {});
+    notifyUser(realUid, { type: 'club_declined', title: 'Removed from Club', body: `You were removed from ${clubName}.`, linkTo: `${BASE_PATH}/players/?tab=clubs` });
+  }, [myRealUid, clubs]);
 
   // Mirrors acceptTournamentRequest/approveTournamentRequest: addClubMember
   // returns false on a silent server-side rejection (club filled up since
