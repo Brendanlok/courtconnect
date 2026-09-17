@@ -188,6 +188,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       // runtime). This deletes all app data + signs out; the auth account
       // itself needs a manual admin deletion (Supabase dashboard) or a small
       // Edge Function, until that's built.
+      // Same gap as the pre-fix logout() had: without this the browser keeps
+      // this account's push subscription alive after account deletion.
+      await unsubscribeFromPush();
       await deleteAccountData(authUser.uid);
       await supabase.auth.signOut();
       // cc_theme is a device display preference, not account state — same
