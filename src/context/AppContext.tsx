@@ -1557,7 +1557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const realUid = auth.currentUser?.uid;
     if (!realUid || !text.trim()) return;
     const chatId = chatIdFor(realUid, otherUid);
-    const msg = { id: `msg_${Date.now()}`, senderId: realUid, text: text.trim(), sentAt: new Date().toISOString() };
+    const msg = { id: crypto.randomUUID(), senderId: realUid, text: text.trim(), sentAt: new Date().toISOString() };
     const participants: Record<string, SharedParticipant> = {
       [realUid]: { displayName: user.displayName, username: user.username, tier: user.tier, mmr: user.mmr, photoURL: user.photoURL ?? null },
       [otherUid]: otherProfile,

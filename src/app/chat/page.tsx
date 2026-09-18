@@ -128,7 +128,7 @@ export default function Chat() {
       return;
     }
 
-    const msg: Message = { id: `msg-${Date.now()}`, senderId: user.uid, text: input.trim(), sentAt: new Date().toISOString() };
+    const msg: Message = { id: crypto.randomUUID(), senderId: user.uid, text: input.trim(), sentAt: new Date().toISOString() };
     setConvs(cs => {
       const updated = cs.map(c => c.id === activeId
         ? { ...c, messages: [...c.messages, msg], lastMessage: input.trim(), lastAt: msg.sentAt, unread: 0 }
