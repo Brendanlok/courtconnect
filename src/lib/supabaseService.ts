@@ -492,11 +492,16 @@ async function buildSharedConversation(row: { id: string; participant_ids: strin
 // function + broadcast channel if the conversations table gets large.
 export function subscribeMySharedConversations(myUid: string, cb: (cs: SharedConversation[]) => void): () => void {
   let cancelled = false;
+  let seq = 0, applied = 0;
   const load = async () => {
+    const mine = ++seq;
     const { data } = await supabase.from('conversations').select('*').contains('participant_ids', [myUid]);
     if (cancelled) return;
     const built = await Promise.all((data ?? []).map(r => buildSharedConversation(r as never)));
-    if (!cancelled) cb(built);
+    // A slower earlier load resolving after a newer one must not overwrite fresh state with a stale snapshot.
+    if (cancelled || mine < applied) return;
+    applied = mine;
+    cb(built);
   };
   load();
   const channel = freshChannel(`my_conversations:${myUid}`)
