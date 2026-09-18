@@ -297,6 +297,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [realConversationDocs,   setRealConversationDocs]   = useState<SharedConversation[]>([]);
   const [realEndorsementCounts,  setRealEndorsementCounts]  = useState<Record<string, number>>({});
   const [realMatches,            setRealMatches]            = useState<StoredMatch[]>([]);
+  // Flips true on the first real-matches snapshot — profileLoading alone doesn't
+  // cover it, and effects that read match history (inactivity, digest) must not
+  // run against a not-yet-loaded (empty/seed) list.
+  const [realMatchesLoaded,      setRealMatchesLoaded]      = useState(false);
   // Every real signed-up account, fetched once per session (not a listener —
   // see loadAllRealUsers) and shared across every screen that needs the
   // ranking pool (Leaderboard, Players tab) instead of each page fetching
@@ -527,7 +531,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       realUnsubsRef.current = [];
       if (!authUser) {
         setRealIncomingChallenges([]); setRealOutgoingChallenges([]);
-        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setAllRealPlayers([]); setVenues([]);
+        setRealConversationDocs([]); setRealEndorsementCounts({}); setRealMatches([]); setRealMatchesLoaded(false); setAllRealPlayers([]); setVenues([]);
         setRealFollowingAccepted([]); setRealFollowingPending([]); setIncomingFollowRequests([]); setOnlineUids(new Set());
         prevIncomingChallengesRef.current = []; prevOutgoingChallengesRef.current = [];
         prevConversationsRef.current = []; prevClubsRef.current = []; prevMatchesRef.current = []; prevTournamentsRef.current = [];
@@ -705,6 +709,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           matchesLoadedRef.current = true;
           prevMatchesRef.current = docs;
           setRealMatches(docs);
+          setRealMatchesLoaded(true);
         }),
         subscribeOnlinePresence(uid, setOnlineUids),
       ];
@@ -1691,7 +1696,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const inactivityCheckedRef = useRef(false);
   useEffect(() => {
     const uid = auth.currentUser?.uid;
-    if (!uid || profileLoading || inactivityCheckedRef.current) return;
+    if (!uid || profileLoading || !realMatchesLoaded || inactivityCheckedRef.current) return;
     if ((user.placementMatchesPlayed ?? 0) < 10) return; // already calibrating
     const lastActive = allMatches.length > 0 ? new Date(allMatches[0].playedAt) : new Date(user.joinedAt);
     const daysInactive = (Date.now() - lastActive.getTime()) / 86_400_000;
@@ -1710,7 +1715,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateUser({ inactivityReminderSentAt: new Date().toISOString() });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.placementMatchesPlayed, user.inactivityReminderSentAt, user.joinedAt, allMatches, profileLoading]);
+  }, [user.placementMatchesPlayed, user.inactivityReminderSentAt, user.joinedAt, allMatches, profileLoading, realMatchesLoaded]);
 
   // Weekly digest: a positive counterpart to the inactivity warning above —
   // "here's your week" for anyone who's actually been playing, not a nag.
@@ -1722,7 +1727,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const digestCheckedRef = useRef(false);
   useEffect(() => {
     const uid = auth.currentUser?.uid;
-    if (!uid || profileLoading || digestCheckedRef.current) return;
+    if (!uid || profileLoading || !realMatchesLoaded || digestCheckedRef.current) return;
     const lastSent = user.weeklyDigestSentAt ? new Date(user.weeklyDigestSentAt) : new Date(user.joinedAt);
     const daysSinceSent = (Date.now() - lastSent.getTime()) / 86_400_000;
     if (daysSinceSent < DIGEST_INTERVAL_DAYS) return;
@@ -1744,7 +1749,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     updateUser({ weeklyDigestSentAt: new Date().toISOString() });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.weeklyDigestSentAt, user.joinedAt, allMatches, profileLoading]);
+  }, [user.weeklyDigestSentAt, user.joinedAt, allMatches, profileLoading, realMatchesLoaded]);
 
   // Upcoming-match reminder: an accepted challenge carries a scheduled start
   // (ChallengeModal writes `${date}T${time}:00`). Same client-triggered pattern
