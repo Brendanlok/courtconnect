@@ -923,8 +923,8 @@ function tournamentRowToObj(row: Record<string, unknown>): Tournament {
     hostUid: row.host_uid as string | undefined, hostClubId: row.host_club_id as string | undefined,
     participants: row.participants as Tournament['participants'],
     pendingRequesterIds: (row.pending_requester_ids as string[]) ?? [],
-    championUsername: row.champion_username as string | undefined,
-    championDisplayName: row.champion_display_name as string | undefined,
+    championUsername: row.champion_username as string | null | undefined,
+    championDisplayName: row.champion_display_name as string | null | undefined,
   };
 }
 

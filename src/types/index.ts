@@ -134,8 +134,8 @@ export interface Tournament {
                              // not just the `organiser` display string
   participants?: { displayName: string; username: string }[];
   pendingRequesterIds?: string[]; // uids waiting on host approval (private events only)
-  championUsername?: string;     // set once the final bracket match has a winner
-  championDisplayName?: string;
+  championUsername?: string | null;     // set once the final bracket match has a winner, cleared on undo
+  championDisplayName?: string | null;
 }
 
 export interface BracketMatch {

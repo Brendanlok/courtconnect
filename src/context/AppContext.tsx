@@ -1068,14 +1068,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // No-ops (via computeUndoBracketResult returning null) on a bye, a match
   // with no result yet, or one whose winner already has a result recorded
   // further into the bracket (host has to undo that one first). Reverts the
-  // tournament back to Active if this was the championship match.
+  // tournament back to Active if this was the championship match, clearing
+  // the stale champion fields too — left set, the wrongly-credited player
+  // kept the "champion" achievement badge forever (achievements.ts checks
+  // championUsername, not tournament status). Whether to also retract the
+  // notification already pushed to them is a separate UX call, flagged
+  // on the To-Do board rather than decided here.
   const undoBracketResult = useCallback((tournamentId: string, matchId: string) => {
     const t = tournaments.find(x => x.id === tournamentId);
     if (!t?.bracket) return;
     const updated = computeUndoBracketResult(t.bracket, matchId);
     if (!updated) return;
     const patch: Partial<Tournament> = { bracket: updated };
-    if (t.status === 'Completed') patch.status = 'Active';
+    if (t.status === 'Completed') {
+      patch.status = 'Active';
+      patch.championUsername = null;
+      patch.championDisplayName = null;
+    }
     updateTournamentDoc(tournamentId, patch).catch(() => {});
     setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, ...patch } : x));
   }, [tournaments]);
