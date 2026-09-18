@@ -30,6 +30,11 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
 
   const countryData = COUNTRIES.find(c => c.code === countryCode) ?? COUNTRIES[0];
   const location    = countryCode === 'MY' ? postcodeToLocation(postcode) : null;
+  // Continue previously advanced with no location entered at all, silently
+  // blanking region/area at finish() (see finish()'s `?? region`/`?? city`
+  // fallbacks) — require either a resolved postcode or a manually-picked
+  // region+city before leaving this step, same bar as MY's manual-entry path.
+  const locationValid = countryCode === 'MY' ? (!!location || (!!region && !!city.trim())) : (!!region && !!city.trim());
 
   const toggleAvail = (id: string) =>
     setAvail(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -209,7 +214,7 @@ export function OnboardingModal({ onComplete }: { onComplete: () => void }) {
               </Button>
             )}
             {step < STEPS.length - 2 && (
-              <Button onClick={next} className="flex-1">
+              <Button onClick={next} disabled={step === 1 && !locationValid} className="flex-1">
                 Continue <ChevronRight size={15}/>
               </Button>
             )}
