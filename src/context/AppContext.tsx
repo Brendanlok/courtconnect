@@ -1071,9 +1071,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // tournament back to Active if this was the championship match, clearing
   // the stale champion fields too — left set, the wrongly-credited player
   // kept the "champion" achievement badge forever (achievements.ts checks
-  // championUsername, not tournament status). Whether to also retract the
-  // notification already pushed to them is a separate UX call, flagged
-  // on the To-Do board rather than decided here.
+  // championUsername, not tournament status). Also sends the wrongly-credited
+  // player a correction notification — deleting the original push silently
+  // would be confusing if they'd already seen it; a follow-up is honest UX
+  // and doesn't need a new notifications-table column to track the original.
   const undoBracketResult = useCallback((tournamentId: string, matchId: string) => {
     const t = tournaments.find(x => x.id === tournamentId);
     if (!t?.bracket) return;
@@ -1082,8 +1083,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const patch: Partial<Tournament> = { bracket: updated };
     if (t.status === 'Completed') {
       patch.status = 'Active';
+      const priorChampion = t.championUsername;
       patch.championUsername = null;
       patch.championDisplayName = null;
+      if (priorChampion) {
+        lookupUserByUsername(priorChampion).then(profile => {
+          if (profile?.uid) notifyUser(profile.uid, { type: 'tournament_win', title: '⚠️ Result Corrected', body: `The final result for ${t.name} was corrected — you are no longer the champion.`, linkTo: `${BASE_PATH}/tournaments/` });
+        }).catch(() => {});
+      }
     }
     updateTournamentDoc(tournamentId, patch).catch(() => {});
     setRawTournaments(p => p.map(x => x.id === tournamentId ? { ...x, ...patch } : x));
