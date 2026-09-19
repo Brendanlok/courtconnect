@@ -284,6 +284,7 @@ export async function deleteAccountData(uid: string): Promise<void> {
     supabase.from('planned_matches').delete().eq('host_uid', uid),
     supabase.from('tournament_registrations').delete().eq('user_id', uid),
     supabase.from('friends').delete().eq('user_id', uid),
+    supabase.from('coach_profiles').delete().eq('user_id', uid),
   ]);
   await supabase.from('users').delete().eq('uid', uid);
   // ponytail: this deletes the profile row + owned rows above; it does not
